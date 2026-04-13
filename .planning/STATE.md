@@ -27,10 +27,10 @@ progress:
 ## Current Position
 
 Phase: 02 (ingestion) — EXECUTING
-Plan: 1 of 4
+Plan: 2 of 4 (Plan 01 complete)
 
-- **Phase:** 1 — Foundation
-- **Plan:** none (awaiting `/gsd:plan-phase 1`)
+- **Phase:** 2 — Ingestion
+- **Plan:** 02-01 complete; next 02-02 (loader-core)
 - **Status:** Executing Phase 02
 - **Progress:** [███████░░░] 70%
 
