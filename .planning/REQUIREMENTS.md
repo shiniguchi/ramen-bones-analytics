@@ -11,12 +11,12 @@ Requirements for initial release. Each maps to exactly one roadmap phase.
 
 - [ ] **FND-01**: Supabase Postgres project initialized with `restaurants` and `memberships` tables (multi-tenant schema from day 1, even though v1 has one tenant)
 - [ ] **FND-02**: Custom access token hook injects `restaurant_id` claim into Supabase Auth JWT from `memberships` table
-- [ ] **FND-03**: RLS policies enforced on every tenant-scoped table using `auth.jwt()->>'restaurant_id'`
+- [x] **FND-03**: RLS policies enforced on every tenant-scoped table using `auth.jwt()->>'restaurant_id'`
 - [x] **FND-04**: Security-definer wrapper-view pattern documented and applied to the first materialized view (RLS does not natively propagate to MVs)
-- [ ] **FND-05**: Two-tenant isolation integration test (seed tenant A and tenant B, assert tenant A session can never read tenant B rows) runs in CI on every PR
+- [x] **FND-05**: Two-tenant isolation integration test (seed tenant A and tenant B, assert tenant A session can never read tenant B rows) runs in CI on every PR
 - [x] **FND-06**: User can log in with email + password via Supabase Auth and the session persists across browser refreshes
 - [x] **FND-07**: Card-hash customer identifier is never stored alongside PAN, PII, or raw card data
-- [ ] **FND-08**: All timestamps stored as `timestamptz`; every analytical query derives `business_date` from a tenant-configured timezone to eliminate day-boundary drift
+- [x] **FND-08**: All timestamps stored as `timestamptz`; every analytical query derives `business_date` from a tenant-configured timezone to eliminate day-boundary drift
 
 ### Extraction (Orderbird → Staging)
 
@@ -113,12 +113,12 @@ Each v1 requirement maps to exactly one roadmap phase.
 |-------------|-------|--------|
 | FND-01 | Phase 1 — Foundation | Pending |
 | FND-02 | Phase 1 — Foundation | Pending |
-| FND-03 | Phase 1 — Foundation | Pending |
+| FND-03 | Phase 1 — Foundation | Complete |
 | FND-04 | Phase 1 — Foundation | Complete |
-| FND-05 | Phase 1 — Foundation | Pending |
+| FND-05 | Phase 1 — Foundation | Complete |
 | FND-06 | Phase 1 — Foundation | Complete |
 | FND-07 | Phase 1 — Foundation | Complete |
-| FND-08 | Phase 1 — Foundation | Pending |
+| FND-08 | Phase 1 — Foundation | Complete |
 | EXT-01 | Phase 2 — Extraction | Pending |
 | EXT-02 | Phase 2 — Extraction | Pending |
 | EXT-03 | Phase 2 — Extraction | Pending |
