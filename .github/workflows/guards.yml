@@ -1,0 +1,12 @@
+name: CI Guards
+on:
+  pull_request:
+  push:
+    branches: [main]
+jobs:
+  guards:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run CI grep guards
+        run: bash scripts/ci-guards.sh

@@ -1,0 +1,14 @@
+name: DB Migrations (DEV)
+on:
+  push:
+    branches: [main]
+jobs:
+  push:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Push migrations to DEV
+        run: supabase db push --project-ref ${{ secrets.DEV_SUPABASE_PROJECT_REF }} --password ${{ secrets.DEV_SUPABASE_DB_PASSWORD }}
