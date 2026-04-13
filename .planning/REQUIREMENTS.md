@@ -1,0 +1,127 @@
+# Requirements: Ramen Bones Analytics
+
+**Defined:** 2026-04-13
+**Core Value:** A restaurant owner opens the site on their phone and makes a real business decision from the numbers they see.
+
+## v1 Requirements
+
+Requirements for initial release. Each maps to exactly one roadmap phase.
+
+### Foundation (Tenancy, Auth, Security)
+
+- [ ] **FND-01**: Supabase Postgres project initialized with `restaurants` and `memberships` tables (multi-tenant schema from day 1, even though v1 has one tenant)
+- [ ] **FND-02**: Custom access token hook injects `restaurant_id` claim into Supabase Auth JWT from `memberships` table
+- [ ] **FND-03**: RLS policies enforced on every tenant-scoped table using `auth.jwt()->>'restaurant_id'`
+- [ ] **FND-04**: Security-definer wrapper-view pattern documented and applied to the first materialized view (RLS does not natively propagate to MVs)
+- [ ] **FND-05**: Two-tenant isolation integration test (seed tenant A and tenant B, assert tenant A session can never read tenant B rows) runs in CI on every PR
+- [ ] **FND-06**: User can log in with email + password via Supabase Auth and the session persists across browser refreshes
+- [ ] **FND-07**: Card-hash customer identifier is never stored alongside PAN, PII, or raw card data
+- [ ] **FND-08**: All timestamps stored as `timestamptz`; every analytical query derives `business_date` from a tenant-configured timezone to eliminate day-boundary drift
+
+### Extraction (Orderbird → Staging)
+
+- [ ] **EXT-01**: Playwright scraper logs into `my.orderbird.com` using persisted `storageState` and exports per-transaction CSV for the target restaurant
+- [ ] **EXT-02**: Scraper runs daily on GitHub Actions cron (unlimited minutes on public repo) and pushes rows into a Supabase `stg_orderbird_tx` staging table
+- [ ] **EXT-03**: Ingest is idempotent via natural key `(restaurant_id, source_tx_id)` with upsert + 2-day overlap window so missed runs self-heal
+- [ ] **EXT-04**: Normalization job (pg_cron) promotes rows from `stg_orderbird_tx` → `transactions` applying documented handling for voids, refunds, tips (Trinkgeld), brutto vs netto (VAT), and service charge
+- [ ] **EXT-05**: Card-hash / payment token is captured as the stable customer identifier for cohort tracking
+- [ ] **EXT-06**: Scraper failure (login break, schema drift, captcha) emits a visible alert (GHA failure + Supabase row in an `ingest_errors` table) so the founder is notified within 24h
+- [ ] **EXT-07**: Founder has manually reviewed ≥20 real CSV rows with the friend to confirm field semantics before any MV is written
+
+### Analytics SQL Models
+
+- [ ] **ANL-01**: `cohort_mv` materialized view — the load-bearing trunk — computes first-visit cohort assignment per customer (card hash) with configurable cohort grain (daily / weekly / monthly)
+- [ ] **ANL-02**: `retention_curve_v` (wrapper over cohort MV) exposes retention rate by cohort × periods-since-first-visit, with survivorship-bias guard (horizon-clip cohorts that haven't had enough elapsed time)
+- [ ] **ANL-03**: `ltv_mv` / `ltv_v` computes LTV-to-date per cohort with a visible data-depth caveat (3–12 months of history only, no 12-month projection)
+- [ ] **ANL-04**: `kpi_daily_mv` / `kpi_daily_v` aggregates revenue, transaction count, and avg ticket per business_date
+- [ ] **ANL-05**: `frequency_v` exposes repeat visit rate and visit-frequency distribution
+- [ ] **ANL-06**: `new_vs_returning_v` splits revenue and tx count between first-time and repeat customers
+- [ ] **ANL-07**: All MVs refresh nightly via `pg_cron` using `REFRESH MATERIALIZED VIEW CONCURRENTLY` (unique index mandatory on every MV)
+- [ ] **ANL-08**: SvelteKit frontend reads ONLY from `*_v` wrapper views — raw tables and MVs have `REVOKE ALL` on `authenticated` role
+- [ ] **ANL-09**: CI check greps for any frontend query referencing `*_mv` or raw tables directly and fails the build
+
+### Mobile Reader UI (SvelteKit on Cloudflare Pages)
+
+- [ ] **UI-01**: SvelteKit 2 + Svelte 5 + `adapter-cloudflare` project deploys to Cloudflare Pages with `@supabase/ssr` for auth
+- [ ] **UI-02**: Mobile-first layout at 375px baseline — single-column card stream, no desktop-only sidebar
+- [ ] **UI-03**: Login screen using Supabase Auth (email + password), redirects to dashboard on success
+- [ ] **UI-04**: Revenue KPI cards (today / this week / this month, avg ticket, tx count) shown at the top of the dashboard
+- [ ] **UI-05**: First-visit acquisition cohort chart (daily/weekly/monthly toggle) rendered with LayerChart
+- [ ] **UI-06**: Retention curve chart per cohort, mobile-legible (limited series, touch-friendly tooltips)
+- [ ] **UI-07**: Customer LTV view with visible data-depth caveat
+- [ ] **UI-08**: Repeat visit rate + visit-frequency distribution view
+- [ ] **UI-09**: Preset date-range chips (Today / 7d / 30d / 90d / All) — no custom date-range builder on mobile
+- [ ] **UI-10**: Empty / sparse-data states handled gracefully (cohorts with too little history show a message, not a broken chart)
+- [ ] **UI-11**: Every PR verified at 375px viewport before merge
+
+### Insights & Forkability
+
+- [ ] **INS-01**: Nightly Supabase Edge Function calls Claude Haiku via Anthropic API with tenant KPI payload and writes a natural-language summary to an `insights` table
+- [ ] **INS-02**: Prompt and post-generation validation forbid the LLM from emitting numbers not in the input payload (digit-guard regex + deterministic template fallback on validation failure)
+- [ ] **INS-03**: Dashboard renders the latest insight card for the logged-in tenant; gracefully hides if no insight exists
+- [ ] **INS-04**: Anthropic API key stored as a Supabase secret; never exposed to client or committed
+- [ ] **INS-05**: Repository is public and forkable with a README describing one-click deploy (Cloudflare Pages + Supabase project + GHA secrets)
+- [ ] **INS-06**: `.env.example` documents every required environment variable for self-hosters
+
+## v2 Requirements
+
+Deferred to future release. Tracked but not in current roadmap.
+
+### Multi-Tenant Onboarding
+- **ONB-01**: Self-service signup flow for new restaurant owners
+- **ONB-02**: Admin UI to provision a new tenant (restaurant + membership + scraper credentials)
+- **ONB-03**: Orderbird credential onboarding wizard
+
+### Scale & Integrations
+- **INT-01**: Orderbird ISV Partner API integration (replaces Playwright scraper)
+- **INT-02**: Additional POS integrations (Square, Toast, Lightspeed)
+- **INT-03**: Hourly refresh via webhook (when ISV API supports it)
+
+### Advanced Analytics
+- **ADV-01**: Time-of-day / day-of-week heatmap
+- **ADV-02**: At-risk customer list (cohort regulars gone quiet)
+- **ADV-03**: Segment chips (high-value vs casual vs one-time)
+- **ADV-04**: Menu-item level cohort analysis
+
+## Out of Scope
+
+| Feature | Reason |
+|---------|--------|
+| Real-time / streaming data | Daily refresh covers 99% of decisions; webhooks add complexity and no ISV API yet |
+| Onboarding / signup flow for v1 | Single tenant, manual provisioning is sufficient |
+| Paid tier / billing | Free + forkable is the business model |
+| Slide / PDF report generation | Phone dashboard is the delivery vehicle |
+| Embedded notebooks in user-facing UI | Notebooks are the dev environment, not the product |
+| Non-Orderbird POS integrations | Scope creep risk; v2 at earliest |
+| Desktop-first layout | Phone is the primary viewing surface |
+| Looker / Metabase / external BI embedding | Product requirement is a custom mobile UI |
+| CSV export of cohort data | Owner isn't going to re-analyze in Excel |
+| Customizable dashboard / widget builder | Non-technical user, confusion risk, anti-feature |
+| AI chat / "ask your data" | Hallucination risk, anti-feature per research |
+| Email digests / push notifications | v1 is pull-based; add only if validated |
+| Forecasting / predictions | Not enough historical data yet; trust-destroyer if wrong |
+| Cohort triangle / heatmap viz | Unreadable on phone; deferred to v2 |
+| Custom date-range picker on mobile | Preset chips only |
+| Fully configurable filter builder | Non-technical user; preset segments only |
+| 12-month LTV projection | Not enough history; LTV-to-date only, with caveat |
+
+## Traceability
+
+Which phases cover which requirements. Filled in by `gsd-roadmapper` during roadmap creation.
+
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| FND-01..08 | Phase [N] | Pending |
+| EXT-01..07 | Phase [N] | Pending |
+| ANL-01..09 | Phase [N] | Pending |
+| UI-01..11 | Phase [N] | Pending |
+| INS-01..06 | Phase [N] | Pending |
+
+**Coverage:**
+- v1 requirements: 41 total
+- Mapped to phases: 0 (filled by roadmapper)
+- Unmapped: TBD
+
+---
+*Requirements defined: 2026-04-13*
+*Last updated: 2026-04-13 after initialization*
