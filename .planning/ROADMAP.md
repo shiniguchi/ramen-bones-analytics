@@ -34,7 +34,7 @@ A restaurant owner opens the site on their phone and makes a real business decis
   - [x] 01-02-PLAN.md — Custom Access Token Hook migration + Dashboard registration doc
   - [x] 01-03-PLAN.md — kpi_daily_mv wrapper-view template + v1 seed migration
   - [x] 01-04-PLAN.md — SvelteKit hooks/login reference files under docs/reference
-  - [ ] 01-05-PLAN.md — CI grep guards script + 3 GHA workflows (guards/tests/migrations)
+  - [x] 01-05-PLAN.md — CI grep guards script + 3 GHA workflows (guards/tests/migrations)
   - [ ] 01-06-PLAN.md — Vitest integration suite (7 tests) + README forker quickstart
 **UI hint**: yes
 
