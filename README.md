@@ -62,6 +62,60 @@ hydration:
 Phase 1 is pure infrastructure: tenancy schema, auth hook, RLS, materialized-view
 wrapper template, CI guards, and the integration test harness.
 
+## Ingestion
+
+Phase 2 ships a CSV loader that reads an Orderbird export from Supabase Storage and upserts it into `public.stg_orderbird_order_items` (raw line items) + `public.transactions` (deduped, card-hash-scoped customer rows).
+
+### Prerequisites
+
+Env vars (see `.env.example`):
+
+- `SUPABASE_URL` — DEV or PROD Supabase project URL
+- `SUPABASE_SERVICE_ROLE_KEY` — service-role key (server-only, never commit)
+- `RESTAURANT_ID` — tenant UUID from `supabase/migrations/0005_seed_tenant.sql`
+- `ORDERBIRD_CSV_BUCKET` — typically `orderbird-raw`
+- `ORDERBIRD_CSV_OBJECT` — object path inside the bucket, e.g. `dev/ramen_bones_order_items.csv`
+
+PII note: the CSV contains card PANs and must never hit the repo. See `docs/reference/pii-columns.txt` for the hashed-only columns the loader persists.
+
+### How to run
+
+```bash
+# Stage CSV into Supabase Storage (one-off)
+npx tsx scripts/ingest/upload-csv.ts ./orderbird_data/.../ramen_bones_order_items.csv orderbird-raw dev/ramen_bones_order_items.csv
+
+# Dry-run: prints the report without touching DB
+npm run ingest -- --dry-run
+
+# Write mode: upserts staging + transactions
+npm run ingest
+```
+
+### Report fields
+
+The loader emits a single JSON line on stdout:
+
+| Field                    | Meaning                                                                     |
+| ------------------------ | --------------------------------------------------------------------------- |
+| `rows_read`              | Raw CSV lines parsed (one per Orderbird line item)                          |
+| `invoices_deduped`       | Unique positive-total invoices destined for `transactions`                  |
+| `staging_upserted`       | Rows written to `stg_orderbird_order_items` (= `rows_read` in write mode)   |
+| `transactions_new`       | Net-new invoice rows inserted this run                                      |
+| `transactions_updated`   | Existing invoices touched by the upsert path                                |
+| `cash_rows_excluded`     | Cash line items excluded from card-hash customer tracking                   |
+| `missing_worldline_rows` | Card rows where the Orderbird worldline join failed — **monitor this**     |
+| `errors`                 | Parse/upsert errors (should always be `0`)                                  |
+
+If `missing_worldline_rows` grows meaningfully run-over-run, Worldline is silently dropping card references. Founder should investigate the POS export before we trust customer cohorts.
+
+### Idempotency guarantee
+
+Re-running `npm run ingest` on the same CSV is a no-op at the row-count level: `transactions_new=0`, physical row counts unchanged. The natural key `(restaurant_id, source_tx_id)` plus a 2-day overlap window drives the upsert. See `.planning/phases/02-ingestion/02-04-REAL-RUN.md` for a verified real-data run.
+
+### Semantic reference
+
+`tests/ingest/fixtures/README.md` documents the 11 semantic scenarios the loader handles (split bills, negative invoices, missing worldline joins, etc.) and is the source of truth for the founder-facing interpretation.
+
 ## Project docs
 
 - `.planning/PROJECT.md` — vision and non-negotiables
