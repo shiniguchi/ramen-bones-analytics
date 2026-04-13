@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-last_updated: "2026-04-13T22:37:34.224Z"
+last_updated: "2026-04-13T22:43:13.844Z"
 progress:
   total_phases: 5
   completed_phases: 1
   total_plans: 10
-  completed_plans: 8
-  percent: 80
+  completed_plans: 9
+  percent: 90
 ---
 
 # STATE: Ramen Bones Analytics
@@ -27,12 +27,12 @@ progress:
 ## Current Position
 
 Phase: 02 (ingestion) — EXECUTING
-Plan: 3 of 4 (Plans 01, 02 complete)
+Plan: 4 of 4 (Plans 01, 02, 03 complete)
 
 - **Phase:** 2 — Ingestion
-- **Plan:** 02-02 complete (wave-0 RED test surface); next 02-03 (loader-core)
+- **Plan:** 02-03 complete (loader-core GREEN); next 02-04 (integration tests)
 - **Status:** Executing Phase 02
-- **Progress:** [████████░░] 80%
+- **Progress:** [█████████░] 90%
 
 ## Performance Metrics
 
@@ -46,6 +46,7 @@ Plan: 3 of 4 (Plans 01, 02 complete)
 | Phase 01-foundation P06 | 20min | 3 tasks | 9 files |
 | Phase 02-ingestion P01 | 6min | 2 tasks | 5 files |
 | Phase 02-ingestion P02 | 10min | 2 tasks | 6 files |
+| Phase 02-ingestion P03 | 8min | 2 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -76,6 +77,8 @@ Plan: 3 of 4 (Plans 01, 02 complete)
 ### Decisions
 
 - (02-02) vitest css.postcss stub neutralizes parent-dir postcss config conflicts so wave-0 tests can run
+- [Phase 02-ingestion]: Upsert chunk size 500 rows (~500KB/batch) for both staging and transactions — half Supabase 1MB payload cap
+- [Phase 02-ingestion]: transactions_new/updated computed via restaurant-scoped pre/post count delta (supabase-js has no insert-vs-update response signal)
 
 ### Open Todos
 
@@ -93,7 +96,7 @@ None.
 
 **Resume hint:** 02-02 wave-0 complete: fixture CSV + 4 RED test stubs in `tests/ingest/`. Plan 02-03 builds `scripts/ingest/{hash,parse,normalize,index}.ts` to turn the RED tests GREEN.
 
-**Last session:** 2026-04-14 — Completed 02-02-PLAN.md
+**Last session:** 2026-04-13T22:43:13.831Z
 
 ---
 *State initialized: 2026-04-13*
