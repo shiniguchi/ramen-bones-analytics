@@ -488,8 +488,12 @@ beforeAll(async () => {
   ]);
 
   // Seed one MV row per tenant (via service_role — bypasses REVOKE)
-  // For the placeholder kpi_daily_mv this is implicit (one row per restaurant).
-  // When Phase 3 MVs exist, add explicit fixture rows here.
+  // kpi_daily_mv is a materialized view snapshot — runtime-seeded tenants
+  // only appear after an explicit refresh. Use the service_role-only RPC
+  // helper public.refresh_kpi_daily_mv() from migration 0006_test_helpers.sql:
+  const { error: refreshErr } = await admin.rpc('refresh_kpi_daily_mv');
+  if (refreshErr) throw refreshErr;
+  // When Phase 3 MVs exist, add explicit fixture rows before the refresh call.
 });
 
 afterAll(async () => {
