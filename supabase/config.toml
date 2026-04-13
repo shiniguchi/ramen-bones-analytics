@@ -1,0 +1,22 @@
+# Supabase project config
+# Minimal stub created by Plan 01-01. Replace with `supabase init` output
+# once the Supabase CLI is installed locally or in CI (see D-15).
+project_id = "ramen-bones-analytics"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public"]
+extra_search_path = ["public", "extensions"]
+
+[db]
+port = 54322
+major_version = 15
+
+[studio]
+enabled = true
+port = 54323
+
+[auth]
+enabled = true
+site_url = "http://localhost:5173"

@@ -1,0 +1,3 @@
+# PII-adjacent columns — Phase 2 must append any column introduced by the scraper
+# that could identify a customer (email, phone, full name, address, device id, etc.).
+# CI guard #4 fails if card_hash is joined against any column listed here.

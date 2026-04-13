@@ -1,0 +1,28 @@
+{
+  "name": "ramen-bones-analytics",
+  "version": "1.0.0",
+  "description": "Atomic, copy-paste-ready starter for AI-assisted coding projects. Drop it into any new repo to get a working `.claude/` setup, doc scaffolds, and a tested workflow.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:guards": "bash scripts/ci-guards.sh"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "devDependencies": {
+    "@types/node": "^25.6.0",
+    "dotenv": "^17.4.2",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "vitest": "^1.6.1"
+  },
+  "dependencies": {
+    "@supabase/ssr": "^0.5.2",
+    "@supabase/supabase-js": "^2.103.0"
+  }
+}
