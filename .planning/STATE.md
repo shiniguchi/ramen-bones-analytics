@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-last_updated: "2026-04-14T01:07:00Z"
+last_updated: "2026-04-14T02:30:00Z"
 progress:
   total_phases: 5
   completed_phases: 1
@@ -27,12 +27,12 @@ progress:
 ## Current Position
 
 Phase: 02 (ingestion) — EXECUTING
-Plan: 4 of 4 (Plans 01, 02, 03 complete; 04 Task 1 of 3 complete)
+Plan: 4 of 4 (Plans 01, 02, 03 complete; 04 Tasks 1+2 of 3 complete)
 
 - **Phase:** 2 — Ingestion
-- **Plan:** 02-04 Task 1 complete (integration tests GREEN against TEST); Tasks 2-3 pending
-- **Status:** Executing Phase 02 — paused on DEV credentials for Task 2
-- **Progress:** [█████████░] 90%
+- **Plan:** 02-04 Tasks 1+2 complete (integration tests GREEN + real CSV run verified in DEV); Task 3 = founder ING-05 checkpoint
+- **Status:** Executing Phase 02 — awaiting founder human-verify checkpoint (Task 3)
+- **Progress:** [█████████░] 95%
 
 ## Performance Metrics
 
@@ -48,6 +48,7 @@ Plan: 4 of 4 (Plans 01, 02, 03 complete; 04 Task 1 of 3 complete)
 | Phase 02-ingestion P02 | 10min | 2 tasks | 6 files |
 | Phase 02-ingestion P03 | 8min | 2 tasks | 10 files |
 | Phase 02-ingestion P04 T1 | 5min | 1 task | 2 files |
+| Phase 02-ingestion P04 T2 | 8min | 1 task | 3 files |
 
 ## Accumulated Context
 
@@ -81,6 +82,7 @@ Plan: 4 of 4 (Plans 01, 02, 03 complete; 04 Task 1 of 3 complete)
 - [Phase 02-ingestion]: Upsert chunk size 500 rows (~500KB/batch) for both staging and transactions — half Supabase 1MB payload cap
 - [Phase 02-ingestion]: transactions_new/updated computed via restaurant-scoped pre/post count delta (supabase-js has no insert-vs-update response signal)
 - [Phase 02-ingestion 04-T1]: Integration tests fetch seeded restaurant_id via admin query (0005 generates UUID, no hardcoded literal). SUPABASE_* env overridden in beforeAll from TEST_* pair. Fixture uploaded to orderbird-raw/test/sample.csv via service-role client; truncation scoped to restaurant_id.
+- [Phase 02-ingestion 04-T2]: Real CSV run against DEV — rows_read=20948, invoices_deduped=6842, missing_worldline_rows=772, errors=0. Idempotency verified (second run transactions_new=0, row counts stable at 20948/6842). Rule 3 deviation: migration 0009 added to auto-provision orderbird-raw bucket so forkers don't hit blocking upload failure.
 
 ### Open Todos
 
@@ -94,12 +96,12 @@ None.
 
 ## Session Continuity
 
-**Next command:** `/gsd:execute-phase 02` (resume 02-04 Task 2 once DEV ingest creds + real CSV staging are confirmed)
+**Next command:** Founder ING-05 sign-off, then `/gsd:execute-phase 02` to close out Task 3 + Plan 04 SUMMARY
 
-**Resume hint:** 02-04 Task 1 DONE — loader + idempotency integration tests GREEN against TEST project (commit 59bbf87). Task 2 needs DEV Supabase creds + real ramen_bones_order_items.csv uploaded to DEV orderbird-raw bucket. Task 3 is founder ING-05 checkpoint after Task 2 produces REAL-RUN.md.
+**Resume hint:** 02-04 Tasks 1+2 DONE. T1 = integration tests GREEN (commit 59bbf87). T2 = real CSV run in DEV (commit 127cd37) — REAL-RUN.md has reports + top-5 spot check. Task 3 = founder human-verify checkpoint: founder runs the SQL in 02-04-PLAN.md Task 3 "how-to-verify" in Supabase DEV SQL editor, cross-checks ≥20 real rows against the CSV, and types "approved" or "revise: ...".
 
-**Last session:** 2026-04-14T01:07:00Z
-**Stopped At:** 02-04 Task 1 complete — awaiting DEV creds for Task 2
+**Last session:** 2026-04-14T02:30:00Z
+**Stopped At:** 02-04 Task 2 complete — awaiting founder ING-05 human-verify
 
 ---
 *State initialized: 2026-04-13*
