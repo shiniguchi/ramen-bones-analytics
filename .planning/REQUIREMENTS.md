@@ -18,15 +18,13 @@ Requirements for initial release. Each maps to exactly one roadmap phase.
 - [x] **FND-07**: Card-hash customer identifier is never stored alongside PAN, PII, or raw card data
 - [x] **FND-08**: All timestamps stored as `timestamptz`; every analytical query derives `business_date` from a tenant-configured timezone to eliminate day-boundary drift
 
-### Extraction (Orderbird → Staging)
+### Ingestion (Pre-joined CSV → Transactions)
 
-- [ ] **EXT-01**: Playwright scraper logs into `my.orderbird.com` using persisted `storageState` and exports per-transaction CSV for the target restaurant
-- [ ] **EXT-02**: Scraper runs daily on GitHub Actions cron (unlimited minutes on public repo) and pushes rows into a Supabase `stg_orderbird_tx` staging table
-- [ ] **EXT-03**: Ingest is idempotent via natural key `(restaurant_id, source_tx_id)` with upsert + 2-day overlap window so missed runs self-heal
-- [ ] **EXT-04**: Normalization job (pg_cron) promotes rows from `stg_orderbird_tx` → `transactions` applying documented handling for voids, refunds, tips (Trinkgeld), brutto vs netto (VAT), and service charge
-- [ ] **EXT-05**: Card-hash / payment token is captured as the stable customer identifier for cohort tracking
-- [ ] **EXT-06**: Scraper failure (login break, schema drift, captcha) emits a visible alert (GHA failure + Supabase row in an `ingest_errors` table) so the founder is notified within 24h
-- [ ] **EXT-07**: Founder has manually reviewed ≥20 real CSV rows with the friend to confirm field semantics before any MV is written
+- [ ] **ING-01**: Loader script reads `orderbird_data/5-JOINED_DATA_*/ramen_bones_order_items.csv` (pre-joined per-order-item data) and upserts rows into a Supabase `stg_orderbird_order_items` staging table
+- [ ] **ING-02**: Ingest is idempotent via natural key `(restaurant_id, source_tx_id)` where `source_tx_id = order_id` — re-running produces zero diffs
+- [ ] **ING-03**: Normalization promotes staged rows to `transactions` with documented handling of voids, refunds, tips (Trinkgeld), brutto vs netto (VAT), and service charge; `business_date` derived at query time via tenant timezone
+- [ ] **ING-04**: `card_hash = sha256(wl_card_number || restaurant_id)` computed in the loader before any DB write; cash customers (no Worldline card number) are NULL and excluded from cohort analytics
+- [ ] **ING-05**: Founder has manually reviewed ≥20 real rows from the CSV to confirm field semantics before any MV is written
 
 ### Analytics SQL Models
 
@@ -119,13 +117,11 @@ Each v1 requirement maps to exactly one roadmap phase.
 | FND-06 | Phase 1 — Foundation | Complete |
 | FND-07 | Phase 1 — Foundation | Complete |
 | FND-08 | Phase 1 — Foundation | Complete |
-| EXT-01 | Phase 2 — Extraction | Pending |
-| EXT-02 | Phase 2 — Extraction | Pending |
-| EXT-03 | Phase 2 — Extraction | Pending |
-| EXT-04 | Phase 2 — Extraction | Pending |
-| EXT-05 | Phase 2 — Extraction | Pending |
-| EXT-06 | Phase 2 — Extraction | Pending |
-| EXT-07 | Phase 2 — Extraction | Pending |
+| ING-01 | Phase 2 — Ingestion | Pending |
+| ING-02 | Phase 2 — Ingestion | Pending |
+| ING-03 | Phase 2 — Ingestion | Pending |
+| ING-04 | Phase 2 — Ingestion | Pending |
+| ING-05 | Phase 2 — Ingestion | Pending |
 | ANL-01 | Phase 3 — Analytics SQL | Pending |
 | ANL-02 | Phase 3 — Analytics SQL | Pending |
 | ANL-03 | Phase 3 — Analytics SQL | Pending |
@@ -154,8 +150,8 @@ Each v1 requirement maps to exactly one roadmap phase.
 | INS-06 | Phase 5 — Insights & Forkability | Pending |
 
 **Coverage:**
-- v1 requirements: 41 total
-- Mapped to phases: 41 (100%)
+- v1 requirements: 39 total
+- Mapped to phases: 39 (100%)
 - Unmapped: 0
 
 ---

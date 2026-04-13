@@ -3,7 +3,7 @@
 **Created:** 2026-04-13
 **Granularity:** standard
 **Parallelization:** enabled
-**Coverage:** 41/41 v1 requirements mapped
+**Coverage:** 39/39 v1 requirements mapped (Phase 2 retargeted from scraper → CSV ingestion; EXT-01..07 replaced by ING-01..05)
 
 ## Core Value
 
@@ -12,7 +12,7 @@ A restaurant owner opens the site on their phone and makes a real business decis
 ## Phases
 
 - [ ] **Phase 1: Foundation** — Multi-tenant schema, auth, RLS, wrapper-view template, CI guards
-- [ ] **Phase 2: Extraction** — Playwright Orderbird scraper → staging → normalized transactions
+- [ ] **Phase 2: Ingestion** — Pre-joined CSV loader → staging → normalized transactions (no scraper; CSV produced out-of-band)
 - [ ] **Phase 3: Analytics SQL** — Cohort/LTV/KPI/frequency MVs with wrapper views and survivorship guardrails
 - [ ] **Phase 4: Mobile Reader UI** — SvelteKit dashboard on Cloudflare Pages at 375px baseline
 - [ ] **Phase 5: Insights & Forkability** — Claude Haiku narrative card, one-click fork/deploy hardening
@@ -38,17 +38,18 @@ A restaurant owner opens the site on their phone and makes a real business decis
   - [x] 01-06-PLAN.md — Vitest integration suite (7 tests) + README forker quickstart
 **UI hint**: yes
 
-### Phase 2: Extraction
-**Goal**: Daily Orderbird transactions flow into normalized `transactions` idempotently, with documented semantics confirmed against real rows
+### Phase 2: Ingestion
+**Goal**: The pre-joined Orderbird CSV loads idempotently into `stg_orderbird_order_items` and normalizes into `transactions` with documented semantics confirmed against real rows
 **Depends on**: Phase 1
-**Requirements**: EXT-01, EXT-02, EXT-03, EXT-04, EXT-05, EXT-06, EXT-07
+**Requirements**: ING-01, ING-02, ING-03, ING-04, ING-05
 **Success Criteria** (what must be TRUE):
-  1. A scheduled GitHub Actions cron runs the Playwright scraper daily, logs into `my.orderbird.com` via persisted `storageState`, and upserts yesterday's rows plus a 2-day overlap window into `stg_orderbird_tx`
-  2. Re-running the scraper for the same day produces zero diffs in `transactions` — natural-key upsert on `(restaurant_id, source_tx_id)` is provably idempotent
-  3. The `normalize-transactions` pg_cron job promotes staged rows to `transactions` with documented, unit-tested handling of voids, refunds, tips, and brutto/netto — founder has reviewed ≥20 real CSV rows with the friend first
-  4. A scraper failure (login break, schema drift, captcha) produces a visible alert within 24h via GitHub Actions failure notification and a row in `ingest_errors`
-  5. `card_hash = sha256(pan_token || restaurant_id)` is computed in the scraper before any write, so raw card data never reaches Supabase
+  1. A loader script reads `orderbird_data/5-JOINED_DATA_*/ramen_bones_order_items.csv` (pre-joined per-order-item export produced out-of-band via Claude coworking; the Orderbird scraper is NOT in scope) and upserts rows into `stg_orderbird_order_items`
+  2. Re-running the loader produces zero diffs in `transactions` — natural-key upsert on `(restaurant_id, source_tx_id)` where `source_tx_id = order_id` is provably idempotent
+  3. A SQL normalization step promotes staged rows to `transactions` with documented, unit-tested handling of voids, refunds, tips (Trinkgeld), and brutto vs netto — founder has reviewed ≥20 real CSV rows first
+  4. `card_hash = sha256(wl_card_number || restaurant_id)` is computed in the loader before any DB write, so raw card data never reaches Supabase; cash customers have NULL `card_hash` and are excluded from cohort analytics (expected behavior)
+  5. The loader is re-runnable: dropping a newer CSV into the folder and re-running brings `transactions` current without data loss or duplicates
 **Plans**: TBD
+**Out of scope**: Playwright scraper, GHA cron for ingestion, `storageState` session management, captcha/login-break alerting — the CSV is produced out-of-band by the founder via Claude coworking and committed/dropped into the repo manually for now
 
 ### Phase 3: Analytics SQL
 **Goal**: The cohort trunk and its leaves (retention, LTV, KPIs, frequency, new/returning) are queryable through wrapper views with survivorship guards baked into SQL, not UI
@@ -89,7 +90,7 @@ A restaurant owner opens the site on their phone and makes a real business decis
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation | 0/0 | Not started | - |
-| 2. Extraction | 0/0 | Not started | - |
+| 2. Ingestion | 0/0 | Not started | - |
 | 3. Analytics SQL | 0/0 | Not started | - |
 | 4. Mobile Reader UI | 0/0 | Not started | - |
 | 5. Insights & Forkability | 0/0 | Not started | - |
