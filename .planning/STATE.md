@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-last_updated: "2026-04-13T22:43:13.844Z"
+last_updated: "2026-04-14T01:07:00Z"
 progress:
   total_phases: 5
   completed_phases: 1
@@ -27,11 +27,11 @@ progress:
 ## Current Position
 
 Phase: 02 (ingestion) — EXECUTING
-Plan: 4 of 4 (Plans 01, 02, 03 complete)
+Plan: 4 of 4 (Plans 01, 02, 03 complete; 04 Task 1 of 3 complete)
 
 - **Phase:** 2 — Ingestion
-- **Plan:** 02-03 complete (loader-core GREEN); next 02-04 (integration tests)
-- **Status:** Executing Phase 02
+- **Plan:** 02-04 Task 1 complete (integration tests GREEN against TEST); Tasks 2-3 pending
+- **Status:** Executing Phase 02 — paused on DEV credentials for Task 2
 - **Progress:** [█████████░] 90%
 
 ## Performance Metrics
@@ -47,6 +47,7 @@ Plan: 4 of 4 (Plans 01, 02, 03 complete)
 | Phase 02-ingestion P01 | 6min | 2 tasks | 5 files |
 | Phase 02-ingestion P02 | 10min | 2 tasks | 6 files |
 | Phase 02-ingestion P03 | 8min | 2 tasks | 10 files |
+| Phase 02-ingestion P04 T1 | 5min | 1 task | 2 files |
 
 ## Accumulated Context
 
@@ -79,6 +80,7 @@ Plan: 4 of 4 (Plans 01, 02, 03 complete)
 - (02-02) vitest css.postcss stub neutralizes parent-dir postcss config conflicts so wave-0 tests can run
 - [Phase 02-ingestion]: Upsert chunk size 500 rows (~500KB/batch) for both staging and transactions — half Supabase 1MB payload cap
 - [Phase 02-ingestion]: transactions_new/updated computed via restaurant-scoped pre/post count delta (supabase-js has no insert-vs-update response signal)
+- [Phase 02-ingestion 04-T1]: Integration tests fetch seeded restaurant_id via admin query (0005 generates UUID, no hardcoded literal). SUPABASE_* env overridden in beforeAll from TEST_* pair. Fixture uploaded to orderbird-raw/test/sample.csv via service-role client; truncation scoped to restaurant_id.
 
 ### Open Todos
 
@@ -92,11 +94,12 @@ None.
 
 ## Session Continuity
 
-**Next command:** `/gsd:execute-phase 02` (continue with plan 02-03)
+**Next command:** `/gsd:execute-phase 02` (resume 02-04 Task 2 once DEV ingest creds + real CSV staging are confirmed)
 
-**Resume hint:** 02-02 wave-0 complete: fixture CSV + 4 RED test stubs in `tests/ingest/`. Plan 02-03 builds `scripts/ingest/{hash,parse,normalize,index}.ts` to turn the RED tests GREEN.
+**Resume hint:** 02-04 Task 1 DONE — loader + idempotency integration tests GREEN against TEST project (commit 59bbf87). Task 2 needs DEV Supabase creds + real ramen_bones_order_items.csv uploaded to DEV orderbird-raw bucket. Task 3 is founder ING-05 checkpoint after Task 2 produces REAL-RUN.md.
 
-**Last session:** 2026-04-13T22:43:13.831Z
+**Last session:** 2026-04-14T01:07:00Z
+**Stopped At:** 02-04 Task 1 complete — awaiting DEV creds for Task 2
 
 ---
 *State initialized: 2026-04-13*
