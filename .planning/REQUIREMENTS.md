@@ -107,21 +107,57 @@ Deferred to future release. Tracked but not in current roadmap.
 
 ## Traceability
 
-Which phases cover which requirements. Filled in by `gsd-roadmapper` during roadmap creation.
+Each v1 requirement maps to exactly one roadmap phase.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| FND-01..08 | Phase [N] | Pending |
-| EXT-01..07 | Phase [N] | Pending |
-| ANL-01..09 | Phase [N] | Pending |
-| UI-01..11 | Phase [N] | Pending |
-| INS-01..06 | Phase [N] | Pending |
+| FND-01 | Phase 1 — Foundation | Pending |
+| FND-02 | Phase 1 — Foundation | Pending |
+| FND-03 | Phase 1 — Foundation | Pending |
+| FND-04 | Phase 1 — Foundation | Pending |
+| FND-05 | Phase 1 — Foundation | Pending |
+| FND-06 | Phase 1 — Foundation | Pending |
+| FND-07 | Phase 1 — Foundation | Pending |
+| FND-08 | Phase 1 — Foundation | Pending |
+| EXT-01 | Phase 2 — Extraction | Pending |
+| EXT-02 | Phase 2 — Extraction | Pending |
+| EXT-03 | Phase 2 — Extraction | Pending |
+| EXT-04 | Phase 2 — Extraction | Pending |
+| EXT-05 | Phase 2 — Extraction | Pending |
+| EXT-06 | Phase 2 — Extraction | Pending |
+| EXT-07 | Phase 2 — Extraction | Pending |
+| ANL-01 | Phase 3 — Analytics SQL | Pending |
+| ANL-02 | Phase 3 — Analytics SQL | Pending |
+| ANL-03 | Phase 3 — Analytics SQL | Pending |
+| ANL-04 | Phase 3 — Analytics SQL | Pending |
+| ANL-05 | Phase 3 — Analytics SQL | Pending |
+| ANL-06 | Phase 3 — Analytics SQL | Pending |
+| ANL-07 | Phase 3 — Analytics SQL | Pending |
+| ANL-08 | Phase 3 — Analytics SQL | Pending |
+| ANL-09 | Phase 3 — Analytics SQL | Pending |
+| UI-01 | Phase 4 — Mobile Reader UI | Pending |
+| UI-02 | Phase 4 — Mobile Reader UI | Pending |
+| UI-03 | Phase 4 — Mobile Reader UI | Pending |
+| UI-04 | Phase 4 — Mobile Reader UI | Pending |
+| UI-05 | Phase 4 — Mobile Reader UI | Pending |
+| UI-06 | Phase 4 — Mobile Reader UI | Pending |
+| UI-07 | Phase 4 — Mobile Reader UI | Pending |
+| UI-08 | Phase 4 — Mobile Reader UI | Pending |
+| UI-09 | Phase 4 — Mobile Reader UI | Pending |
+| UI-10 | Phase 4 — Mobile Reader UI | Pending |
+| UI-11 | Phase 4 — Mobile Reader UI | Pending |
+| INS-01 | Phase 5 — Insights & Forkability | Pending |
+| INS-02 | Phase 5 — Insights & Forkability | Pending |
+| INS-03 | Phase 5 — Insights & Forkability | Pending |
+| INS-04 | Phase 5 — Insights & Forkability | Pending |
+| INS-05 | Phase 5 — Insights & Forkability | Pending |
+| INS-06 | Phase 5 — Insights & Forkability | Pending |
 
 **Coverage:**
 - v1 requirements: 41 total
-- Mapped to phases: 0 (filled by roadmapper)
-- Unmapped: TBD
+- Mapped to phases: 41 (100%)
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-04-13*
-*Last updated: 2026-04-13 after initialization*
+*Last updated: 2026-04-13 — traceability filled by gsd-roadmapper*
