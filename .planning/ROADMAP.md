@@ -30,9 +30,9 @@ A restaurant owner opens the site on their phone and makes a real business decis
   4. Every analytical query derives `business_date` via `AT TIME ZONE r.timezone`, with a test fixture at 23:45 Berlin landing in the correct business day
   5. CI grep guards fail the build on raw `_mv` references from `src/`, `getSession` on server, `REFRESH MATERIALIZED VIEW` without `CONCURRENTLY`, and `card_hash` joined to PII columns
 **Plans**: 6 plans
-  - [ ] 01-01-PLAN.md — Bootstrap repo (Node + Supabase CLI + Vitest) + tenancy/transactions migrations
-  - [ ] 01-02-PLAN.md — Custom Access Token Hook migration + Dashboard registration doc
-  - [ ] 01-03-PLAN.md — kpi_daily_mv wrapper-view template + v1 seed migration
+  - [x] 01-01-PLAN.md — Bootstrap repo (Node + Supabase CLI + Vitest) + tenancy/transactions migrations
+  - [x] 01-02-PLAN.md — Custom Access Token Hook migration + Dashboard registration doc
+  - [x] 01-03-PLAN.md — kpi_daily_mv wrapper-view template + v1 seed migration
   - [ ] 01-04-PLAN.md — SvelteKit hooks/login reference files under docs/reference
   - [ ] 01-05-PLAN.md — CI grep guards script + 3 GHA workflows (guards/tests/migrations)
   - [ ] 01-06-PLAN.md — Vitest integration suite (7 tests) + README forker quickstart
