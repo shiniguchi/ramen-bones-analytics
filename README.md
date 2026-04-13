@@ -1,71 +1,70 @@
-# vibe-coding-starter
+# Ramen Bones Analytics
 
-Atomic, copy-paste-ready starter for AI-assisted coding projects. Drop it into any new repo to get a working `.claude/` setup, doc scaffolds, and a tested workflow.
+A free, forkable, mobile-first analytics web app that turns Orderbird POS transactions
+into banking-grade growth metrics (cohorts, retention, LTV) for non-technical restaurant
+owners.
 
-## What's Inside
+**V1 tenant:** one ramen shop (the founder's friend). Architecture is multi-tenant-ready
+from day 1 so any restaurant owner can fork or self-host.
 
-```
-.claude/
-  CLAUDE.md              # Generic workflow rules — fill in TODOs for your project
-  memory/MEMORY.md       # Repo-local memory index (not global)
-  skills/
-    qa-gate/             # Mandatory pre-ship quality gate
-    uiux-review/         # UI/UX review via Chrome MCP
-  commands/              # Generic slash commands (see list below)
-docs/
-  project-context.md     # Single source of truth scaffold
-  feature-roadmap.md     # Roadmap scaffold
-  architecture.md        # Architecture scaffold
-AGENTS.md                # Brief for non-Claude agents (Cursor, Aider, etc.)
-.mcp.json.template       # Minimal MCP setup (Context7 + Chrome)
-bootstrap.sh             # Copies everything into a target directory
-```
+## Stack
 
-## Slash Commands
+- **Frontend:** SvelteKit 2 + Svelte 5 runes, Cloudflare Pages (`adapter-cloudflare`)
+- **Backend:** Supabase Postgres + Edge Functions + `pg_cron`
+- **Auth:** `@supabase/ssr` (cookie-based SSR). Never `@supabase/auth-helpers-sveltekit`.
+- **Extraction:** Python 3.12 + Playwright, hosted on GitHub Actions cron
+- **Insights:** Claude API via Supabase Edge Function, triggered by `pg_cron` → `pg_net`
 
-- `/qa-gate` — mandatory pre-ship gate (visual, security, docs)
-- `/uiux-review` — full UI/UX review of a page
-- `/review-pr` — holistic PR alignment
-- `/create-pr-summary` — generate PR description from branch
-- `/session-review` — review current session's changes
-- `/deepsearch-propose-top2` — deep research, propose top 2 plans
-- `/refine-plan-100pct` — upgrade a plan from 60% to 100%
-- `/rephrase-dictation` — rephrase dictated intent for confirmation
-- `/eval-skill` — evaluate a skill file or GitHub skill package
-- `/crawl-repos` — crawl related repos to gather context
+See `CLAUDE.md` for the full tech-stack rationale and "What NOT to Use" list.
 
-## Usage
+## Forker quickstart (Phase 1)
 
-### Option A — bootstrap into a new project
+1. Fork and clone this repo.
+2. Create two Supabase projects: `rba-dev` and `rba-test`.
+3. Copy `.env.test.example` → `.env.test` and fill in the TEST project's URL, anon key,
+   and service-role key.
+4. `npm install`
+5. Apply migrations to DEV:
+   `supabase login && supabase link --project-ref <dev-ref> && supabase db push`
+6. Apply migrations to TEST: repeat `supabase link` + `supabase db push` against the
+   TEST project ref.
+7. In **both** Supabase projects: Authentication → Hooks → Custom Access Token Hook →
+   select `public.custom_access_token_hook`. See
+   [`docs/reference/auth-hook-registration.md`](docs/reference/auth-hook-registration.md)
+   for the exact dashboard steps. Without this step, RLS will deny every query silently.
+8. `npx vitest run` — all Phase 1 integration tests should go green against the TEST
+   project.
+9. `bash scripts/ci-guards.sh` — all four CI guards should exit 0.
+10. Create your first user via the Supabase Dashboard → Authentication → Users, and
+    insert a row into `public.memberships` linking that user to the seeded restaurant
+    (see `supabase/migrations/0005_seed_tenant.sql`).
+11. Push to a branch on GitHub; the `CI Guards`, `Tests`, and `DB Migrations (DEV)`
+    workflows run automatically.
 
-```bash
-./bootstrap.sh ~/development/my-new-project
-cd ~/development/my-new-project
-# Edit .claude/CLAUDE.md → fill in the TODO sections
-# Edit docs/project-context.md → describe your project
-# Copy .mcp.json.template → .mcp.json and adjust
-```
+## Phase 4 handoff (SvelteKit wiring)
 
-### Option B — copy manually
+Phase 1 validates session persistence at the `supabase-js` `setSession` layer only.
+Phase 4 copies the reference files in `docs/reference/` into `src/` and re-validates
+FND-06 end-to-end through an actual browser refresh via `@supabase/ssr` cookie
+hydration:
 
-```bash
-cp -r .claude docs AGENTS.md .mcp.json.template <target>
-```
+- `docs/reference/hooks.server.ts.example` → `src/hooks.server.ts`
+- `docs/reference/+layout.server.ts.example` → `src/routes/+layout.server.ts`
+- `docs/reference/login/` → `src/routes/login/`
 
-## Customization Checklist
+## What Phase 1 does NOT include
 
-After bootstrapping, do these in order:
+- Dashboard UI (Phase 4)
+- Orderbird scraper (Phase 2)
+- Analytics SQL — cohorts, retention, LTV (Phase 3)
+- Claude nightly insights (Phase 5)
 
-1. `.claude/CLAUDE.md` — fill in environment table and TODO blocks
-2. `docs/project-context.md` — describe stack, directories, deployment
-3. `docs/architecture.md` — add system diagram + data flow
-4. `docs/feature-roadmap.md` — seed current milestone
-5. `.mcp.json` — copy from template, add project-specific MCPs (DB, etc.)
-6. `.claude/memory/MEMORY.md` — leave empty; it fills itself as you work
+Phase 1 is pure infrastructure: tenancy schema, auth hook, RLS, materialized-view
+wrapper template, CI guards, and the integration test harness.
 
-## Philosophy
+## Project docs
 
-- **Atomic**: everything lives in one directory tree, no external installers
-- **Universal**: zero hardcoded project names, URLs, or tech stacks
-- **Repo-local memory**: each project has its own memory, not a global one
-- **Workflow first**: the rules in `CLAUDE.md` are the opinionated part; the skills enforce them
+- `.planning/PROJECT.md` — vision and non-negotiables
+- `.planning/REQUIREMENTS.md` — FND-01..FND-08 acceptance criteria
+- `.planning/ROADMAP.md` — five-phase roadmap
+- `CLAUDE.md` — tech-stack rationale and forbidden patterns
