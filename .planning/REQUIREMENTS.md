@@ -14,7 +14,7 @@ Requirements for initial release. Each maps to exactly one roadmap phase.
 - [ ] **FND-03**: RLS policies enforced on every tenant-scoped table using `auth.jwt()->>'restaurant_id'`
 - [x] **FND-04**: Security-definer wrapper-view pattern documented and applied to the first materialized view (RLS does not natively propagate to MVs)
 - [ ] **FND-05**: Two-tenant isolation integration test (seed tenant A and tenant B, assert tenant A session can never read tenant B rows) runs in CI on every PR
-- [ ] **FND-06**: User can log in with email + password via Supabase Auth and the session persists across browser refreshes
+- [x] **FND-06**: User can log in with email + password via Supabase Auth and the session persists across browser refreshes
 - [ ] **FND-07**: Card-hash customer identifier is never stored alongside PAN, PII, or raw card data
 - [ ] **FND-08**: All timestamps stored as `timestamptz`; every analytical query derives `business_date` from a tenant-configured timezone to eliminate day-boundary drift
 
@@ -116,7 +116,7 @@ Each v1 requirement maps to exactly one roadmap phase.
 | FND-03 | Phase 1 — Foundation | Pending |
 | FND-04 | Phase 1 — Foundation | Complete |
 | FND-05 | Phase 1 — Foundation | Pending |
-| FND-06 | Phase 1 — Foundation | Pending |
+| FND-06 | Phase 1 — Foundation | Complete |
 | FND-07 | Phase 1 — Foundation | Pending |
 | FND-08 | Phase 1 — Foundation | Pending |
 | EXT-01 | Phase 2 — Extraction | Pending |
