@@ -24,7 +24,7 @@ Requirements for initial release. Each maps to exactly one roadmap phase.
 - [x] **ING-02**: Ingest is idempotent via natural key `(restaurant_id, source_tx_id)` where `source_tx_id = order_id` — re-running produces zero diffs
 - [x] **ING-03**: Normalization promotes staged rows to `transactions` with documented handling of voids, refunds, tips (Trinkgeld), brutto vs netto (VAT), and service charge; `business_date` derived at query time via tenant timezone
 - [x] **ING-04**: `card_hash = sha256(wl_card_number || restaurant_id)` computed in the loader before any DB write; cash customers (no Worldline card number) are NULL and excluded from cohort analytics
-- [ ] **ING-05**: Founder has manually reviewed ≥20 real rows from the CSV to confirm field semantics before any MV is written
+- [x] **ING-05**: Founder has manually reviewed ≥20 real rows from the CSV to confirm field semantics before any MV is written
 
 ### Analytics SQL Models
 
@@ -121,7 +121,7 @@ Each v1 requirement maps to exactly one roadmap phase.
 | ING-02 | Phase 2 — Ingestion | Complete |
 | ING-03 | Phase 2 — Ingestion | Complete |
 | ING-04 | Phase 2 — Ingestion | Complete |
-| ING-05 | Phase 2 — Ingestion | Pending |
+| ING-05 | Phase 2 — Ingestion | Complete |
 | ANL-01 | Phase 3 — Analytics SQL | Pending |
 | ANL-02 | Phase 3 — Analytics SQL | Pending |
 | ANL-03 | Phase 3 — Analytics SQL | Pending |
