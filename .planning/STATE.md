@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: "PAUSED at 04-05 Task 3 checkpoint:human-verify (iPhone sign-off)"
-last_updated: "2026-04-14T21:48:59.504Z"
+stopped_at: "Completed 04-06 gap-closure (Gap A: layerchart 2.x hydration fix)"
+last_updated: "2026-04-14T21:49:58.048Z"
 progress:
   total_phases: 5
   completed_phases: 3
   total_plans: 24
-  completed_plans: 22
-  percent: 88
+  completed_plans: 23
+  percent: 96
 ---
 
 # STATE: Ramen Bones Analytics
@@ -33,7 +33,7 @@ Plan: 1 of 9
 - **Phase:** 4
 - **Plan:** 5 of 5
 - **Status:** Executing Phase 04
-- **Progress:** [█████████░] 88%
+- **Progress:** [██████████] 96%
 
 ## Performance Metrics
 
@@ -63,6 +63,7 @@ Plan: 1 of 9
 | Phase 04-mobile-reader-ui P05 | 4 | 2 tasks | 9 files |
 | Phase 04-mobile-reader-ui P08 | 6min | 2 tasks | 4 files |
 | Phase 04 P07 | 10min | 2 tasks | 3 files |
+| Phase 04-mobile-reader-ui P06 | 15min | 3 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -123,6 +124,7 @@ Plan: 1 of 9
 - [Phase 04-mobile-reader-ui]: shapeNvr() absorbs blackout_unknown into cash_anonymous to preserve D-19 tie-out invariant
 - [Phase 04-mobile-reader-ui]: FreshnessLabel tested via static top-level import (not dynamic require) in ESM vitest pipeline
 - [Phase 04]: 04-07 (Gap B closure): migration 0015 ALTER custom_access_token_hook SECURITY DEFINER lands in repo; DEV verified prosecdef=true. jwt-claim integration test extended with literal 'Gap B regression' failure message pointing at 0015. Manual revert sanity check confirmed test goes red under SECURITY INVOKER.
+- [Phase 04-mobile-reader-ui]: 04-06: layerchart pinned 2.0.0-next.54 (Svelte 5 native line); Path B — 2.x removed string-preset xScale, must pass d3 scale fns; E2E fixture bypass via E2E_FIXTURES=1 + ?__e2e=charts server-side (page.route cannot intercept SSR load)
 
 ### Open Todos
 
@@ -140,8 +142,8 @@ None.
 
 **Resume hint:** Phase 3 Wave 0 RED test scaffold in place (03-01 complete). 15 it.todo stubs + fixture + ci-guards contract test committed as 8d8d302 and bdf5332. Plan 03-02 should author 0010_cohort_mv.sql and flip the ANL-01 + ANL-08 todo blocks to green. Open Phase 3 caveats: April 2026 Worldline blackout, 772 missing_worldline_rows cohort linkage loss.
 
-**Last session:** 2026-04-14T19:53:04.408Z
-**Stopped At:** PAUSED at 04-05 Task 3 checkpoint:human-verify (iPhone sign-off)
+**Last session:** 2026-04-14T21:49:58.037Z
+**Stopped At:** Completed 04-06 gap-closure (Gap A: layerchart 2.x hydration fix)
 
 ---
 *State initialized: 2026-04-13*
