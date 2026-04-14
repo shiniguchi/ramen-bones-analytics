@@ -108,14 +108,101 @@ describe('Phase 3 — Analytics SQL', () => {
 
   // ANL-02 — retention curve with NULL-mask past horizon
   describe('ANL-02 retention curve', () => {
-    it.todo('cohort 2025-08-04 period 1 retention_rate = 0.5 (B returned)');
-    it.todo('NULL-masks past per-cohort horizon (survivorship guard)');
+    it('cohort 2025-08-04 period 0 = 1.0, period 2 = 1.0, period 1 = 0.0', async () => {
+      // Rule 1 fix: plan claimed "period 1 = 0.5 (B returned)" but fixture math
+      // disagrees. period_weeks = floor((tx - first_visit)/7d).
+      //   A first=08-04 → visits at p0, p2 (08-18=14d), p8 (09-29=56d)
+      //   B first=08-05 → visits at p0 (08-11 is only 6d → p0), p2 (08-25=20d)
+      // Period 1 has zero visits across both customers; period 0 + 2 are full.
+      const { data, error } = await admin.rpc('test_retention_curve', {
+        rid: restaurantId
+      });
+      if (error) throw error;
+      const rows = (data as Array<{
+        cohort_week: string;
+        period_weeks: number;
+        retention_rate: number | null;
+      }>).filter((r) => r.cohort_week === '2025-08-04');
+
+      const p0 = rows.find((r) => r.period_weeks === 0)!;
+      const p1 = rows.find((r) => r.period_weeks === 1)!;
+      const p2 = rows.find((r) => r.period_weeks === 2)!;
+      expect(Number(p0.retention_rate)).toBe(1);
+      expect(Number(p1.retention_rate)).toBe(0);
+      expect(Number(p2.retention_rate)).toBe(1);
+    });
+
+    it('NULL-masks past per-cohort horizon (survivorship guard)', async () => {
+      const { data, error } = await admin.rpc('test_retention_curve', {
+        rid: restaurantId
+      });
+      if (error) throw error;
+      const rows = data as Array<{
+        cohort_week: string;
+        period_weeks: number;
+        retention_rate: number | null;
+        cohort_age_weeks: number;
+      }>;
+      // Period 250 is far past every cohort's horizon → must be NULL.
+      const farFuture = rows.filter((r) => r.period_weeks === 250);
+      expect(farFuture.length).toBeGreaterThan(0);
+      for (const r of farFuture) {
+        expect(r.retention_rate).toBeNull();
+      }
+      // Within-horizon row exists (period 0 of any cohort).
+      const within = rows.find(
+        (r) => r.period_weeks === 0 && r.retention_rate !== null
+      );
+      expect(within).toBeTruthy();
+    });
   });
 
   // ANL-03 — LTV (cumulative avg per acquired customer, NULL past horizon)
   describe('ANL-03 ltv', () => {
-    it.todo('cumulative avg LTV per acquired customer matches fixture math');
-    it.todo('NULL past horizon (same survivorship guard as retention)');
+    it('cumulative avg LTV per acquired customer matches fixture math', async () => {
+      // Cohort 2025-08-04 (size 2): A gross 1500/1800/2100, B gross 1400/1700/1600.
+      // period_weeks = floor((tx - first_visit)/7d). Note B's 08-11 is only 6d
+      // after first_visit (08-05) → period 0, not period 1.
+      // Cumulative revenue (sum of all txs at period <= p, both customers):
+      //   p0: A1500 + B1400 + B1700 = 4600 → ltv 4600/2 = 2300
+      //   p2: + A1800 + B1600       = 8000 → ltv 8000/2 = 4000
+      //   p8: + A2100               = 10100 → ltv 10100/2 = 5050
+      const { data, error } = await admin.rpc('test_ltv', { rid: restaurantId });
+      if (error) throw error;
+      const rows = (data as Array<{
+        cohort_week: string;
+        period_weeks: number;
+        ltv_cents: number | null;
+      }>).filter((r) => r.cohort_week === '2025-08-04');
+
+      const p0 = rows.find((r) => r.period_weeks === 0)!;
+      const p2 = rows.find((r) => r.period_weeks === 2)!;
+      const p8 = rows.find((r) => r.period_weeks === 8)!;
+      expect(Number(p0.ltv_cents)).toBe(2300);
+      expect(Number(p2.ltv_cents)).toBe(4000);
+      expect(Number(p8.ltv_cents)).toBe(5050);
+
+      // Monotonic non-decreasing across observable periods for this cohort.
+      const observable = rows
+        .filter((r) => r.ltv_cents !== null)
+        .sort((a, b) => a.period_weeks - b.period_weeks);
+      for (let i = 1; i < observable.length; i++) {
+        expect(Number(observable[i].ltv_cents)).toBeGreaterThanOrEqual(
+          Number(observable[i - 1].ltv_cents)
+        );
+      }
+    });
+
+    it('NULL past horizon (same survivorship guard as retention)', async () => {
+      const { data, error } = await admin.rpc('test_ltv', { rid: restaurantId });
+      if (error) throw error;
+      const rows = data as Array<{ period_weeks: number; ltv_cents: number | null }>;
+      const farFuture = rows.filter((r) => r.period_weeks === 250);
+      expect(farFuture.length).toBeGreaterThan(0);
+      for (const r of farFuture) {
+        expect(r.ltv_cents).toBeNull();
+      }
+    });
   });
 
   // ANL-04 — KPI daily (revenue, tx_count, avg_ticket)
@@ -157,13 +244,109 @@ describe('Phase 3 — Analytics SQL', () => {
 
   // ANL-05 — visit-frequency distribution buckets
   describe('ANL-05 frequency', () => {
-    it.todo('A and C bucketed as 1-2 / B bucketed as 3-5 per fixture visit counts');
+    it('A=3 and B=3 land in 3-5 bucket; C=2 lands in 2 bucket', async () => {
+      // Rule 1 fix: stale todo text said "A and C in 1-2 / B in 3-5". Fixture
+      // has A=3 visits, B=3 visits, C=2 visits — so 3-5 bucket has 2 customers
+      // (A, B) and "2" bucket has 1 customer (C).
+      const { data, error } = await admin.rpc('test_frequency', {
+        rid: restaurantId
+      });
+      if (error) throw error;
+      const rows = data as Array<{
+        bucket: string;
+        customer_count: number;
+        revenue_cents: number;
+      }>;
+      const b35 = rows.find((r) => r.bucket === '3-5');
+      const b2 = rows.find((r) => r.bucket === '2');
+      expect(b35).toBeTruthy();
+      expect(b35!.customer_count).toBe(2);
+      // A revenue = 1500+1800+2100=5400; B = 1400+1700+1600=4700 → 10100
+      expect(Number(b35!.revenue_cents)).toBe(10100);
+      expect(b2).toBeTruthy();
+      expect(b2!.customer_count).toBe(1);
+      // C revenue = 1300 + 1200 = 2500
+      expect(Number(b2!.revenue_cents)).toBe(2500);
+    });
   });
 
   // ANL-06 — new vs returning tie-out (the auditor test)
   describe('ANL-06 new vs returning tie-out', () => {
-    it.todo('sum(new+returning+cash_anonymous+blackout_unknown) == kpi_daily_v.revenue_cents per day');
-    it.todo('blackout_unknown bucket exists for April 2026 carded rows');
+    it('sum(new+returning+cash_anonymous+blackout_unknown) == kpi_daily_v.revenue_cents per day', async () => {
+      // For 2025-08-04: only hash-a tx (1500). hash-a's first_visit_business_date
+      // is 2025-08-04 → 'new' bucket. Sum across all 4 buckets must equal kpi.
+      const { data: nvr, error: e1 } = await admin.rpc('test_new_vs_returning', {
+        rid: restaurantId
+      });
+      if (e1) throw e1;
+      const day = '2025-08-04';
+      const dayRows = (nvr as Array<{
+        business_date: string;
+        bucket: string;
+        revenue_cents: number;
+      }>).filter((r) => r.business_date === day);
+      const nvrSum = dayRows.reduce((s, r) => s + Number(r.revenue_cents), 0);
+
+      const { data: kpi, error: e2 } = await admin
+        .from('kpi_daily_mv')
+        .select('revenue_cents')
+        .eq('restaurant_id', restaurantId)
+        .eq('business_date', day)
+        .single();
+      if (e2) throw e2;
+      expect(nvrSum).toBe(Number(kpi!.revenue_cents));
+      expect(nvrSum).toBe(1500);
+
+      // Sanity: hash-a is bucketed as 'new' that day.
+      const newRow = dayRows.find((r) => r.bucket === 'new');
+      expect(newRow).toBeTruthy();
+      expect(Number(newRow!.revenue_cents)).toBe(1500);
+    });
+
+    it('blackout_unknown bucket exists for April 2026 carded rows', async () => {
+      // Insert a one-off April 2026 carded transaction so the blackout
+      // routing branch is exercised. cohort_mv excludes April → no
+      // first_visit row for this hash → bucket must be 'blackout_unknown'.
+      const aprilTx = {
+        restaurant_id: restaurantId,
+        source_tx_id: 'fixture-april-blackout',
+        card_hash: 'hash-april-blackout',
+        occurred_at: '2026-04-05T12:00:00+02:00',
+        payment_method: 'card',
+        gross_cents: 999,
+        tip_cents: 0,
+        net_cents: Math.round(999 / 1.07)
+      };
+      const { error: insErr } = await admin
+        .from('transactions')
+        .upsert(aprilTx, { onConflict: 'restaurant_id,source_tx_id' });
+      if (insErr) throw insErr;
+      try {
+        // Re-refresh cohort_mv so the test runs against fresh state
+        // (cohort_mv won't pick up the April row by design — it's filtered).
+        await admin.rpc('refresh_cohort_mv');
+
+        const { data, error } = await admin.rpc('test_new_vs_returning', {
+          rid: restaurantId
+        });
+        if (error) throw error;
+        const blackout = (data as Array<{
+          business_date: string;
+          bucket: string;
+          revenue_cents: number;
+        }>).filter(
+          (r) => r.bucket === 'blackout_unknown' && r.business_date === '2026-04-05'
+        );
+        expect(blackout.length).toBe(1);
+        expect(Number(blackout[0].revenue_cents)).toBe(999);
+      } finally {
+        await admin
+          .from('transactions')
+          .delete()
+          .eq('restaurant_id', restaurantId)
+          .eq('source_tx_id', 'fixture-april-blackout');
+      }
+    });
   });
 
   // ANL-07 — refresh concurrency
