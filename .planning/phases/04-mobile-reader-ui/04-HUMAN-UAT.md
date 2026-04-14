@@ -1,9 +1,10 @@
 ---
-status: pending
+status: partial
 phase: 04-mobile-reader-ui
 purpose: Adversarial human QA of the mobile reader dashboard against seeded DEV data
 runner: human, on a real iPhone (or iOS Simulator) at 375px viewport
 prerequisite: scripts/seed-demo-data.sql applied to DEV + refresh_analytics_mvs() executed
+walkthrough_2026-04-15: Chrome MCP localhost walkthrough — signed off by owner with two known issues (see Gaps E + F in 04-VERIFICATION.md). Real-iPhone run still pending for final PR gate.
 ---
 
 # Phase 4 — Human UAT Checklist
@@ -62,10 +63,23 @@ Run this against the DEV deployment (NOT localhost) on a real iPhone or iOS Simu
 - [ ] No text smaller than 12px
 
 ## Sign-off
-- [ ] All sections above passed
-- [ ] Screenshots attached to the PR / commit
-- [ ] Tester signs: ___________________
-- [ ] Date: ___________________
+- [x] Localhost walkthrough (Chrome MCP) — 2026-04-15
+- [ ] Real iPhone walkthrough against deployed DEV (pending, deferred to PR gate)
+- [x] Screenshots captured by assistant during walkthrough (in session)
+- **Tester signs:** owner (via assistant, Chrome MCP on macOS at 512×494 — not a true 375px run)
+- **Date:** 2026-04-15
+
+### Findings from the 2026-04-15 walkthrough
+
+Gap A regression guard holds (zero `scale.copy is not a function` errors post-reload). Gap B regression guard holds (no `/not-provisioned` redirect). Chip scoping for the KPI tiles works: `7d → 30d → all` moves the Transactions count `104 → 716 → 6.842` and the Avg ticket delta labels update from "vs prior 7d" → "vs prior 30d" → "no prior data". Cohort retention, LTV-to-date, Visit frequency stay stable across chip changes (D-19a chip-INDEPENDENT contract holds for those three). Cohort chart renders with a Week grain default and the Day/Week/Month toggle is present. LTV card renders with bars. Visit frequency renders all 5 buckets (1v=3947, 2v=353, 3–5v=131, 6–10v=21, 11+v=2). Freshness label reads "Last updated 22 hours ago" which is correct for a dev DB that last refreshed MVs yesterday.
+
+**Two genuine issues surfaced — logged as Gap E and Gap F in 04-VERIFICATION.md:**
+- **Gap E:** New-vs-Returning card renders "No sales recorded in this window" on every chip including `range=all`. D-19a chip-scoping cannot be verified because the card never populates.
+- **Gap F:** LTV chart shows only 3 weekly bars (`2026-03-09/16/23`, €30–32) on `range=all` despite the 10-months-of-history caveat. `ltv_mv` is either sparse or the loader has a hard-coded window.
+
+Both are pre-existing bugs from plans 04-04/04-05 that Gap D's adversarial QA layer was built to surface — **this is exactly the charter of plan 04-09**. They will be fixed inside the post-v1.0 Dashboard Redesign milestone (see `.planning/backlog/dashboard-redesign.md`) rather than patched on the v1.0 dashboard.
+
+The real-iPhone run against the deployed DEV URL is still pending — we don't have a deployed DEV URL yet (Phase 4 was the first frontend code in the repo; no Cloudflare Pages deployment exists). Defer to the PR gate when DEV is live.
 
 ---
 
