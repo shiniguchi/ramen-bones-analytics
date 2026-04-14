@@ -13,3 +13,13 @@ test('dashboard renders at 375px with no horizontal scroll', async ({ page }) =>
   );
   expect(hasOverflow).toBe(false);
 });
+
+// UI-11: 375px screenshot assertion — opt-in via E2E_SCREENSHOTS=1 so CI doesn't flake
+// on missing screenshot baselines. Run manually: E2E_SCREENSHOTS=1 npm run test:e2e
+if (process.env.E2E_SCREENSHOTS === '1') {
+  test('dashboard 375px screenshot matches baseline (UI-11)', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('domcontentloaded');
+    await expect(page).toHaveScreenshot('dashboard-375.png', { maxDiffPixelRatio: 0.05 });
+  });
+}
