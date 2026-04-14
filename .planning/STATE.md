@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: planning
-stopped_at: Completed 03-05-PLAN.md (Phase 3 closed)
-last_updated: "2026-04-14T11:46:34.970Z"
+status: executing
+stopped_at: Completed 04-01-PLAN.md
+last_updated: "2026-04-14T16:16:27.886Z"
 progress:
   total_phases: 5
   completed_phases: 3
-  total_plans: 15
-  completed_plans: 15
-  percent: 100
+  total_plans: 20
+  completed_plans: 16
+  percent: 80
 ---
 
 # STATE: Ramen Bones Analytics
@@ -20,20 +20,20 @@ progress:
 ## Project Reference
 
 - **Core Value:** A restaurant owner opens the site on their phone and makes a real business decision from the numbers they see.
-- **Current Focus:** Phase 03 — analytics-sql
+- **Current Focus:** Phase 04 — mobile-reader-ui
 - **Timeline:** 2 weeks to MVP in friend's hands
 - **Granularity:** standard
 - **Tenants in v1:** 1 (architecture multi-tenant-ready)
 
 ## Current Position
 
-Phase: 03 (analytics-sql) — COMPLETE
-Plan: 5 of 5 (all complete — Phase 3 closed)
+Phase: 04 (mobile-reader-ui) — EXECUTING
+Plan: 2 of 5
 
 - **Phase:** 4
-- **Plan:** Not started
-- **Status:** Ready to plan
-- **Progress:** [██████████] 100%
+- **Plan:** 2 of 5
+- **Status:** Executing Phase 04
+- **Progress:** [████████░░] 80%
 
 ## Performance Metrics
 
@@ -56,6 +56,7 @@ Plan: 5 of 5 (all complete — Phase 3 closed)
 | Phase 03-analytics-sql P03 | 15min | 1 tasks | 2 files |
 | Phase 03-analytics-sql P04 | 25min | 1 tasks | 2 files |
 | Phase 03 P05 | 6min | 2 tasks | 4 files |
+| Phase 04 P01 | 18min | 2 tasks | 28 files |
 
 ## Accumulated Context
 
@@ -102,6 +103,9 @@ Plan: 5 of 5 (all complete — Phase 3 closed)
 - [Phase 03-analytics-sql]: 03-04: Rule 1 fixes — plan's retention p1=0.5 and LTV 1450/3150/4200 wrong; B's 08-11 visit is 6d after first_visit → period 0 not 1. Corrected: retention p0=1/p1=0/p2=1, LTV p0=2300/p2=4000/p8=5050
 - [Phase 03]: 03-05: refresh_analytics_mvs() SECURITY DEFINER + pg_cron '0 3 * * *' live on DEV; refresh_kpi_daily_mv superseded to keep Phase 1 tests transparent; refresh_cohort_mv dropped (03-02 cleanup)
 - [Phase 03]: 03-05: ci-guards Guard 1 regex extended to .from('transactions')/stg_orderbird_order_items/*_mv; tenant-isolation.test.ts extended to 6 wrapper views + 2 raw MVs (26 tests); all ANL-01..09 under automated test; Phase 3 closed
+- [Phase 04]: 04-01: shadcn-svelte CLI unreachable (@next registry returns HTML, TTY-interactive); hand-rolled 6 primitives (button/card/input/label/toggle-group/tooltip) with matching components.json for future add extension
+- [Phase 04]: 04-01: data_freshness_v uses MAX(created_at) not ingested_at (transactions has no ingested_at); output alias preserved
+- [Phase 04]: 04-01: vitest 1->4 + vite 5->8 bump forced by vite-plugin-svelte@7 peer; test:unit scoped to tests/unit/ to isolate from integration lane
 
 ### Open Todos
 
@@ -119,8 +123,8 @@ None.
 
 **Resume hint:** Phase 3 Wave 0 RED test scaffold in place (03-01 complete). 15 it.todo stubs + fixture + ci-guards contract test committed as 8d8d302 and bdf5332. Plan 03-02 should author 0010_cohort_mv.sql and flip the ANL-01 + ANL-08 todo blocks to green. Open Phase 3 caveats: April 2026 Worldline blackout, 772 missing_worldline_rows cohort linkage loss.
 
-**Last session:** 2026-04-14T11:41:48.929Z
-**Stopped At:** Completed 03-05-PLAN.md (Phase 3 closed)
+**Last session:** 2026-04-14T16:16:27.873Z
+**Stopped At:** Completed 04-01-PLAN.md
 
 ---
 *State initialized: 2026-04-13*

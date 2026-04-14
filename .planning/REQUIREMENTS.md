@@ -40,9 +40,9 @@ Requirements for initial release. Each maps to exactly one roadmap phase.
 
 ### Mobile Reader UI (SvelteKit on Cloudflare Pages)
 
-- [ ] **UI-01**: SvelteKit 2 + Svelte 5 + `adapter-cloudflare` project deploys to Cloudflare Pages with `@supabase/ssr` for auth
-- [ ] **UI-02**: Mobile-first layout at 375px baseline — single-column card stream, no desktop-only sidebar
-- [ ] **UI-03**: Login screen using Supabase Auth (email + password), redirects to dashboard on success
+- [x] **UI-01**: SvelteKit 2 + Svelte 5 + `adapter-cloudflare` project deploys to Cloudflare Pages with `@supabase/ssr` for auth
+- [x] **UI-02**: Mobile-first layout at 375px baseline — single-column card stream, no desktop-only sidebar
+- [x] **UI-03**: Login screen using Supabase Auth (email + password), redirects to dashboard on success
 - [ ] **UI-04**: Revenue KPI cards (today / this week / this month, avg ticket, tx count) shown at the top of the dashboard
 - [ ] **UI-05**: First-visit acquisition cohort chart (daily/weekly/monthly toggle) rendered with LayerChart
 - [ ] **UI-06**: Retention curve chart per cohort, mobile-legible (limited series, touch-friendly tooltips)
@@ -50,7 +50,7 @@ Requirements for initial release. Each maps to exactly one roadmap phase.
 - [ ] **UI-08**: Repeat visit rate + visit-frequency distribution view
 - [ ] **UI-09**: Preset date-range chips (Today / 7d / 30d / 90d / All) — no custom date-range builder on mobile
 - [ ] **UI-10**: Empty / sparse-data states handled gracefully (cohorts with too little history show a message, not a broken chart)
-- [ ] **UI-11**: Every PR verified at 375px viewport before merge
+- [x] **UI-11**: Every PR verified at 375px viewport before merge
 
 ### Insights & Forkability
 
@@ -131,9 +131,9 @@ Each v1 requirement maps to exactly one roadmap phase.
 | ANL-07 | Phase 3 — Analytics SQL | Complete |
 | ANL-08 | Phase 3 — Analytics SQL | Complete |
 | ANL-09 | Phase 3 — Analytics SQL | Complete |
-| UI-01 | Phase 4 — Mobile Reader UI | Pending |
-| UI-02 | Phase 4 — Mobile Reader UI | Pending |
-| UI-03 | Phase 4 — Mobile Reader UI | Pending |
+| UI-01 | Phase 4 — Mobile Reader UI | Complete |
+| UI-02 | Phase 4 — Mobile Reader UI | Complete |
+| UI-03 | Phase 4 — Mobile Reader UI | Complete |
 | UI-04 | Phase 4 — Mobile Reader UI | Pending |
 | UI-05 | Phase 4 — Mobile Reader UI | Pending |
 | UI-06 | Phase 4 — Mobile Reader UI | Pending |
@@ -141,7 +141,7 @@ Each v1 requirement maps to exactly one roadmap phase.
 | UI-08 | Phase 4 — Mobile Reader UI | Pending |
 | UI-09 | Phase 4 — Mobile Reader UI | Pending |
 | UI-10 | Phase 4 — Mobile Reader UI | Pending |
-| UI-11 | Phase 4 — Mobile Reader UI | Pending |
+| UI-11 | Phase 4 — Mobile Reader UI | Complete |
 | INS-01 | Phase 5 — Insights & Forkability | Pending |
 | INS-02 | Phase 5 — Insights & Forkability | Pending |
 | INS-03 | Phase 5 — Insights & Forkability | Pending |
