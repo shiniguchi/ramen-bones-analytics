@@ -19,6 +19,10 @@ Run the JWT claim test in Plan 06 against the project to confirm:
 
     npx vitest run tests/integration/jwt-claim.test.ts
 
+Regression test: `tests/integration/jwt-claim.test.ts` guards Gap B
+(`custom_access_token_hook` must be `SECURITY DEFINER`, see migration
+`supabase/migrations/0015_auth_hook_security_definer.sql`).
+
 ## config.toml (experimental — forker convenience)
 
 At the time of writing, `supabase/config.toml` support for declaring this hook is
