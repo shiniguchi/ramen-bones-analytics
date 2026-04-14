@@ -35,17 +35,10 @@ describe('Phase 3 — Analytics SQL', () => {
     await cleanupFixture(admin, restaurantId);
     await seed3CustomerFixture(admin, restaurantId);
 
-    // Plan 03-02 ships refresh_cohort_mv() as a local helper so ANL-01 tests
-    // can turn green now. Plan 03-05 replaces this with refresh_analytics_mvs()
-    // which sequences cohort_mv + kpi_daily_mv refresh. Until that lands, call
-    // the per-MV helper directly.
-    const { error: refreshErr } = await admin.rpc('refresh_cohort_mv');
+    // Plan 03-05 ships refresh_analytics_mvs() which sequences
+    // cohort_mv → kpi_daily_mv refresh in a single SECURITY DEFINER function.
+    const { error: refreshErr } = await admin.rpc('refresh_analytics_mvs');
     if (refreshErr) throw refreshErr;
-
-    // Plan 03-03 replaced the kpi_daily_mv placeholder body; ANL-04 needs
-    // the real aggregation refreshed against the seeded fixture.
-    const { error: kpiRefreshErr } = await admin.rpc('refresh_kpi_daily_mv');
-    if (kpiRefreshErr) throw kpiRefreshErr;
   });
 
   afterAll(async () => {
@@ -322,9 +315,9 @@ describe('Phase 3 — Analytics SQL', () => {
         .upsert(aprilTx, { onConflict: 'restaurant_id,source_tx_id' });
       if (insErr) throw insErr;
       try {
-        // Re-refresh cohort_mv so the test runs against fresh state
+        // Re-refresh so the test runs against fresh state
         // (cohort_mv won't pick up the April row by design — it's filtered).
-        await admin.rpc('refresh_cohort_mv');
+        await admin.rpc('refresh_analytics_mvs');
 
         const { data, error } = await admin.rpc('test_new_vs_returning', {
           rid: restaurantId
@@ -351,7 +344,21 @@ describe('Phase 3 — Analytics SQL', () => {
 
   // ANL-07 — refresh concurrency
   describe('ANL-07 refresh concurrent', () => {
-    it.todo('refresh_analytics_mvs() succeeds while a concurrent SELECT runs on cohort_v');
+    it('refresh_analytics_mvs() succeeds while a concurrent SELECT runs on cohort_v', async () => {
+      // Kick a refresh and a SELECT in parallel; both must succeed.
+      // REFRESH CONCURRENTLY takes the exclusive lock only briefly at the end,
+      // so readers are never blocked. Proves unique-index + CONCURRENTLY combo.
+      const [refresh, read] = await Promise.all([
+        admin.rpc('refresh_analytics_mvs'),
+        admin
+          .from('cohort_mv')
+          .select('restaurant_id, card_hash, cohort_week')
+          .eq('restaurant_id', restaurantId)
+      ]);
+      expect(refresh.error).toBeNull();
+      expect(read.error).toBeNull();
+      expect((read.data ?? []).length).toBeGreaterThan(0);
+    });
   });
 
   // ANL-08 — wrapper tenancy (RLS footgun guard)
