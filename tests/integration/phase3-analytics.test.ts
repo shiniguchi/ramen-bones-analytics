@@ -11,7 +11,7 @@
 // intentional: the seeder + refresh RPC only need to run once downstream
 // plans start flipping todos to real assertions.
 
-import { describe, it, beforeAll, afterAll } from 'vitest';
+import { describe, it, beforeAll, afterAll, expect } from 'vitest';
 import { adminClient } from '../helpers/supabase';
 import { seed3CustomerFixture, cleanupFixture } from './helpers/phase3-fixtures';
 
@@ -35,10 +35,11 @@ describe('Phase 3 — Analytics SQL', () => {
     await cleanupFixture(admin, restaurantId);
     await seed3CustomerFixture(admin, restaurantId);
 
-    // refresh_analytics_mvs() is created in Plan 03-05. Until then this
-    // branch is dead code — the whole beforeAll block is gated behind any
-    // non-todo test existing in this file.
-    const { error: refreshErr } = await admin.rpc('refresh_analytics_mvs');
+    // Plan 03-02 ships refresh_cohort_mv() as a local helper so ANL-01 tests
+    // can turn green now. Plan 03-05 replaces this with refresh_analytics_mvs()
+    // which sequences cohort_mv + kpi_daily_mv refresh. Until that lands, call
+    // the per-MV helper directly.
+    const { error: refreshErr } = await admin.rpc('refresh_cohort_mv');
     if (refreshErr) throw refreshErr;
   });
 
@@ -50,9 +51,54 @@ describe('Phase 3 — Analytics SQL', () => {
 
   // ANL-01 — cohort assignment
   describe('ANL-01 cohort assignment', () => {
-    it.todo('assigns A+B to cohort_week=2025-08-04 size 2');
-    it.todo('assigns C to cohort_week=2025-11-10 size 1');
-    it.todo('exposes day/week/month cohort columns for the same customer');
+    it('assigns A+B to cohort_week=2025-08-04 size 2', async () => {
+      const { data, error } = await admin
+        .from('cohort_mv')
+        .select('card_hash, cohort_week, cohort_size_week')
+        .eq('restaurant_id', restaurantId)
+        .in('card_hash', ['hash-a', 'hash-b']);
+      if (error) throw error;
+      expect(data).toHaveLength(2);
+      for (const row of data!) {
+        expect(row.cohort_week).toBe('2025-08-04');
+        expect(row.cohort_size_week).toBe(2);
+      }
+    });
+
+    it('assigns C to cohort_week=2025-11-10 size 1', async () => {
+      const { data, error } = await admin
+        .from('cohort_mv')
+        .select('card_hash, cohort_week, cohort_size_week')
+        .eq('restaurant_id', restaurantId)
+        .eq('card_hash', 'hash-c')
+        .single();
+      if (error) throw error;
+      expect(data!.cohort_week).toBe('2025-11-10');
+      expect(data!.cohort_size_week).toBe(1);
+    });
+
+    it('exposes day/week/month cohort columns for the same customer', async () => {
+      const { data, error } = await admin
+        .from('cohort_mv')
+        .select('card_hash, cohort_day, cohort_week, cohort_month')
+        .eq('restaurant_id', restaurantId)
+        .in('card_hash', ['hash-a', 'hash-b', 'hash-c']);
+      if (error) throw error;
+      expect(data).toHaveLength(3);
+      for (const row of data!) {
+        expect(row.cohort_day).toBeTruthy();
+        expect(row.cohort_week).toBeTruthy();
+        expect(row.cohort_month).toBeTruthy();
+      }
+      // Cash exclusion sanity: no NULL card_hash rows present
+      const { data: nullRows, error: nullErr } = await admin
+        .from('cohort_mv')
+        .select('card_hash')
+        .eq('restaurant_id', restaurantId)
+        .is('card_hash', null);
+      if (nullErr) throw nullErr;
+      expect(nullRows).toHaveLength(0);
+    });
   });
 
   // ANL-02 — retention curve with NULL-mask past horizon

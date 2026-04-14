@@ -49,14 +49,15 @@ export async function seed3CustomerFixture(
   admin: SupabaseClient,
   restaurantId: string
 ): Promise<void> {
-  // Build row payload: derive business_date from occurred_at (Berlin),
-  // compute net_cents at 7% VAT (matches Phase 2 loader default for food).
+  // Build row payload — schema is from migrations 0003 + 0008.
+  // No business_date column on transactions; cohort_mv derives it via
+  // AT TIME ZONE restaurants.timezone. net_cents at 7% VAT matches the
+  // Phase 2 loader default for food.
   const rows = FIXTURE_TXS.map((tx, i) => ({
     restaurant_id: restaurantId,
     source_tx_id: `fixture-${i}`,
     card_hash: tx.card_hash,
     occurred_at: tx.occurred_at,
-    business_date: tx.occurred_at.slice(0, 10), // Berlin noon → safe same-day
     payment_method: 'card',
     gross_cents: tx.gross_cents,
     tip_cents: 0,
