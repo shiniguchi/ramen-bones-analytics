@@ -19,7 +19,7 @@
   });
 </script>
 
-<div class="rounded-xl border border-zinc-200 bg-white p-4">
+<div data-testid="nvr-card" class="rounded-xl border border-zinc-200 bg-white p-4">
   <h2 class="text-xl font-semibold text-zinc-900">New vs returning</h2>
   {#if totals.total === 0}
     <EmptyState card="newVsReturning" />

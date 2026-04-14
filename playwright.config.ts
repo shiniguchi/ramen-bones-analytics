@@ -1,5 +1,12 @@
 import { defineConfig, devices } from '@playwright/test';
 
+// Gap-closure 04-06 / 04-09: enable fixture bypass by default so the
+// happy-path + charts-with-data specs run in CI without Supabase creds.
+// Individual specs can still opt out by checking env.
+if (!process.env.E2E_FIXTURES) {
+  process.env.E2E_FIXTURES = '1';
+}
+
 export default defineConfig({
   testDir: './tests/e2e',
   use: {

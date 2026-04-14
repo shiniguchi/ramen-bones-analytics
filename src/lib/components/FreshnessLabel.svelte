@@ -17,4 +17,4 @@
   });
 </script>
 
-<p class="text-xs {label.color}">{label.text}</p>
+<p data-testid="freshness-label" class="text-xs {label.color}">{label.text}</p>

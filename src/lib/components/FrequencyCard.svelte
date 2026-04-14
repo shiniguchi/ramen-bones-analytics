@@ -27,7 +27,7 @@
   );
 </script>
 
-<div class="rounded-xl border border-zinc-200 bg-white p-4">
+<div data-testid="frequency-card" class="rounded-xl border border-zinc-200 bg-white p-4">
   <h2 class="text-xl font-semibold text-zinc-900">Visit frequency</h2>
   {#if data.length === 0}
     <EmptyState card="frequency" />

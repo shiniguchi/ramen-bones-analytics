@@ -16,6 +16,17 @@
 
   let { title, value, prior, format, windowLabel, emptyCard }: Props = $props();
 
+  // Stable test id derived from title. Collapses any non-alphanumeric run
+  // (including the middle dot `·` used in "Revenue · Today") to a single
+  // hyphen, then strips leading/trailing hyphens.
+  const testId = $derived(
+    'kpi-' +
+      title
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '')
+  );
+
   // Formatted display value.
   const display = $derived.by(() => {
     if (value === null) return null;
@@ -44,7 +55,7 @@
   });
 </script>
 
-<section class="rounded-xl border border-zinc-200 bg-white p-4">
+<section data-testid={testId} class="rounded-xl border border-zinc-200 bg-white p-4">
   <h2 class="text-sm font-semibold text-zinc-900">{title}</h2>
   {#if display === null}
     <EmptyState card={emptyCard} />
