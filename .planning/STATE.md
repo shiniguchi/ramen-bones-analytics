@@ -4,12 +4,12 @@ milestone: v1.0
 milestone_name: milestone
 status: executing
 stopped_at: "PAUSED at 04-05 Task 3 checkpoint:human-verify (iPhone sign-off)"
-last_updated: "2026-04-14T21:46:33.302Z"
+last_updated: "2026-04-14T21:48:59.504Z"
 progress:
   total_phases: 5
   completed_phases: 3
   total_plans: 24
-  completed_plans: 21
+  completed_plans: 22
   percent: 88
 ---
 
@@ -62,6 +62,7 @@ Plan: 1 of 9
 | Phase 04 P04 | 8 | 2 tasks | 12 files |
 | Phase 04-mobile-reader-ui P05 | 4 | 2 tasks | 9 files |
 | Phase 04-mobile-reader-ui P08 | 6min | 2 tasks | 4 files |
+| Phase 04 P07 | 10min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -121,6 +122,7 @@ Plan: 1 of 9
 - [Phase 04]: [Phase 04-mobile-reader-ui]: 04-04: @ts-expect-error test enforces absent range prop on CohortRetentionCard; future prop addition caught at type-check
 - [Phase 04-mobile-reader-ui]: shapeNvr() absorbs blackout_unknown into cash_anonymous to preserve D-19 tie-out invariant
 - [Phase 04-mobile-reader-ui]: FreshnessLabel tested via static top-level import (not dynamic require) in ESM vitest pipeline
+- [Phase 04]: 04-07 (Gap B closure): migration 0015 ALTER custom_access_token_hook SECURITY DEFINER lands in repo; DEV verified prosecdef=true. jwt-claim integration test extended with literal 'Gap B regression' failure message pointing at 0015. Manual revert sanity check confirmed test goes red under SECURITY INVOKER.
 
 ### Open Todos
 
