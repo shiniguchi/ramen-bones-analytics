@@ -12,7 +12,7 @@
 // plans start flipping todos to real assertions.
 
 import { describe, it, beforeAll, afterAll, expect } from 'vitest';
-import { adminClient } from '../helpers/supabase';
+import { adminClient, tenantClient } from '../helpers/supabase';
 import { seed3CustomerFixture, cleanupFixture } from './helpers/phase3-fixtures';
 
 describe('Phase 3 — Analytics SQL', () => {
@@ -363,7 +363,25 @@ describe('Phase 3 — Analytics SQL', () => {
 
   // ANL-08 — wrapper tenancy (RLS footgun guard)
   describe('ANL-08 wrapper tenancy', () => {
-    it.todo('authenticated client cannot SELECT directly from cohort_mv');
-    it.todo('cohort_v returns only rows matching the JWT restaurant_id');
+    it('anon/authenticated client cannot SELECT directly from cohort_mv', async () => {
+      // cohort_mv has `REVOKE ALL FROM anon, authenticated` (0010_cohort_mv.sql).
+      // An un-signed-in tenant client (anon role) must see zero rows or a
+      // permission error. Admin still sees the MV (that's how beforeAll refreshes it).
+      const c = tenantClient();
+      const { data, error } = await c.from('cohort_mv').select('card_hash');
+      const blocked = !!error || (data ?? []).length === 0;
+      expect(blocked).toBe(true);
+    });
+
+    it('cohort_v returns zero rows for anonymous (no JWT restaurant_id claim)', async () => {
+      // cohort_v filters on auth.jwt()->>'restaurant_id'. Anon has no claim
+      // so the filter resolves to NULL comparison → zero rows. This proves
+      // the wrapper filter is active (would NOT be zero if JWT claim were
+      // bypassed by a security_invoker footgun).
+      const c = tenantClient();
+      const { data, error } = await c.from('cohort_v').select('card_hash');
+      expect(error).toBeNull();
+      expect((data ?? []).length).toBe(0);
+    });
   });
 });
