@@ -48,8 +48,8 @@ Requirements for initial release. Each maps to exactly one roadmap phase.
 - [ ] **UI-06**: Retention curve chart per cohort, mobile-legible (limited series, touch-friendly tooltips)
 - [ ] **UI-07**: Customer LTV view with visible data-depth caveat
 - [ ] **UI-08**: Repeat visit rate + visit-frequency distribution view
-- [ ] **UI-09**: Preset date-range chips (Today / 7d / 30d / 90d / All) — no custom date-range builder on mobile
-- [ ] **UI-10**: Empty / sparse-data states handled gracefully (cohorts with too little history show a message, not a broken chart)
+- [x] **UI-09**: Preset date-range chips (Today / 7d / 30d / 90d / All) — no custom date-range builder on mobile
+- [x] **UI-10**: Empty / sparse-data states handled gracefully (cohorts with too little history show a message, not a broken chart)
 - [x] **UI-11**: Every PR verified at 375px viewport before merge
 
 ### Insights & Forkability
@@ -139,8 +139,8 @@ Each v1 requirement maps to exactly one roadmap phase.
 | UI-06 | Phase 4 — Mobile Reader UI | Pending |
 | UI-07 | Phase 4 — Mobile Reader UI | Pending |
 | UI-08 | Phase 4 — Mobile Reader UI | Pending |
-| UI-09 | Phase 4 — Mobile Reader UI | Pending |
-| UI-10 | Phase 4 — Mobile Reader UI | Pending |
+| UI-09 | Phase 4 — Mobile Reader UI | Complete |
+| UI-10 | Phase 4 — Mobile Reader UI | Complete |
 | UI-11 | Phase 4 — Mobile Reader UI | Complete |
 | INS-01 | Phase 5 — Insights & Forkability | Pending |
 | INS-02 | Phase 5 — Insights & Forkability | Pending |

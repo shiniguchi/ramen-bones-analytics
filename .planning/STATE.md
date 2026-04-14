@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 04-01-PLAN.md
-last_updated: "2026-04-14T16:16:27.886Z"
+stopped_at: Completed 04-02-PLAN.md
+last_updated: "2026-04-14T16:26:00.199Z"
 progress:
   total_phases: 5
   completed_phases: 3
   total_plans: 20
-  completed_plans: 16
-  percent: 80
+  completed_plans: 17
+  percent: 85
 ---
 
 # STATE: Ramen Bones Analytics
@@ -28,12 +28,12 @@ progress:
 ## Current Position
 
 Phase: 04 (mobile-reader-ui) — EXECUTING
-Plan: 2 of 5
+Plan: 3 of 5
 
 - **Phase:** 4
-- **Plan:** 2 of 5
-- **Status:** Executing Phase 04
-- **Progress:** [████████░░] 80%
+- **Plan:** 3 of 5
+- **Status:** Ready to execute
+- **Progress:** [█████████░] 85%
 
 ## Performance Metrics
 
@@ -57,6 +57,7 @@ Plan: 2 of 5
 | Phase 03-analytics-sql P04 | 25min | 1 tasks | 2 files |
 | Phase 03 P05 | 6min | 2 tasks | 4 files |
 | Phase 04 P01 | 18min | 2 tasks | 28 files |
+| Phase 04 P02 | 6min | 2 tasks | 20 files |
 
 ## Accumulated Context
 
@@ -106,6 +107,9 @@ Plan: 2 of 5
 - [Phase 04]: 04-01: shadcn-svelte CLI unreachable (@next registry returns HTML, TTY-interactive); hand-rolled 6 primitives (button/card/input/label/toggle-group/tooltip) with matching components.json for future add extension
 - [Phase 04]: 04-01: data_freshness_v uses MAX(created_at) not ingested_at (transactions has no ingested_at); output alias preserved
 - [Phase 04]: 04-01: vitest 1->4 + vite 5->8 bump forced by vite-plugin-svelte@7 peer; test:unit scoped to tests/unit/ to isolate from integration lane
+- [Phase 04]: 04-02: root +layout.server.ts exempts /login and /not-provisioned to fix redirect loop inherited from 04-01 reference file
+- [Phase 04]: 04-02: playwright config swapped iPhone SE (webkit) → chromium mobile emulation at 375×667 so sandbox without webkit can run e2e
+- [Phase 04]: 04-02: vitest loads @sveltejs/vite-plugin-svelte + $lib alias + browser condition so component tests compile .svelte files
 
 ### Open Todos
 
@@ -123,8 +127,8 @@ None.
 
 **Resume hint:** Phase 3 Wave 0 RED test scaffold in place (03-01 complete). 15 it.todo stubs + fixture + ci-guards contract test committed as 8d8d302 and bdf5332. Plan 03-02 should author 0010_cohort_mv.sql and flip the ANL-01 + ANL-08 todo blocks to green. Open Phase 3 caveats: April 2026 Worldline blackout, 772 missing_worldline_rows cohort linkage loss.
 
-**Last session:** 2026-04-14T16:16:27.873Z
-**Stopped At:** Completed 04-01-PLAN.md
+**Last session:** 2026-04-14T16:26:00.190Z
+**Stopped At:** Completed 04-02-PLAN.md
 
 ---
 *State initialized: 2026-04-13*

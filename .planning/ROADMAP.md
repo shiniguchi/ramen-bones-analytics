@@ -79,7 +79,7 @@ A restaurant owner opens the site on their phone and makes a real business decis
 **Plans**: 5 plans
 **Wave structure**: 04-01 (wave 1) → 04-02 (wave 2) → 04-03 (wave 3) → 04-04 (wave 4) → 04-05 (wave 5). Fully sequential — every plan after 04-01 mutates `src/routes/+page.server.ts` + `src/routes/+page.svelte` + `tests/unit/cards.test.ts`, so parallelism would cause merge conflicts.
   - [x] 04-01-PLAN.md — [wave 1] Bootstrap SvelteKit+Tailwind v4+shadcn-svelte@next, copy reference auth files, 0014_data_freshness_v.sql, Vitest+Playwright RED scaffold (15 seed-todos)
-  - [ ] 04-02-PLAN.md — [wave 2] Root loader + app shell + sticky DateRangeChips + FreshnessLabel + EmptyState (375px layout) — flips 1 todo → 14 remain
+  - [x] 04-02-PLAN.md — [wave 2] Root loader + app shell + sticky DateRangeChips + FreshnessLabel + EmptyState (375px layout) — flips 1 todo → 14 remain
   - [ ] 04-03-PLAN.md — [wave 3] KPI tiles (3 fixed + 2 chip-scoped) via parallel kpi_daily_v queries with server-side deltas — flips 4 todos → 10 remain
   - [ ] 04-04-PLAN.md — [wave 4] CohortRetentionCard (LayerChart Spline) + LtvCard (LayerChart Bars) + GrainToggle (chip-independent) — flips 5 todos + adds 1 new sparse-fallback test → 5 remain
   - [ ] 04-05-PLAN.md — [wave 5] FrequencyCard (plain divs) + NewVsReturningCard (D-19a chip-scoped) + PR 375px template + friend iPhone checkpoint — flips final 5 todos → 0 remain
