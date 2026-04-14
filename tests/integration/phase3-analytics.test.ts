@@ -41,6 +41,11 @@ describe('Phase 3 — Analytics SQL', () => {
     // the per-MV helper directly.
     const { error: refreshErr } = await admin.rpc('refresh_cohort_mv');
     if (refreshErr) throw refreshErr;
+
+    // Plan 03-03 replaced the kpi_daily_mv placeholder body; ANL-04 needs
+    // the real aggregation refreshed against the seeded fixture.
+    const { error: kpiRefreshErr } = await admin.rpc('refresh_kpi_daily_mv');
+    if (kpiRefreshErr) throw kpiRefreshErr;
   });
 
   afterAll(async () => {
@@ -115,8 +120,39 @@ describe('Phase 3 — Analytics SQL', () => {
 
   // ANL-04 — KPI daily (revenue, tx_count, avg_ticket)
   describe('ANL-04 kpi daily', () => {
-    it.todo('revenue_cents = sum(gross_cents) per business_date');
-    it.todo('avg_ticket_cents = revenue_cents / tx_count');
+    it('revenue_cents = sum(gross_cents) per business_date', async () => {
+      // Fixture: hash-a 2025-08-04@1500, hash-b 2025-08-05@1400.
+      // Plan 03-03 doc proposed asserting 1500+1400 on a single day, but
+      // A and B land on different days — Rule 1 auto-fix: assert each day.
+      const { data, error } = await admin
+        .from('kpi_daily_mv')
+        .select('business_date, revenue_cents, tx_count, avg_ticket_cents')
+        .eq('restaurant_id', restaurantId)
+        .in('business_date', ['2025-08-04', '2025-08-05'])
+        .order('business_date');
+      if (error) throw error;
+
+      const d0804 = data!.find((r) => r.business_date === '2025-08-04')!;
+      const d0805 = data!.find((r) => r.business_date === '2025-08-05')!;
+      expect(Number(d0804.revenue_cents)).toBe(1500);
+      expect(d0804.tx_count).toBe(1);
+      expect(Number(d0805.revenue_cents)).toBe(1400);
+      expect(d0805.tx_count).toBe(1);
+    });
+
+    it('avg_ticket_cents = revenue_cents / tx_count', async () => {
+      // hash-a 2025-08-18 @ 1800 — single-tx day, avg == gross.
+      const { data, error } = await admin
+        .from('kpi_daily_mv')
+        .select('revenue_cents, tx_count, avg_ticket_cents')
+        .eq('restaurant_id', restaurantId)
+        .eq('business_date', '2025-08-18')
+        .single();
+      if (error) throw error;
+      expect(Number(data!.revenue_cents)).toBe(1800);
+      expect(data!.tx_count).toBe(1);
+      expect(Number(data!.avg_ticket_cents)).toBe(1800);
+    });
   });
 
   // ANL-05 — visit-frequency distribution buckets
