@@ -3,6 +3,7 @@
   // Props: data (from retention_curve_v) + grain (for GrainToggle state).
   // NO range prop — this card is chip-independent (D-04 / Pitfall 6).
   import { Chart, Svg, Axis, Spline, Highlight, Tooltip } from 'layerchart';
+  import { scaleLinear } from 'd3-scale';
   import GrainToggle from './GrainToggle.svelte';
   import EmptyState from './EmptyState.svelte';
   import { pickVisibleCohorts, type RetentionRow } from '$lib/sparseFilter';
@@ -41,7 +42,7 @@
   });
 </script>
 
-<div class="rounded-xl border border-zinc-200 bg-white p-4">
+<div data-testid="cohort-card" class="rounded-xl border border-zinc-200 bg-white p-4">
   <!-- Card header: title + grain toggle -->
   <div class="flex items-center justify-between gap-2">
     <h2 class="text-base font-semibold text-zinc-900">Cohort retention</h2>
@@ -62,10 +63,13 @@
     <EmptyState card="cohort" />
   {:else}
     <div class="mt-4 h-64">
+      <!-- layerchart 2.x: explicit D3 scales (string presets removed in 2.x) -->
       <Chart
         data={series.flatMap((s, i) => s.rows.map(r => ({ ...r, cohortLabel: s.cohort, color: palette[i % palette.length] })))}
         x="period_weeks"
         y="retention_rate"
+        xScale={scaleLinear()}
+        yScale={scaleLinear()}
         yDomain={[0, 1]}
         padding={{ left: 32, bottom: 24, top: 8, right: 8 }}
       >
