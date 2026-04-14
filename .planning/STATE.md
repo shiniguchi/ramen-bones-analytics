@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 04-03-PLAN.md
-last_updated: "2026-04-14T19:35:59.317Z"
+stopped_at: Completed 04-04-PLAN.md
+last_updated: "2026-04-14T19:47:11.275Z"
 progress:
   total_phases: 5
   completed_phases: 3
   total_plans: 20
-  completed_plans: 18
-  percent: 90
+  completed_plans: 19
+  percent: 95
 ---
 
 # STATE: Ramen Bones Analytics
@@ -28,12 +28,12 @@ progress:
 ## Current Position
 
 Phase: 04 (mobile-reader-ui) — EXECUTING
-Plan: 4 of 5
+Plan: 5 of 5
 
 - **Phase:** 4
-- **Plan:** 4 of 5
+- **Plan:** 5 of 5
 - **Status:** Ready to execute
-- **Progress:** [█████████░] 90%
+- **Progress:** [██████████] 95%
 
 ## Performance Metrics
 
@@ -59,6 +59,7 @@ Plan: 4 of 5
 | Phase 04 P01 | 18min | 2 tasks | 28 files |
 | Phase 04 P02 | 6min | 2 tasks | 20 files |
 | Phase 04-mobile-reader-ui P03 | 4 | 2 tasks | 6 files |
+| Phase 04 P04 | 8 | 2 tasks | 12 files |
 
 ## Accumulated Context
 
@@ -113,6 +114,9 @@ Plan: 4 of 5
 - [Phase 04]: 04-02: vitest loads @sveltejs/vite-plugin-svelte + $lib alias + browser condition so component tests compile .svelte files
 - [Phase 04-mobile-reader-ui]: 04-03: sumKpi extracted to kpiAgg.ts for pure-unit testing; queryKpi DRY helper wraps kpi_daily_v; 8 parallel queries in Promise.all for today/7d/30d × current+prior + chip × current+prior
 - [Phase 04-mobile-reader-ui]: 04-03: KpiTile delta threshold |pct|<1 → flat to avoid ▲ +0% noise; U+2212 real minus for negative deltas; test isolation uses container.querySelector not screen.getByText for multi-render JSDOM
+- [Phase 04]: [Phase 04-mobile-reader-ui]: 04-04: retention_curve_v/ltv_v queried without grain filter — views are weekly-only in SQL, no grain column; grain URL param preserved for GrainToggle state
+- [Phase 04]: [Phase 04-mobile-reader-ui]: 04-04: pickVisibleCohorts() extracted to sparseFilter.ts for pure-function unit testing without LayerChart rendering
+- [Phase 04]: [Phase 04-mobile-reader-ui]: 04-04: @ts-expect-error test enforces absent range prop on CohortRetentionCard; future prop addition caught at type-check
 
 ### Open Todos
 
@@ -130,8 +134,8 @@ None.
 
 **Resume hint:** Phase 3 Wave 0 RED test scaffold in place (03-01 complete). 15 it.todo stubs + fixture + ci-guards contract test committed as 8d8d302 and bdf5332. Plan 03-02 should author 0010_cohort_mv.sql and flip the ANL-01 + ANL-08 todo blocks to green. Open Phase 3 caveats: April 2026 Worldline blackout, 772 missing_worldline_rows cohort linkage loss.
 
-**Last session:** 2026-04-14T19:35:59.306Z
-**Stopped At:** Completed 04-03-PLAN.md
+**Last session:** 2026-04-14T19:47:11.263Z
+**Stopped At:** Completed 04-04-PLAN.md
 
 ---
 *State initialized: 2026-04-13*

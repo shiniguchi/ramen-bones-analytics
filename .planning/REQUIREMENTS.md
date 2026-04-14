@@ -44,9 +44,9 @@ Requirements for initial release. Each maps to exactly one roadmap phase.
 - [x] **UI-02**: Mobile-first layout at 375px baseline — single-column card stream, no desktop-only sidebar
 - [x] **UI-03**: Login screen using Supabase Auth (email + password), redirects to dashboard on success
 - [x] **UI-04**: Revenue KPI cards (today / this week / this month, avg ticket, tx count) shown at the top of the dashboard
-- [ ] **UI-05**: First-visit acquisition cohort chart (daily/weekly/monthly toggle) rendered with LayerChart
-- [ ] **UI-06**: Retention curve chart per cohort, mobile-legible (limited series, touch-friendly tooltips)
-- [ ] **UI-07**: Customer LTV view with visible data-depth caveat
+- [x] **UI-05**: First-visit acquisition cohort chart (daily/weekly/monthly toggle) rendered with LayerChart
+- [x] **UI-06**: Retention curve chart per cohort, mobile-legible (limited series, touch-friendly tooltips)
+- [x] **UI-07**: Customer LTV view with visible data-depth caveat
 - [ ] **UI-08**: Repeat visit rate + visit-frequency distribution view
 - [x] **UI-09**: Preset date-range chips (Today / 7d / 30d / 90d / All) — no custom date-range builder on mobile
 - [x] **UI-10**: Empty / sparse-data states handled gracefully (cohorts with too little history show a message, not a broken chart)
@@ -135,9 +135,9 @@ Each v1 requirement maps to exactly one roadmap phase.
 | UI-02 | Phase 4 — Mobile Reader UI | Complete |
 | UI-03 | Phase 4 — Mobile Reader UI | Complete |
 | UI-04 | Phase 4 — Mobile Reader UI | Complete |
-| UI-05 | Phase 4 — Mobile Reader UI | Pending |
-| UI-06 | Phase 4 — Mobile Reader UI | Pending |
-| UI-07 | Phase 4 — Mobile Reader UI | Pending |
+| UI-05 | Phase 4 — Mobile Reader UI | Complete |
+| UI-06 | Phase 4 — Mobile Reader UI | Complete |
+| UI-07 | Phase 4 — Mobile Reader UI | Complete |
 | UI-08 | Phase 4 — Mobile Reader UI | Pending |
 | UI-09 | Phase 4 — Mobile Reader UI | Complete |
 | UI-10 | Phase 4 — Mobile Reader UI | Complete |
