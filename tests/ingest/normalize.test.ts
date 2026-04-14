@@ -93,6 +93,32 @@ describe('toStagingRows + toTransactions (ING-01, ING-03)', () => {
     expect(Number.isNaN(d.getTime())).toBe(false);
   });
 
+  it('single-rate invoice (T-1, two items @ 7%) → net matches naive per-invoice formula', () => {
+    // T-1: item_gross 15.00 + 10.00 = 25.00 (note: invoice_total_eur is 28.00,
+    // which includes a 3.00 tip line conceptually, but our net is derived from
+    // per-line item_gross_amount_eur, not invoice_total). Per-line math:
+    //   round(1500 / 1.07) + round(1000 / 1.07) = 1402 + 935 = 2337
+    const rows = parseCsv(fixtureText);
+    const staging = toStagingRows(rows, RID, SOURCE);
+    const tx = toTransactions(staging, RID);
+    const t1 = tx.find((t: any) => t.invoice_number === 'T-1');
+    expect(t1).toBeDefined();
+    expect(t1!.net_cents).toBe(1402 + 935);
+  });
+
+  it('mixed-rate invoice (T-11: 15€ @7% + 10€ @7% + 20€ @19%) → per-line net', () => {
+    // Per-line: round(1500/1.07) + round(1000/1.07) + round(2000/1.19)
+    //         = 1402 + 935 + 1681 = 4018
+    // The naive invoice-level formula using first row's 7% would give
+    // round(5000 / 1.07) = 4673, which is wrong.
+    const rows = parseCsv(fixtureText);
+    const staging = toStagingRows(rows, RID, SOURCE);
+    const tx = toTransactions(staging, RID);
+    const t11 = tx.find((t: any) => t.invoice_number === 'T-11');
+    expect(t11).toBeDefined();
+    expect(t11!.net_cents).toBe(1402 + 935 + 1681);
+  });
+
   it('T-6 missing wl_card_number → staging row exists but tx.card_hash is NULL', () => {
     const rows = parseCsv(fixtureText);
     const staging = toStagingRows(rows, RID, SOURCE);

@@ -102,7 +102,18 @@ export function toTransactions(
 
     const taxPct = parseFloat(first.tax_rate_pct || '0');
     const gross_cents = Math.round(totalEur * 100);
-    const net_cents = Math.round((totalEur / (1 + taxPct / 100)) * 100);
+    // Per-line net: sum over all line items of round(item_gross_cents / (1 + rate/100)).
+    // Mixed-tax invoices (food 7% + drinks 19%) need per-row rate; using the
+    // invoice's "first row" rate over the total would skew net for any invoice
+    // with more than one tax bracket. Integer math at cents grain avoids drift.
+    let net_cents = 0;
+    for (const row of list) {
+      const itemGrossEur = parseFloat(row.item_gross_amount_eur || '0');
+      if (!itemGrossEur) continue;
+      const rowRate = parseFloat(row.tax_rate_pct || '0');
+      const itemGrossCents = Math.round(itemGrossEur * 100);
+      net_cents += Math.round(itemGrossCents / (1 + rowRate / 100));
+    }
     // D-12: tip from FIRST row only (never sum across item rows).
     const tip_cents = Math.round(parseFloat(first.tip_eur || '0') * 100);
 
