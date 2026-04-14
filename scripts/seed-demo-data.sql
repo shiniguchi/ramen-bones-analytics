@@ -141,6 +141,21 @@ with seed as (
     ('demo-G-03',  0, 'demo-card-G', 2150, 2009, 0,   'MasterCard',  'TAKEAWAY'),
     ('demo-H-07',  0, 'demo-card-H', 1250, 1168, 0,   'Bar',         'INHOUSE'),
 
+    -- ────────── Extra repeat visits to push volume past the sanity floor ──────────
+    -- Pushes total past 60 rows and gives cohort A/E/H richer retention curves.
+    ('demo-A-06', 11, 'demo-card-A', 1700, 1589, 100, 'Visa',        'INHOUSE'),
+    ('demo-A-07',  7, 'demo-card-A', 2000, 1869, 100, 'Visa',        'INHOUSE'),
+    ('demo-B-05',  6, 'demo-card-B', 2300, 2150, 200, 'MasterCard',  'INHOUSE'),
+    ('demo-E-05', 10, 'demo-card-E', 2400, 2243, 200, 'MasterCard',  'INHOUSE'),
+    ('demo-E-06',  6, 'demo-card-E', 2700, 2523, 200, 'MasterCard',  'INHOUSE'),
+    ('demo-H-08',  6, 'demo-card-H', 1150, 1075, 0,   'Bar',         'INHOUSE'),
+    ('demo-H-09',  3, 'demo-card-H', 1300, 1215, 0,   'Bar',         'INHOUSE'),
+    ('demo-C-03',  1, 'demo-card-C', 1900, 1776, 100, 'Visa',        'INHOUSE'),
+    ('demo-F-05',  4, 'demo-card-F', 1700, 1589, 100, 'Visa',        'INHOUSE'),
+    ('demo-G-04',  7, 'demo-card-G', 2250, 2103, 150, 'MasterCard',  'INHOUSE'),
+    ('demo-D-02',  4, 'demo-card-D', 1050,  981, 0,   'Maestro',     'TAKEAWAY'),
+    ('demo-D-03',  0, 'demo-card-D', 1250, 1168, 0,   'Maestro',     'INHOUSE'),
+
     -- ────────── Cash (card_hash NULL) — cash_anonymous bucket for NVR D-19 ──────────
     ('demo-cash-01', 5, null,  800,  748, 0, 'Bar', 'TAKEAWAY'),
     ('demo-cash-02', 2, null, 1100, 1028, 0, 'Bar', 'INHOUSE'),
