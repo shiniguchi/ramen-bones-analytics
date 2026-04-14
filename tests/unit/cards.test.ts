@@ -3,6 +3,7 @@ import { describe, it, expect, beforeAll, vi } from 'vitest';
 import '@testing-library/jest-dom/vitest';
 import { render, screen } from '@testing-library/svelte';
 import EmptyState from '../../src/lib/components/EmptyState.svelte';
+import FreshnessLabel from '../../src/lib/components/FreshnessLabel.svelte';
 import KpiTile from '../../src/lib/components/KpiTile.svelte';
 import LtvCard from '../../src/lib/components/LtvCard.svelte';
 import GrainToggle from '../../src/lib/components/GrainToggle.svelte';
@@ -108,9 +109,6 @@ describe('Phase 4 card components (RED stubs — flip to it() as cards land)', (
   });
 
   it('FreshnessLabel muted <=30h, yellow >30h, red >48h (D-10a)', () => {
-    // Import FreshnessLabel dynamically to get a fresh component render
-    const FreshnessLabel = require('../../src/lib/components/FreshnessLabel.svelte').default;
-
     // Muted (<=30h): 10 hours ago
     const recent = new Date(Date.now() - 10 * 60 * 60 * 1000).toISOString();
     const { container: c1 } = render(FreshnessLabel, { lastIngestedAt: recent });

@@ -5,6 +5,8 @@
   import KpiTile from '$lib/components/KpiTile.svelte';
   import CohortRetentionCard from '$lib/components/CohortRetentionCard.svelte';
   import LtvCard from '$lib/components/LtvCard.svelte';
+  import FrequencyCard from '$lib/components/FrequencyCard.svelte';
+  import NewVsReturningCard from '$lib/components/NewVsReturningCard.svelte';
 
   let { data } = $props();
 </script>
@@ -67,6 +69,10 @@
     <!-- LTV-to-date bars with persistent caveat (04-04) — chip-independent -->
     <LtvCard data={data.ltv} monthsOfHistory={data.monthsOfHistory} />
 
-    <!-- Frequency + NVR (04-05) slot here -->
+    <!-- Frequency distribution (04-05) — chip-independent, all-time buckets -->
+    <FrequencyCard data={data.frequency} />
+
+    <!-- New vs returning stacked bar (04-05) — chip-scoped (D-19a exception) -->
+    <NewVsReturningCard data={data.newVsReturning} />
   </div>
 </main>

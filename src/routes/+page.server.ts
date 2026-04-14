@@ -7,6 +7,7 @@ import { redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { chipToRange, type Range, type Grain } from '$lib/dateRange';
 import { sumKpi, type KpiRow } from '$lib/kpiAgg';
+import { shapeNvr } from '$lib/nvrAgg';
 import { differenceInMonths, parseISO } from 'date-fns';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
@@ -58,6 +59,27 @@ export const load: PageServerLoad = async ({ locals, url }) => {
   type RetentionRow = { cohort_week: string; period_weeks: number; retention_rate: number; cohort_size_week: number; cohort_age_weeks: number };
   type LtvRow = { cohort_week: string; period_weeks: number; ltv_cents: number; cohort_size_week: number; cohort_age_weeks: number };
 
+  // ── Frequency + NVR queries ─────────────────────────────────────────────
+  // frequency_v is chip-independent (all-time bucket counts).
+  // new_vs_returning_v is filtered by the chip window (D-19a exception).
+
+  type FreqRow = { bucket: string; customer_count: number };
+  type NvrRaw = { segment: 'new' | 'returning' | 'cash_anonymous' | 'blackout_unknown'; revenue_cents: number };
+
+  const freqP = locals.supabase
+    .from('frequency_v')
+    .select('bucket,customer_count')
+    .then(r => (r.data ?? []) as FreqRow[])
+    .catch((e: unknown) => { console.error('[frequency_v]', e); return [] as FreqRow[]; });
+
+  const nvrP = locals.supabase
+    .from('new_vs_returning_v')
+    .select('segment,revenue_cents')
+    .gte('business_date', chipW.from)
+    .lte('business_date', chipW.to)
+    .then(r => (r.data ?? []) as NvrRaw[])
+    .catch((e: unknown) => { console.error('[new_vs_returning_v]', e); return [] as NvrRaw[]; });
+
   // retention_curve_v + ltv_v are weekly-grain views (no grain column in the SQL).
   // Both views are queried in full — the UI filters down to last 4 cohorts.
   const retentionP = locals.supabase
@@ -72,14 +94,16 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     .then(r => (r.data ?? []) as LtvRow[])
     .catch((e: unknown) => { console.error('[ltv_v]', e); return [] as LtvRow[]; });
 
-  // 10 parallel queries: 8 KPI + retention + LTV.
+  // 12 parallel queries: 8 KPI + retention + LTV + frequency + NVR.
   const [
     kToday, kTodayPrior,
     k7, k7Prior,
     k30, k30Prior,
     kChip, kChipPrior,
     retentionData,
-    ltvData
+    ltvData,
+    freqData,
+    nvrRaw
   ] = await Promise.all([
     queryKpi(todayW.from, todayW.to),
     queryKpi(priorTodayW.from, priorTodayW.to),
@@ -93,7 +117,9 @@ export const load: PageServerLoad = async ({ locals, url }) => {
       ? queryKpi(chipW.priorFrom, chipW.priorTo!)
       : Promise.resolve([]),
     retentionP,
-    ltvP
+    ltvP,
+    freqP,
+    nvrP
   ]);
 
   // monthsOfHistory for LTV caveat (D-17): whole months from first cohort to today.
@@ -131,6 +157,9 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     }
   };
 
+  // Shape NVR rows: aggregate by segment within chip window.
+  const nvrShaped = shapeNvr(nvrRaw);
+
   return {
     range,
     grain,
@@ -139,7 +168,9 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     kpi,
     retention: retentionData,
     ltv: ltvData,
-    monthsOfHistory
+    monthsOfHistory,
+    frequency: freqData,
+    newVsReturning: nvrShaped
   };
 };
 
