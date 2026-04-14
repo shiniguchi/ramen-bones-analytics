@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-last_updated: "2026-04-14T02:30:00Z"
+last_updated: "2026-04-14T03:15:00Z"
 progress:
   total_phases: 5
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 10
-  completed_plans: 9
-  percent: 90
+  completed_plans: 10
+  percent: 100
 ---
 
 # STATE: Ramen Bones Analytics
@@ -26,13 +26,13 @@ progress:
 
 ## Current Position
 
-Phase: 02 (ingestion) — EXECUTING
-Plan: 4 of 4 (Plans 01, 02, 03 complete; 04 Tasks 1+2 of 3 complete)
+Phase: 02 (ingestion) — COMPLETE (awaiting verify-phase)
+Plan: 4 of 4 complete
 
 - **Phase:** 2 — Ingestion
-- **Plan:** 02-04 Tasks 1+2 complete (integration tests GREEN + real CSV run verified in DEV); Task 3 = founder ING-05 checkpoint
-- **Status:** Executing Phase 02 — awaiting founder human-verify checkpoint (Task 3)
-- **Progress:** [█████████░] 95%
+- **Plan:** 02-04 complete. Integration tests GREEN, real CSV ingested to DEV, founder ING-05 sign-off received ("approved"). All 4 plans done.
+- **Status:** Phase 02 plans complete — ready for `/gsd:verify-phase 02`
+- **Progress:** [██████████] 100%
 
 ## Performance Metrics
 
@@ -49,6 +49,7 @@ Plan: 4 of 4 (Plans 01, 02, 03 complete; 04 Tasks 1+2 of 3 complete)
 | Phase 02-ingestion P03 | 8min | 2 tasks | 10 files |
 | Phase 02-ingestion P04 T1 | 5min | 1 task | 2 files |
 | Phase 02-ingestion P04 T2 | 8min | 1 task | 3 files |
+| Phase 02-ingestion P04 full | ~55min | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -83,6 +84,11 @@ Plan: 4 of 4 (Plans 01, 02, 03 complete; 04 Tasks 1+2 of 3 complete)
 - [Phase 02-ingestion]: transactions_new/updated computed via restaurant-scoped pre/post count delta (supabase-js has no insert-vs-update response signal)
 - [Phase 02-ingestion 04-T1]: Integration tests fetch seeded restaurant_id via admin query (0005 generates UUID, no hardcoded literal). SUPABASE_* env overridden in beforeAll from TEST_* pair. Fixture uploaded to orderbird-raw/test/sample.csv via service-role client; truncation scoped to restaurant_id.
 - [Phase 02-ingestion 04-T2]: Real CSV run against DEV — rows_read=20948, invoices_deduped=6842, missing_worldline_rows=772, errors=0. Idempotency verified (second run transactions_new=0, row counts stable at 20948/6842). Rule 3 deviation: migration 0009 added to auto-provision orderbird-raw bucket so forkers don't hit blocking upload failure.
+- [Phase 02-ingestion 04]: payment_method normalized upstream in CSV generator; loader switched to trim-only pass-through (one source of truth, DB byte-matches CSV). Unit test T-8 updated to pin pass-through.
+- [Phase 02-ingestion 04]: net_cents computed per line item (Σ round(item_gross_cents/(1+rate/100))) not at invoice grain — mixed 7%/19% food+drink invoices (1,775 of them) were previously skewed. Integer cents math, nulls contribute 0.
+- [Phase 02-ingestion 04]: April 2026 Worldline blackout (2026-04-01..04-11) — upstream Orderbird→Worldline join breaks in tail window. Data still ingested; reporting aggregates in 02-04-REAL-RUN.md scoped to [Jun 11 2025, Mar 31 2026] Berlin. Phase 3 must caveat April.
+- [Phase 02-ingestion 04]: missing_worldline_rows is diagnostic not exclusionary — those invoices persist with card_hash=NULL; revenue unaffected, only cohort linkage lost.
+- [Phase 02-ingestion 04-T3]: Founder ING-05 sign-off received ("approved"). ≥25 top-grossing invoices cross-checked against CSV — gross/tip/payment_method/card_hash/Berlin conversion all match.
 
 ### Open Todos
 
@@ -96,12 +102,12 @@ None.
 
 ## Session Continuity
 
-**Next command:** Founder ING-05 sign-off, then `/gsd:execute-phase 02` to close out Task 3 + Plan 04 SUMMARY
+**Next command:** `/gsd:verify-phase 02` to close out Phase 2, then plan Phase 3 (Analytics SQL)
 
-**Resume hint:** 02-04 Tasks 1+2 DONE. T1 = integration tests GREEN (commit 59bbf87). T2 = real CSV run in DEV (commit 127cd37) — REAL-RUN.md has reports + top-5 spot check. Task 3 = founder human-verify checkpoint: founder runs the SQL in 02-04-PLAN.md Task 3 "how-to-verify" in Supabase DEV SQL editor, cross-checks ≥20 real rows against the CSV, and types "approved" or "revise: ...".
+**Resume hint:** Phase 2 all 4 plans complete. Loader proven on synthetic (12 unit + 2 integration tests GREEN) and real DEV data (20,948 stg / 6,842 tx). Founder ING-05 approved. Open items for Phase 3: April 2026 Worldline blackout (reporting caveat), 772 missing_worldline_rows (cohort linkage loss caveat).
 
-**Last session:** 2026-04-14T02:30:00Z
-**Stopped At:** 02-04 Task 2 complete — awaiting founder ING-05 human-verify
+**Last session:** 2026-04-14T03:15:00Z
+**Stopped At:** 02-04 complete — ready for verify-phase 02
 
 ---
 *State initialized: 2026-04-13*

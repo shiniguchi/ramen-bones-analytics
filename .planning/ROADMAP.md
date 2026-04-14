@@ -89,8 +89,8 @@ A restaurant owner opens the site on their phone and makes a real business decis
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation | 0/0 | Not started | - |
-| 2. Ingestion | 0/0 | Not started | - |
+| 1. Foundation | 6/6 | Complete | 2026-04-14 |
+| 2. Ingestion | 4/4 | Complete | 2026-04-14 |
 | 3. Analytics SQL | 0/0 | Not started | - |
 | 4. Mobile Reader UI | 0/0 | Not started | - |
 | 5. Insights & Forkability | 0/0 | Not started | - |
