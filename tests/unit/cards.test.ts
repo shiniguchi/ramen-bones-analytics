@@ -1,4 +1,9 @@
-import { describe, it } from 'vitest';
+// @vitest-environment jsdom
+import { describe, it, expect } from 'vitest';
+import '@testing-library/jest-dom/vitest';
+import { render, screen } from '@testing-library/svelte';
+import EmptyState from '../../src/lib/components/EmptyState.svelte';
+import { emptyStates } from '../../src/lib/emptyStates';
 
 describe('Phase 4 card components (RED stubs — flip to it() as cards land)', () => {
   it.todo('KpiTile renders integer EUR with thousands separator (D-09)');
@@ -14,6 +19,11 @@ describe('Phase 4 card components (RED stubs — flip to it() as cards land)', (
   it.todo('FrequencyCard uses plain divs not LayerChart (D-18)');
   it.todo('NewVsReturningCard IS chip-scoped (D-19a exception)');
   it.todo('NewVsReturningCard tie-out: returning + new + cash === revenue (D-19)');
-  it.todo('EmptyState renders per-card copy from emptyStates.ts (D-20)');
+  it('EmptyState renders per-card copy from emptyStates.ts (D-20)', () => {
+    render(EmptyState, { card: 'cohort' });
+    const copy = emptyStates.cohort;
+    expect(screen.getByText(copy.heading)).toBeInTheDocument();
+    expect(screen.getByText(copy.body)).toBeInTheDocument();
+  });
   it.todo('Per-card error fallback does NOT throw whole page (D-22)');
 });
