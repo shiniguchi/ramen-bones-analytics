@@ -47,7 +47,7 @@ Requirements for initial release. Each maps to exactly one roadmap phase.
 - [x] **UI-05**: First-visit acquisition cohort chart (daily/weekly/monthly toggle) rendered with LayerChart
 - [x] **UI-06**: Retention curve chart per cohort, mobile-legible (limited series, touch-friendly tooltips)
 - [x] **UI-07**: Customer LTV view with visible data-depth caveat
-- [ ] **UI-08**: Repeat visit rate + visit-frequency distribution view
+- [x] **UI-08**: Repeat visit rate + visit-frequency distribution view
 - [x] **UI-09**: Preset date-range chips (Today / 7d / 30d / 90d / All) — no custom date-range builder on mobile
 - [x] **UI-10**: Empty / sparse-data states handled gracefully (cohorts with too little history show a message, not a broken chart)
 - [x] **UI-11**: Every PR verified at 375px viewport before merge
@@ -138,7 +138,7 @@ Each v1 requirement maps to exactly one roadmap phase.
 | UI-05 | Phase 4 — Mobile Reader UI | Complete |
 | UI-06 | Phase 4 — Mobile Reader UI | Complete |
 | UI-07 | Phase 4 — Mobile Reader UI | Complete |
-| UI-08 | Phase 4 — Mobile Reader UI | Pending |
+| UI-08 | Phase 4 — Mobile Reader UI | Complete |
 | UI-09 | Phase 4 — Mobile Reader UI | Complete |
 | UI-10 | Phase 4 — Mobile Reader UI | Complete |
 | UI-11 | Phase 4 — Mobile Reader UI | Complete |
