@@ -14,6 +14,39 @@ export const load: PageServerLoad = async ({ locals, url }) => {
   const range = (url.searchParams.get('range') ?? '7d') as Range;
   const grain = (url.searchParams.get('grain') ?? 'week') as Grain;
 
+  // E2E chart-fixture bypass — only active when preview is launched with
+  // E2E_FIXTURES=1 (set by playwright webServer). Returns seeded non-empty
+  // retention + LTV data so the charts-with-data spec can exercise the
+  // non-empty chart path without touching Supabase. Dead code in prod.
+  if (process.env.E2E_FIXTURES === '1' && url.searchParams.get('__e2e') === 'charts') {
+    const { E2E_LTV_ROWS, E2E_RETENTION_ROWS } = await import('$lib/e2eChartFixtures');
+    return {
+      range,
+      grain,
+      freshness: new Date().toISOString(),
+      window: chipToRange(range),
+      kpi: {
+        revenueToday: { value: 12345, prior: 10000, priorLabel: 'prior day' },
+        revenue7d:    { value: 67890, prior: 60000, priorLabel: 'prior 7d' },
+        revenue30d:   { value: 234567, prior: 200000, priorLabel: 'prior 30d' },
+        txCount:      { value: 42, prior: 38, priorLabel: 'prior 7d' },
+        avgTicket:    { value: 1600, prior: 1550, priorLabel: 'prior 7d' }
+      },
+      retention: E2E_RETENTION_ROWS,
+      ltv: E2E_LTV_ROWS,
+      monthsOfHistory: 2,
+      frequency: [
+        { bucket: '1 visit', customer_count: 20 },
+        { bucket: '2-3 visits', customer_count: 10 }
+      ],
+      newVsReturning: [
+        { segment: 'new', revenue_cents: 50000 },
+        { segment: 'returning', revenue_cents: 30000 },
+        { segment: 'cash_anonymous', revenue_cents: 10000 }
+      ]
+    };
+  }
+
   // `locals.supabase` is already JWT-bound via hooks + layout (Guard 2).
   // Per-card error isolation: a freshness query failure must NOT throw —
   // the FreshnessLabel renders "No data yet" when null.

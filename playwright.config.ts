@@ -29,6 +29,11 @@ export default defineConfig({
     timeout: 60_000,
     reuseExistingServer: !process.env.CI,
     stdout: 'pipe',
-    stderr: 'pipe'
+    stderr: 'pipe',
+    // Gap-closure 04-06: E2E_FIXTURES=1 enables the ?__e2e=charts bypass
+    // in +layout.server.ts + +page.server.ts so the charts-with-data spec
+    // can exercise the non-empty chart path without touching Supabase.
+    // Dead code when the env var is absent.
+    env: { E2E_FIXTURES: '1' }
   }
 });

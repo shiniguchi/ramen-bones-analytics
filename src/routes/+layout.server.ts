@@ -11,6 +11,12 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
     return { restaurantId: null };
   }
 
+  // E2E fixture bypass — only active when the preview server is launched with
+  // E2E_FIXTURES=1 (set by playwright webServer env). Dead code otherwise.
+  if (process.env.E2E_FIXTURES === '1' && url.searchParams.get('__e2e') === 'charts') {
+    return { restaurantId: 'e2e-stub-restaurant' };
+  }
+
   const { claims } = await locals.safeGetSession();
   if (!claims) throw redirect(303, '/login');
 
