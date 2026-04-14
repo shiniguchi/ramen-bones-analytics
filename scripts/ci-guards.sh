@@ -66,6 +66,14 @@ if [ -s pii-columns.txt ]; then
   done < pii-columns.txt
 fi
 
+# Guard 5 (Phase 4 Gap C): migration drift against the linked Supabase project.
+# Prevents the Phase 3 silent-drift recurrence (local SQL ahead of DEV).
+echo "=== Guard: migration drift ==="
+if ! bash "$(dirname "$0")/check-migration-drift.sh"; then
+  echo "::error::Guard 5 FAILED: migration drift detected — see scripts/check-migration-drift.sh output."
+  fail=1
+fi
+
 if [ "$fail" -eq 0 ]; then
   echo "All CI guards passed."
 fi
