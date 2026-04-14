@@ -61,7 +61,7 @@ A restaurant owner opens the site on their phone and makes a real business decis
   3. LTV and retention outputs clip to the shortest cohort's observable horizon and expose `cohort_age_weeks`, so recent cohorts cannot display survivorship-biased numbers
   4. `pg_cron` refreshes every MV nightly with `REFRESH MATERIALIZED VIEW CONCURRENTLY` against a mandatory unique index, and a CI grep fails the build on any frontend query referencing `*_mv` or raw `transactions`
 **Plans**: 5 plans
-  - [ ] 03-01-PLAN.md — Wave 0: RED test scaffold (phase3-analytics.test.ts + 3-customer fixture + ci-guards unit test)
+  - [x] 03-01-PLAN.md — Wave 0: RED test scaffold (phase3-analytics.test.ts + 3-customer fixture + ci-guards unit test)
   - [ ] 03-02-PLAN.md — 0010_cohort_mv.sql (trunk MV: day/week/month grain, cash + April excluded)
   - [ ] 03-03-PLAN.md — 0011_kpi_daily_mv_real.sql (replace placeholder body, drop-cascade-recreate)
   - [ ] 03-04-PLAN.md — 0012_leaf_views.sql (retention, ltv, frequency, new_vs_returning with 4 buckets)
@@ -96,7 +96,7 @@ A restaurant owner opens the site on their phone and makes a real business decis
 |-------|----------------|--------|-----------|
 | 1. Foundation | 6/6 | Complete | 2026-04-14 |
 | 2. Ingestion | 4/4 | Complete | 2026-04-14 |
-| 3. Analytics SQL | 0/0 | Not started | - |
+| 3. Analytics SQL | 1/5 | Executing | - |
 | 4. Mobile Reader UI | 0/0 | Not started | - |
 | 5. Insights & Forkability | 0/0 | Not started | - |
 

@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: planning
-stopped_at: 02-04 complete — ready for verify-phase 02
-last_updated: "2026-04-14T00:51:52.545Z"
+status: executing
+stopped_at: 03-01 complete — Wave 0 RED test scaffold landed; next 03-02 cohort_mv
+last_updated: "2026-04-14T11:15:00.000Z"
 progress:
   total_phases: 5
   completed_phases: 2
-  total_plans: 10
-  completed_plans: 10
-  percent: 100
+  total_plans: 15
+  completed_plans: 11
+  percent: 73
 ---
 
 # STATE: Ramen Bones Analytics
@@ -20,20 +20,20 @@ progress:
 ## Project Reference
 
 - **Core Value:** A restaurant owner opens the site on their phone and makes a real business decision from the numbers they see.
-- **Current Focus:** Phase 02 — ingestion
+- **Current Focus:** Phase 03 — analytics-sql
 - **Timeline:** 2 weeks to MVP in friend's hands
 - **Granularity:** standard
 - **Tenants in v1:** 1 (architecture multi-tenant-ready)
 
 ## Current Position
 
-Phase: 02 (ingestion) — COMPLETE (awaiting verify-phase)
-Plan: 4 of 4 complete
+Phase: 03 (analytics-sql) — EXECUTING
+Plan: 2 of 5 (03-01 complete)
 
 - **Phase:** 3
-- **Plan:** Not started
-- **Status:** Ready to plan
-- **Progress:** [██████████] 100%
+- **Plan:** 03-01 complete; next 03-02 cohort_mv
+- **Status:** Executing Phase 03
+- **Progress:** [███████▍░░] 73%
 
 ## Performance Metrics
 
@@ -51,6 +51,7 @@ Plan: 4 of 4 complete
 | Phase 02-ingestion P04 T1 | 5min | 1 task | 2 files |
 | Phase 02-ingestion P04 T2 | 8min | 1 task | 3 files |
 | Phase 02-ingestion P04 full | ~55min | 3 tasks | 8 files |
+| Phase 03-analytics-sql P01 | ~5min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -90,6 +91,7 @@ Plan: 4 of 4 complete
 - [Phase 02-ingestion 04]: April 2026 Worldline blackout (2026-04-01..04-11) — upstream Orderbird→Worldline join breaks in tail window. Data still ingested; reporting aggregates in 02-04-REAL-RUN.md scoped to [Jun 11 2025, Mar 31 2026] Berlin. Phase 3 must caveat April.
 - [Phase 02-ingestion 04]: missing_worldline_rows is diagnostic not exclusionary — those invoices persist with card_hash=NULL; revenue unaffected, only cohort linkage lost.
 - [Phase 02-ingestion 04-T3]: Founder ING-05 sign-off received ("approved"). ≥25 top-grossing invoices cross-checked against CSV — gross/tip/payment_method/card_hash/Berlin conversion all match.
+- [Phase 03-analytics-sql 01]: Wave 0 RED test scaffold authored before any production SQL — 15 it.todo stubs across 8 ANL describe blocks + 3-customer ISO-Monday fixture + ci-guards contract test. Downstream plans 03-02..05 flip todos → it as each MV/view/guard lands. The `.from('transactions')` ci-guard case is intentionally RED until Plan 03-05 extends Guard 1 regex.
 
 ### Open Todos
 
@@ -103,12 +105,12 @@ None.
 
 ## Session Continuity
 
-**Next command:** `/gsd:verify-phase 02` to close out Phase 2, then plan Phase 3 (Analytics SQL)
+**Next command:** `/gsd:execute-phase 03` to continue Phase 3 with Plan 03-02 (0010_cohort_mv.sql)
 
-**Resume hint:** Phase 2 all 4 plans complete. Loader proven on synthetic (12 unit + 2 integration tests GREEN) and real DEV data (20,948 stg / 6,842 tx). Founder ING-05 approved. Open items for Phase 3: April 2026 Worldline blackout (reporting caveat), 772 missing_worldline_rows (cohort linkage loss caveat).
+**Resume hint:** Phase 3 Wave 0 RED test scaffold in place (03-01 complete). 15 it.todo stubs + fixture + ci-guards contract test committed as 8d8d302 and bdf5332. Plan 03-02 should author 0010_cohort_mv.sql and flip the ANL-01 + ANL-08 todo blocks to green. Open Phase 3 caveats: April 2026 Worldline blackout, 772 missing_worldline_rows cohort linkage loss.
 
-**Last session:** 2026-04-14T03:15:00Z
-**Stopped At:** 02-04 complete — ready for verify-phase 02
+**Last session:** 2026-04-14T11:15:00Z
+**Stopped At:** 03-01 complete — Wave 0 RED test scaffold landed; next 03-02 cohort_mv
 
 ---
 *State initialized: 2026-04-13*
