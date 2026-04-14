@@ -25,7 +25,7 @@ describe('Phase 4 card components (RED stubs — flip to it() as cards land)', (
 
   it('KpiTile renders ▲ +12% delta in green-700 for positive (D-08)', () => {
     // value=428000, prior=382000 → pct = round((428000-382000)/382000 * 100) = round(12.04) = 12
-    render(KpiTile, {
+    const { container } = render(KpiTile, {
       title: 'Revenue · 7d',
       value: 428000,
       prior: 382000,
@@ -33,8 +33,10 @@ describe('Phase 4 card components (RED stubs — flip to it() as cards land)', (
       windowLabel: 'prior 7d',
       emptyCard: 'revenueFixed'
     });
-    const delta = screen.getByText(/▲.*\+12%/);
+    // Query within this render's container to avoid collision with prior renders
+    const delta = container.querySelector('p.text-green-700');
     expect(delta).toBeInTheDocument();
+    expect(delta?.textContent).toMatch(/▲.*\+12%/);
     expect(delta).toHaveClass('text-green-700');
   });
 
