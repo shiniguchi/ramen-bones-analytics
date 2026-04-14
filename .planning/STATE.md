@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: 03-01 complete — Wave 0 RED test scaffold landed; next 03-02 cohort_mv
-last_updated: "2026-04-14T11:15:00.000Z"
+stopped_at: Completed 03-02-PLAN.md (cohort_mv trunk)
+last_updated: "2026-04-14T10:03:10.184Z"
 progress:
   total_phases: 5
   completed_phases: 2
   total_plans: 15
-  completed_plans: 11
-  percent: 73
+  completed_plans: 12
+  percent: 80
 ---
 
 # STATE: Ramen Bones Analytics
@@ -28,12 +28,12 @@ progress:
 ## Current Position
 
 Phase: 03 (analytics-sql) — EXECUTING
-Plan: 2 of 5 (03-01 complete)
+Plan: 3 of 5 (03-01, 03-02 complete)
 
 - **Phase:** 3
-- **Plan:** 03-01 complete; next 03-02 cohort_mv
+- **Plan:** 03-02 complete (cohort_mv trunk); next 03-03 kpi_daily_mv real body
 - **Status:** Executing Phase 03
-- **Progress:** [███████▍░░] 73%
+- **Progress:** [████████░░] 80%
 
 ## Performance Metrics
 
@@ -52,6 +52,7 @@ Plan: 2 of 5 (03-01 complete)
 | Phase 02-ingestion P04 T2 | 8min | 1 task | 3 files |
 | Phase 02-ingestion P04 full | ~55min | 3 tasks | 8 files |
 | Phase 03-analytics-sql P01 | ~5min | 2 tasks | 3 files |
+| Phase 03-analytics-sql P02 | 2min | 1 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -92,6 +93,7 @@ Plan: 2 of 5 (03-01 complete)
 - [Phase 02-ingestion 04]: missing_worldline_rows is diagnostic not exclusionary — those invoices persist with card_hash=NULL; revenue unaffected, only cohort linkage lost.
 - [Phase 02-ingestion 04-T3]: Founder ING-05 sign-off received ("approved"). ≥25 top-grossing invoices cross-checked against CSV — gross/tip/payment_method/card_hash/Berlin conversion all match.
 - [Phase 03-analytics-sql 01]: Wave 0 RED test scaffold authored before any production SQL — 15 it.todo stubs across 8 ANL describe blocks + 3-customer ISO-Monday fixture + ci-guards contract test. Downstream plans 03-02..05 flip todos → it as each MV/view/guard lands. The `.from('transactions')` ci-guard case is intentionally RED until Plan 03-05 extends Guard 1 regex.
+- [Phase 03-analytics-sql]: 03-02: cohort_mv ships local refresh_cohort_mv() helper as Nyquist stop-gap; Plan 05 supersedes with refresh_analytics_mvs() and drops the helper
 
 ### Open Todos
 
@@ -109,8 +111,8 @@ None.
 
 **Resume hint:** Phase 3 Wave 0 RED test scaffold in place (03-01 complete). 15 it.todo stubs + fixture + ci-guards contract test committed as 8d8d302 and bdf5332. Plan 03-02 should author 0010_cohort_mv.sql and flip the ANL-01 + ANL-08 todo blocks to green. Open Phase 3 caveats: April 2026 Worldline blackout, 772 missing_worldline_rows cohort linkage loss.
 
-**Last session:** 2026-04-14T11:15:00Z
-**Stopped At:** 03-01 complete — Wave 0 RED test scaffold landed; next 03-02 cohort_mv
+**Last session:** 2026-04-14T10:02:48.169Z
+**Stopped At:** Completed 03-02-PLAN.md (cohort_mv trunk)
 
 ---
 *State initialized: 2026-04-13*

@@ -28,7 +28,7 @@ Requirements for initial release. Each maps to exactly one roadmap phase.
 
 ### Analytics SQL Models
 
-- [ ] **ANL-01**: `cohort_mv` materialized view — the load-bearing trunk — computes first-visit cohort assignment per customer (card hash) with configurable cohort grain (daily / weekly / monthly)
+- [x] **ANL-01**: `cohort_mv` materialized view — the load-bearing trunk — computes first-visit cohort assignment per customer (card hash) with configurable cohort grain (daily / weekly / monthly)
 - [ ] **ANL-02**: `retention_curve_v` (wrapper over cohort MV) exposes retention rate by cohort × periods-since-first-visit, with survivorship-bias guard (horizon-clip cohorts that haven't had enough elapsed time)
 - [ ] **ANL-03**: `ltv_mv` / `ltv_v` computes LTV-to-date per cohort with a visible data-depth caveat (3–12 months of history only, no 12-month projection)
 - [ ] **ANL-04**: `kpi_daily_mv` / `kpi_daily_v` aggregates revenue, transaction count, and avg ticket per business_date
@@ -122,7 +122,7 @@ Each v1 requirement maps to exactly one roadmap phase.
 | ING-03 | Phase 2 — Ingestion | Complete |
 | ING-04 | Phase 2 — Ingestion | Complete |
 | ING-05 | Phase 2 — Ingestion | Complete |
-| ANL-01 | Phase 3 — Analytics SQL | Pending |
+| ANL-01 | Phase 3 — Analytics SQL | Complete |
 | ANL-02 | Phase 3 — Analytics SQL | Pending |
 | ANL-03 | Phase 3 — Analytics SQL | Pending |
 | ANL-04 | Phase 3 — Analytics SQL | Pending |
