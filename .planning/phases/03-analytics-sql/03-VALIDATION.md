@@ -38,7 +38,13 @@ created: 2026-04-14
 
 | Task ID | Plan | Wave | Requirement | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|-----------|-------------------|-------------|--------|
-| TBD — planner fills from research Per-Task Verification table |
+| 03-01-T1 | 03-01 | 1 | ANL-01..08 (scaffold) | integration stub | `npx vitest run tests/integration/phase3-analytics.test.ts` | tests/integration/phase3-analytics.test.ts | ⬜ |
+| 03-01-T2 | 03-01 | 1 | ANL-09 (scaffold) | unit | `npx vitest run tests/unit/ci-guards.test.ts` | tests/unit/ci-guards.test.ts | ⬜ |
+| 03-02-T1 | 03-02 | 2 | ANL-01 | integration | `npx vitest run tests/integration/phase3-analytics.test.ts -t "cohort assignment"` | supabase/migrations/0010_cohort_mv.sql | ⬜ |
+| 03-03-T1 | 03-03 | 2 | ANL-04 | integration | `npx vitest run tests/integration/phase3-analytics.test.ts -t "kpi daily"` | supabase/migrations/0011_kpi_daily_mv_real.sql | ⬜ |
+| 03-04-T1 | 03-04 | 3 | ANL-02, ANL-03, ANL-05, ANL-06 | integration | `npx vitest run tests/integration/phase3-analytics.test.ts -t "retention curve|ltv|frequency|tie-out"` | supabase/migrations/0012_leaf_views.sql | ⬜ |
+| 03-05-T1 | 03-05 | 4 | ANL-07 | integration | `npx vitest run tests/integration/phase3-analytics.test.ts -t "refresh concurrent"` | supabase/migrations/0013_refresh_function_and_cron.sql | ⬜ |
+| 03-05-T2 | 03-05 | 4 | ANL-08, ANL-09 | integration + unit | `bash scripts/ci-guards.sh && npx vitest run tests/unit/ci-guards.test.ts tests/integration/tenant-isolation.test.ts` | scripts/ci-guards.sh, tests/integration/tenant-isolation.test.ts | ⬜ |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 

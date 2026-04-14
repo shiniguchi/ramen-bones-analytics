@@ -60,7 +60,12 @@ A restaurant owner opens the site on their phone and makes a real business decis
   2. `retention_curve_v`, `ltv_v`, `kpi_daily_v`, `frequency_v`, and `new_vs_returning_v` return tenant-scoped rows through wrapper views only, with raw `_mv` locked behind `REVOKE ALL`
   3. LTV and retention outputs clip to the shortest cohort's observable horizon and expose `cohort_age_weeks`, so recent cohorts cannot display survivorship-biased numbers
   4. `pg_cron` refreshes every MV nightly with `REFRESH MATERIALIZED VIEW CONCURRENTLY` against a mandatory unique index, and a CI grep fails the build on any frontend query referencing `*_mv` or raw `transactions`
-**Plans**: TBD
+**Plans**: 5 plans
+  - [ ] 03-01-PLAN.md — Wave 0: RED test scaffold (phase3-analytics.test.ts + 3-customer fixture + ci-guards unit test)
+  - [ ] 03-02-PLAN.md — 0010_cohort_mv.sql (trunk MV: day/week/month grain, cash + April excluded)
+  - [ ] 03-03-PLAN.md — 0011_kpi_daily_mv_real.sql (replace placeholder body, drop-cascade-recreate)
+  - [ ] 03-04-PLAN.md — 0012_leaf_views.sql (retention, ltv, frequency, new_vs_returning with 4 buckets)
+  - [ ] 03-05-PLAN.md — 0013 refresh function + pg_cron + ci-guards extension + tenant-isolation test extension
 
 ### Phase 4: Mobile Reader UI
 **Goal**: The friend opens the dashboard on their phone and reads revenue, cohorts, LTV, frequency, and new-vs-returning at a 375px viewport with preset date chips
