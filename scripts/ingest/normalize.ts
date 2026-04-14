@@ -11,27 +11,12 @@ export function toBerlinUtc(date: string, time: string): string {
   return fromZonedTime(`${date} ${time}`, 'Europe/Berlin').toISOString();
 }
 
-// D-10: canonical payment method spellings. Case-insensitive lookup, fallback
-// to title-case of the input so unknown processors stay human-readable.
-const PAYMENT_MAP: Record<string, string> = {
-  mastercard: 'MasterCard',
-  visa: 'Visa',
-  bar: 'Bar',
-  cash: 'Bar',
-  amex: 'Amex',
-  'american express': 'Amex',
-  maestro: 'Maestro',
-  girocard: 'Girocard',
-  ec: 'Girocard',
-};
-
+// D-10 (revised 02-04): payment_method is pass-through. The upstream CSV is
+// now normalized at source (see .planning/phases/02-ingestion/02-04-REAL-RUN.md
+// Corrections). The loader trims whitespace and writes the value verbatim so
+// DB content matches the CSV byte-for-byte.
 export function normalizePaymentMethod(raw: string | null | undefined): string {
-  const s = (raw ?? '').trim();
-  if (s === '') return 'Bar';
-  const canon = PAYMENT_MAP[s.toLowerCase()];
-  if (canon) return canon;
-  // Title-case fallback for unknown processors.
-  return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+  return (raw ?? '').trim();
 }
 
 // D-01/D-03: shape raw CSV rows into staging rows.

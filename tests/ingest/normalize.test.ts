@@ -57,13 +57,30 @@ describe('toStagingRows + toTransactions (ING-01, ING-03)', () => {
     expect(t11!.tip_cents).toBe(500);
   });
 
-  it('T-8 MASTERCARD normalizes to MasterCard in transactions (D-10)', () => {
+  it('T-8 payment_method passes through verbatim (trim only, no case mapping)', () => {
+    // Revised 02-04: upstream CSV is now normalized at source; loader is
+    // pass-through. T-8 fixture uses the raw uppercased "MASTERCARD" value
+    // and must survive verbatim through to transactions.payment_method.
     const rows = parseCsv(fixtureText);
     const staging = toStagingRows(rows, RID, SOURCE);
     const tx = toTransactions(staging, RID);
     const t8 = tx.find((t: any) => t.invoice_number === 'T-8');
     expect(t8).toBeDefined();
-    expect(t8!.payment_method).toBe('MasterCard');
+    expect(t8!.payment_method).toBe('MASTERCARD');
+  });
+
+  it('pass-through preserves proper-cased payment methods verbatim', async () => {
+    // Smoke test: the real CSV uses proper-cased values like "MasterCard"
+    // and "Visa Electron". Confirm the normalize function does not mangle
+    // them (no lowercase, no title-case re-casing).
+    const { normalizePaymentMethod } = await import(
+      '../../scripts/ingest/normalize'
+    );
+    expect(normalizePaymentMethod('MasterCard')).toBe('MasterCard');
+    expect(normalizePaymentMethod('Visa Electron')).toBe('Visa Electron');
+    expect(normalizePaymentMethod('  Bar  ')).toBe('Bar');
+    expect(normalizePaymentMethod('')).toBe('');
+    expect(normalizePaymentMethod(null)).toBe('');
   });
 
   it('T-7 DST fall-back row 2025-10-26 02:30 Berlin → valid UTC ISO timestamp', () => {
