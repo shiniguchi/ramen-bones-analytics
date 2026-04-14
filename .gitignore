@@ -7,3 +7,6 @@ supabase/.branches/
 supabase/.temp/
 .DS_Store
 orderbird_data/
+test-results/
+.wrangler/
+playwright-report/
