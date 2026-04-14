@@ -76,7 +76,12 @@ A restaurant owner opens the site on their phone and makes a real business decis
   2. After login, the friend sees revenue KPI cards (today / 7d / 30d, avg ticket, tx count) at the top of the dashboard with a trustworthy "Last updated Xh ago" derived from `MAX(ingested_at)`
   3. Cohort retention curve, LTV-to-date (with data-depth caveat copy), repeat visit rate, and visit-frequency distribution each render as a single-purpose card with ≤4 series, touch tooltips, and graceful empty states
   4. Preset date-range chips (Today / 7d / 30d / 90d / All) are the only global filter and every PR is verified at the 375px viewport before merge
-**Plans**: TBD
+**Plans**: 5 plans
+  - [ ] 04-01-PLAN.md — Bootstrap SvelteKit+Tailwind v4+shadcn-svelte@next, copy reference auth files, 0014_data_freshness_v.sql, Vitest+Playwright RED scaffold
+  - [ ] 04-02-PLAN.md — Root loader + app shell + sticky DateRangeChips + FreshnessLabel + EmptyState (375px layout)
+  - [ ] 04-03-PLAN.md — KPI tiles (3 fixed + 2 chip-scoped) via parallel kpi_daily_v queries with server-side deltas
+  - [ ] 04-04-PLAN.md — CohortRetentionCard (LayerChart Spline) + LtvCard (LayerChart Bars) + GrainToggle (chip-independent)
+  - [ ] 04-05-PLAN.md — FrequencyCard (plain divs) + NewVsReturningCard (D-19a chip-scoped) + PR 375px template + friend iPhone checkpoint
 **UI hint**: yes
 
 ### Phase 5: Insights & Forkability
@@ -97,7 +102,7 @@ A restaurant owner opens the site on their phone and makes a real business decis
 | 1. Foundation | 6/6 | Complete | 2026-04-14 |
 | 2. Ingestion | 4/4 | Complete | 2026-04-14 |
 | 3. Analytics SQL | 1/5 | Executing | - |
-| 4. Mobile Reader UI | 0/0 | Not started | - |
+| 4. Mobile Reader UI | 0/5 | Planned | - |
 | 5. Insights & Forkability | 0/0 | Not started | - |
 
 ## Coverage Summary
