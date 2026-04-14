@@ -7,6 +7,7 @@ import { redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { chipToRange, type Range, type Grain } from '$lib/dateRange';
 import { sumKpi, type KpiRow } from '$lib/kpiAgg';
+import { differenceInMonths, parseISO } from 'date-fns';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
   const range = (url.searchParams.get('range') ?? '7d') as Range;
@@ -53,12 +54,32 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     return data as KpiRow[];
   };
 
-  // 8 parallel queries: 3 fixed current, 3 fixed prior, 1 chip current, 1 chip prior.
+  // Query helpers for retention/LTV — per-card error isolation, do not throw.
+  type RetentionRow = { cohort_week: string; period_weeks: number; retention_rate: number; cohort_size_week: number; cohort_age_weeks: number };
+  type LtvRow = { cohort_week: string; period_weeks: number; ltv_cents: number; cohort_size_week: number; cohort_age_weeks: number };
+
+  // retention_curve_v + ltv_v are weekly-grain views (no grain column in the SQL).
+  // Both views are queried in full — the UI filters down to last 4 cohorts.
+  const retentionP = locals.supabase
+    .from('retention_curve_v')
+    .select('cohort_week,period_weeks,retention_rate,cohort_size_week,cohort_age_weeks')
+    .then(r => (r.data ?? []) as RetentionRow[])
+    .catch((e: unknown) => { console.error('[retention_curve_v]', e); return [] as RetentionRow[]; });
+
+  const ltvP = locals.supabase
+    .from('ltv_v')
+    .select('cohort_week,period_weeks,ltv_cents,cohort_size_week,cohort_age_weeks')
+    .then(r => (r.data ?? []) as LtvRow[])
+    .catch((e: unknown) => { console.error('[ltv_v]', e); return [] as LtvRow[]; });
+
+  // 10 parallel queries: 8 KPI + retention + LTV.
   const [
     kToday, kTodayPrior,
     k7, k7Prior,
     k30, k30Prior,
-    kChip, kChipPrior
+    kChip, kChipPrior,
+    retentionData,
+    ltvData
   ] = await Promise.all([
     queryKpi(todayW.from, todayW.to),
     queryKpi(priorTodayW.from, priorTodayW.to),
@@ -70,8 +91,17 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     // chipPrior is null when range is 'all' (no prior window)
     chipW.priorFrom
       ? queryKpi(chipW.priorFrom, chipW.priorTo!)
-      : Promise.resolve([])
+      : Promise.resolve([]),
+    retentionP,
+    ltvP
   ]);
+
+  // monthsOfHistory for LTV caveat (D-17): whole months from first cohort to today.
+  // ltv data sorted by cohort_week ASC from DB; first row has earliest cohort.
+  const firstCohortDate = (ltvData[0]?.cohort_week ?? retentionData[0]?.cohort_week) ?? null;
+  const monthsOfHistory = firstCohortDate
+    ? differenceInMonths(new Date(), parseISO(firstCohortDate))
+    : 0;
 
   const kpi = {
     revenueToday: {
@@ -106,7 +136,10 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     grain,
     freshness,
     window: chipToRange(range),
-    kpi
+    kpi,
+    retention: retentionData,
+    ltv: ltvData,
+    monthsOfHistory
   };
 };
 
