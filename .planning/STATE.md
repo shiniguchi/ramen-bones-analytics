@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 03-02-PLAN.md (cohort_mv trunk)
-last_updated: "2026-04-14T11:22:54.340Z"
+stopped_at: Completed 03-04-PLAN.md (4 leaf views)
+last_updated: "2026-04-14T11:34:06.710Z"
 progress:
   total_phases: 5
   completed_phases: 2
   total_plans: 15
-  completed_plans: 13
-  percent: 80
+  completed_plans: 14
+  percent: 93
 ---
 
 # STATE: Ramen Bones Analytics
@@ -28,12 +28,12 @@ progress:
 ## Current Position
 
 Phase: 03 (analytics-sql) — EXECUTING
-Plan: 3 of 5 (03-01, 03-02 complete)
+Plan: 5 of 5 (03-01..03-04 complete; next 03-05 refresh function + cron + CI guard)
 
 - **Phase:** 3
-- **Plan:** 03-02 complete (cohort_mv trunk); next 03-03 kpi_daily_mv real body
+- **Plan:** 03-04 complete (4 leaf views); next 03-05 refresh_analytics_mvs + pg_cron + ci-guards extension
 - **Status:** Executing Phase 03
-- **Progress:** [████████░░] 80%
+- **Progress:** [█████████░] 93%
 
 ## Performance Metrics
 
@@ -54,6 +54,7 @@ Plan: 3 of 5 (03-01, 03-02 complete)
 | Phase 03-analytics-sql P01 | ~5min | 2 tasks | 3 files |
 | Phase 03-analytics-sql P02 | 2min | 1 tasks | 3 files |
 | Phase 03-analytics-sql P03 | 15min | 1 tasks | 2 files |
+| Phase 03-analytics-sql P04 | 25min | 1 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -96,6 +97,8 @@ Plan: 3 of 5 (03-01, 03-02 complete)
 - [Phase 03-analytics-sql 01]: Wave 0 RED test scaffold authored before any production SQL — 15 it.todo stubs across 8 ANL describe blocks + 3-customer ISO-Monday fixture + ci-guards contract test. Downstream plans 03-02..05 flip todos → it as each MV/view/guard lands. The `.from('transactions')` ci-guard case is intentionally RED until Plan 03-05 extends Guard 1 regex.
 - [Phase 03-analytics-sql]: 03-02: cohort_mv ships local refresh_cohort_mv() helper as Nyquist stop-gap; Plan 05 supersedes with refresh_analytics_mvs() and drops the helper
 - [Phase 03-analytics-sql]: [Phase 03-analytics-sql 03]: kpi_daily_mv body replaced via drop-cascade in 0011; kpi_daily_v wrapper recreated with 5 cols (revenue/tx_count/avg_ticket); refresh_kpi_daily_mv helper from 0006 survived cascade (plpgsql EXECUTE string has no schema dep). DEV needed migration-history repair (0011 was pre-recorded as applied without ever running).
+- [Phase 03-analytics-sql]: 03-04: 4 leaf views (retention/ltv/frequency/new_vs_returning) over cohort_mv; 4-bucket NVR with blackout_unknown preserves tie-out; per-cohort horizon NULL-mask via generate_series(0,260); test_* SECURITY DEFINER helpers use set_config(jwt.claims) to verify JWT-filtered leaves from admin client
+- [Phase 03-analytics-sql]: 03-04: Rule 1 fixes — plan's retention p1=0.5 and LTV 1450/3150/4200 wrong; B's 08-11 visit is 6d after first_visit → period 0 not 1. Corrected: retention p0=1/p1=0/p2=1, LTV p0=2300/p2=4000/p8=5050
 
 ### Open Todos
 
@@ -113,8 +116,8 @@ None.
 
 **Resume hint:** Phase 3 Wave 0 RED test scaffold in place (03-01 complete). 15 it.todo stubs + fixture + ci-guards contract test committed as 8d8d302 and bdf5332. Plan 03-02 should author 0010_cohort_mv.sql and flip the ANL-01 + ANL-08 todo blocks to green. Open Phase 3 caveats: April 2026 Worldline blackout, 772 missing_worldline_rows cohort linkage loss.
 
-**Last session:** 2026-04-14T10:02:48.169Z
-**Stopped At:** Completed 03-02-PLAN.md (cohort_mv trunk)
+**Last session:** 2026-04-14T11:33:52.621Z
+**Stopped At:** Completed 03-04-PLAN.md (4 leaf views)
 
 ---
 *State initialized: 2026-04-13*

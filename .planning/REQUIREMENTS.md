@@ -29,11 +29,11 @@ Requirements for initial release. Each maps to exactly one roadmap phase.
 ### Analytics SQL Models
 
 - [x] **ANL-01**: `cohort_mv` materialized view — the load-bearing trunk — computes first-visit cohort assignment per customer (card hash) with configurable cohort grain (daily / weekly / monthly)
-- [ ] **ANL-02**: `retention_curve_v` (wrapper over cohort MV) exposes retention rate by cohort × periods-since-first-visit, with survivorship-bias guard (horizon-clip cohorts that haven't had enough elapsed time)
-- [ ] **ANL-03**: `ltv_mv` / `ltv_v` computes LTV-to-date per cohort with a visible data-depth caveat (3–12 months of history only, no 12-month projection)
+- [x] **ANL-02**: `retention_curve_v` (wrapper over cohort MV) exposes retention rate by cohort × periods-since-first-visit, with survivorship-bias guard (horizon-clip cohorts that haven't had enough elapsed time)
+- [x] **ANL-03**: `ltv_mv` / `ltv_v` computes LTV-to-date per cohort with a visible data-depth caveat (3–12 months of history only, no 12-month projection)
 - [x] **ANL-04**: `kpi_daily_mv` / `kpi_daily_v` aggregates revenue, transaction count, and avg ticket per business_date
-- [ ] **ANL-05**: `frequency_v` exposes repeat visit rate and visit-frequency distribution
-- [ ] **ANL-06**: `new_vs_returning_v` splits revenue and tx count between first-time and repeat customers
+- [x] **ANL-05**: `frequency_v` exposes repeat visit rate and visit-frequency distribution
+- [x] **ANL-06**: `new_vs_returning_v` splits revenue and tx count between first-time and repeat customers
 - [ ] **ANL-07**: All MVs refresh nightly via `pg_cron` using `REFRESH MATERIALIZED VIEW CONCURRENTLY` (unique index mandatory on every MV)
 - [ ] **ANL-08**: SvelteKit frontend reads ONLY from `*_v` wrapper views — raw tables and MVs have `REVOKE ALL` on `authenticated` role
 - [ ] **ANL-09**: CI check greps for any frontend query referencing `*_mv` or raw tables directly and fails the build
@@ -123,11 +123,11 @@ Each v1 requirement maps to exactly one roadmap phase.
 | ING-04 | Phase 2 — Ingestion | Complete |
 | ING-05 | Phase 2 — Ingestion | Complete |
 | ANL-01 | Phase 3 — Analytics SQL | Complete |
-| ANL-02 | Phase 3 — Analytics SQL | Pending |
-| ANL-03 | Phase 3 — Analytics SQL | Pending |
+| ANL-02 | Phase 3 — Analytics SQL | Complete |
+| ANL-03 | Phase 3 — Analytics SQL | Complete |
 | ANL-04 | Phase 3 — Analytics SQL | Complete |
-| ANL-05 | Phase 3 — Analytics SQL | Pending |
-| ANL-06 | Phase 3 — Analytics SQL | Pending |
+| ANL-05 | Phase 3 — Analytics SQL | Complete |
+| ANL-06 | Phase 3 — Analytics SQL | Complete |
 | ANL-07 | Phase 3 — Analytics SQL | Pending |
 | ANL-08 | Phase 3 — Analytics SQL | Pending |
 | ANL-09 | Phase 3 — Analytics SQL | Pending |
