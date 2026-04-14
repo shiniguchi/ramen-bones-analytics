@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 04-04-PLAN.md
-last_updated: "2026-04-14T19:47:11.275Z"
+stopped_at: "PAUSED at 04-05 Task 3 checkpoint:human-verify (iPhone sign-off)"
+last_updated: "2026-04-14T19:53:12.644Z"
 progress:
   total_phases: 5
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 20
-  completed_plans: 19
+  completed_plans: 20
   percent: 95
 ---
 
@@ -60,6 +60,7 @@ Plan: 5 of 5
 | Phase 04 P02 | 6min | 2 tasks | 20 files |
 | Phase 04-mobile-reader-ui P03 | 4 | 2 tasks | 6 files |
 | Phase 04 P04 | 8 | 2 tasks | 12 files |
+| Phase 04-mobile-reader-ui P05 | 4 | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -117,6 +118,8 @@ Plan: 5 of 5
 - [Phase 04]: [Phase 04-mobile-reader-ui]: 04-04: retention_curve_v/ltv_v queried without grain filter — views are weekly-only in SQL, no grain column; grain URL param preserved for GrainToggle state
 - [Phase 04]: [Phase 04-mobile-reader-ui]: 04-04: pickVisibleCohorts() extracted to sparseFilter.ts for pure-function unit testing without LayerChart rendering
 - [Phase 04]: [Phase 04-mobile-reader-ui]: 04-04: @ts-expect-error test enforces absent range prop on CohortRetentionCard; future prop addition caught at type-check
+- [Phase 04-mobile-reader-ui]: shapeNvr() absorbs blackout_unknown into cash_anonymous to preserve D-19 tie-out invariant
+- [Phase 04-mobile-reader-ui]: FreshnessLabel tested via static top-level import (not dynamic require) in ESM vitest pipeline
 
 ### Open Todos
 
@@ -134,8 +137,8 @@ None.
 
 **Resume hint:** Phase 3 Wave 0 RED test scaffold in place (03-01 complete). 15 it.todo stubs + fixture + ci-guards contract test committed as 8d8d302 and bdf5332. Plan 03-02 should author 0010_cohort_mv.sql and flip the ANL-01 + ANL-08 todo blocks to green. Open Phase 3 caveats: April 2026 Worldline blackout, 772 missing_worldline_rows cohort linkage loss.
 
-**Last session:** 2026-04-14T19:47:11.263Z
-**Stopped At:** Completed 04-04-PLAN.md
+**Last session:** 2026-04-14T19:53:04.408Z
+**Stopped At:** PAUSED at 04-05 Task 3 checkpoint:human-verify (iPhone sign-off)
 
 ---
 *State initialized: 2026-04-13*

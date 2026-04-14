@@ -14,7 +14,7 @@ A restaurant owner opens the site on their phone and makes a real business decis
 - [ ] **Phase 1: Foundation** — Multi-tenant schema, auth, RLS, wrapper-view template, CI guards
 - [ ] **Phase 2: Ingestion** — Pre-joined CSV loader → staging → normalized transactions (no scraper; CSV produced out-of-band)
 - [ ] **Phase 3: Analytics SQL** — Cohort/LTV/KPI/frequency MVs with wrapper views and survivorship guardrails
-- [ ] **Phase 4: Mobile Reader UI** — SvelteKit dashboard on Cloudflare Pages at 375px baseline
+- [x] **Phase 4: Mobile Reader UI** — SvelteKit dashboard on Cloudflare Pages at 375px baseline (completed 2026-04-14)
 - [ ] **Phase 5: Insights & Forkability** — Claude Haiku narrative card, one-click fork/deploy hardening
 
 ## Phase Details
@@ -82,7 +82,7 @@ A restaurant owner opens the site on their phone and makes a real business decis
   - [x] 04-02-PLAN.md — [wave 2] Root loader + app shell + sticky DateRangeChips + FreshnessLabel + EmptyState (375px layout) — flips 1 todo → 14 remain
   - [x] 04-03-PLAN.md — [wave 3] KPI tiles (3 fixed + 2 chip-scoped) via parallel kpi_daily_v queries with server-side deltas — flips 4 todos → 10 remain
   - [x] 04-04-PLAN.md — [wave 4] CohortRetentionCard (LayerChart Spline) + LtvCard (LayerChart Bars) + GrainToggle (chip-independent) — flips 5 todos + adds 1 new sparse-fallback test → 5 remain
-  - [ ] 04-05-PLAN.md — [wave 5] FrequencyCard (plain divs) + NewVsReturningCard (D-19a chip-scoped) + PR 375px template + friend iPhone checkpoint — flips final 5 todos → 0 remain
+  - [x] 04-05-PLAN.md — [wave 5] FrequencyCard (plain divs) + NewVsReturningCard (D-19a chip-scoped) + PR 375px template + friend iPhone checkpoint — flips final 5 todos → 0 remain
 **UI hint**: yes
 
 ### Phase 5: Insights & Forkability
@@ -103,7 +103,7 @@ A restaurant owner opens the site on their phone and makes a real business decis
 | 1. Foundation | 6/6 | Complete | 2026-04-14 |
 | 2. Ingestion | 4/4 | Complete | 2026-04-14 |
 | 3. Analytics SQL | 1/5 | Executing | - |
-| 4. Mobile Reader UI | 4/5 | In Progress|  |
+| 4. Mobile Reader UI | 5/5 | Complete   | 2026-04-14 |
 | 5. Insights & Forkability | 0/0 | Not started | - |
 
 ## Coverage Summary
