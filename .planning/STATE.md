@@ -4,12 +4,12 @@ milestone: v1.0
 milestone_name: milestone
 status: executing
 stopped_at: Completed 03-02-PLAN.md (cohort_mv trunk)
-last_updated: "2026-04-14T10:03:10.184Z"
+last_updated: "2026-04-14T11:22:54.340Z"
 progress:
   total_phases: 5
   completed_phases: 2
   total_plans: 15
-  completed_plans: 12
+  completed_plans: 13
   percent: 80
 ---
 
@@ -53,6 +53,7 @@ Plan: 3 of 5 (03-01, 03-02 complete)
 | Phase 02-ingestion P04 full | ~55min | 3 tasks | 8 files |
 | Phase 03-analytics-sql P01 | ~5min | 2 tasks | 3 files |
 | Phase 03-analytics-sql P02 | 2min | 1 tasks | 3 files |
+| Phase 03-analytics-sql P03 | 15min | 1 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -94,6 +95,7 @@ Plan: 3 of 5 (03-01, 03-02 complete)
 - [Phase 02-ingestion 04-T3]: Founder ING-05 sign-off received ("approved"). ≥25 top-grossing invoices cross-checked against CSV — gross/tip/payment_method/card_hash/Berlin conversion all match.
 - [Phase 03-analytics-sql 01]: Wave 0 RED test scaffold authored before any production SQL — 15 it.todo stubs across 8 ANL describe blocks + 3-customer ISO-Monday fixture + ci-guards contract test. Downstream plans 03-02..05 flip todos → it as each MV/view/guard lands. The `.from('transactions')` ci-guard case is intentionally RED until Plan 03-05 extends Guard 1 regex.
 - [Phase 03-analytics-sql]: 03-02: cohort_mv ships local refresh_cohort_mv() helper as Nyquist stop-gap; Plan 05 supersedes with refresh_analytics_mvs() and drops the helper
+- [Phase 03-analytics-sql]: [Phase 03-analytics-sql 03]: kpi_daily_mv body replaced via drop-cascade in 0011; kpi_daily_v wrapper recreated with 5 cols (revenue/tx_count/avg_ticket); refresh_kpi_daily_mv helper from 0006 survived cascade (plpgsql EXECUTE string has no schema dep). DEV needed migration-history repair (0011 was pre-recorded as applied without ever running).
 
 ### Open Todos
 
