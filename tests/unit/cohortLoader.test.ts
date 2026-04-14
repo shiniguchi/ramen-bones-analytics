@@ -47,9 +47,5 @@ describe('cohortLoader — monthsOfHistory derivation', () => {
   });
 });
 
-describe('cohortLoader — retention_curve_v + ltv_v queries present in loader', () => {
-  it.todo('loader returns retention array from retention_curve_v');
-  it.todo('loader returns ltv array from ltv_v');
-  it.todo('loader returns monthsOfHistory in return shape');
-  it.todo('loader does not reference cohort_mv or transactions directly');
-});
+// Loader query presence is verified by build + ci-guards (not by unit test stubs).
+// The deriveMonthsOfHistory pure-function tests above cover the extractable logic.

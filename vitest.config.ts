@@ -9,7 +9,12 @@ export default defineConfig({
   resolve: {
     // Match the `$lib` alias SvelteKit exposes so component imports work inside
     // vitest without pulling in the full SvelteKit plugin.
-    alias: { $lib: new URL('./src/lib', import.meta.url).pathname },
+    alias: {
+      $lib: new URL('./src/lib', import.meta.url).pathname,
+      // Stub SvelteKit virtual modules for component unit tests.
+      '$app/navigation': new URL('./tests/mocks/app-navigation.ts', import.meta.url).pathname,
+      '$app/state':      new URL('./tests/mocks/app-state.ts', import.meta.url).pathname
+    },
     // Testing-library/svelte needs the browser entrypoint, not server SSR.
     conditions: ['browser']
   },

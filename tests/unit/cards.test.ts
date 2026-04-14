@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeAll, vi } from 'vitest';
 import '@testing-library/jest-dom/vitest';
 import { render, screen } from '@testing-library/svelte';
 import EmptyState from '../../src/lib/components/EmptyState.svelte';
@@ -9,6 +9,26 @@ import GrainToggle from '../../src/lib/components/GrainToggle.svelte';
 import CohortRetentionCard from '../../src/lib/components/CohortRetentionCard.svelte';
 import { emptyStates } from '../../src/lib/emptyStates';
 import { pickVisibleCohorts, type RetentionRow } from '../../src/lib/sparseFilter';
+
+// LayerChart uses window.matchMedia internally; JSDOM doesn't provide it.
+// Mock it so LayerChart initialises without errors in the test environment.
+beforeAll(() => {
+  if (typeof window !== 'undefined' && !window.matchMedia) {
+    Object.defineProperty(window, 'matchMedia', {
+      writable: true,
+      value: vi.fn().mockImplementation((query: string) => ({
+        matches: false,
+        media: query,
+        onchange: null,
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn()
+      }))
+    });
+  }
+});
 
 // Helper: build a RetentionRow fixture for a given cohort.
 function makeRows(cohortWeek: string, cohortSize: number, periods = 3): RetentionRow[] {
@@ -167,10 +187,11 @@ describe('Phase 4 card components (RED stubs — flip to it() as cards land)', (
   it.todo('NewVsReturningCard IS chip-scoped (D-19a exception)');
   it.todo('NewVsReturningCard tie-out: returning + new + cash === revenue (D-19)');
   it('EmptyState renders per-card copy from emptyStates.ts (D-20)', () => {
-    render(EmptyState, { card: 'cohort' });
+    const { container } = render(EmptyState, { card: 'cohort' });
     const copy = emptyStates.cohort;
-    expect(screen.getByText(copy.heading)).toBeInTheDocument();
-    expect(screen.getByText(copy.body)).toBeInTheDocument();
+    // Use container.querySelector to avoid collision with CohortRetentionCard renders
+    expect(container.textContent).toContain(copy.heading);
+    expect(container.textContent).toContain(copy.body);
   });
   it.todo('Per-card error fallback does NOT throw whole page (D-22)');
 });

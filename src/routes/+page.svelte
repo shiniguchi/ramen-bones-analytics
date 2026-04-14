@@ -3,6 +3,8 @@
   import DateRangeChips from '$lib/components/DateRangeChips.svelte';
   import FreshnessLabel from '$lib/components/FreshnessLabel.svelte';
   import KpiTile from '$lib/components/KpiTile.svelte';
+  import CohortRetentionCard from '$lib/components/CohortRetentionCard.svelte';
+  import LtvCard from '$lib/components/LtvCard.svelte';
 
   let { data } = $props();
 </script>
@@ -59,6 +61,12 @@
       emptyCard="revenueChip"
     />
 
-    <!-- Cohort + LTV (04-04) and frequency + NVR (04-05) slot here -->
+    <!-- Cohort retention curve (04-04) — chip-independent, grain-synced via ?grain= -->
+    <CohortRetentionCard data={data.retention} grain={data.grain} />
+
+    <!-- LTV-to-date bars with persistent caveat (04-04) — chip-independent -->
+    <LtvCard data={data.ltv} monthsOfHistory={data.monthsOfHistory} />
+
+    <!-- Frequency + NVR (04-05) slot here -->
   </div>
 </main>
