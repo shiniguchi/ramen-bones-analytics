@@ -65,7 +65,7 @@ A restaurant owner opens the site on their phone and makes a real business decis
   - [x] 03-02-PLAN.md — 0010_cohort_mv.sql (trunk MV: day/week/month grain, cash + April excluded)
   - [x] 03-03-PLAN.md — 0011_kpi_daily_mv_real.sql (replace placeholder body, drop-cascade-recreate)
   - [x] 03-04-PLAN.md — 0012_leaf_views.sql (retention, ltv, frequency, new_vs_returning with 4 buckets)
-  - [ ] 03-05-PLAN.md — 0013 refresh function + pg_cron + ci-guards extension + tenant-isolation test extension
+  - [x] 03-05-PLAN.md — 0013 refresh function + pg_cron + ci-guards extension + tenant-isolation test extension
 
 ### Phase 4: Mobile Reader UI
 **Goal**: The friend opens the dashboard on their phone and reads revenue, cohorts, LTV, frequency, and new-vs-returning at a 375px viewport with preset date chips

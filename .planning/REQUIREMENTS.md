@@ -34,9 +34,9 @@ Requirements for initial release. Each maps to exactly one roadmap phase.
 - [x] **ANL-04**: `kpi_daily_mv` / `kpi_daily_v` aggregates revenue, transaction count, and avg ticket per business_date
 - [x] **ANL-05**: `frequency_v` exposes repeat visit rate and visit-frequency distribution
 - [x] **ANL-06**: `new_vs_returning_v` splits revenue and tx count between first-time and repeat customers
-- [ ] **ANL-07**: All MVs refresh nightly via `pg_cron` using `REFRESH MATERIALIZED VIEW CONCURRENTLY` (unique index mandatory on every MV)
-- [ ] **ANL-08**: SvelteKit frontend reads ONLY from `*_v` wrapper views — raw tables and MVs have `REVOKE ALL` on `authenticated` role
-- [ ] **ANL-09**: CI check greps for any frontend query referencing `*_mv` or raw tables directly and fails the build
+- [x] **ANL-07**: All MVs refresh nightly via `pg_cron` using `REFRESH MATERIALIZED VIEW CONCURRENTLY` (unique index mandatory on every MV)
+- [x] **ANL-08**: SvelteKit frontend reads ONLY from `*_v` wrapper views — raw tables and MVs have `REVOKE ALL` on `authenticated` role
+- [x] **ANL-09**: CI check greps for any frontend query referencing `*_mv` or raw tables directly and fails the build
 
 ### Mobile Reader UI (SvelteKit on Cloudflare Pages)
 
@@ -128,9 +128,9 @@ Each v1 requirement maps to exactly one roadmap phase.
 | ANL-04 | Phase 3 — Analytics SQL | Complete |
 | ANL-05 | Phase 3 — Analytics SQL | Complete |
 | ANL-06 | Phase 3 — Analytics SQL | Complete |
-| ANL-07 | Phase 3 — Analytics SQL | Pending |
-| ANL-08 | Phase 3 — Analytics SQL | Pending |
-| ANL-09 | Phase 3 — Analytics SQL | Pending |
+| ANL-07 | Phase 3 — Analytics SQL | Complete |
+| ANL-08 | Phase 3 — Analytics SQL | Complete |
+| ANL-09 | Phase 3 — Analytics SQL | Complete |
 | UI-01 | Phase 4 — Mobile Reader UI | Pending |
 | UI-02 | Phase 4 — Mobile Reader UI | Pending |
 | UI-03 | Phase 4 — Mobile Reader UI | Pending |
