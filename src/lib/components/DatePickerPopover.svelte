@@ -91,7 +91,7 @@
     <Button
       variant="outline"
       class={cn(
-        'h-auto min-h-11 flex-col items-start px-3 py-1.5 leading-tight',
+        'min-h-11 gap-1.5 px-3',
         active && 'border-primary/60 bg-primary/5'
       )}
       onclick={() => (open = !open)}

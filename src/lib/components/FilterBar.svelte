@@ -33,23 +33,25 @@
   class="sticky top-0 z-30 min-h-[72px] border-b bg-background/95 px-4 py-2 backdrop-blur"
   data-slot="filter-bar"
 >
-  <div class="flex flex-wrap items-center gap-2">
-    <DatePickerPopover {filters} window={rangeWindow} />
+  <div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+    <div class="flex items-center gap-2">
+      <DatePickerPopover {filters} window={rangeWindow} />
+      {#if showFiltersButton}
+        <Button
+          variant="outline"
+          class={cn(
+            'min-h-11',
+            filtersActive && 'border-primary/60 bg-primary/5'
+          )}
+          onclick={() => (sheetOpen = true)}
+          aria-haspopup="dialog"
+          aria-expanded={sheetOpen}
+        >
+          Filters
+        </Button>
+      {/if}
+    </div>
     <GrainToggle grain={filters.grain as Grain} />
-    {#if showFiltersButton}
-      <Button
-        variant="outline"
-        class={cn(
-          'min-h-11',
-          filtersActive && 'border-primary/60 bg-primary/5'
-        )}
-        onclick={() => (sheetOpen = true)}
-        aria-haspopup="dialog"
-        aria-expanded={sheetOpen}
-      >
-        Filters
-      </Button>
-    {/if}
   </div>
 </div>
 

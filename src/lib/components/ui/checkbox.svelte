@@ -16,18 +16,21 @@
     class: className,
     onCheckedChange
   }: Props = $props();
-
-  // Fire callback when checked flips.
-  $effect(() => {
-    onCheckedChange?.(checked);
-  });
 </script>
 
 <label
   data-slot="checkbox"
   class={cn('flex items-center gap-3 min-h-11 cursor-pointer select-none', className)}
 >
-  <input type="checkbox" bind:checked class="sr-only" />
+  <input
+    type="checkbox"
+    {checked}
+    class="sr-only"
+    onchange={(e) => {
+      checked = e.currentTarget.checked;
+      onCheckedChange?.(checked);
+    }}
+  />
   <span
     role="checkbox"
     aria-checked={checked}
