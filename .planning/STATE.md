@@ -1,15 +1,15 @@
 ---
 gsd_state_version: 1.0
 milestone: v1.1
-milestone_name: dashboard-redesign
-status: defining_requirements
-stopped_at: milestone v1.1 started — requirements + roadmap written, awaiting /gsd:discuss-phase 06
-last_updated: "2026-04-15T12:00:00.000Z"
+milestone_name: — Dashboard Redesign
+status: "Requirements + roadmap written; next action is `/gsd:discuss-phase 06`"
+stopped_at: Phase 06 context gathered
+last_updated: "2026-04-15T16:35:43.563Z"
 progress:
-  total_phases: 7
-  completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
+  total_phases: 12
+  completed_phases: 4
+  total_plans: 33
+  completed_plans: 31
   percent: 0
 ---
 
@@ -154,8 +154,8 @@ None.
 
 **Resume hint:** Milestone v1.1 Dashboard Redesign was scoped in this session. Architecture is a pragmatic star schema: `dim_customer` (lifetime attrs) + `fct_transactions` (atomic fact MV with visit_seq / days_since_prev_visit window fns + denormalized filter dims) + 4 thin day-grain rollup MVs (`mv_new_customers_daily`, `mv_repeater_daily`, `mv_retention_monthly`, `mv_inter_visit_histogram`). Two bucket columns materialized: `lifetime_bucket` (how customer ended up) and `visit_seq_bucket` (point-in-time). Six filters: date range, granularity, sales_type, payment_method, wl_issuing_country, repeater bucket — dropdowns auto-populated from DISTINCT values. All refresh stays inside existing `refresh_analytics_mvs()` cron. Start with Phase 06 (Filter Foundation) for a quick UX win before any schema change.
 
-**Last session:** 2026-04-15T12:00:00.000Z
-**Stopped At:** milestone v1.1 requirements + roadmap written; awaiting Phase 06 discuss
+**Last session:** 2026-04-15T16:35:43.542Z
+**Stopped At:** Phase 06 context gathered
 
 ---
 *State initialized: 2026-04-13*
