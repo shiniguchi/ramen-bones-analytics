@@ -131,7 +131,12 @@ A restaurant owner opens the site on their phone and makes a real business decis
   2. The SSR `+page.server.ts` load function composes WHERE clauses from zod-validated query params only — no string interpolation, no dynamic SQL, ci-guards grep for `${` inside `.from(…)` fails the build
   3. The payment-method and country dropdowns are populated from `SELECT DISTINCT` against the relevant wrapper view at load time — no hardcoded whitelist, adding a new country requires zero code change
   4. All 4 dropdowns surface an "All" sentinel that cleanly degrades to no-op WHERE clause
-**Plans**: TBD
+**Plans**: 5 plans
+  - [ ] 06-01-PLAN.md — [wave 1] Wave 0 RED scaffold: zod filters schema + customToRange + Guard 6 + filter-bar e2e fixmes
+  - [ ] 06-02-PLAN.md — [wave 1] Hand-rolled UI primitives (popover, sheet, checkbox, command) + #popover-root
+  - [ ] 06-03-PLAN.md — [wave 2] Migration 0018 transactions_filterable_v + loader refactor to parseFilters + distinct option arrays
+  - [ ] 06-04-PLAN.md — [wave 3] FilterBar + DatePickerPopover + FilterSheet + MultiSelectDropdown; delete DateRangeChips; flip e2e stubs
+  - [ ] 06-05-PLAN.md — [wave 4] ROADMAP/REQUIREMENTS patch for FLT-05/06 (D-01 scope amendment) + 375px human-verify checkpoint
 
 ### Phase 7: Column Promotion
 **Goal**: `transactions.wl_issuing_country` and `transactions.card_type` are populated for every row — new ingests and historical — so Phase 8 window functions can denormalize them onto the fact
