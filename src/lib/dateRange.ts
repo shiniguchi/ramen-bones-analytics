@@ -40,3 +40,29 @@ export function chipToRange(range: Range, now: Date = new Date()): RangeWindow {
     priorTo: iso(priorTo)
   };
 }
+
+// Phase 6 — user-picked date range. Input is already literal YYYY-MM-DD Berlin
+// dates (from a native <input type="date">), so we do UTC-midnight arithmetic
+// to mirror the prior window without re-entering toZonedTime.
+export interface CustomRangeInput {
+  from: string;
+  to: string;
+}
+
+export function customToRange(input: CustomRangeInput): RangeWindow {
+  // Swap if inverted — never throw on bad input (D-17 tolerance).
+  const [lo, hi] =
+    input.from <= input.to ? [input.from, input.to] : [input.to, input.from];
+  const loDate = new Date(lo + 'T00:00:00Z');
+  const hiDate = new Date(hi + 'T00:00:00Z');
+  const days = Math.round((hiDate.getTime() - loDate.getTime()) / 86400000) + 1;
+  const priorHi = new Date(loDate.getTime() - 86400000);
+  const priorLo = new Date(priorHi.getTime() - (days - 1) * 86400000);
+  const isoUtc = (d: Date) => d.toISOString().slice(0, 10);
+  return {
+    from: lo,
+    to: hi,
+    priorFrom: isoUtc(priorLo),
+    priorTo: isoUtc(priorHi)
+  };
+}

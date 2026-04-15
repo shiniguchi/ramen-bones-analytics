@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { chipToRange } from '../../src/lib/dateRange';
+import { chipToRange, customToRange } from '../../src/lib/dateRange';
 
 // Anchor "now" to a fixed instant in Berlin (UTC+2 during DST April 14).
 // 2026-04-14T12:00:00Z = 2026-04-14 14:00 Berlin → business_date 2026-04-14.
@@ -36,5 +36,40 @@ describe('chipToRange', () => {
     expect(r.to).toBe('2026-04-14');
     expect(r.priorFrom).toBeNull();
     expect(r.priorTo).toBeNull();
+  });
+});
+
+// Phase 6 Plan 01 — customToRange: mirrors chipToRange's prior-window math for
+// user-picked windows. Literal ISO strings in, literal ISO strings out (no TZ shift).
+describe('customToRange', () => {
+  it('7-day window: prior mirrors exactly', () => {
+    const r = customToRange({ from: '2026-04-08', to: '2026-04-14' });
+    expect(r.from).toBe('2026-04-08');
+    expect(r.to).toBe('2026-04-14');
+    expect(r.priorFrom).toBe('2026-04-01');
+    expect(r.priorTo).toBe('2026-04-07');
+  });
+
+  it('single day: prior is yesterday', () => {
+    const r = customToRange({ from: '2026-04-15', to: '2026-04-15' });
+    expect(r.from).toBe('2026-04-15');
+    expect(r.to).toBe('2026-04-15');
+    expect(r.priorFrom).toBe('2026-04-14');
+    expect(r.priorTo).toBe('2026-04-14');
+  });
+
+  it('inverted input (to < from) swaps instead of throwing (D-17 tolerance)', () => {
+    const r = customToRange({ from: '2026-04-15', to: '2026-04-08' });
+    expect(r.from).toBe('2026-04-08');
+    expect(r.to).toBe('2026-04-15');
+    // 8-day window (Apr 8..15 inclusive) → 8-day prior (Mar 31..Apr 7)
+    expect(r.priorFrom).toBe('2026-03-31');
+    expect(r.priorTo).toBe('2026-04-07');
+  });
+
+  it('Berlin-TZ stable: literal ISO strings round-trip unchanged', () => {
+    const r = customToRange({ from: '2026-04-08', to: '2026-04-14' });
+    expect(r.from).toBe('2026-04-08');
+    expect(r.to).toBe('2026-04-14');
   });
 });
