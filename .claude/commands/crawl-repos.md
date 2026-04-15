@@ -10,7 +10,7 @@ Crawl related repositories to gather complete project context.
 - A GitHub org name (e.g. `my-org`) → crawl all repos in that org
 - A space-separated list of `owner/repo` → crawl those specific repos
 
-If empty, ask the user which org or repos to crawl. Do NOT guess.
+**If empty, default to the current working directory's repo.** Resolve it with `gh repo view --json nameWithOwner -q .nameWithOwner` and crawl that single repo. Only ask the user if the current directory is not a git repo or has no GitHub remote.
 
 **Step 1:** List all repositories in a single command:
 
