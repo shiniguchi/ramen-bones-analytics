@@ -95,4 +95,51 @@ describe('runIngest idempotency (ING-02, ING-05)', () => {
       expect(txAfter).toBe(txBefore);
     },
   );
+
+  // TODO(07-03): unskip when loader writes wl_issuing_country + card_type (DM-03).
+  // Skip-guarded: only run if the wl_issuing_country column exists on transactions.
+  (HAS_TEST_ENV ? it.skip : it.skip)(
+    'two sequential runs leave wl_issuing_country + card_type unchanged on re-ingested rows',
+    async () => {
+      const db = adminClient();
+
+      // Check the column exists — if not, skip (Wave 0 / pre-migration state).
+      const colCheck = await db.rpc('exec_sql_read', {
+        sql: `
+          select 1
+            from information_schema.columns
+           where table_schema = 'public'
+             and table_name   = 'transactions'
+             and column_name  = 'wl_issuing_country'
+        `,
+      });
+      if (!colCheck.data || (colCheck.data as unknown[]).length === 0) return;
+
+      // First run (may already have been run by previous test).
+      await runIngest({ dryRun: false });
+
+      // Snapshot one re-ingested invoice before the second run.
+      const { data: before } = await db
+        .from('transactions')
+        .select('source_tx_id, wl_issuing_country, card_type')
+        .eq('restaurant_id', restaurantId)
+        .eq('source_tx_id', 'T-3')
+        .single();
+
+      // Second run must be zero-diff.
+      const second = await runIngest({ dryRun: false });
+      expect(second.transactions_new).toBe(0);
+      expect(second.transactions_updated).toBe(0);
+
+      const { data: after } = await db
+        .from('transactions')
+        .select('source_tx_id, wl_issuing_country, card_type')
+        .eq('restaurant_id', restaurantId)
+        .eq('source_tx_id', 'T-3')
+        .single();
+
+      expect(after?.wl_issuing_country).toBe(before?.wl_issuing_country);
+      expect(after?.card_type).toBe(before?.card_type);
+    },
+  );
 });
