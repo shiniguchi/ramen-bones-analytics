@@ -10,3 +10,4 @@ orderbird_data/
 test-results/
 .wrangler/
 playwright-report/
+.vscode/

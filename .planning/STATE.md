@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: — Dashboard Redesign
-status: executing
+status: planning
 stopped_at: Completed 06-05-PLAN.md (Task 2 deferred, blocked on CF Pages deploy)
-last_updated: "2026-04-15T22:28:49.516Z"
+last_updated: "2026-04-15T22:49:51.737Z"
 progress:
   total_phases: 12
-  completed_phases: 5
+  completed_phases: 6
   total_plans: 38
-  completed_plans: 36
+  completed_plans: 38
   percent: 95
 ---
 
@@ -28,10 +28,10 @@ progress:
 ## Current Position
 
 Milestone: v1.1 (Dashboard Redesign) — DEFINING REQUIREMENTS → ready to start Phase 06
-Phase: 05 (insights-forkability) — EXECUTING
-Plan: 1 of 9
+Phase: 06
+Plan: Not started
 
-- **Status:** Executing Phase 05
+- **Status:** Ready to plan
 - **Progress:** [██████████] 95%
 - **v1.0 status:** Shipping to friend (97% plans complete; repo flipped PUBLIC 2026-04-15 with topics + description set; Plan 05-06 Task 2 fork walkthrough deferred out of v1 scope — forkability is explicitly not a v1 concern per user direction)
 
