@@ -100,7 +100,7 @@ A restaurant owner opens the site on their phone and makes a real business decis
   - [x] 05-02-PLAN.md — [wave 1] Wave 0 RED test scaffold (deno.json + digit-guard.test + payload.test + fallback.test + InsightCard.test + fork-dryrun.sh stub)
   - [x] 05-03-PLAN.md — [wave 2] Edge Function implementation (digitGuard/fallback/payload/prompt/index.ts) + deploy + flip Deno tests GREEN
   - [x] 05-04-PLAN.md — [wave 2] InsightCard.svelte + +page.server.ts loader + +page.svelte card stream + ci-guards extension + flip Vitest tests GREEN
-  - [ ] 05-05-PLAN.md — [wave 3] Forkability: README Phase 2-5+Ship sections + sectioned .env.example + MIT LICENSE + working fork-dryrun.sh
+  - [x] 05-05-PLAN.md — [wave 3] Forkability: README Phase 2-5+Ship sections + sectioned .env.example + MIT LICENSE + working fork-dryrun.sh
   - [ ] 05-06-PLAN.md — [wave 4] Ship: gh repo public + topics + description + fresh-clone fork walkthrough + friend iPhone sign-off
 
 ## Progress

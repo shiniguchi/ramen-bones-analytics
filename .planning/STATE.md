@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: verifying
-stopped_at: Completed 05-03-PLAN.md
-last_updated: "2026-04-15T09:18:58.088Z"
+stopped_at: Completed 05-05-PLAN.md
+last_updated: "2026-04-15T09:23:32.430Z"
 progress:
   total_phases: 5
   completed_phases: 4
   total_plans: 30
-  completed_plans: 28
-  percent: 93
+  completed_plans: 29
+  percent: 97
 ---
 
 # STATE: Ramen Bones Analytics
@@ -33,7 +33,7 @@ Plan: 1 of 6
 - **Phase:** 4
 - **Plan:** 5 of 5
 - **Status:** Phase complete — ready for verification
-- **Progress:** [█████████░] 93%
+- **Progress:** [██████████] 97%
 
 ## Performance Metrics
 
@@ -68,6 +68,7 @@ Plan: 1 of 6
 | Phase 05-insights-forkability P02 | 6min | 2 tasks | 6 files |
 | Phase 05-insights-forkability P04 | 5min | 2 tasks | 5 files |
 | Phase 05-insights-forkability P03 | 12min | 2 tasks | 5 files |
+| Phase 05-insights-forkability P05 | 7min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -132,6 +133,7 @@ Plan: 1 of 6
 - [Phase 05-insights-forkability]: 05-01: insights_v wrapper omits input_payload (audit-only); pg_cron 'generate-insights' at 15 3 * * * UTC pulls URL+bearer from vault.decrypted_secrets at run time — Vault secrets provisioned in 05-05
 - [Phase 05-insights-forkability]: 05-04: InsightCard wired via insights_v fan-out; is_yesterday derived in Berlin tz; ci-guards Guard 1 extended to forbid raw .from('insights') from src/. Plan deviated from session.user.app_metadata.timezone (load uses locals.supabase, no session var) — Berlin hardcoded for v1.
 - [Phase 05-insights-forkability]: 05-03: fallback template uses 'prior week' not '7d/7 days' to avoid leaking a literal digit 7 through the digit-guard tautology
+- [Phase 05-insights-forkability]: 05-05: Forkability shipped — MIT LICENSE, 5-section .env.example (cf pages / supabase secrets / vault / github actions / local dev), README Phase 2–Ship quickstart, fork-dryrun.sh green (23 checks). INS-05/INS-06 closed.
 
 ### Open Todos
 
@@ -149,8 +151,8 @@ None.
 
 **Resume hint:** Phase 3 Wave 0 RED test scaffold in place (03-01 complete). 15 it.todo stubs + fixture + ci-guards contract test committed as 8d8d302 and bdf5332. Plan 03-02 should author 0010_cohort_mv.sql and flip the ANL-01 + ANL-08 todo blocks to green. Open Phase 3 caveats: April 2026 Worldline blackout, 772 missing_worldline_rows cohort linkage loss.
 
-**Last session:** 2026-04-15T09:18:58.078Z
-**Stopped At:** Completed 05-03-PLAN.md
+**Last session:** 2026-04-15T09:23:32.417Z
+**Stopped At:** Completed 05-05-PLAN.md
 
 ---
 *State initialized: 2026-04-13*
