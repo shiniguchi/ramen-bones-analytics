@@ -5,3 +5,6 @@ export { default as Label } from './label.svelte';
 export { default as ToggleGroup } from './toggle-group.svelte';
 export { default as Tooltip } from './tooltip.svelte';
 export { default as Popover } from './popover.svelte';
+export { default as Sheet } from './sheet.svelte';
+export { default as Checkbox } from './checkbox.svelte';
+export { default as Command } from './command.svelte';
