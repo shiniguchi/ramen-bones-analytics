@@ -4,7 +4,7 @@ milestone: v1.1
 milestone_name: — Dashboard Redesign
 status: executing
 stopped_at: Completed 06-01-PLAN.md
-last_updated: "2026-04-15T18:55:54.553Z"
+last_updated: "2026-04-15T18:55:58.816Z"
 progress:
   total_phases: 12
   completed_phases: 4
@@ -138,6 +138,7 @@ Plan: 2 of 5
 - [Phase 05-insights-forkability]: 05-05: Forkability shipped — MIT LICENSE, 5-section .env.example (cf pages / supabase secrets / vault / github actions / local dev), README Phase 2–Ship quickstart, fork-dryrun.sh green (23 checks). INS-05/INS-06 closed.
 - [Phase 05-insights-forkability]: 05-06 T1: GitHub repo metadata set via `gh` — 9 topics (analytics, restaurant-analytics, sveltekit, svelte, supabase, cloudflare-pages, forkable, pos-integration, cohort-analysis) + description. Rule 1 deviation: repo kept PRIVATE per user decision (plan assumed PUBLIC). Friend accesses v1 via Cloudflare Pages URL, not the repo; public-flip deferred until forkability marketing is wanted. Plan's `visibility:PUBLIC` acceptance criterion knowingly unsatisfied.
 - [Phase 06-filter-foundation]: 06-02: Popover portal via physical DOM relocation (bind:this + appendChild to #popover-root) with best-effort restore on cleanup — avoids Svelte mount() recursion. Snippet-accepting primitives tested via tests/unit/fixtures/*Harness.svelte wrappers.
+- [Phase 06]: 06-01: zod filter schema + parseFilters + customToRange + Guard 6 shipped; tests live in tests/unit/ (not src/lib/) to match project runner scope; Guard 6 wired into existing single-file scripts/ci-guards.sh runner
 
 ### Open Todos
 
