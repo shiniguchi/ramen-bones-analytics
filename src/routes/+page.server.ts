@@ -164,9 +164,10 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     .then(r => (r.data ?? []) as FreqRow[])
     .catch((e: unknown) => { console.error('[frequency_v]', e); return [] as FreqRow[]; });
 
+  // View column is `bucket` (0012_leaf_views.sql); alias to `segment` for shapeNvr().
   const nvrP = locals.supabase
     .from('new_vs_returning_v')
-    .select('segment,revenue_cents')
+    .select('segment:bucket,revenue_cents')
     .gte('business_date', chipW.from)
     .lte('business_date', chipW.to)
     .then(r => (r.data ?? []) as NvrRaw[])
