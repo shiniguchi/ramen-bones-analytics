@@ -1,7 +1,7 @@
 ---
 name: qa-gate
 description: "Mandatory quality gate before shipping. Runs mechanical checks: visual QA via Chrome MCP (contrast verification, stale deploy detection), security scan (secrets grep, OWASP patterns, header audit), and doc consistency (version/path verification). Invoke with /qa-gate [scope]."
-allowed-tools: mcp__claude-in-chrome__tabs_context_mcp, mcp__claude-in-chrome__tabs_create_mcp, mcp__claude-in-chrome__navigate, mcp__claude-in-chrome__computer, mcp__claude-in-chrome__read_page, mcp__claude-in-chrome__javascript_tool, mcp__claude-in-chrome__resize_window, mcp__claude-in-chrome__read_console_messages, mcp__claude-in-chrome__read_network_requests, Read, Grep, Glob, Bash, Agent
+allowed-tools: mcp__claude-in-chrome__tabs_context_mcp, mcp__claude-in-chrome__tabs_create_mcp, mcp__claude-in-chrome__navigate, mcp__claude-in-chrome__computer, mcp__claude-in-chrome__read_page, mcp__claude-in-chrome__javascript_tool, mcp__claude-in-chrome__resize_window, mcp__claude-in-chrome__read_console_messages, mcp__claude-in-chrome__read_network_requests, mcp__postgres-dev__query, mcp__postgres-prod__query, Read, Grep, Glob, Bash, Agent
 context: fork
 ---
 
@@ -11,8 +11,8 @@ Mechanical quality gate. Every step produces a concrete result. No judgment call
 
 ## When to Run
 
-- After any implementation work the user expects to ship
-- Before any PR merge
+- After `/gsd:verify-work` or `/gsd:execute-phase` (mandatory)
+- Before `/gsd:ship` (mandatory)
 - Manually via `/qa-gate` anytime
 
 ## Input
@@ -179,12 +179,13 @@ grep -rn -i -E "(password|passwd|pwd|secret|api_?key|token|bearer|authorization)
   --exclude-dir=node_modules --exclude-dir=.next --exclude-dir='.claude/worktrees' --exclude-dir=.git 2>/dev/null
 ```
 
-**MUST also scan these specific files:**
+**MUST also scan these specific files (even if above greps miss them):**
 ```
+Read each of these files and check for credentials:
 - .mcp.json (connection strings with passwords)
 - .env, .env.local, .env.production (should not be committed — check with: git ls-files .env*)
 - .claude/CLAUDE.md (dev login credentials)
-- .claude/settings.local.json (credentials in allowlist patterns)
+- .claude/settings.local.json (PGPASSWORD or similar in allowlist patterns)
 - .claude/commands/*.md (credentials in command docs)
 ```
 
@@ -298,17 +299,34 @@ Extract file paths mentioned in CLAUDE.md:
 grep -oE '`[a-zA-Z0-9_./-]+\.(ts|tsx|js|json|md|css)`' CLAUDE.md .claude/CLAUDE.md 2>/dev/null | sed 's/`//g' | sort -u
 ```
 
-For each path, check if it exists. Any referenced file that doesn't exist → **MEDIUM**.
+For each path, check if it exists:
+```bash
+# For each extracted path
+ls -la [path] 2>/dev/null || echo "MISSING: [path]"
+```
+
+Any referenced file that doesn't exist → **MEDIUM**.
 
 ### 3C: Stale architecture claims
 
+Grep for phrases that indicate the codebase doesn't exist yet:
 ```bash
 grep -n -i -E 'not yet (created|configured|specified|established)|to be created|coming in phase|no .* exists yet|planned|will be' CLAUDE.md .claude/CLAUDE.md 2>/dev/null
 ```
 
 For each match, check if the referenced thing NOW exists. If it does → **MEDIUM** (doc is stale).
 
-### 3D: Output
+### 3D: Component name check
+
+If CLAUDE.md lists component names, verify against actual files:
+```bash
+# Get actual component files
+ls src/components/sections/*.tsx src/components/**/*.tsx 2>/dev/null | xargs -I{} basename {}
+```
+
+Compare against names listed in CLAUDE.md. Mismatches → **MEDIUM**.
+
+### 3E: Output
 
 ```
 ## Doc Consistency Report
@@ -316,6 +334,16 @@ For each match, check if the referenced thing NOW exists. If it does → **MEDIU
 ### Findings
 | # | Severity | File | Section | Issue | Suggested Fix |
 |---|----------|------|---------|-------|---------------|
+```
+
+---
+
+## Check 4: Data Flow (SKIP for now)
+
+Not yet implemented. Requires per-repo flow definitions. Report as:
+```
+## Data Flow Report
+Status: SKIP — not yet implemented
 ```
 
 ---
@@ -340,6 +368,7 @@ For each match, check if the referenced thing NOW exists. If it does → **MEDIU
 | Visual | PASS/BLOCK/SKIP | 0 | 0 | 0 | 0 |
 | Security | PASS/BLOCK | 0 | 0 | 0 | 0 |
 | Docs | PASS/WARN | 0 | 0 | 0 | 0 |
+| Data Flow | SKIP | - | - | - | - |
 
 ## Blocking Issues (must fix before ship)
 [list CRITICAL and HIGH findings]
@@ -353,3 +382,19 @@ For each match, check if the referenced thing NOW exists. If it does → **MEDIU
 - 2+ HIGH → **BLOCK**
 - 1 HIGH → **BLOCK** (user can override with explicit approval)
 - MEDIUM/LOW only → **PASS** with warnings
+
+---
+
+## Vendor References
+
+If `.claude/vendor/` exists, optionally read technique files for additional context. Do NOT spend more than 30 seconds reading vendor files. The mechanical checks above are sufficient — vendor files are supplementary.
+
+```bash
+ls .claude/vendor/gstack/qa/SKILL.md .claude/vendor/gstack/cso/SKILL.md .claude/vendor/superpowers/skills/verification-before-completion/SKILL.md 2>/dev/null
+```
+
+To update vendors:
+```bash
+cd .claude/vendor/gstack && git pull
+cd .claude/vendor/superpowers && git pull
+```
