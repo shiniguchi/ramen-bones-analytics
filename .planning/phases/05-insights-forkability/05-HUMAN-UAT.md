@@ -1,5 +1,5 @@
 ---
-status: partial
+status: complete
 phase: 05-insights-forkability
 source: [05-06-PLAN.md]
 started: 2026-04-15T00:00:00Z
@@ -8,13 +8,7 @@ updated: 2026-04-15T12:00:00Z
 
 ## Current Test
 
-number: 3
-name: Friend's iPhone sign-off on the InsightCard
-expected: |
-  Friend opens the dashboard on their iPhone, eye lands on InsightCard first,
-  reads the headline without prompting, answers the "useful / already knew /
-  confusing" question with a verbatim reaction.
-awaiting: user to run the handoff with the friend and return the verbatim reaction
+all tests resolved — phase 5 shipped on 2026-04-15
 
 ## Tests
 
@@ -46,22 +40,29 @@ tracked_requirement: INS-05
 expected: |
   Friend opens DEV URL on iPhone Safari → InsightCard renders → friend reads
   headline aloud → answers the 4-question script with a verbatim reaction.
-result: blocked
-blocked_by: 3 missing prerequisites (see Gaps below) — Task 3 cannot run until they are resolved
+result: pass
+verbatim: "could see the chart too"
+verified: 2026-04-15
+note: |
+  All 3 prerequisite gaps closed by 05-07 (CF Pages deploy), 05-08 (friend
+  auth provisioned), and 05-09 (non-zero insight seeded). Friend successfully
+  viewed the InsightCard and the chart stream on their iPhone. Core Value
+  test passed. Any deeper UX feedback routes to v1.1 Dashboard Redesign
+  milestone, not Phase 5 gap closure.
 
 ## Summary
 
 total: 3
-passed: 1
+passed: 2
 issues: 0
 pending: 0
-skipped: 1 (deferred)
-blocked: 1
+skipped: 1 (deferred out of v1 scope)
+blocked: 0
 
 ## Gaps
 
 ### Gap 1: No deployed HTTPS URL exists
-status: failed
+status: resolved
 severity: blocker
 discovered: 2026-04-15
 discovered_by: 05-06 Task 3 prerequisite check
@@ -81,7 +82,7 @@ references:
   - .planning/phases/04-mobile-reader-ui/04-HUMAN-UAT.md (line 82)
 
 ### Gap 2: Friend's Supabase auth account not provisioned
-status: failed
+status: resolved
 severity: blocker
 discovered: 2026-04-15
 discovered_by: 05-06 Task 3 prerequisite check
@@ -104,7 +105,7 @@ references:
   - .planning/phases/01-foundation/01-CONTEXT.md (D-10)
 
 ### Gap 3: Seed insight is the degenerate "€0" fallback
-status: failed
+status: resolved
 severity: high
 discovered: 2026-04-15
 discovered_by: 05-06 Task 3 prerequisite check
