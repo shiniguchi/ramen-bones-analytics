@@ -94,7 +94,14 @@ A restaurant owner opens the site on their phone and makes a real business decis
   2. A digit-guard regex rejects any LLM output containing numbers not in the input payload, falling back to a deterministic template so a hallucinated figure cannot reach the owner
   3. The dashboard renders the latest insight card for the logged-in tenant and hides the card gracefully if no insight exists for the day
   4. The public repository is forkable with a README describing one-click deploy (Cloudflare Pages + Supabase project + GHA secrets) and a `.env.example` documenting every required environment variable
-**Plans**: TBD
+**Plans**: 6 plans
+**Wave structure**: 05-01 + 05-02 (wave 1, parallel — SQL migrations + Wave 0 RED test scaffold, disjoint files) → 05-03 + 05-04 (wave 2, parallel — Edge Function + SvelteKit card, disjoint files) → 05-05 (wave 3 — forkability docs) → 05-06 (wave 4 — ship checkpoint)
+  - [ ] 05-01-PLAN.md — [wave 1] Migrations 0016_insights_table.sql + 0017_insights_cron.sql (table + insights_v wrapper + pg_net + cron schedule 15 3 * * * UTC)
+  - [ ] 05-02-PLAN.md — [wave 1] Wave 0 RED test scaffold (deno.json + digit-guard.test + payload.test + fallback.test + InsightCard.test + fork-dryrun.sh stub)
+  - [ ] 05-03-PLAN.md — [wave 2] Edge Function implementation (digitGuard/fallback/payload/prompt/index.ts) + deploy + flip Deno tests GREEN
+  - [ ] 05-04-PLAN.md — [wave 2] InsightCard.svelte + +page.server.ts loader + +page.svelte card stream + ci-guards extension + flip Vitest tests GREEN
+  - [ ] 05-05-PLAN.md — [wave 3] Forkability: README Phase 2-5+Ship sections + sectioned .env.example + MIT LICENSE + working fork-dryrun.sh
+  - [ ] 05-06-PLAN.md — [wave 4] Ship: gh repo public + topics + description + fresh-clone fork walkthrough + friend iPhone sign-off
 
 ## Progress
 
@@ -104,7 +111,7 @@ A restaurant owner opens the site on their phone and makes a real business decis
 | 2. Ingestion | 4/4 | Complete | 2026-04-14 |
 | 3. Analytics SQL | 1/5 | Executing | - |
 | 4. Mobile Reader UI | 5/5 | Complete   | 2026-04-14 |
-| 5. Insights & Forkability | 0/0 | Not started | - |
+| 5. Insights & Forkability | 0/6 | Planned | - |
 
 ## Coverage Summary
 
