@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: — Dashboard Redesign
 status: executing
-stopped_at: Completed 06-04-PLAN.md
-last_updated: "2026-04-15T19:13:40.850Z"
+stopped_at: Completed 06-05-PLAN.md (Task 2 deferred, blocked on CF Pages deploy)
+last_updated: "2026-04-15T19:37:08.160Z"
 progress:
   total_phases: 12
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 38
-  completed_plans: 35
-  percent: 92
+  completed_plans: 36
+  percent: 95
 ---
 
 # STATE: Ramen Bones Analytics
@@ -29,10 +29,10 @@ progress:
 
 Milestone: v1.1 (Dashboard Redesign) — DEFINING REQUIREMENTS → ready to start Phase 06
 Phase: 06 (filter-foundation) — EXECUTING
-Plan: 4 of 5
+Plan: 5 of 5
 
 - **Status:** Ready to execute
-- **Progress:** [█████████░] 92%
+- **Progress:** [██████████] 95%
 - **v1.0 status:** Shipped to friend (97% plans complete; Plan 05-06 Task 2 fork walkthrough deferred indefinitely — public-flip only when onboarding other restaurants becomes a goal)
 
 ## Performance Metrics
@@ -73,6 +73,7 @@ Plan: 4 of 5
 | Phase 06 P01 | 8min | 3 tasks | 9 files |
 | Phase 06-filter-foundation P03 | 18min | 2 tasks | 3 files |
 | Phase 06 P04 | 9min | 2 tasks | 8 files |
+| Phase 06-filter-foundation P05 | 4min | 1 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -142,6 +143,7 @@ Plan: 4 of 5
 - [Phase 06-filter-foundation]: 06-02: Popover portal via physical DOM relocation (bind:this + appendChild to #popover-root) with best-effort restore on cleanup — avoids Svelte mount() recursion. Snippet-accepting primitives tested via tests/unit/fixtures/*Harness.svelte wrappers.
 - [Phase 06]: 06-01: zod filter schema + parseFilters + customToRange + Guard 6 shipped; tests live in tests/unit/ (not src/lib/) to match project runner scope; Guard 6 wired into existing single-file scripts/ci-guards.sh runner
 - [Phase 06-filter-foundation]: 06-03: transactions_filterable_v wrapper view (JWT-scoped); loader refactored to parseFilters(url) as sole URL->state converter; chip-scoped tiles honor sales_type+payment_method via .in(); distinct option arrays loaded unfiltered (D-14); fixed reference tiles stay unscoped per UI-SPEC; 6 integration tests via hand-rolled chainable supabase mock
+- [Phase 06-filter-foundation]: 06-05: Task 2 (375px human UAT) deferred — CF Pages deploy pipeline broken (~27 commits stale behind a3623b9); UAT script persisted in 06-HUMAN-UAT.md status=blocked; Phase 6 code green locally but not yet live on DEV
 
 ### Open Todos
 
@@ -151,7 +153,7 @@ Plan: 4 of 5
 
 ### Blockers
 
-None.
+- CF Pages deploy pipeline broken since a3623b9 — blocks Phase 6 visual UAT at 375px on DEV
 
 ## Session Continuity
 
@@ -161,8 +163,8 @@ None.
 
 **Resume hint:** Milestone v1.1 Dashboard Redesign was scoped in this session. Architecture is a pragmatic star schema: `dim_customer` (lifetime attrs) + `fct_transactions` (atomic fact MV with visit_seq / days_since_prev_visit window fns + denormalized filter dims) + 4 thin day-grain rollup MVs (`mv_new_customers_daily`, `mv_repeater_daily`, `mv_retention_monthly`, `mv_inter_visit_histogram`). Two bucket columns materialized: `lifetime_bucket` (how customer ended up) and `visit_seq_bucket` (point-in-time). Six filters: date range, granularity, sales_type, payment_method, wl_issuing_country, repeater bucket — dropdowns auto-populated from DISTINCT values. All refresh stays inside existing `refresh_analytics_mvs()` cron. Start with Phase 06 (Filter Foundation) for a quick UX win before any schema change.
 
-**Last session:** 2026-04-15T19:13:40.836Z
-**Stopped At:** Completed 06-04-PLAN.md
+**Last session:** 2026-04-15T19:37:00.736Z
+**Stopped At:** Completed 06-05-PLAN.md (Task 2 deferred, blocked on CF Pages deploy)
 
 ---
 *State initialized: 2026-04-13*
