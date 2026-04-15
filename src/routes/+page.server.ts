@@ -16,6 +16,43 @@ import { shapeNvr } from '$lib/nvrAgg';
 import { parseFilters } from '$lib/filters';
 import { differenceInMonths, parseISO } from 'date-fns';
 
+// Phase 7 FLT-05 — translate filters.country into a Supabase WHERE
+// clause on transactions_filterable_v.wl_issuing_country. Meta sentinels:
+//   __de_only__      → WHERE wl_issuing_country = 'DE'
+//   __non_de_only__  → WHERE wl_issuing_country IS NULL OR <> 'DE' (D-06)
+//   __unknown__      → WHERE wl_issuing_country IS NULL
+// Specific ISO-2 codes flow through .in(); mixed __unknown__ + specifics
+// merge into a single .or() call. Meta sentinels short-circuit specifics.
+//
+// Exported for the FLT-05 integration test. The `.or()` template only
+// interpolates values that came from SELECT DISTINCT on a typed column,
+// never raw user input — FLT-07 / ci-guards Guard 6 stays satisfied.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function applyCountryFilter<T extends Record<string, any>>(
+  q: T,
+  country: string[] | undefined
+): T {
+  if (!country || country.length === 0) return q;
+  if (country.includes('__de_only__')) {
+    return q.eq('wl_issuing_country', 'DE');
+  }
+  if (country.includes('__non_de_only__')) {
+    return q.or('wl_issuing_country.is.null,wl_issuing_country.neq.DE');
+  }
+  const hasUnknown = country.includes('__unknown__');
+  const specific = country.filter((c) => !c.startsWith('__'));
+  if (hasUnknown && specific.length > 0) {
+    return q.or(`wl_issuing_country.is.null,wl_issuing_country.in.(${specific.join(',')})`);
+  }
+  if (hasUnknown) {
+    return q.is('wl_issuing_country', null);
+  }
+  if (specific.length > 0) {
+    return q.in('wl_issuing_country', specific);
+  }
+  return q;
+}
+
 export const load: PageServerLoad = async ({ locals, url }) => {
   // Phase 6 FLT-07: parseFilters is the ONLY place filter params are read.
   // Never reach back into url.searchParams for a filter key — everything
@@ -40,6 +77,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
       window: chipToRange((range === 'custom' ? '7d' : range) as Range),
       distinctSalesTypes: ['INHOUSE', 'TAKEAWAY'] as string[],
       distinctPaymentMethods: ['Bar', 'Visa'] as string[],
+      distinctCountries: ['__de_only__', '__non_de_only__', 'DE', 'AT', '__unknown__'] as string[],
       kpi: {
         revenueToday: { value: 12345, prior: 10000, priorLabel: 'prior day' },
         revenue7d:    { value: 67890, prior: 60000, priorLabel: 'prior 7d' },
@@ -129,6 +167,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
       .lte('business_date', to);
     if (filters.sales_type) q = q.in('sales_type', filters.sales_type);
     if (filters.payment_method) q = q.in('payment_method', filters.payment_method);
+    q = applyCountryFilter(q, filters.country);
     const { data, error } = await q;
     if (error) {
       console.error('[transactions_filterable_v]', error);
@@ -230,6 +269,21 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     })
     .catch((e: unknown) => { console.error('[distinctPaymentMethods]', e); return [] as string[]; });
 
+  // Phase 7 FLT-05: distinct issuing countries prepend meta-sentinels and
+  // append the Unknown bucket. Unfiltered SELECT over the wrapper view so
+  // the dropdown contents never depend on the current filter state (D-14).
+  const distinctCountriesP = locals.supabase
+    .from('transactions_filterable_v')
+    .select('wl_issuing_country')
+    .then(r => {
+      const rows = (r.data ?? []) as Array<{ wl_issuing_country: string | null }>;
+      const real = [...new Set(
+        rows.map(x => x.wl_issuing_country).filter((v): v is string => !!v)
+      )].sort();
+      return ['__de_only__', '__non_de_only__', ...real, '__unknown__'];
+    })
+    .catch((e: unknown) => { console.error('[distinctCountries]', e); return [] as string[]; });
+
   // Parallel fan-out: 6 fixed-tile queries + 2 chip-scoped (current + prior)
   // + retention + LTV + frequency + NVR + insight + 2 distinct dropdown loads.
   const [
@@ -243,7 +297,8 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     nvrRaw,
     latestInsightRow,
     distinctSalesTypes,
-    distinctPaymentMethods
+    distinctPaymentMethods,
+    distinctCountries
   ] = await Promise.all([
     queryKpi(todayW.from, todayW.to),
     queryKpi(priorTodayW.from, priorTodayW.to),
@@ -262,7 +317,8 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     nvrP,
     insightP,
     distinctSalesTypesP,
-    distinctPaymentMethodsP
+    distinctPaymentMethodsP,
+    distinctCountriesP
   ]);
 
   // Compute today in tenant timezone (Berlin — single-tenant v1) for is_yesterday flag.
@@ -332,6 +388,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     window: chipW,
     distinctSalesTypes,
     distinctPaymentMethods,
+    distinctCountries,
     kpi,
     retention: retentionData,
     ltv: ltvData,

@@ -18,6 +18,7 @@
   window={data.window}
   distinctSalesTypes={data.distinctSalesTypes}
   distinctPaymentMethods={data.distinctPaymentMethods}
+  distinctCountries={data.distinctCountries}
 />
 <div class="px-4 py-2">
   <FreshnessLabel lastIngestedAt={data.freshness} />

@@ -33,7 +33,7 @@ async function applyCountryFilter(_q: any, _country: string[] | undefined) {
   return mod.applyCountryFilter(_q, _country);
 }
 
-describe.skip('filters.country → Supabase WHERE clause (FLT-05)', () => {
+describe('filters.country → Supabase WHERE clause (FLT-05)', () => {
   it('country=[__de_only__] → .eq(wl_issuing_country, DE)', async () => {
     const q = makeChain();
     await applyCountryFilter(q, ['__de_only__']);

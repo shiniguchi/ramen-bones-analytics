@@ -6,12 +6,14 @@
   import Sheet from '$lib/components/ui/sheet.svelte';
   import Button from '$lib/components/ui/button.svelte';
   import MultiSelectDropdown from './MultiSelectDropdown.svelte';
+  import CountryMultiSelect from './CountryMultiSelect.svelte';
   import type { FiltersState } from '$lib/filters';
 
   interface Props {
     filters: FiltersState;
     distinctSalesTypes: string[];
     distinctPaymentMethods: string[];
+    distinctCountries: string[];
     open?: boolean;
   }
 
@@ -19,17 +21,20 @@
     filters,
     distinctSalesTypes,
     distinctPaymentMethods,
+    distinctCountries,
     open = $bindable(false)
   }: Props = $props();
 
   let salesTypeDraft = $state<string[] | undefined>(undefined);
   let paymentMethodDraft = $state<string[] | undefined>(undefined);
+  let countryDraft = $state<string[] | undefined>(undefined);
 
   // Reset drafts whenever the sheet transitions to open.
   $effect(() => {
     if (open) {
       salesTypeDraft = filters.sales_type;
       paymentMethodDraft = filters.payment_method;
+      countryDraft = filters.country;
     }
   });
 
@@ -49,10 +54,19 @@
     return draft.join(',');
   }
 
+  // Country serialization: meta-sentinels make a "full set" collapse
+  // rule meaningless, so we emit CSV whenever there's any selection
+  // and omit the param otherwise.
+  function serializeCountry(draft: string[] | undefined): string | null {
+    if (!draft || draft.length === 0) return null;
+    return draft.join(',');
+  }
+
   function applyFilters() {
     const patch: Record<string, string | null> = {
       sales_type: serialize(salesTypeDraft, distinctSalesTypes),
-      payment_method: serialize(paymentMethodDraft, distinctPaymentMethods)
+      payment_method: serialize(paymentMethodDraft, distinctPaymentMethods),
+      country: serializeCountry(countryDraft)
     };
     const href = buildUrl(patch);
     open = false;
@@ -66,12 +80,14 @@
   function resetAll() {
     salesTypeDraft = undefined;
     paymentMethodDraft = undefined;
+    countryDraft = undefined;
     // Default URL: range=7d, grain=week, strip all filter params + from/to.
     const u = new URL(page.url);
     u.searchParams.set('range', '7d');
     u.searchParams.set('grain', 'week');
     u.searchParams.delete('sales_type');
     u.searchParams.delete('payment_method');
+    u.searchParams.delete('country');
     u.searchParams.delete('from');
     u.searchParams.delete('to');
     open = false;
@@ -94,6 +110,13 @@
         label="Payment method"
         options={distinctPaymentMethods}
         bind:selected={paymentMethodDraft}
+      />
+    {/if}
+
+    {#if distinctCountries.length > 0}
+      <CountryMultiSelect
+        options={distinctCountries}
+        bind:selected={countryDraft}
       />
     {/if}
   </div>

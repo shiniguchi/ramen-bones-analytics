@@ -15,17 +15,28 @@
     window: RangeWindow;
     distinctSalesTypes: string[];
     distinctPaymentMethods: string[];
+    distinctCountries: string[];
   }
 
-  let { filters, window: rangeWindow, distinctSalesTypes, distinctPaymentMethods }: Props = $props();
+  let {
+    filters,
+    window: rangeWindow,
+    distinctSalesTypes,
+    distinctPaymentMethods,
+    distinctCountries
+  }: Props = $props();
 
   let sheetOpen = $state(false);
 
   const showFiltersButton = $derived(
-    distinctSalesTypes.length > 0 || distinctPaymentMethods.length > 0
+    distinctSalesTypes.length > 0 ||
+      distinctPaymentMethods.length > 0 ||
+      distinctCountries.length > 0
   );
   const filtersActive = $derived(
-    filters.sales_type !== undefined || filters.payment_method !== undefined
+    filters.sales_type !== undefined ||
+      filters.payment_method !== undefined ||
+      filters.country !== undefined
   );
 </script>
 
@@ -61,5 +72,6 @@
     {filters}
     {distinctSalesTypes}
     {distinctPaymentMethods}
+    {distinctCountries}
   />
 {/if}
