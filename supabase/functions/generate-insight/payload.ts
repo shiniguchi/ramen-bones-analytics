@@ -1,6 +1,11 @@
 // Builds the InsightPayload read by the LLM tool-use prompt.
-// Service-role client — no JWT context — scope every query by restaurant_id explicitly.
-// Reads wrapper views created in Phase 3/4; raw MVs allowed for service-role.
+// Service-role client — no JWT context. Leaf views filter on
+// `auth.jwt()->>'restaurant_id'` which is NULL under service-role, so we must
+// either read raw MVs directly (kpi_daily_mv, cohort_mv) or call the
+// `test_*` SECURITY DEFINER RPCs that Phase 3 shipped as the admin bypass
+// (see 0012_leaf_views.sql). Hitting the wrapper views directly returns zero
+// rows and produces an all-zero payload that forces the fallback template —
+// exactly the Gap-3 failure 05-09 is closing.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -22,13 +27,16 @@ export type InsightPayload = {
   new_vs_returning: { new_revenue: number; returning_revenue: number; cash_revenue: number };
 };
 
-// kpi_daily_v is 1 row per business_date. Sum revenue over a rolling window anchored to "latest".
+// kpi_daily_mv is 1 row per business_date. Sum revenue over a rolling window anchored to "latest".
+// Column names on the raw MV are revenue_cents + avg_ticket_cents; keep the older
+// `revenue`/`avg_ticket` aliases as fallbacks so test fixtures keep working.
 type KpiRow = {
   business_date: string;
   revenue?: number | null;
   revenue_cents?: number | null;
   tx_count?: number | null;
   avg_ticket?: number | null;
+  avg_ticket_cents?: number | null;
 };
 
 function sumWindow(rows: KpiRow[], days: number): number {
@@ -47,10 +55,15 @@ export async function buildPayload(
   supabase: SupabaseClient,
   restaurantId: string,
 ): Promise<InsightPayload> {
-  // Parallel fan-out — cuts latency to max of the 5 queries.
+  // Parallel fan-out — cuts latency to the max of the queries.
+  // KPI + cohort come from raw MVs (service-role can read them, both are
+  // `restaurant_id`-scoped by the explicit .eq filter). LTV / frequency /
+  // new_vs_returning come through the Phase-3 `test_*` SECURITY DEFINER
+  // RPCs that set request.jwt.claims for the transaction — these are the
+  // only admin-side paths through the JWT-filtered leaf views.
   const [kpiR, cohortR, ltvR, freqR, nvrR] = await Promise.all([
     supabase
-      .from("kpi_daily_v")
+      .from("kpi_daily_mv")
       .select("*")
       .eq("restaurant_id", restaurantId)
       .order("business_date", { ascending: false })
@@ -61,21 +74,9 @@ export async function buildPayload(
       .eq("restaurant_id", restaurantId)
       .order("cohort_week", { ascending: false })
       .limit(48),
-    supabase
-      .from("ltv_v")
-      .select("*")
-      .eq("restaurant_id", restaurantId)
-      .order("cohort_week", { ascending: false })
-      .limit(4),
-    supabase
-      .from("frequency_v")
-      .select("*")
-      .eq("restaurant_id", restaurantId),
-    supabase
-      .from("new_vs_returning_v")
-      .select("*")
-      .eq("restaurant_id", restaurantId)
-      .maybeSingle(),
+    supabase.rpc("test_ltv", { rid: restaurantId }),
+    supabase.rpc("test_frequency", { rid: restaurantId }),
+    supabase.rpc("test_new_vs_returning", { rid: restaurantId }),
   ]);
 
   const kpiRows = (kpiR.data ?? []) as KpiRow[];
@@ -94,7 +95,9 @@ export async function buildPayload(
   const seven_d_delta_pct = deltaPct(seven_d_revenue, prior_7d);
 
   const tx_count = kpiRows.slice(0, 1).reduce((a, r) => a + (Number(r.tx_count ?? 0) || 0), 0);
-  const avg_ticket = Math.round(Number(kpiRows[0]?.avg_ticket ?? 0) || 0);
+  const avg_ticket = Math.round(
+    Number(kpiRows[0]?.avg_ticket ?? kpiRows[0]?.avg_ticket_cents ?? 0) || 0,
+  );
 
   // Cohort rows: retention columns are w0..wN; collapse wide→long.
   const cohorts = (cohortR.data ?? []).slice(0, 12).map((row: Record<string, unknown>) => {
@@ -120,12 +123,45 @@ export async function buildPayload(
     customer_count: Number(row.customer_count ?? row.count ?? 0),
   }));
 
-  // nvr single row — defensive defaults so downstream fallback math never NaNs.
-  const nvrRow = (nvrR.data ?? {}) as Record<string, unknown>;
+  // `test_new_vs_returning` returns one row per (business_date, bucket).
+  // Collapse to the 3 scalars the D-05 payload + fallback template expect:
+  // sum revenue_cents per bucket over the last 7 business dates (rolling
+  // week). `blackout_unknown` folds into cash_revenue to preserve the D-19
+  // tie-out invariant (total = new + returning + cash_anonymous + blackout).
+  type NvrRow = {
+    business_date?: string;
+    bucket?: string;
+    revenue_cents?: number | null;
+  };
+  const nvrRows = (nvrR.data ?? []) as NvrRow[];
+  const recentDates = Array.from(
+    new Set(nvrRows.map((r) => String(r.business_date ?? "")).filter(Boolean)),
+  )
+    .sort()
+    .reverse()
+    .slice(0, 7);
+  const recentSet = new Set(recentDates);
+  const nvrTotals = { new: 0, returning: 0, cash: 0 };
+  for (const row of nvrRows) {
+    if (!recentSet.has(String(row.business_date ?? ""))) continue;
+    const v = Number(row.revenue_cents ?? 0) || 0;
+    switch (row.bucket) {
+      case "new":
+        nvrTotals.new += v;
+        break;
+      case "returning":
+        nvrTotals.returning += v;
+        break;
+      case "cash_anonymous":
+      case "blackout_unknown":
+        nvrTotals.cash += v;
+        break;
+    }
+  }
   const new_vs_returning = {
-    new_revenue: Math.round(Number(nvrRow.new_revenue ?? 0)),
-    returning_revenue: Math.round(Number(nvrRow.returning_revenue ?? 0)),
-    cash_revenue: Math.round(Number(nvrRow.cash_revenue ?? nvrRow.cash_anonymous ?? 0)),
+    new_revenue: Math.round(nvrTotals.new),
+    returning_revenue: Math.round(nvrTotals.returning),
+    cash_revenue: Math.round(nvrTotals.cash),
   };
 
   return {

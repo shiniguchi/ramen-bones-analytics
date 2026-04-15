@@ -57,7 +57,7 @@ Deno.serve(async (req) => {
     return new Response(`tenant fetch failed: ${tErr.message}`, { status: 500 });
   }
 
-  const results: Array<{ restaurant_id: string; ok: boolean; fallback: boolean }> = [];
+  const results: Array<{ restaurant_id: string; ok: boolean; fallback: boolean; reason?: string }> = [];
   for (const t of tenants ?? []) {
     const r = await generateForTenant(t.id as string, (t.timezone as string) ?? "Europe/Berlin");
     results.push(r);
@@ -74,6 +74,7 @@ async function generateForTenant(restaurantId: string, tz: string) {
   let headline: string | null = null;
   let body: string | null = null;
   let fallbackUsed = false;
+  let fallbackReason: string | undefined;
 
   try {
     const msg = await anthropic.messages.create({
@@ -114,8 +115,9 @@ async function generateForTenant(restaurantId: string, tz: string) {
   } catch (err) {
     // Any failure in the LLM path — network, shape, digit-guard — routes to fallback.
     // Logging the reason keeps "why did we fall back" observable in function logs.
+    fallbackReason = (err as Error).message;
     console.error(
-      `[generate-insight] tenant=${restaurantId} fallback reason=${(err as Error).message}`,
+      `[generate-insight] tenant=${restaurantId} fallback reason=${fallbackReason}`,
     );
     const fb = buildFallback(deriveFallbackInput(payload));
     headline = fb.headline;
@@ -143,9 +145,9 @@ async function generateForTenant(restaurantId: string, tz: string) {
     console.error(
       `[generate-insight] upsert failed tenant=${restaurantId}: ${upsertErr.message}`,
     );
-    return { restaurant_id: restaurantId, ok: false, fallback: fallbackUsed };
+    return { restaurant_id: restaurantId, ok: false, fallback: fallbackUsed, reason: fallbackReason };
   }
-  return { restaurant_id: restaurantId, ok: true, fallback: fallbackUsed };
+  return { restaurant_id: restaurantId, ok: true, fallback: fallbackUsed, reason: fallbackReason };
 }
 
 // YYYY-MM-DD in the restaurant's local timezone — avoids Phase 1 off-by-one bug.
