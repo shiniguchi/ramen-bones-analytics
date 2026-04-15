@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: — Dashboard Redesign
-status: "Requirements + roadmap written; next action is `/gsd:discuss-phase 06`"
-stopped_at: Phase 06 context gathered
-last_updated: "2026-04-15T16:35:43.563Z"
+status: executing
+stopped_at: Completed 06-01-PLAN.md
+last_updated: "2026-04-15T18:55:54.553Z"
 progress:
   total_phases: 12
   completed_phases: 4
-  total_plans: 33
-  completed_plans: 31
-  percent: 0
+  total_plans: 38
+  completed_plans: 33
+  percent: 87
 ---
 
 # STATE: Ramen Bones Analytics
@@ -20,7 +20,7 @@ progress:
 ## Project Reference
 
 - **Core Value:** A restaurant owner opens the site on their phone and makes a real business decision from the numbers they see.
-- **Current Focus:** Phase 06 — filter-foundation (milestone v1.1 Dashboard Redesign)
+- **Current Focus:** Phase 06 — filter-foundation
 - **Timeline:** Slow and deliberate — understand data first, ship one layer at a time
 - **Granularity:** standard
 - **Tenants in v1:** 1 (architecture multi-tenant-ready)
@@ -28,11 +28,11 @@ progress:
 ## Current Position
 
 Milestone: v1.1 (Dashboard Redesign) — DEFINING REQUIREMENTS → ready to start Phase 06
-Phase: 06 (filter-foundation) — not started
-Plan: — of —
+Phase: 06 (filter-foundation) — EXECUTING
+Plan: 2 of 5
 
-- **Status:** Requirements + roadmap written; next action is `/gsd:discuss-phase 06`
-- **Progress:** [░░░░░░░░░░] 0% (v1.1)
+- **Status:** Ready to execute
+- **Progress:** [█████████░] 87%
 - **v1.0 status:** Shipped to friend (97% plans complete; Plan 05-06 Task 2 fork walkthrough deferred indefinitely — public-flip only when onboarding other restaurants becomes a goal)
 
 ## Performance Metrics
@@ -69,6 +69,8 @@ Plan: — of —
 | Phase 05-insights-forkability P04 | 5min | 2 tasks | 5 files |
 | Phase 05-insights-forkability P03 | 12min | 2 tasks | 5 files |
 | Phase 05-insights-forkability P05 | 7min | 2 tasks | 4 files |
+| Phase 06-filter-foundation P02 | 12min | 2 tasks | 10 files |
+| Phase 06 P01 | 8min | 3 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -135,6 +137,7 @@ Plan: — of —
 - [Phase 05-insights-forkability]: 05-03: fallback template uses 'prior week' not '7d/7 days' to avoid leaking a literal digit 7 through the digit-guard tautology
 - [Phase 05-insights-forkability]: 05-05: Forkability shipped — MIT LICENSE, 5-section .env.example (cf pages / supabase secrets / vault / github actions / local dev), README Phase 2–Ship quickstart, fork-dryrun.sh green (23 checks). INS-05/INS-06 closed.
 - [Phase 05-insights-forkability]: 05-06 T1: GitHub repo metadata set via `gh` — 9 topics (analytics, restaurant-analytics, sveltekit, svelte, supabase, cloudflare-pages, forkable, pos-integration, cohort-analysis) + description. Rule 1 deviation: repo kept PRIVATE per user decision (plan assumed PUBLIC). Friend accesses v1 via Cloudflare Pages URL, not the repo; public-flip deferred until forkability marketing is wanted. Plan's `visibility:PUBLIC` acceptance criterion knowingly unsatisfied.
+- [Phase 06-filter-foundation]: 06-02: Popover portal via physical DOM relocation (bind:this + appendChild to #popover-root) with best-effort restore on cleanup — avoids Svelte mount() recursion. Snippet-accepting primitives tested via tests/unit/fixtures/*Harness.svelte wrappers.
 
 ### Open Todos
 
@@ -154,8 +157,8 @@ None.
 
 **Resume hint:** Milestone v1.1 Dashboard Redesign was scoped in this session. Architecture is a pragmatic star schema: `dim_customer` (lifetime attrs) + `fct_transactions` (atomic fact MV with visit_seq / days_since_prev_visit window fns + denormalized filter dims) + 4 thin day-grain rollup MVs (`mv_new_customers_daily`, `mv_repeater_daily`, `mv_retention_monthly`, `mv_inter_visit_histogram`). Two bucket columns materialized: `lifetime_bucket` (how customer ended up) and `visit_seq_bucket` (point-in-time). Six filters: date range, granularity, sales_type, payment_method, wl_issuing_country, repeater bucket — dropdowns auto-populated from DISTINCT values. All refresh stays inside existing `refresh_analytics_mvs()` cron. Start with Phase 06 (Filter Foundation) for a quick UX win before any schema change.
 
-**Last session:** 2026-04-15T16:35:43.542Z
-**Stopped At:** Phase 06 context gathered
+**Last session:** 2026-04-15T18:55:54.543Z
+**Stopped At:** Completed 06-01-PLAN.md
 
 ---
 *State initialized: 2026-04-13*
