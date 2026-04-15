@@ -10,7 +10,7 @@ import { describe, it, expect } from 'vitest';
 //
 // TODO(07-04): unskip when src/lib/components/CountryMultiSelect.svelte lands.
 
-describe.skip('CountryMultiSelect mutual exclusion (FLT-05 / D-05)', () => {
+describe('CountryMultiSelect mutual exclusion (FLT-05 / D-05)', () => {
   it('toggling __de_only__ from empty selects only the meta-option', async () => {
     const { render, fireEvent } = await import('@testing-library/svelte');
     const { default: CountryMultiSelect } = await import(

@@ -13,7 +13,7 @@ function urlWith(params: Record<string, string>): URL {
   return u;
 }
 
-describe.skip('parseFilters — country (FLT-05)', () => {
+describe('parseFilters — country (FLT-05)', () => {
   it('accepts single meta-option __de_only__', () => {
     const out = parseFilters(urlWith({ country: '__de_only__' }));
     // @ts-expect-error — country field does not exist on FiltersState until 07-04
