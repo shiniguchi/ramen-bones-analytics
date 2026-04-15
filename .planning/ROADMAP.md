@@ -102,9 +102,9 @@ A restaurant owner opens the site on their phone and makes a real business decis
   - [x] 05-04-PLAN.md — [wave 2] InsightCard.svelte + +page.server.ts loader + +page.svelte card stream + ci-guards extension + flip Vitest tests GREEN
   - [x] 05-05-PLAN.md — [wave 3] Forkability: README Phase 2-5+Ship sections + sectioned .env.example + MIT LICENSE + working fork-dryrun.sh
   - [ ] 05-06-PLAN.md — [wave 4/6] Ship: gh repo metadata (T1 done) + fork walkthrough (T2 deferred to public-flip) + friend iPhone sign-off (T3 blocked by 05-07/08/09)
-  - [ ] 05-07-PLAN.md — [wave 5, gap closure] Cloudflare Pages deploy: wrangler.toml + one-time project create + wrangler pages deploy → capture pages.dev URL (closes Gap 1)
+  - [x] 05-07-PLAN.md — [wave 5, gap closure] Cloudflare Pages deploy: wrangler.toml + one-time project create + wrangler pages deploy → capture pages.dev URL (closes Gap 1)
   - [ ] 05-08-PLAN.md — [wave 5, gap closure] Provision friend's Supabase Auth user + memberships row + verify JWT restaurant_id claim + secure credential handoff (closes Gap 2)
-  - [ ] 05-09-PLAN.md — [wave 5, gap closure] Seed ≥50 recent synthetic transactions + refresh MVs + re-invoke generate-insight → fallback_used=false with real numbers (closes Gap 3)
+  - [x] 05-09-PLAN.md — [wave 5, gap closure] Seed ≥50 recent synthetic transactions + refresh MVs + re-invoke generate-insight → fallback_used=false with real numbers (closes Gap 3)
 
 ## Progress
 
