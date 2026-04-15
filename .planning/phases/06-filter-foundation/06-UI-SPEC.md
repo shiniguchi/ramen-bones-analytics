@@ -22,6 +22,7 @@ created: 2026-04-15
 | Component library | none — hand-rolled Svelte 5 runes components under `src/lib/components/ui/` |
 | Icon library | `lucide-svelte` (already used by existing components; verify at install or hand-roll inline SVG if absent) |
 | Font | System UI stack (Tailwind v4 default `font-sans`); no custom webfont |
+| Focal point | The two-line **date picker button** on the sticky filter bar. It is the primary visual anchor at first glance — showing both the semantic preset label (line 1) and the live resolved date range (line 2) — and carries the most information density of any control on the screen. |
 
 **Existing primitives (reuse, do NOT re-implement):** `button.svelte`, `card.svelte`, `input.svelte`, `label.svelte`, `toggle-group.svelte`, `tooltip.svelte`.
 
@@ -31,33 +32,34 @@ created: 2026-04-15
 
 ## Spacing Scale
 
-Declared values (Tailwind v4 default 4px grid — multiples of 4 only):
+Declared values (Tailwind v4 default 4px grid — multiples of 4 only, from the standard set 4/8/16/24/32/48/64):
 
 | Token | Value | Usage |
 |-------|-------|-------|
 | xs | 4px (`p-1`) | Icon-to-label gap inside buttons |
-| sm | 8px (`p-2`, `gap-2`) | Compact element spacing inside filter bar |
-| md | 12px (`px-3`, `py-3`) | Default control inner padding |
-| lg | 16px (`p-4`, `gap-4`) | Sheet inner padding, section spacing |
-| xl | 24px (`p-6`) | Sheet outer padding, section breaks |
-| 2xl | 32px (`gap-8`) | Major vertical breaks inside Sheet |
+| sm | 8px (`p-2`, `py-2`, `gap-2`) | Default control inner padding, compact element spacing inside filter bar |
+| md | 16px (`p-4`, `gap-4`) | Sheet inner padding, section spacing |
+| lg | 24px (`p-6`) | Sheet outer padding, section breaks |
+| xl | 32px (`gap-8`) | Major vertical breaks inside Sheet |
 
 **Exceptions:**
-- **Touch target minimum: 44px** (`min-h-11` = 44px). Mandatory on every interactive control in the filter bar, popover, and sheet. Enforced per Phase 4 contract.
+- **Touch target minimum: 44px** (`min-h-11` = 44px). Mandatory on every interactive control in the filter bar, popover, and sheet. Enforced per Phase 4 contract. The 8px (`py-2`) default control inner padding combined with `min-h-11` delivers comfortable tap areas at 375px.
 - **Sticky filter bar total height: ≤ 72px** (D-05). Budget: `py-2` (8px top + 8px bottom) + 2 lines of 44px controls stacked tightly = ~72px. If two-line layout exceeds budget, collapse to single-line and move grain toggle next to the date picker button.
 
 ---
 
 ## Typography
 
+Exactly 2 font weights declared: **400 (regular)** and **500 (medium)**. No other weights permitted.
+
 | Role | Size | Weight | Line Height | Usage |
 |------|------|--------|-------------|-------|
 | Label | 12px (`text-xs`) | 500 (medium) | 1.33 (`leading-tight`) | Secondary line under date picker button ("Apr 8 – Apr 15"), filter section labels inside Sheet |
 | Body | 14px (`text-sm`) | 400 (regular) | 1.5 (`leading-normal`) | Dropdown option rows, checkbox labels, Sheet body copy, empty-state copy |
 | Control | 14px (`text-sm`) | 500 (medium) | 1.2 (`leading-none`) | Button labels, grain toggle segments, preset buttons inside date popover |
-| Heading | 16px (`text-base`) | 600 (semibold) | 1.25 (`leading-tight`) | Sheet title ("Filters"), popover title ("Select date range") |
+| Heading | 16px (`text-base`) | 500 (medium) | 1.25 (`leading-tight`) | Sheet title ("Filters"), popover title ("Select date range") |
 
-**Exactly 2 font weights:** 400 (regular) + 500 (medium), with 600 (semibold) reserved ONLY for the Sheet/Popover heading role. Do not introduce additional weights.
+**Hierarchy rationale:** The 16px Heading size (vs 14px Body/Control) already establishes clear visual hierarchy without needing a heavier weight. Do NOT introduce 600/semibold or any other weight.
 
 ---
 
@@ -96,7 +98,7 @@ Uses existing OKLCH tokens from `src/app.css` (shadcn "new-york" neutral Slate).
 ### Draft-and-apply vs instant-apply
 **Decision (researcher recommendation, now locked):**
 - **Sticky-bar controls (date picker, grain toggle): instant-apply.** Selecting a preset or changing grain triggers `goto()` immediately. These are single-value controls and the user's intent is unambiguous.
-- **Sheet multi-selects (sales-type, payment-method): draft-and-apply.** Changes stage in local `$state` inside the Sheet. "Apply filters" primary button at the bottom of the Sheet commits via `goto()` and closes the Sheet. "Cancel" button discards drafts and closes. Closing the Sheet via backdrop tap or drag-dismiss = cancel (discard drafts).
+- **Sheet multi-selects (sales-type, payment-method): draft-and-apply.** Changes stage in local `$state` inside the Sheet. "Apply filters" primary button at the bottom of the Sheet commits via `goto()` and closes the Sheet. "Discard changes" button discards drafts and closes. Closing the Sheet via backdrop tap or drag-dismiss = discard drafts.
 - **Rationale:** multi-select instant-apply causes a full SSR round-trip per checkbox tick — unacceptable at 375px over cellular.
 
 ### URL param naming
@@ -125,7 +127,7 @@ Uses existing OKLCH tokens from `src/app.css` (shadcn "new-york" neutral Slate).
 |-----------|------|------------|-------|
 | FilterBar | `src/lib/components/FilterBar.svelte` | No | Sticky top shell, ≤72px. Mounts date picker button + GrainToggle + "Filters" button |
 | DatePickerPopover | `src/lib/components/DatePickerPopover.svelte` | No | Two-line button trigger + anchored popover containing presets (Today/7d/30d/90d/All) and two `<input type="date">`. Replaces `DateRangeChips.svelte` entirely |
-| FilterSheet | `src/lib/components/FilterSheet.svelte` | No | Bottom slide-up drawer; contains sales_type MultiSelect + payment_method MultiSelect + Reset-all + Apply/Cancel footer |
+| FilterSheet | `src/lib/components/FilterSheet.svelte` | No | Bottom slide-up drawer; contains sales_type MultiSelect + payment_method MultiSelect + Reset-all + Apply/Discard footer |
 | MultiSelectDropdown | `src/lib/components/MultiSelectDropdown.svelte` | No | Label + Command-list of Checkbox rows; draft-and-apply semantics |
 | Popover (primitive) | `src/lib/components/ui/popover.svelte` | Yes | Portaled to `#popover-root`, Svelte 5 runes, `open` prop + trigger snippet |
 | Sheet (primitive) | `src/lib/components/ui/sheet.svelte` | Yes | Bottom slide-up only this phase; backdrop + drag-dismiss grabber |
@@ -155,16 +157,16 @@ Uses existing OKLCH tokens from `src/app.css` (shadcn "new-york" neutral Slate).
 | Sheet section label — sales type | `Sales type` |
 | Sheet section label — payment method | `Payment method` |
 | Sheet primary CTA | `Apply filters` |
-| Sheet secondary action | `Cancel` |
+| Sheet secondary action | `Discard changes` |
 | Sheet reset button | `Reset all filters` (D-15 — lives inside sheet only) |
 | Multi-select "all selected" placeholder | `All` |
 | Multi-select "N selected" label | `{N} selected` (e.g. `2 selected`) |
 | Empty dropdown (D-13) | Dropdown hidden entirely — no copy |
 | Empty state — no rows after filter | Existing per-card `EmptyState` copy unchanged: `No data for the selected filters. Try widening the range.` |
 | Error state — filter validation failure | Unreachable by design (D-17 coerces to defaults). If the zod `.catch()` branch is ever logged, surface nothing to the user — page renders with defaults |
-| Destructive actions | **None this phase.** "Reset all filters" is non-destructive (merely rewrites URL to defaults; data is read-only). No confirmation dialog. |
+| Destructive actions | **None this phase.** "Reset all filters" is non-destructive (merely rewrites URL to defaults; data is read-only). "Discard changes" discards only in-memory draft multi-select state; no persisted data is lost. No confirmation dialog. |
 
-**Verb-noun discipline:** `Apply filters`, `Apply range`, `Reset all filters`, `Select date range`. Never `Submit`, `OK`, `Done`, `Save`.
+**Verb-noun discipline:** `Apply filters`, `Apply range`, `Discard changes`, `Reset all filters`, `Select date range`. Never `Submit`, `OK`, `Done`, `Save`, `Cancel`.
 
 ---
 
