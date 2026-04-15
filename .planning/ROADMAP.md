@@ -125,9 +125,10 @@ A restaurant owner opens the site on their phone and makes a real business decis
 ### Phase 6: Filter Foundation
 **Goal**: A shared filter bar (date range, granularity, sales type, payment method, country, repeater bucket) drives every existing v1.0 card through a single zod-validated SSR pipeline, so the UX win ships before any data-model change
 **Depends on**: Phase 5 (v1.0 complete)
-**Requirements**: FLT-01, FLT-02, FLT-03, FLT-04, FLT-05, FLT-06, FLT-07
+**Requirements**: FLT-01, FLT-02, FLT-03, FLT-04, FLT-07
+**Scope amendment (2026-04-15):** FLT-05 (country) moved to Phase 7 and FLT-06 (repeater bucket) moved to Phase 8 because both filters depend on columns/views that don't yet exist on v1.0 — see .planning/phases/06-filter-foundation/06-CONTEXT.md D-01.
 **Success Criteria**:
-  1. A user can pick an arbitrary date range (or a preset), a day/week/month granularity, and any of the 4 dropdown filters, and every v1.0 card re-renders with correctly scoped numbers at 375px
+  1. A user can pick an arbitrary date range (or a preset), a day/week/month granularity, and the 2 available dropdown filters (sales type, payment method), and every v1.0 card re-renders with correctly scoped numbers at 375px
   2. The SSR `+page.server.ts` load function composes WHERE clauses from zod-validated query params only — no string interpolation, no dynamic SQL, ci-guards grep for `${` inside `.from(…)` fails the build
   3. The payment-method and country dropdowns are populated from `SELECT DISTINCT` against the relevant wrapper view at load time — no hardcoded whitelist, adding a new country requires zero code change
   4. All 4 dropdowns surface an "All" sentinel that cleanly degrades to no-op WHERE clause
@@ -141,24 +142,26 @@ A restaurant owner opens the site on their phone and makes a real business decis
 ### Phase 7: Column Promotion
 **Goal**: `transactions.wl_issuing_country` and `transactions.card_type` are populated for every row — new ingests and historical — so Phase 8 window functions can denormalize them onto the fact
 **Depends on**: Phase 6 (parallel-safe; Phase 7 is a pure backend change)
-**Requirements**: DM-01, DM-02, DM-03
+**Requirements**: DM-01, DM-02, DM-03, FLT-05
 **Success Criteria**:
   1. Migration `0018_transactions_country_cardtype.sql` adds both columns as nullable; existing rows stay intact during the migration
   2. A one-shot backfill SQL (`DISTINCT ON (restaurant_id, invoice_number)` against `stg_orderbird_order_items`) populates both columns for all historical transactions; ≥20 invoices spot-checked against the raw CSV
   3. The CSV loader is updated to write both columns on future ingests, verified by an integration test that re-runs the loader and asserts zero diffs (idempotency preserved)
   4. A distinct-country check on `transactions` returns plausible values (at minimum `DE` plus ≥1 non-DE country, confirming tourist rows exist)
+  5. The country dropdown filter (FLT-05) is wired through the existing Phase 6 filter schema (`src/lib/filters.ts`) and the loader now queries a refreshed `transactions_filterable_v` that exposes `wl_issuing_country`; supports "DE only" / "non-DE only" / individual-country multi-select.
 **Plans**: TBD
 
 ### Phase 8: Star Schema
 **Goal**: `dim_customer` and `fct_transactions` exist as tenant-scoped materialized views with every attribution column computed once, the correct indexes in place, and refresh DAG-ordered inside the existing nightly cron
 **Depends on**: Phase 7
-**Requirements**: DM-04, DM-05, DM-06, DM-07, DM-08
+**Requirements**: DM-04, DM-05, DM-06, DM-07, DM-08, FLT-06
 **Success Criteria**:
   1. `dim_customer` has one row per `(restaurant_id, card_hash)` with a unique index for `REFRESH CONCURRENTLY`, `lifetime_bucket` correctly assigned by the agreed CASE ladder, and a `dim_customer_v` RLS wrapper — a two-tenant isolation test proves cross-tenant reads are zero
   2. `fct_transactions` has one row per invoice with all 30+ columns materialized (time dims, measures, denormalized filter dims, visit-sequence window fns, customer-lifetime joins); a Nyquist test harness fixture of ≥3 customers with known visit sequences proves `visit_seq`, `is_first_visit`, `days_since_prev_visit`, and both bucket columns are computed correctly
   3. All 6 declared indexes exist on `fct_transactions` (1 unique + 5 secondary/partial) and `EXPLAIN ANALYZE` on a representative filter query uses the composite filter index instead of a sequential scan
   4. `refresh_analytics_mvs()` is modified in place to refresh `dim_customer` → `fct_transactions` → rollup MVs in DAG order, all `CONCURRENTLY`; the existing nightly 03:00 UTC pg_cron job still runs unchanged
   5. `ci-guards` Guard 1 regex is extended; a contract test proves a synthetic `.from('fct_transactions')` usage in `src/` fails the build
+  6. The repeater-bucket dropdown filter (FLT-06) is wired through the Phase 6 filter schema against `dim_customer.lifetime_bucket` / `fct_transactions.lifetime_bucket`; supports all / first_timer / 2x / 3x / 4-5x / 6+.
 **Plans**: TBD
 
 ### Phase 9: Chart Rollups
@@ -233,9 +236,9 @@ A restaurant owner opens the site on their phone and makes a real business decis
 | ANL-01..09 | 9 | Phase 3 |
 | UI-01..11 | 11 | Phase 4 |
 | INS-01..06 | 6 | Phase 5 |
-| FLT-01..07 | 7 | Phase 6 |
-| DM-01..03 | 3 | Phase 7 |
-| DM-04..08 | 5 | Phase 8 |
+| FLT-01..04, FLT-07 | 5 | Phase 6 |
+| DM-01..03, FLT-05 | 4 | Phase 7 |
+| DM-04..08, FLT-06 | 6 | Phase 8 |
 | CHT-01..04 | 4 | Phase 9 |
 | CHT-05..10 | 6 | Phase 10 |
 | BUG-01..02 | 2 | Phase 11 |

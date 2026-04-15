@@ -202,8 +202,8 @@ Each v1 requirement maps to exactly one roadmap phase.
 | FLT-02 | Phase 6 — Filter Foundation | Complete |
 | FLT-03 | Phase 6 — Filter Foundation | Complete |
 | FLT-04 | Phase 6 — Filter Foundation | Complete |
-| FLT-05 | Phase 6 — Filter Foundation | Pending |
-| FLT-06 | Phase 6 — Filter Foundation | Pending |
+| FLT-05 | Phase 7 — Column Promotion | Pending |
+| FLT-06 | Phase 8 — Star Schema | Pending |
 | FLT-07 | Phase 6 — Filter Foundation | Complete |
 | DM-01 | Phase 7 — Column Promotion | Pending |
 | DM-02 | Phase 7 — Column Promotion | Pending |
