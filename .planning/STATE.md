@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: — Dashboard Redesign
-status: executing
-stopped_at: Completed 07-03-PLAN.md (loader writes wl_issuing_country + card_type; idempotent on real TEST DB)
-last_updated: "2026-04-15T23:42:04.432Z"
+status: verifying
+stopped_at: Completed 07-04-PLAN.md (FLT-05 country filter wired end-to-end; Phase 7 code-complete)
+last_updated: "2026-04-15T23:53:02.121Z"
 progress:
   total_phases: 12
-  completed_phases: 6
+  completed_phases: 7
   total_plans: 42
-  completed_plans: 41
-  percent: 98
+  completed_plans: 42
+  percent: 100
 ---
 
 # STATE: Ramen Bones Analytics
@@ -31,8 +31,8 @@ Milestone: v1.1 (Dashboard Redesign) — DEFINING REQUIREMENTS → ready to star
 Phase: 07 (column-promotion) — EXECUTING
 Plan: 4 of 4
 
-- **Status:** Ready to execute
-- **Progress:** [██████████] 98%
+- **Status:** Phase complete — ready for verification
+- **Progress:** [██████████] 100%
 - **v1.0 status:** Shipping to friend (97% plans complete; repo flipped PUBLIC 2026-04-15 with topics + description set; Plan 05-06 Task 2 fork walkthrough deferred out of v1 scope — forkability is explicitly not a v1 concern per user direction)
 
 ## Performance Metrics
@@ -77,6 +77,7 @@ Plan: 4 of 4
 | Phase 07 P01 | 20min | 2 tasks | 9 files |
 | Phase 07-column-promotion P02 | 25min | 2 tasks | 8 files |
 | Phase 07-column-promotion P03 | 15min | 2 tasks | 5 files |
+| Phase 07-column-promotion P04 | 15min | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -150,6 +151,7 @@ Plan: 4 of 4
 - [Phase 07]: 07-01: Wave 0 RED scaffold — 5 new test files + 2 extended + fixture bumped 24→30 rows. All new tests describe.skip with TODO(07-0X) markers so CI stays green until waves 1-3 flip them.
 - [Phase 07-column-promotion]: 07-02: Backfill COALESCE order is wl_payment_type→wl_card_type→card_type (ground-truth showed wl_card_type is Debit/Credit flag not network); added country_name_to_iso2() helper because staging stores country NAMES not ISO-2
 - [Phase 07-column-promotion]: 07-03: canonicalizeCardType is single-arg; caller does wl_payment_type→wl_card_type→POS card_type COALESCE matching 0019 SQL; fixture swapped (wl_payment_type holds network, wl_card_type holds Debit/Credit) to match real DEV ground-truth
+- [Phase 07-column-promotion]: 07-04: CountryMultiSelect bypasses generic MultiSelectDropdown (wrap-not-extend); Svelte 5 bindable props tested via onSelectionChange spy not component.selected; country serializer skips full-set collapse rule because meta-sentinels make 'select all' meaningless
 
 ### Open Todos
 
@@ -169,8 +171,8 @@ Plan: 4 of 4
 
 **Resume hint:** Milestone v1.1 Dashboard Redesign was scoped in this session. Architecture is a pragmatic star schema: `dim_customer` (lifetime attrs) + `fct_transactions` (atomic fact MV with visit_seq / days_since_prev_visit window fns + denormalized filter dims) + 4 thin day-grain rollup MVs (`mv_new_customers_daily`, `mv_repeater_daily`, `mv_retention_monthly`, `mv_inter_visit_histogram`). Two bucket columns materialized: `lifetime_bucket` (how customer ended up) and `visit_seq_bucket` (point-in-time). Six filters: date range, granularity, sales_type, payment_method, wl_issuing_country, repeater bucket — dropdowns auto-populated from DISTINCT values. All refresh stays inside existing `refresh_analytics_mvs()` cron. Start with Phase 06 (Filter Foundation) for a quick UX win before any schema change.
 
-**Last session:** 2026-04-15T23:41:58.652Z
-**Stopped At:** Completed 07-03-PLAN.md (loader writes wl_issuing_country + card_type; idempotent on real TEST DB)
+**Last session:** 2026-04-15T23:53:02.110Z
+**Stopped At:** Completed 07-04-PLAN.md (FLT-05 country filter wired end-to-end; Phase 7 code-complete)
 
 ---
 *State initialized: 2026-04-13*

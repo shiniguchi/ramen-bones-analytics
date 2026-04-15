@@ -72,7 +72,7 @@ Requirements for initial release. Each maps to exactly one roadmap phase.
 - [x] **FLT-02**: Global day / week / month granularity toggle applied consistently across every time-series card (not per-card)
 - [x] **FLT-03**: Sales-type dropdown filter (all / INHOUSE / TAKEAWAY) applied across all filterable cards
 - [x] **FLT-04**: Payment-method dropdown filter — auto-populated from `SELECT DISTINCT payment_method` at page load, no hardcoded whitelist
-- [ ] **FLT-05**: Card issuing-country dropdown filter — auto-populated from `SELECT DISTINCT wl_issuing_country`, supports "DE only" / "non-DE only" / individual countries
+- [x] **FLT-05**: Card issuing-country dropdown filter — auto-populated from `SELECT DISTINCT wl_issuing_country`, supports "DE only" / "non-DE only" / individual countries
 - [ ] **FLT-06**: Repeater-bucket dropdown filter against `lifetime_bucket` (all / first_timer / 2x / 3x / 4-5x / 6+)
 - [x] **FLT-07**: All 6 filters compile to zod-validated query params; no dynamic SQL strings anywhere; SSR load function composes WHERE clauses from validated params only
 
@@ -202,7 +202,7 @@ Each v1 requirement maps to exactly one roadmap phase.
 | FLT-02 | Phase 6 — Filter Foundation | Complete |
 | FLT-03 | Phase 6 — Filter Foundation | Complete |
 | FLT-04 | Phase 6 — Filter Foundation | Complete |
-| FLT-05 | Phase 7 — Column Promotion | Pending |
+| FLT-05 | Phase 7 — Column Promotion | Complete |
 | FLT-06 | Phase 8 — Star Schema | Pending |
 | FLT-07 | Phase 6 — Filter Foundation | Complete |
 | DM-01 | Phase 7 — Column Promotion | Complete |
