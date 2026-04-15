@@ -10,6 +10,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 // D-05: the shape Haiku sees. Every numeric field is a candidate for the digit-guard allowed set.
+// `display` mirrors the cents-denominated `kpi`/`new_vs_returning` fields in whole-euro
+// integer form so the LLM can write natural "€203" strings and the digit-guard
+// (which flattens every number it finds in the payload) still accepts them.
 export type InsightPayload = {
   kpi: {
     today_revenue: number;
@@ -25,6 +28,21 @@ export type InsightPayload = {
   ltv: Array<{ cohort_week: string; ltv_cents: number }>;
   frequency: Array<{ bucket: string; customer_count: number }>;
   new_vs_returning: { new_revenue: number; returning_revenue: number; cash_revenue: number };
+  // Euro-denominated projection: whole-euro floor of every *_cents field above.
+  // The LLM is instructed to use ONLY these values (or the integer percent
+  // fields) when writing currency into the headline/body.
+  display: {
+    currency: "EUR";
+    today_revenue_eur: number;
+    seven_d_revenue_eur: number;
+    thirty_d_revenue_eur: number;
+    ninety_d_revenue_eur: number;
+    avg_ticket_eur: number;
+    new_revenue_eur: number;
+    returning_revenue_eur: number;
+    cash_revenue_eur: number;
+    returning_pct: number;
+  };
 };
 
 // kpi_daily_mv is 1 row per business_date. Sum revenue over a rolling window anchored to "latest".
@@ -164,6 +182,31 @@ export async function buildPayload(
     cash_revenue: Math.round(nvrTotals.cash),
   };
 
+  // Whole-euro projection: floor(cents / 100). The LLM writes "€X" using these,
+  // and the digit-guard's flatten pass picks them up so the output validates.
+  const toEur = (cents: number): number => Math.floor((Number(cents) || 0) / 100);
+  const totalNvr =
+    new_vs_returning.new_revenue +
+    new_vs_returning.returning_revenue +
+    new_vs_returning.cash_revenue;
+  const returning_pct =
+    totalNvr > 0
+      ? Math.round((new_vs_returning.returning_revenue / totalNvr) * 100)
+      : 0;
+
+  const display = {
+    currency: "EUR" as const,
+    today_revenue_eur: toEur(today_revenue),
+    seven_d_revenue_eur: toEur(seven_d_revenue),
+    thirty_d_revenue_eur: toEur(thirty_d_revenue),
+    ninety_d_revenue_eur: toEur(ninety_d_revenue),
+    avg_ticket_eur: toEur(avg_ticket),
+    new_revenue_eur: toEur(new_vs_returning.new_revenue),
+    returning_revenue_eur: toEur(new_vs_returning.returning_revenue),
+    cash_revenue_eur: toEur(new_vs_returning.cash_revenue),
+    returning_pct,
+  };
+
   return {
     kpi: {
       today_revenue,
@@ -179,5 +222,6 @@ export async function buildPayload(
     ltv,
     frequency,
     new_vs_returning,
+    display,
   };
 }

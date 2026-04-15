@@ -14,7 +14,11 @@ export function flattenNumbers(obj: unknown): Set<string> {
   const walk = (v: unknown): void => {
     if (v === null || v === undefined) return;
     if (typeof v === "number") {
-      out.add(normalize(String(v)));
+      // Extract digit runs with the same regex the guard uses on LLM output.
+      // This makes negative numbers ("-36") contribute "36", and decimals
+      // ("12.50") contribute "12.50" — symmetric with string handling below.
+      const matches = String(v).match(DIGIT_RE) ?? [];
+      for (const m of matches) out.add(normalize(m));
       return;
     }
     if (typeof v === "string") {

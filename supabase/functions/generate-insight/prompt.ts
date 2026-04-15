@@ -13,8 +13,15 @@ NUMBER RULES (HARD):
 - Every number in your output MUST appear verbatim in the INPUT DATA JSON below.
 - Do NOT estimate, round, compute, or invent any figure.
 - No "about", "around", "roughly", "approximately", "~", or "≈".
-- No "4.3k" style rounding — write "€4280" if the payload has 4280.
+- No "4.3k" style rounding, no decimals. Write whole integers only.
 - Currency prefix is "€"; percentages written as "N%" with no space.
+- CURRENCY SOURCE: Use ONLY the fields in the top-level "display" object for any
+  euro amount you print. Those fields are already in whole euros (e.g. display.today_revenue_eur=203
+  means "€203"). NEVER print a number from the "kpi.*_revenue", "avg_ticket",
+  "ltv_cents", "new_revenue", "returning_revenue", or "cash_revenue" fields —
+  those are in cents and will be rejected. The only non-euro integers you may
+  print are: today_delta_pct, seven_d_delta_pct, display.returning_pct,
+  kpi.tx_count, cohorts[].cohort_size, and cohort week labels.
 
 FORBIDDEN PHRASINGS:
 - Cheerleading: "Great job", "Awesome", "crushing it", "Keep it up"
