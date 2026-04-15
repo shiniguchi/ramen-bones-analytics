@@ -150,6 +150,8 @@ None.
 
 **Next command:** `/gsd:discuss-phase 06` to gather context for the Filter Foundation phase (custom date range + granularity toggle + 4 dropdown filters wired to existing views)
 
+**Authoritative spec for v1.1:** `.planning/v1.1-DATA-MODEL.md` — read first. Has every column, SQL body, index, CASE ladder, and filter contract.
+
 **Resume hint:** Milestone v1.1 Dashboard Redesign was scoped in this session. Architecture is a pragmatic star schema: `dim_customer` (lifetime attrs) + `fct_transactions` (atomic fact MV with visit_seq / days_since_prev_visit window fns + denormalized filter dims) + 4 thin day-grain rollup MVs (`mv_new_customers_daily`, `mv_repeater_daily`, `mv_retention_monthly`, `mv_inter_visit_histogram`). Two bucket columns materialized: `lifetime_bucket` (how customer ended up) and `visit_seq_bucket` (point-in-time). Six filters: date range, granularity, sales_type, payment_method, wl_issuing_country, repeater bucket — dropdowns auto-populated from DISTINCT values. All refresh stays inside existing `refresh_analytics_mvs()` cron. Start with Phase 06 (Filter Foundation) for a quick UX win before any schema change.
 
 **Last session:** 2026-04-15T12:00:00.000Z

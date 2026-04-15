@@ -89,6 +89,8 @@ A restaurant owner opens the site on their phone and makes a real business decis
 - Six new charts: new-customers-per-period, first-timer-vs-repeater by count/revenue/avg-ticket, weekly+monthly retention, inter-visit histogram
 - Bug fixes inherited from Phase 4 UAT: empty NVR card, LTV sparse-bars
 
+**Authoritative data-model spec:** [`.planning/v1.1-DATA-MODEL.md`](./v1.1-DATA-MODEL.md) — every column, SQL body, index, CASE ladder, refresh DAG step, and filter contract lives there. Phase 07/08/09/10/11 plans implement it verbatim. Read that file first in any new context.
+
 **Key context:**
 - Forkability/public-flip (v1.0 Plan 05-06 Task 2) is **explicitly deferred** — repo stays private; fork walkthrough revisits only when onboarding other restaurants becomes a goal
 - Star schema is pragmatic, not dogmatic: payment/country/sales_type stay denormalized on the fact because cardinality is low and join cost is non-zero
