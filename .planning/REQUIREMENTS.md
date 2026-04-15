@@ -54,10 +54,10 @@ Requirements for initial release. Each maps to exactly one roadmap phase.
 
 ### Insights & Forkability
 
-- [ ] **INS-01**: Nightly Supabase Edge Function calls Claude Haiku via Anthropic API with tenant KPI payload and writes a natural-language summary to an `insights` table
+- [x] **INS-01**: Nightly Supabase Edge Function calls Claude Haiku via Anthropic API with tenant KPI payload and writes a natural-language summary to an `insights` table
 - [ ] **INS-02**: Prompt and post-generation validation forbid the LLM from emitting numbers not in the input payload (digit-guard regex + deterministic template fallback on validation failure)
-- [ ] **INS-03**: Dashboard renders the latest insight card for the logged-in tenant; gracefully hides if no insight exists
-- [ ] **INS-04**: Anthropic API key stored as a Supabase secret; never exposed to client or committed
+- [x] **INS-03**: Dashboard renders the latest insight card for the logged-in tenant; gracefully hides if no insight exists
+- [x] **INS-04**: Anthropic API key stored as a Supabase secret; never exposed to client or committed
 - [ ] **INS-05**: Repository is public and forkable with a README describing one-click deploy (Cloudflare Pages + Supabase project + GHA secrets)
 - [ ] **INS-06**: `.env.example` documents every required environment variable for self-hosters
 
@@ -142,10 +142,10 @@ Each v1 requirement maps to exactly one roadmap phase.
 | UI-09 | Phase 4 — Mobile Reader UI | Complete |
 | UI-10 | Phase 4 — Mobile Reader UI | Complete |
 | UI-11 | Phase 4 — Mobile Reader UI | Complete |
-| INS-01 | Phase 5 — Insights & Forkability | Pending |
+| INS-01 | Phase 5 — Insights & Forkability | Complete |
 | INS-02 | Phase 5 — Insights & Forkability | Pending |
-| INS-03 | Phase 5 — Insights & Forkability | Pending |
-| INS-04 | Phase 5 — Insights & Forkability | Pending |
+| INS-03 | Phase 5 — Insights & Forkability | Complete |
+| INS-04 | Phase 5 — Insights & Forkability | Complete |
 | INS-05 | Phase 5 — Insights & Forkability | Pending |
 | INS-06 | Phase 5 — Insights & Forkability | Pending |
 

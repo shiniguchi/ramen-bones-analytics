@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: "Completed 04-09 gap closure (Gap D adversarial QA) — two new gaps E+F logged for post-v1.0 redesign"
-last_updated: "2026-04-15T00:20:00.000Z"
+status: verifying
+stopped_at: Completed 05-01 insights table + cron
+last_updated: "2026-04-15T09:10:27.780Z"
 progress:
   total_phases: 5
-  completed_phases: 3
-  total_plans: 27
-  completed_plans: 27
-  percent: 100
+  completed_phases: 4
+  total_plans: 30
+  completed_plans: 26
+  percent: 83
 ---
 
 # STATE: Ramen Bones Analytics
@@ -20,20 +20,20 @@ progress:
 ## Project Reference
 
 - **Core Value:** A restaurant owner opens the site on their phone and makes a real business decision from the numbers they see.
-- **Current Focus:** Phase 04 — mobile-reader-ui
+- **Current Focus:** Phase 05 — insights-forkability
 - **Timeline:** 2 weeks to MVP in friend's hands
 - **Granularity:** standard
 - **Tenants in v1:** 1 (architecture multi-tenant-ready)
 
 ## Current Position
 
-Phase: 04 (mobile-reader-ui) — EXECUTING, all 9 plans complete, awaiting qa-gate + phase verification
-Plan: 9 of 9
+Phase: 05 (insights-forkability) — EXECUTING
+Plan: 1 of 6
 
 - **Phase:** 4
 - **Plan:** 5 of 5
-- **Status:** Executing Phase 04
-- **Progress:** [██████████] 96%
+- **Status:** Phase complete — ready for verification
+- **Progress:** [████████░░] 83%
 
 ## Performance Metrics
 
@@ -64,6 +64,7 @@ Plan: 9 of 9
 | Phase 04-mobile-reader-ui P08 | 6min | 2 tasks | 4 files |
 | Phase 04 P07 | 10min | 2 tasks | 3 files |
 | Phase 04-mobile-reader-ui P06 | 15min | 3 tasks | 10 files |
+| Phase 05-insights-forkability P01 | 8min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -125,6 +126,7 @@ Plan: 9 of 9
 - [Phase 04-mobile-reader-ui]: FreshnessLabel tested via static top-level import (not dynamic require) in ESM vitest pipeline
 - [Phase 04]: 04-07 (Gap B closure): migration 0015 ALTER custom_access_token_hook SECURITY DEFINER lands in repo; DEV verified prosecdef=true. jwt-claim integration test extended with literal 'Gap B regression' failure message pointing at 0015. Manual revert sanity check confirmed test goes red under SECURITY INVOKER.
 - [Phase 04-mobile-reader-ui]: 04-06: layerchart pinned 2.0.0-next.54 (Svelte 5 native line); Path B — 2.x removed string-preset xScale, must pass d3 scale fns; E2E fixture bypass via E2E_FIXTURES=1 + ?__e2e=charts server-side (page.route cannot intercept SSR load)
+- [Phase 05-insights-forkability]: 05-01: insights_v wrapper omits input_payload (audit-only); pg_cron 'generate-insights' at 15 3 * * * UTC pulls URL+bearer from vault.decrypted_secrets at run time — Vault secrets provisioned in 05-05
 
 ### Open Todos
 
@@ -142,8 +144,8 @@ None.
 
 **Resume hint:** Phase 3 Wave 0 RED test scaffold in place (03-01 complete). 15 it.todo stubs + fixture + ci-guards contract test committed as 8d8d302 and bdf5332. Plan 03-02 should author 0010_cohort_mv.sql and flip the ANL-01 + ANL-08 todo blocks to green. Open Phase 3 caveats: April 2026 Worldline blackout, 772 missing_worldline_rows cohort linkage loss.
 
-**Last session:** 2026-04-14T21:49:58.037Z
-**Stopped At:** Completed 04-06 gap-closure (Gap A: layerchart 2.x hydration fix)
+**Last session:** 2026-04-15T09:10:27.766Z
+**Stopped At:** Completed 05-01 insights table + cron
 
 ---
 *State initialized: 2026-04-13*
