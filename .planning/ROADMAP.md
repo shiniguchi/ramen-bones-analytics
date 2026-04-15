@@ -15,7 +15,7 @@ A restaurant owner opens the site on their phone and makes a real business decis
 - [ ] **Phase 2: Ingestion** — Pre-joined CSV loader → staging → normalized transactions (no scraper; CSV produced out-of-band)
 - [ ] **Phase 3: Analytics SQL** — Cohort/LTV/KPI/frequency MVs with wrapper views and survivorship guardrails
 - [x] **Phase 4: Mobile Reader UI** — SvelteKit dashboard on Cloudflare Pages at 375px baseline (completed 2026-04-14)
-- [ ] **Phase 5: Insights & Forkability** — Claude Haiku narrative card, one-click fork/deploy hardening
+- [x] **Phase 5: Insights & Forkability** — Claude Haiku narrative card; v1 shipped to friend 2026-04-15
 
 ## Phase Details
 
@@ -101,7 +101,7 @@ A restaurant owner opens the site on their phone and makes a real business decis
   - [x] 05-03-PLAN.md — [wave 2] Edge Function implementation (digitGuard/fallback/payload/prompt/index.ts) + deploy + flip Deno tests GREEN
   - [x] 05-04-PLAN.md — [wave 2] InsightCard.svelte + +page.server.ts loader + +page.svelte card stream + ci-guards extension + flip Vitest tests GREEN
   - [x] 05-05-PLAN.md — [wave 3] Forkability: README Phase 2-5+Ship sections + sectioned .env.example + MIT LICENSE + working fork-dryrun.sh
-  - [ ] 05-06-PLAN.md — [wave 4/6] Ship: gh repo metadata (T1 done, public flip 2026-04-15) + fork walkthrough (T2 deferred out of v1 scope) + friend iPhone sign-off (T3 in progress)
+  - [x] 05-06-PLAN.md — [wave 4/6] Ship: gh repo metadata + public flip + friend iPhone sign-off ("could see the chart too"); T2 fork walkthrough deferred out of v1 scope (2026-04-15)
   - [x] 05-07-PLAN.md — [wave 5, gap closure] Cloudflare Pages deploy: wrangler.toml + one-time project create + wrangler pages deploy → capture pages.dev URL (closes Gap 1)
   - [ ] 05-08-PLAN.md — [wave 5, gap closure] Provision friend's Supabase Auth user + memberships row + verify JWT restaurant_id claim + secure credential handoff (closes Gap 2)
   - [x] 05-09-PLAN.md — [wave 5, gap closure] Seed ≥50 recent synthetic transactions + refresh MVs + re-invoke generate-insight → fallback_used=false with real numbers (closes Gap 3)
@@ -212,7 +212,7 @@ A restaurant owner opens the site on their phone and makes a real business decis
 | 2. Ingestion | 4/4 | Complete | 2026-04-14 |
 | 3. Analytics SQL | 5/5 | Complete | 2026-04-14 |
 | 4. Mobile Reader UI | 5/5 | Complete | 2026-04-14 |
-| 5. Insights & Forkability | 8/9 | Shipping (05-06 T2 fork walkthrough deferred out of v1 scope; T3 friend sign-off in progress) | 2026-04-15 |
+| 5. Insights & Forkability | 9/9 | Complete (v1 shipped; 05-06 T2 fork walkthrough deferred out of v1 scope) | 2026-04-15 |
 | 6. Filter Foundation | 0/- | Pending | - |
 | 7. Column Promotion | 0/- | Pending | - |
 | 8. Star Schema | 0/- | Pending | - |
