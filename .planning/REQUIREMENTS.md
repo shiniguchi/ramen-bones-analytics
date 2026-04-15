@@ -80,7 +80,7 @@ Requirements for initial release. Each maps to exactly one roadmap phase.
 
 - [x] **DM-01**: `transactions` table gains `wl_issuing_country` (char(2)) + `card_type` (text) columns via migration `0018_transactions_country_cardtype.sql`
 - [x] **DM-02**: One-shot backfill populates both columns from `stg_orderbird_order_items` first-row-per-invoice, verified against ≥20 invoices
-- [ ] **DM-03**: CSV loader writes both columns on future ingests, preserving idempotency on re-run
+- [x] **DM-03**: CSV loader writes both columns on future ingests, preserving idempotency on re-run
 
 ### Data Model — Star Schema
 
@@ -207,7 +207,7 @@ Each v1 requirement maps to exactly one roadmap phase.
 | FLT-07 | Phase 6 — Filter Foundation | Complete |
 | DM-01 | Phase 7 — Column Promotion | Complete |
 | DM-02 | Phase 7 — Column Promotion | Complete |
-| DM-03 | Phase 7 — Column Promotion | Pending |
+| DM-03 | Phase 7 — Column Promotion | Complete |
 | DM-04 | Phase 8 — Star Schema | Pending |
 | DM-05 | Phase 8 — Star Schema | Pending |
 | DM-06 | Phase 8 — Star Schema | Pending |
