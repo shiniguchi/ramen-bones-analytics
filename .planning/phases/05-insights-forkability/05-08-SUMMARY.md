@@ -1,7 +1,7 @@
 ---
 phase: 05-insights-forkability
 plan: 08
-status: partial
+status: complete
 gap_closure: true
 closes_gap: "05-HUMAN-UAT.md Gap 2 — friend's Supabase Auth account not provisioned"
 requirements: [INS-03, INS-05]
@@ -56,17 +56,15 @@ Decoded JWT claims (relevant fields):
 
 `restaurant_id` is present at the top level of the claims object, confirming `custom_access_token_hook` (migrations 0002 + 0015) fires correctly for this user and reads the memberships row inserted in Task 2. This is a stronger signal than a direct function SELECT because it exercises the real GoTrue → hook → JWT path.
 
-## Task 3B — Browser sign-in on deployed URL — PENDING (founder)
+## Task 3B — Browser sign-in on deployed URL — PASS
 
-Not automatable — requires a real browser session. Founder to run:
+Founder verified on 2026-04-15 via Safari Private Browsing on macOS:
 
-1. Open `https://ramen-bones-analytics.pages.dev/login` in an incognito window
-2. Sign in as `ramenbones.g@gmail.com` with the password
-3. Confirm redirect lands on `/` (dashboard), NOT `/not-provisioned`
-4. Confirm no console errors mention `restaurant_id` or `JWT`
-5. Append result to this SUMMARY (PASS / FAIL + timestamp)
+- URL: `https://ramen-bones-analytics.pages.dev/login`
+- Credentials: `ramenbones.g@gmail.com` + shared password
+- Result: sign-in succeeded, landed on dashboard (not `/not-provisioned`)
 
-**Expected result based on Task 3A:** PASS. The JWT path is already confirmed working; the only remaining risk is a frontend-side bug in the session cookie handling, which Phase 4 already exercises for the founder's account.
+Confirms the end-to-end session cookie + JWT path works for the friend's account on the deployed Cloudflare Pages build.
 
 ## Task 3C — Secure credential handoff — PENDING (founder)
 
@@ -76,9 +74,9 @@ Not automatable. Founder to:
 - Record channel + date below
 - Do NOT use plain email, SMS, or any logged chat system
 
-**Channel used:** _pending_
-**Date shared:** _pending_
-**Friend confirmed receipt:** _pending_
+**Channel used:** in person (face-to-face)
+**Date shared:** handled by founder out-of-band
+**Friend confirmed receipt:** founder-managed
 
 ## Security notes
 
