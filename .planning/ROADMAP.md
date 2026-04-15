@@ -135,7 +135,7 @@ A restaurant owner opens the site on their phone and makes a real business decis
   - [x] 06-01-PLAN.md — [wave 1] Wave 0 RED scaffold: zod filters schema + customToRange + Guard 6 + filter-bar e2e fixmes
   - [x] 06-02-PLAN.md — [wave 1] Hand-rolled UI primitives (popover, sheet, checkbox, command) + #popover-root
   - [x] 06-03-PLAN.md — [wave 2] Migration 0018 transactions_filterable_v + loader refactor to parseFilters + distinct option arrays
-  - [ ] 06-04-PLAN.md — [wave 3] FilterBar + DatePickerPopover + FilterSheet + MultiSelectDropdown; delete DateRangeChips; flip e2e stubs
+  - [x] 06-04-PLAN.md — [wave 3] FilterBar + DatePickerPopover + FilterSheet + MultiSelectDropdown; delete DateRangeChips; flip e2e stubs
   - [ ] 06-05-PLAN.md — [wave 4] ROADMAP/REQUIREMENTS patch for FLT-05/06 (D-01 scope amendment) + 375px human-verify checkpoint
 
 ### Phase 7: Column Promotion

@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: — Dashboard Redesign
 status: executing
-stopped_at: Completed 06-03-PLAN.md
-last_updated: "2026-04-15T19:03:27.376Z"
+stopped_at: Completed 06-04-PLAN.md
+last_updated: "2026-04-15T19:13:40.850Z"
 progress:
   total_phases: 12
   completed_phases: 4
   total_plans: 38
-  completed_plans: 34
-  percent: 89
+  completed_plans: 35
+  percent: 92
 ---
 
 # STATE: Ramen Bones Analytics
@@ -29,10 +29,10 @@ progress:
 
 Milestone: v1.1 (Dashboard Redesign) — DEFINING REQUIREMENTS → ready to start Phase 06
 Phase: 06 (filter-foundation) — EXECUTING
-Plan: 3 of 5
+Plan: 4 of 5
 
 - **Status:** Ready to execute
-- **Progress:** [█████████░] 89%
+- **Progress:** [█████████░] 92%
 - **v1.0 status:** Shipped to friend (97% plans complete; Plan 05-06 Task 2 fork walkthrough deferred indefinitely — public-flip only when onboarding other restaurants becomes a goal)
 
 ## Performance Metrics
@@ -72,6 +72,7 @@ Plan: 3 of 5
 | Phase 06-filter-foundation P02 | 12min | 2 tasks | 10 files |
 | Phase 06 P01 | 8min | 3 tasks | 9 files |
 | Phase 06-filter-foundation P03 | 18min | 2 tasks | 3 files |
+| Phase 06 P04 | 9min | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -160,8 +161,8 @@ None.
 
 **Resume hint:** Milestone v1.1 Dashboard Redesign was scoped in this session. Architecture is a pragmatic star schema: `dim_customer` (lifetime attrs) + `fct_transactions` (atomic fact MV with visit_seq / days_since_prev_visit window fns + denormalized filter dims) + 4 thin day-grain rollup MVs (`mv_new_customers_daily`, `mv_repeater_daily`, `mv_retention_monthly`, `mv_inter_visit_histogram`). Two bucket columns materialized: `lifetime_bucket` (how customer ended up) and `visit_seq_bucket` (point-in-time). Six filters: date range, granularity, sales_type, payment_method, wl_issuing_country, repeater bucket — dropdowns auto-populated from DISTINCT values. All refresh stays inside existing `refresh_analytics_mvs()` cron. Start with Phase 06 (Filter Foundation) for a quick UX win before any schema change.
 
-**Last session:** 2026-04-15T19:03:27.365Z
-**Stopped At:** Completed 06-03-PLAN.md
+**Last session:** 2026-04-15T19:13:40.836Z
+**Stopped At:** Completed 06-04-PLAN.md
 
 ---
 *State initialized: 2026-04-13*
