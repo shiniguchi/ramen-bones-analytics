@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: verifying
-stopped_at: Completed 05-05-PLAN.md
-last_updated: "2026-04-15T09:23:32.430Z"
+stopped_at: "05-06 Task 1 blocked: no GitHub remote configured"
+last_updated: "2026-04-15T09:38:56.458Z"
 progress:
   total_phases: 5
   completed_phases: 4
@@ -134,6 +134,7 @@ Plan: 1 of 6
 - [Phase 05-insights-forkability]: 05-04: InsightCard wired via insights_v fan-out; is_yesterday derived in Berlin tz; ci-guards Guard 1 extended to forbid raw .from('insights') from src/. Plan deviated from session.user.app_metadata.timezone (load uses locals.supabase, no session var) — Berlin hardcoded for v1.
 - [Phase 05-insights-forkability]: 05-03: fallback template uses 'prior week' not '7d/7 days' to avoid leaking a literal digit 7 through the digit-guard tautology
 - [Phase 05-insights-forkability]: 05-05: Forkability shipped — MIT LICENSE, 5-section .env.example (cf pages / supabase secrets / vault / github actions / local dev), README Phase 2–Ship quickstart, fork-dryrun.sh green (23 checks). INS-05/INS-06 closed.
+- [Phase 05-insights-forkability]: 05-06 T1: GitHub repo metadata set via `gh` — 9 topics (analytics, restaurant-analytics, sveltekit, svelte, supabase, cloudflare-pages, forkable, pos-integration, cohort-analysis) + description. Rule 1 deviation: repo kept PRIVATE per user decision (plan assumed PUBLIC). Friend accesses v1 via Cloudflare Pages URL, not the repo; public-flip deferred until forkability marketing is wanted. Plan's `visibility:PUBLIC` acceptance criterion knowingly unsatisfied.
 
 ### Open Todos
 
@@ -151,8 +152,8 @@ None.
 
 **Resume hint:** Phase 3 Wave 0 RED test scaffold in place (03-01 complete). 15 it.todo stubs + fixture + ci-guards contract test committed as 8d8d302 and bdf5332. Plan 03-02 should author 0010_cohort_mv.sql and flip the ANL-01 + ANL-08 todo blocks to green. Open Phase 3 caveats: April 2026 Worldline blackout, 772 missing_worldline_rows cohort linkage loss.
 
-**Last session:** 2026-04-15T09:23:32.417Z
-**Stopped At:** Completed 05-05-PLAN.md
+**Last session:** 2026-04-15T09:38:56.445Z
+**Stopped At:** 05-06 Task 1 complete (repo metadata set, kept PRIVATE); paused at Task 2 human-verify checkpoint (fresh fork walkthrough)
 
 ---
 *State initialized: 2026-04-13*
