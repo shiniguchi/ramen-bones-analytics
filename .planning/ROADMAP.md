@@ -94,14 +94,17 @@ A restaurant owner opens the site on their phone and makes a real business decis
   2. A digit-guard regex rejects any LLM output containing numbers not in the input payload, falling back to a deterministic template so a hallucinated figure cannot reach the owner
   3. The dashboard renders the latest insight card for the logged-in tenant and hides the card gracefully if no insight exists for the day
   4. The public repository is forkable with a README describing one-click deploy (Cloudflare Pages + Supabase project + GHA secrets) and a `.env.example` documenting every required environment variable
-**Plans**: 6 plans
-**Wave structure**: 05-01 + 05-02 (wave 1, parallel — SQL migrations + Wave 0 RED test scaffold, disjoint files) → 05-03 + 05-04 (wave 2, parallel — Edge Function + SvelteKit card, disjoint files) → 05-05 (wave 3 — forkability docs) → 05-06 (wave 4 — ship checkpoint)
+**Plans**: 9 plans
+**Wave structure**: 05-01 + 05-02 (wave 1, parallel) → 05-03 + 05-04 (wave 2, parallel) → 05-05 (wave 3) → 05-06 Task 1 (wave 4, partial) → **05-07 + 05-08 + 05-09 (wave 5, parallel gap closure — unblock 05-06 Task 3)** → 05-06 Tasks 2-3 (wave 6, ship checkpoint resumes)
   - [x] 05-01-PLAN.md — [wave 1] Migrations 0016_insights_table.sql + 0017_insights_cron.sql (table + insights_v wrapper + pg_net + cron schedule 15 3 * * * UTC)
   - [x] 05-02-PLAN.md — [wave 1] Wave 0 RED test scaffold (deno.json + digit-guard.test + payload.test + fallback.test + InsightCard.test + fork-dryrun.sh stub)
   - [x] 05-03-PLAN.md — [wave 2] Edge Function implementation (digitGuard/fallback/payload/prompt/index.ts) + deploy + flip Deno tests GREEN
   - [x] 05-04-PLAN.md — [wave 2] InsightCard.svelte + +page.server.ts loader + +page.svelte card stream + ci-guards extension + flip Vitest tests GREEN
   - [x] 05-05-PLAN.md — [wave 3] Forkability: README Phase 2-5+Ship sections + sectioned .env.example + MIT LICENSE + working fork-dryrun.sh
-  - [ ] 05-06-PLAN.md — [wave 4] Ship: gh repo public + topics + description + fresh-clone fork walkthrough + friend iPhone sign-off
+  - [ ] 05-06-PLAN.md — [wave 4/6] Ship: gh repo metadata (T1 done) + fork walkthrough (T2 deferred to public-flip) + friend iPhone sign-off (T3 blocked by 05-07/08/09)
+  - [ ] 05-07-PLAN.md — [wave 5, gap closure] Cloudflare Pages deploy: wrangler.toml + one-time project create + wrangler pages deploy → capture pages.dev URL (closes Gap 1)
+  - [ ] 05-08-PLAN.md — [wave 5, gap closure] Provision friend's Supabase Auth user + memberships row + verify JWT restaurant_id claim + secure credential handoff (closes Gap 2)
+  - [ ] 05-09-PLAN.md — [wave 5, gap closure] Seed ≥50 recent synthetic transactions + refresh MVs + re-invoke generate-insight → fallback_used=false with real numbers (closes Gap 3)
 
 ## Progress
 
@@ -111,7 +114,7 @@ A restaurant owner opens the site on their phone and makes a real business decis
 | 2. Ingestion | 4/4 | Complete | 2026-04-14 |
 | 3. Analytics SQL | 1/5 | Executing | - |
 | 4. Mobile Reader UI | 5/5 | Complete   | 2026-04-14 |
-| 5. Insights & Forkability | 0/6 | Planned | - |
+| 5. Insights & Forkability | 5/9 | Executing (gap closure) | - |
 
 ## Coverage Summary
 
