@@ -76,6 +76,16 @@ if ! bash "$(dirname "$0")/check-migration-drift.sh"; then
   fail=1
 fi
 
+# Guard 6 (Phase 6 FLT-07): no dynamic SQL inside .from(/.rpc( calls.
+# Delegated to scripts/ci-guards/no-dynamic-sql.sh so individual guards can
+# be invoked standalone in local dev. Runs only if src/ exists.
+if [ -d src ]; then
+  if ! bash "$(dirname "$0")/ci-guards/no-dynamic-sql.sh"; then
+    echo "::error::Guard 6 FAILED: src/ contains \${} inside .from(/.rpc( — use zod-validated params + .eq()/.in()/.gte()."
+    fail=1
+  fi
+fi
+
 if [ "$fail" -eq 0 ]; then
   echo "All CI guards passed."
 fi
