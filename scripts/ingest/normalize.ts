@@ -19,6 +19,63 @@ export function normalizePaymentMethod(raw: string | null | undefined): string {
   return (raw ?? '').trim();
 }
 
+// Phase 07 DM-03 / D-04: canonicalize a raw Orderbird/Worldline card-type
+// string into the canonical bucket {visa,mastercard,amex,maestro,girocard,
+// other,unknown}. Must stay byte-identical to public.normalize_card_type
+// (supabase/migrations/0019_transactions_country_cardtype.sql) so backfilled
+// historical rows and live-ingested rows agree on every input. The caller
+// is responsible for precedence (COALESCE of wl_payment_type → wl_card_type
+// → POS card_type) — this helper takes the already-chosen raw value.
+export function canonicalizeCardType(raw: string | null | undefined): string {
+  const k = (raw ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
+  if (k === '') return 'unknown';
+  // Visa family — explicit variants + prefix/suffix match
+  if (
+    k === 'visa' ||
+    k === 'visa debit' ||
+    k === 'visa credit' ||
+    k === 'visa prepaid' ||
+    k === 'visa dkb' ||
+    k === 'chase visa'
+  )
+    return 'visa';
+  if (k.startsWith('visa ') || k.endsWith(' visa')) return 'visa';
+  // Mastercard family
+  if (
+    k === 'mastercard' ||
+    k === 'mc' ||
+    k === 'master card' ||
+    k === 'mastercard debit' ||
+    k === 'kebhana master'
+  )
+    return 'mastercard';
+  if (k.startsWith('mastercard ') || k.endsWith(' mastercard'))
+    return 'mastercard';
+  // Amex
+  if (k === 'amex' || k === 'american express') return 'amex';
+  // Maestro / V PAY (Visa's debit EU scheme — historically grouped with maestro)
+  if (k === 'maestro' || k === 'v pay' || k === 'vpay') return 'maestro';
+  // Girocard / EC Karte
+  if (
+    k === 'girocard' ||
+    k === 'ec' ||
+    k === 'ec karte' ||
+    k === 'ec-karte' ||
+    k === 'eckarte'
+  )
+    return 'girocard';
+  // Bare debit/credit funding indicator — network unknown
+  if (
+    k === 'debit' ||
+    k === 'credit' ||
+    k === 'commercial' ||
+    k === 'commercialdebit' ||
+    k === 'commercial debit'
+  )
+    return 'unknown';
+  return 'other';
+}
+
 // D-01/D-03: shape raw CSV rows into staging rows.
 // Preserves file order. row_index is assigned 1..N within each invoice group.
 // All 29 CSV columns are stored verbatim; type coercion is deferred to the
@@ -133,6 +190,16 @@ export function toTransactions(
       tip_cents,
       payment_method: normalizePaymentMethod(first.payment_method),
       sales_type: first.sales_type,
+      // Phase 07 DM-03: promote wl_issuing_country + card_type onto the fact
+      // from the first row of the invoice group (matches the tip/payment_method
+      // first-row-wins convention above). Precedence for card_type mirrors the
+      // SQL backfill in 0019: wl_payment_type → wl_card_type → POS card_type.
+      wl_issuing_country: (first.wl_issuing_country || '').trim() || null,
+      card_type: canonicalizeCardType(
+        (first.wl_payment_type || '').trim() ||
+          (first.wl_card_type || '').trim() ||
+          (first.card_type || '').trim(),
+      ),
       invoice_number: invoice,
     };
     out.push(tx);
