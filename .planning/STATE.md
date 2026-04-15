@@ -4,12 +4,12 @@ milestone: v1.0
 milestone_name: milestone
 status: verifying
 stopped_at: Completed 05-02-PLAN.md
-last_updated: "2026-04-15T09:10:39.361Z"
+last_updated: "2026-04-15T09:16:05.294Z"
 progress:
   total_phases: 5
   completed_phases: 4
   total_plans: 30
-  completed_plans: 26
+  completed_plans: 27
   percent: 87
 ---
 
@@ -66,6 +66,7 @@ Plan: 1 of 6
 | Phase 04-mobile-reader-ui P06 | 15min | 3 tasks | 10 files |
 | Phase 05-insights-forkability P01 | 8min | 2 tasks | 2 files |
 | Phase 05-insights-forkability P02 | 6min | 2 tasks | 6 files |
+| Phase 05-insights-forkability P04 | 5min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -128,6 +129,7 @@ Plan: 1 of 6
 - [Phase 04]: 04-07 (Gap B closure): migration 0015 ALTER custom_access_token_hook SECURITY DEFINER lands in repo; DEV verified prosecdef=true. jwt-claim integration test extended with literal 'Gap B regression' failure message pointing at 0015. Manual revert sanity check confirmed test goes red under SECURITY INVOKER.
 - [Phase 04-mobile-reader-ui]: 04-06: layerchart pinned 2.0.0-next.54 (Svelte 5 native line); Path B — 2.x removed string-preset xScale, must pass d3 scale fns; E2E fixture bypass via E2E_FIXTURES=1 + ?__e2e=charts server-side (page.route cannot intercept SSR load)
 - [Phase 05-insights-forkability]: 05-01: insights_v wrapper omits input_payload (audit-only); pg_cron 'generate-insights' at 15 3 * * * UTC pulls URL+bearer from vault.decrypted_secrets at run time — Vault secrets provisioned in 05-05
+- [Phase 05-insights-forkability]: 05-04: InsightCard wired via insights_v fan-out; is_yesterday derived in Berlin tz; ci-guards Guard 1 extended to forbid raw .from('insights') from src/. Plan deviated from session.user.app_metadata.timezone (load uses locals.supabase, no session var) — Berlin hardcoded for v1.
 
 ### Open Todos
 
