@@ -21,7 +21,9 @@ jobs:
         with:
           version: latest
       - run: npm ci
+      - name: Link TEST project
+        run: supabase link --project-ref ${{ secrets.TEST_SUPABASE_PROJECT_REF }} --password ${{ secrets.TEST_SUPABASE_DB_PASSWORD }}
       - name: Apply migrations to TEST project
-        run: supabase db push --project-ref ${{ secrets.TEST_SUPABASE_PROJECT_REF }} --password ${{ secrets.TEST_SUPABASE_DB_PASSWORD }}
+        run: supabase db push --password ${{ secrets.TEST_SUPABASE_DB_PASSWORD }} --yes
       - name: Run Vitest
         run: npx vitest run --reporter=dot
