@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: — Dashboard Redesign
 status: executing
-stopped_at: Completed 07-01-PLAN.md (Wave 0 RED scaffold)
-last_updated: "2026-04-15T23:32:05.387Z"
+stopped_at: Completed 07-02-PLAN.md (migration 0019 applied to DEV + TEST)
+last_updated: "2026-04-15T23:35:25.628Z"
 progress:
   total_phases: 12
   completed_phases: 6
   total_plans: 42
-  completed_plans: 39
-  percent: 93
+  completed_plans: 40
+  percent: 95
 ---
 
 # STATE: Ramen Bones Analytics
@@ -32,7 +32,7 @@ Phase: 07 (column-promotion) — EXECUTING
 Plan: 2 of 4
 
 - **Status:** Ready to execute
-- **Progress:** [█████████░] 93%
+- **Progress:** [██████████] 95%
 - **v1.0 status:** Shipping to friend (97% plans complete; repo flipped PUBLIC 2026-04-15 with topics + description set; Plan 05-06 Task 2 fork walkthrough deferred out of v1 scope — forkability is explicitly not a v1 concern per user direction)
 
 ## Performance Metrics
@@ -75,6 +75,7 @@ Plan: 2 of 4
 | Phase 06 P04 | 9min | 2 tasks | 8 files |
 | Phase 06-filter-foundation P05 | 4min | 1 tasks | 4 files |
 | Phase 07 P01 | 20min | 2 tasks | 9 files |
+| Phase 07-column-promotion P02 | 25min | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -146,6 +147,7 @@ Plan: 2 of 4
 - [Phase 06-filter-foundation]: 06-03: transactions_filterable_v wrapper view (JWT-scoped); loader refactored to parseFilters(url) as sole URL->state converter; chip-scoped tiles honor sales_type+payment_method via .in(); distinct option arrays loaded unfiltered (D-14); fixed reference tiles stay unscoped per UI-SPEC; 6 integration tests via hand-rolled chainable supabase mock
 - [Phase 06-filter-foundation]: 06-05: Task 2 (375px human UAT) deferred — CF Pages deploy pipeline broken (~27 commits stale behind a3623b9); UAT script persisted in 06-HUMAN-UAT.md status=blocked; Phase 6 code green locally but not yet live on DEV
 - [Phase 07]: 07-01: Wave 0 RED scaffold — 5 new test files + 2 extended + fixture bumped 24→30 rows. All new tests describe.skip with TODO(07-0X) markers so CI stays green until waves 1-3 flip them.
+- [Phase 07-column-promotion]: 07-02: Backfill COALESCE order is wl_payment_type→wl_card_type→card_type (ground-truth showed wl_card_type is Debit/Credit flag not network); added country_name_to_iso2() helper because staging stores country NAMES not ISO-2
 
 ### Open Todos
 
@@ -165,8 +167,8 @@ Plan: 2 of 4
 
 **Resume hint:** Milestone v1.1 Dashboard Redesign was scoped in this session. Architecture is a pragmatic star schema: `dim_customer` (lifetime attrs) + `fct_transactions` (atomic fact MV with visit_seq / days_since_prev_visit window fns + denormalized filter dims) + 4 thin day-grain rollup MVs (`mv_new_customers_daily`, `mv_repeater_daily`, `mv_retention_monthly`, `mv_inter_visit_histogram`). Two bucket columns materialized: `lifetime_bucket` (how customer ended up) and `visit_seq_bucket` (point-in-time). Six filters: date range, granularity, sales_type, payment_method, wl_issuing_country, repeater bucket — dropdowns auto-populated from DISTINCT values. All refresh stays inside existing `refresh_analytics_mvs()` cron. Start with Phase 06 (Filter Foundation) for a quick UX win before any schema change.
 
-**Last session:** 2026-04-15T23:32:05.372Z
-**Stopped At:** Completed 07-01-PLAN.md (Wave 0 RED scaffold)
+**Last session:** 2026-04-15T23:35:25.616Z
+**Stopped At:** Completed 07-02-PLAN.md (migration 0019 applied to DEV + TEST)
 
 ---
 *State initialized: 2026-04-13*
