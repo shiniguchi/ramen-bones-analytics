@@ -38,8 +38,8 @@ export const load: PageServerLoad = async ({ locals, url }) => {
       filters,
       freshness: new Date().toISOString(),
       window: chipToRange((range === 'custom' ? '7d' : range) as Range),
-      distinctSalesTypes: [] as string[],
-      distinctPaymentMethods: [] as string[],
+      distinctSalesTypes: ['INHOUSE', 'TAKEAWAY'] as string[],
+      distinctPaymentMethods: ['Bar', 'Visa'] as string[],
       kpi: {
         revenueToday: { value: 12345, prior: 10000, priorLabel: 'prior day' },
         revenue7d:    { value: 67890, prior: 60000, priorLabel: 'prior 7d' },

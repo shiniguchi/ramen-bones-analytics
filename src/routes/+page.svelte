@@ -1,6 +1,6 @@
 <script lang="ts">
   import DashboardHeader from '$lib/components/DashboardHeader.svelte';
-  import DateRangeChips from '$lib/components/DateRangeChips.svelte';
+  import FilterBar from '$lib/components/FilterBar.svelte';
   import FreshnessLabel from '$lib/components/FreshnessLabel.svelte';
   import KpiTile from '$lib/components/KpiTile.svelte';
   import CohortRetentionCard from '$lib/components/CohortRetentionCard.svelte';
@@ -13,8 +13,13 @@
 </script>
 
 <DashboardHeader />
-<div class="sticky top-0 z-10 bg-zinc-50/95 backdrop-blur px-4 py-2">
-  <DateRangeChips range={data.range} />
+<FilterBar
+  filters={data.filters}
+  window={data.window}
+  distinctSalesTypes={data.distinctSalesTypes}
+  distinctPaymentMethods={data.distinctPaymentMethods}
+/>
+<div class="px-4 py-2">
   <FreshnessLabel lastIngestedAt={data.freshness} />
 </div>
 <main class="mx-auto max-w-screen-sm px-4 pb-12">
