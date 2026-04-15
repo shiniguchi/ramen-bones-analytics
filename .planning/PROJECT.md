@@ -77,6 +77,24 @@ A restaurant owner opens the site on their phone and makes a real business decis
 | Card hash as customer ID | Works without opt-in, captures all repeat visits | — Pending |
 | Forkable open-source, no paid tier | Product philosophy — give the banking playbook away | — Pending |
 
+## Current Milestone: v1.1 Dashboard Redesign
+
+**Goal:** Replace the v1.0 KPI-tile dashboard with a chart-first, richly-filterable analytics surface built on a pragmatic star schema so every new chart reuses one atomic transaction fact.
+
+**Target features:**
+- Global filter foundation: custom date range, day/week/month granularity toggle, dropdowns for sales type / payment method / issuing country / repeater bucket (auto-populated)
+- Column promotion: `wl_issuing_country` + `card_type` lifted from `stg_orderbird_order_items` into `transactions`
+- Star-schema data model: `dim_customer` (lifetime attributes) + `fct_transactions` (atomic fact MV with visit-sequence window fns and denormalized filter dims)
+- Chart rollup MVs at day-grain, re-bucketed to week/month in wrapper views
+- Six new charts: new-customers-per-period, first-timer-vs-repeater by count/revenue/avg-ticket, weekly+monthly retention, inter-visit histogram
+- Bug fixes inherited from Phase 4 UAT: empty NVR card, LTV sparse-bars
+
+**Key context:**
+- Forkability/public-flip (v1.0 Plan 05-06 Task 2) is **explicitly deferred** — repo stays private; fork walkthrough revisits only when onboarding other restaurants becomes a goal
+- Star schema is pragmatic, not dogmatic: payment/country/sales_type stay denormalized on the fact because cardinality is low and join cost is non-zero
+- Two repeater buckets ship on `fct_transactions` (`lifetime_bucket` for "how the customer ended up", `visit_seq_bucket` for per-visit attribution) to avoid a second model revision later
+- All refresh lives inside the existing nightly `refresh_analytics_mvs()` — no new cron, no new infra
+
 ## Evolution
 
 This document evolves at phase transitions and milestone boundaries.
@@ -95,4 +113,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-14 after Phase 3 (analytics-sql) complete*
+*Last updated: 2026-04-15 — milestone v1.1 Dashboard Redesign started*

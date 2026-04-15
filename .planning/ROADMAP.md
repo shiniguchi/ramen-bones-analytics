@@ -106,30 +106,135 @@ A restaurant owner opens the site on their phone and makes a real business decis
   - [ ] 05-08-PLAN.md — [wave 5, gap closure] Provision friend's Supabase Auth user + memberships row + verify JWT restaurant_id claim + secure credential handoff (closes Gap 2)
   - [x] 05-09-PLAN.md — [wave 5, gap closure] Seed ≥50 recent synthetic transactions + refresh MVs + re-invoke generate-insight → fallback_used=false with real numbers (closes Gap 3)
 
+## Milestone v1.1 — Dashboard Redesign (started 2026-04-15)
+
+**Goal:** Replace the v1.0 KPI-tile dashboard with a chart-first, richly-filterable analytics surface built on a pragmatic star schema.
+
+**Architecture summary:** One atomic fact (`fct_transactions`) + one customer dimension (`dim_customer`) + four thin day-grain rollup MVs. Filter dims denormalized on the fact for zero-join query speed. All refresh stays inside the existing nightly `refresh_analytics_mvs()` cron.
+
+### Phases
+
+- [ ] **Phase 6: Filter Foundation** — Custom date-range picker, day/week/month toggle, 4 dropdown filters wired through zod-validated SSR params against existing wrapper views
+- [ ] **Phase 7: Column Promotion** — Lift `wl_issuing_country` + `card_type` from staging into `transactions` via migration + loader + backfill
+- [ ] **Phase 8: Star Schema** — Build `dim_customer` and `fct_transactions` MVs with window fns, indexes, RLS wrappers, and DAG-ordered refresh
+- [ ] **Phase 9: Chart Rollups** — Four thin day-grain aggregation MVs on top of `fct_transactions` (`mv_new_customers_daily`, `mv_repeater_daily`, `mv_retention_monthly`, `mv_inter_visit_histogram`)
+- [ ] **Phase 10: Chart Components** — Four new Svelte chart components, all honoring the 6-filter contract, at 375px
+- [ ] **Phase 11: Bug Fixes** — Close the two Phase 4 UAT gaps (empty NVR card, LTV sparse bars)
+- [ ] **Phase 12: Brainstorm Extras (optional / parkable)** — Weekday×hour heatmap, item-Pareto, ticket histogram, seasonality curve — only built if there's runway
+
+### Phase 6: Filter Foundation
+**Goal**: A shared filter bar (date range, granularity, sales type, payment method, country, repeater bucket) drives every existing v1.0 card through a single zod-validated SSR pipeline, so the UX win ships before any data-model change
+**Depends on**: Phase 5 (v1.0 complete)
+**Requirements**: FLT-01, FLT-02, FLT-03, FLT-04, FLT-05, FLT-06, FLT-07
+**Success Criteria**:
+  1. A user can pick an arbitrary date range (or a preset), a day/week/month granularity, and any of the 4 dropdown filters, and every v1.0 card re-renders with correctly scoped numbers at 375px
+  2. The SSR `+page.server.ts` load function composes WHERE clauses from zod-validated query params only — no string interpolation, no dynamic SQL, ci-guards grep for `${` inside `.from(…)` fails the build
+  3. The payment-method and country dropdowns are populated from `SELECT DISTINCT` against the relevant wrapper view at load time — no hardcoded whitelist, adding a new country requires zero code change
+  4. All 4 dropdowns surface an "All" sentinel that cleanly degrades to no-op WHERE clause
+**Plans**: TBD
+
+### Phase 7: Column Promotion
+**Goal**: `transactions.wl_issuing_country` and `transactions.card_type` are populated for every row — new ingests and historical — so Phase 8 window functions can denormalize them onto the fact
+**Depends on**: Phase 6 (parallel-safe; Phase 7 is a pure backend change)
+**Requirements**: DM-01, DM-02, DM-03
+**Success Criteria**:
+  1. Migration `0018_transactions_country_cardtype.sql` adds both columns as nullable; existing rows stay intact during the migration
+  2. A one-shot backfill SQL (`DISTINCT ON (restaurant_id, invoice_number)` against `stg_orderbird_order_items`) populates both columns for all historical transactions; ≥20 invoices spot-checked against the raw CSV
+  3. The CSV loader is updated to write both columns on future ingests, verified by an integration test that re-runs the loader and asserts zero diffs (idempotency preserved)
+  4. A distinct-country check on `transactions` returns plausible values (at minimum `DE` plus ≥1 non-DE country, confirming tourist rows exist)
+**Plans**: TBD
+
+### Phase 8: Star Schema
+**Goal**: `dim_customer` and `fct_transactions` exist as tenant-scoped materialized views with every attribution column computed once, the correct indexes in place, and refresh DAG-ordered inside the existing nightly cron
+**Depends on**: Phase 7
+**Requirements**: DM-04, DM-05, DM-06, DM-07, DM-08
+**Success Criteria**:
+  1. `dim_customer` has one row per `(restaurant_id, card_hash)` with a unique index for `REFRESH CONCURRENTLY`, `lifetime_bucket` correctly assigned by the agreed CASE ladder, and a `dim_customer_v` RLS wrapper — a two-tenant isolation test proves cross-tenant reads are zero
+  2. `fct_transactions` has one row per invoice with all 30+ columns materialized (time dims, measures, denormalized filter dims, visit-sequence window fns, customer-lifetime joins); a Nyquist test harness fixture of ≥3 customers with known visit sequences proves `visit_seq`, `is_first_visit`, `days_since_prev_visit`, and both bucket columns are computed correctly
+  3. All 6 declared indexes exist on `fct_transactions` (1 unique + 5 secondary/partial) and `EXPLAIN ANALYZE` on a representative filter query uses the composite filter index instead of a sequential scan
+  4. `refresh_analytics_mvs()` is modified in place to refresh `dim_customer` → `fct_transactions` → rollup MVs in DAG order, all `CONCURRENTLY`; the existing nightly 03:00 UTC pg_cron job still runs unchanged
+  5. `ci-guards` Guard 1 regex is extended; a contract test proves a synthetic `.from('fct_transactions')` usage in `src/` fails the build
+**Plans**: TBD
+
+### Phase 9: Chart Rollups
+**Goal**: Four chart-specific day-grain rollup MVs exist on top of `fct_transactions`, each with unique indexes, RLS wrappers, and slots in the refresh DAG
+**Depends on**: Phase 8
+**Requirements**: CHT-01, CHT-02, CHT-03, CHT-04
+**Success Criteria**:
+  1. `mv_new_customers_daily` returns `COUNT(*) WHERE is_first_visit` grouped by `(restaurant_id, first_visit_date)`, with a unique index and a `mv_new_customers_daily_v` wrapper; fixture test proves the count matches the underlying `fct_transactions` row count at first_visit
+  2. `mv_repeater_daily` rolls up additive measures at `(day × lifetime_bucket × visit_seq_bucket × sales_type × payment_method × wl_issuing_country)` grain; avg ticket is **not** materialized (computed on read as `revenue_cents / NULLIF(visits, 0)`)
+  3. `mv_retention_monthly` mirrors the existing weekly retention SQL with `month` substituted for `week`, with horizon-clip caveat preserved
+  4. `mv_inter_visit_histogram` bins `days_since_prev_visit` into the 6 CASE buckets, with a single CASE expression as the source of truth for bucket boundaries
+  5. All 4 rollups are added to `refresh_analytics_mvs()` DAG step 3 (parallel-safe, all read from `fct_transactions`); nightly cron verified green for ≥1 run
+**Plans**: TBD
+
+### Phase 10: Chart Components
+**Goal**: Four new Svelte chart components land on the dashboard, each reading its wrapper view, honoring all 6 filters, and verified at 375px — plus two existing charts (cohort retention, LTV) are updated to honor the new filters
+**Depends on**: Phase 6 (filter contract), Phase 9 (data)
+**Requirements**: CHT-05, CHT-06, CHT-07, CHT-08, CHT-09, CHT-10
+**Success Criteria**:
+  1. `NewCustomersChart` renders a time series (line or bars per granularity) from `mv_new_customers_daily_v`; sparse/empty states render a friendly "No new customers in this window" instead of a broken chart
+  2. `RepeaterAttributionChart` renders stacked bars (first_timer / 2x / 3x / 4-5x / 6+) with a measure toggle (customer count / revenue / avg ticket), all served by a single `mv_repeater_daily_v` query
+  3. `CohortRetentionChart` renders both weekly and monthly retention variants with a toggle, reading from `retention_curve_v` (existing) and `mv_retention_monthly_v` (new)
+  4. `InterVisitHistogramChart` renders the return-day histogram from `mv_inter_visit_histogram_v`
+  5. Every chart honors all 6 filters from Phase 6 via the shared SSR pipeline; a SvelteKit integration test sets every filter, fetches the page, and asserts every chart's rendered rows respect the filter
+  6. Every chart verified at 375px viewport before merge (same PR template as v1.0)
+**Plans**: TBD
+
+### Phase 11: Bug Fixes
+**Goal**: The two outstanding Phase 4 UAT gaps are closed
+**Depends on**: Phase 10
+**Requirements**: BUG-01, BUG-02
+**Success Criteria**:
+  1. `NewVsReturningCard` on `range=all` renders non-empty with the correct totals derived from 6,842 transactions; the "No sales recorded" empty state only fires when the filtered result set is actually empty
+  2. LTV chart on `range=all` shows the full 10 months of history (not just 3 weeks of bars); the root cause in either `ltv_mv` sparseness or the chart window-truncation is fixed at its source
+**Plans**: TBD
+
+### Phase 12: Brainstorm Extras (optional / parkable)
+**Goal**: Capture the brainstorm ideas from `.planning/backlog/dashboard-redesign.md` as concrete requirements **only if** there is runway after Phase 11 ships; otherwise defer to v1.2
+**Depends on**: Phase 11
+**Requirements**: None yet — requirements are captured only when this phase is formally activated
+**Success Criteria**: Phase is activated via an explicit `/gsd:add-phase` call; otherwise it stays dormant and does not block milestone close
+
 ## Progress
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation | 6/6 | Complete | 2026-04-14 |
 | 2. Ingestion | 4/4 | Complete | 2026-04-14 |
-| 3. Analytics SQL | 1/5 | Executing | - |
-| 4. Mobile Reader UI | 5/5 | Complete   | 2026-04-14 |
-| 5. Insights & Forkability | 5/9 | Executing (gap closure) | - |
+| 3. Analytics SQL | 5/5 | Complete | 2026-04-14 |
+| 4. Mobile Reader UI | 5/5 | Complete | 2026-04-14 |
+| 5. Insights & Forkability | 8/9 | Shipped (05-06 T2 fork walkthrough deferred) | 2026-04-15 |
+| 6. Filter Foundation | 0/- | Pending | - |
+| 7. Column Promotion | 0/- | Pending | - |
+| 8. Star Schema | 0/- | Pending | - |
+| 9. Chart Rollups | 0/- | Pending | - |
+| 10. Chart Components | 0/- | Pending | - |
+| 11. Bug Fixes | 0/- | Pending | - |
+| 12. Brainstorm Extras | 0/- | Optional / parkable | - |
 
 ## Coverage Summary
 
-- **v1 requirements:** 41
-- **Mapped:** 41 (100%)
+- **v1 requirements:** 39 (shipped)
+- **v1.1 requirements:** 26
+- **Mapped:** 65 (100%)
 - **Orphaned:** 0
 - **Duplicated:** 0
 
 | Category | Count | Phase |
 |----------|-------|-------|
 | FND-01..08 | 8 | Phase 1 |
-| EXT-01..07 | 7 | Phase 2 |
+| ING-01..05 | 5 | Phase 2 |
 | ANL-01..09 | 9 | Phase 3 |
 | UI-01..11 | 11 | Phase 4 |
 | INS-01..06 | 6 | Phase 5 |
+| FLT-01..07 | 7 | Phase 6 |
+| DM-01..03 | 3 | Phase 7 |
+| DM-04..08 | 5 | Phase 8 |
+| CHT-01..04 | 4 | Phase 9 |
+| CHT-05..10 | 6 | Phase 10 |
+| BUG-01..02 | 2 | Phase 11 |
 
 ---
 *Roadmap created: 2026-04-13*
+*v1.1 Dashboard Redesign milestone added: 2026-04-15*

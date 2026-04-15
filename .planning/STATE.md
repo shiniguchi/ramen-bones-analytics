@@ -1,39 +1,39 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: milestone
-status: verifying
-stopped_at: "05-06 Task 1 blocked: no GitHub remote configured"
-last_updated: "2026-04-15T09:38:56.458Z"
+milestone: v1.1
+milestone_name: dashboard-redesign
+status: defining_requirements
+stopped_at: milestone v1.1 started — requirements + roadmap written, awaiting /gsd:discuss-phase 06
+last_updated: "2026-04-15T12:00:00.000Z"
 progress:
-  total_phases: 5
-  completed_phases: 4
-  total_plans: 30
-  completed_plans: 29
-  percent: 97
+  total_phases: 7
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # STATE: Ramen Bones Analytics
 
-**Last updated:** 2026-04-14
+**Last updated:** 2026-04-15
 
 ## Project Reference
 
 - **Core Value:** A restaurant owner opens the site on their phone and makes a real business decision from the numbers they see.
-- **Current Focus:** Phase 05 — insights-forkability
-- **Timeline:** 2 weeks to MVP in friend's hands
+- **Current Focus:** Phase 06 — filter-foundation (milestone v1.1 Dashboard Redesign)
+- **Timeline:** Slow and deliberate — understand data first, ship one layer at a time
 - **Granularity:** standard
 - **Tenants in v1:** 1 (architecture multi-tenant-ready)
 
 ## Current Position
 
-Phase: 05 (insights-forkability) — EXECUTING
-Plan: 1 of 6
+Milestone: v1.1 (Dashboard Redesign) — DEFINING REQUIREMENTS → ready to start Phase 06
+Phase: 06 (filter-foundation) — not started
+Plan: — of —
 
-- **Phase:** 4
-- **Plan:** 5 of 5
-- **Status:** Phase complete — ready for verification
-- **Progress:** [██████████] 97%
+- **Status:** Requirements + roadmap written; next action is `/gsd:discuss-phase 06`
+- **Progress:** [░░░░░░░░░░] 0% (v1.1)
+- **v1.0 status:** Shipped to friend (97% plans complete; Plan 05-06 Task 2 fork walkthrough deferred indefinitely — public-flip only when onboarding other restaurants becomes a goal)
 
 ## Performance Metrics
 
@@ -138,9 +138,9 @@ Plan: 1 of 6
 
 ### Open Todos
 
-- Sit with the friend in week 1 and read ≥20 real Orderbird CSV rows before writing Phase 3 MV SQL (EXT-07)
-- Confirm Orderbird captcha/bot-detection posture when scraper first runs
-- Validate retention-curve-vs-triangle choice with the friend in Phase 4 week 1
+- (v1.1) Confirm with founder whether monthly retention needs its own card in UI or can share the weekly Card with a toggle
+- (v1.1) Decide final bucket boundaries once we eyeball visit_seq distribution on real data (Phase 08 can print a histogram)
+- (deferred) v1.0 Plan 05-06 Task 2 fork walkthrough — revisit only when onboarding other restaurants becomes a goal
 
 ### Blockers
 
@@ -148,12 +148,12 @@ None.
 
 ## Session Continuity
 
-**Next command:** `/gsd:execute-phase 03` to continue Phase 3 with Plan 03-02 (0010_cohort_mv.sql)
+**Next command:** `/gsd:discuss-phase 06` to gather context for the Filter Foundation phase (custom date range + granularity toggle + 4 dropdown filters wired to existing views)
 
-**Resume hint:** Phase 3 Wave 0 RED test scaffold in place (03-01 complete). 15 it.todo stubs + fixture + ci-guards contract test committed as 8d8d302 and bdf5332. Plan 03-02 should author 0010_cohort_mv.sql and flip the ANL-01 + ANL-08 todo blocks to green. Open Phase 3 caveats: April 2026 Worldline blackout, 772 missing_worldline_rows cohort linkage loss.
+**Resume hint:** Milestone v1.1 Dashboard Redesign was scoped in this session. Architecture is a pragmatic star schema: `dim_customer` (lifetime attrs) + `fct_transactions` (atomic fact MV with visit_seq / days_since_prev_visit window fns + denormalized filter dims) + 4 thin day-grain rollup MVs (`mv_new_customers_daily`, `mv_repeater_daily`, `mv_retention_monthly`, `mv_inter_visit_histogram`). Two bucket columns materialized: `lifetime_bucket` (how customer ended up) and `visit_seq_bucket` (point-in-time). Six filters: date range, granularity, sales_type, payment_method, wl_issuing_country, repeater bucket — dropdowns auto-populated from DISTINCT values. All refresh stays inside existing `refresh_analytics_mvs()` cron. Start with Phase 06 (Filter Foundation) for a quick UX win before any schema change.
 
-**Last session:** 2026-04-15T09:38:56.445Z
-**Stopped At:** 05-06 Task 1 complete (repo metadata set, kept PRIVATE); paused at Task 2 human-verify checkpoint (fresh fork walkthrough)
+**Last session:** 2026-04-15T12:00:00.000Z
+**Stopped At:** milestone v1.1 requirements + roadmap written; awaiting Phase 06 discuss
 
 ---
 *State initialized: 2026-04-13*
