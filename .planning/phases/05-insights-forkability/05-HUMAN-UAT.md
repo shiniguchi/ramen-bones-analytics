@@ -22,21 +22,24 @@ awaiting: user to run the handoff with the friend and return the verbatim reacti
 expected: `gh repo view --json visibility,repositoryTopics,description` shows 9 topics + description
 result: pass
 note: |
-  Repo kept intentionally PRIVATE (not PUBLIC as plan assumed). Topics +
-  description set via `gh repo edit`. Public-flip deferred — see Test 2.
+  9 topics + description set via `gh repo edit`. Repo flipped PUBLIC on
+  2026-04-15 (user-approved during 05-06 interactive execution). Public flip
+  does NOT re-open Test 2 — forkability is explicitly out of v1 scope per
+  user direction.
 
 ### 2. Fresh-clone fork walkthrough on throwaway Supabase project
 expected: End-to-end clone → fork-dryrun.sh → README Phase 1..Ship → InsightCard visible in <45min
 result: skipped
 reason: |
-  User has explicitly deferred this until the repo flips public. The repo is
-  intentionally PRIVATE for v1 — the fork-walkthrough validates the
-  public-forkability claim (INS-05 marketing surface), which is a post-v1
-  decision, not a ship blocker for putting the card in the friend's hands.
-  This UAT item must be re-opened BEFORE any future
-  `gh repo edit --visibility public` flip. Until then, `scripts/fork-dryrun.sh`
-  (already green as of 05-05) is the canonical forkability smoke test.
-deferred_until: "public visibility flip"
+  Deferred out of v1 scope per user direction: forkability is not a v1
+  concern. The v1 audience is a single restaurant (the founder's friend),
+  not a hypothetical stranger forking the repo. Running a 30-60 minute
+  clean-clone walkthrough to validate README accuracy for users who do not
+  yet exist spends real time on a hypothetical. `scripts/fork-dryrun.sh`
+  (green as of 05-05) remains the canonical forkability smoke test at CI
+  level. Revisit this item only if/when onboarding other restaurants
+  becomes an explicit goal.
+deferred_until: "onboarding a second restaurant (or explicit public launch push)"
 tracked_requirement: INS-05
 
 ### 3. Friend's iPhone sign-off on the InsightCard

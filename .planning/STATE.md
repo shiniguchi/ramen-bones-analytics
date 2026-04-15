@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: — Dashboard Redesign
-status: planning
+status: executing
 stopped_at: Completed 06-05-PLAN.md (Task 2 deferred, blocked on CF Pages deploy)
-last_updated: "2026-04-15T21:48:49.596Z"
+last_updated: "2026-04-15T22:28:49.516Z"
 progress:
   total_phases: 12
   completed_phases: 5
@@ -20,7 +20,7 @@ progress:
 ## Project Reference
 
 - **Core Value:** A restaurant owner opens the site on their phone and makes a real business decision from the numbers they see.
-- **Current Focus:** Phase 06 — filter-foundation
+- **Current Focus:** Phase 05 — insights-forkability
 - **Timeline:** Slow and deliberate — understand data first, ship one layer at a time
 - **Granularity:** standard
 - **Tenants in v1:** 1 (architecture multi-tenant-ready)
@@ -28,12 +28,12 @@ progress:
 ## Current Position
 
 Milestone: v1.1 (Dashboard Redesign) — DEFINING REQUIREMENTS → ready to start Phase 06
-Phase: 7
-Plan: Not started
+Phase: 05 (insights-forkability) — EXECUTING
+Plan: 1 of 9
 
-- **Status:** Ready to plan
+- **Status:** Executing Phase 05
 - **Progress:** [██████████] 95%
-- **v1.0 status:** Shipped to friend (97% plans complete; Plan 05-06 Task 2 fork walkthrough deferred indefinitely — public-flip only when onboarding other restaurants becomes a goal)
+- **v1.0 status:** Shipping to friend (97% plans complete; repo flipped PUBLIC 2026-04-15 with topics + description set; Plan 05-06 Task 2 fork walkthrough deferred out of v1 scope — forkability is explicitly not a v1 concern per user direction)
 
 ## Performance Metrics
 
@@ -139,7 +139,7 @@ Plan: Not started
 - [Phase 05-insights-forkability]: 05-04: InsightCard wired via insights_v fan-out; is_yesterday derived in Berlin tz; ci-guards Guard 1 extended to forbid raw .from('insights') from src/. Plan deviated from session.user.app_metadata.timezone (load uses locals.supabase, no session var) — Berlin hardcoded for v1.
 - [Phase 05-insights-forkability]: 05-03: fallback template uses 'prior week' not '7d/7 days' to avoid leaking a literal digit 7 through the digit-guard tautology
 - [Phase 05-insights-forkability]: 05-05: Forkability shipped — MIT LICENSE, 5-section .env.example (cf pages / supabase secrets / vault / github actions / local dev), README Phase 2–Ship quickstart, fork-dryrun.sh green (23 checks). INS-05/INS-06 closed.
-- [Phase 05-insights-forkability]: 05-06 T1: GitHub repo metadata set via `gh` — 9 topics (analytics, restaurant-analytics, sveltekit, svelte, supabase, cloudflare-pages, forkable, pos-integration, cohort-analysis) + description. Rule 1 deviation: repo kept PRIVATE per user decision (plan assumed PUBLIC). Friend accesses v1 via Cloudflare Pages URL, not the repo; public-flip deferred until forkability marketing is wanted. Plan's `visibility:PUBLIC` acceptance criterion knowingly unsatisfied.
+- [Phase 05-insights-forkability]: 05-06 T1: GitHub repo metadata set via `gh` — 9 topics (analytics, restaurant-analytics, sveltekit, svelte, supabase, cloudflare-pages, forkable, pos-integration, cohort-analysis) + description. Repo flipped PUBLIC on 2026-04-15 during interactive execution of 05-06 (user-approved). Plan's `visibility:PUBLIC` acceptance criterion now satisfied. Flip does NOT re-open T2 fork walkthrough — forkability is explicitly out of v1 scope per user direction, not gated on visibility.
 - [Phase 06-filter-foundation]: 06-02: Popover portal via physical DOM relocation (bind:this + appendChild to #popover-root) with best-effort restore on cleanup — avoids Svelte mount() recursion. Snippet-accepting primitives tested via tests/unit/fixtures/*Harness.svelte wrappers.
 - [Phase 06]: 06-01: zod filter schema + parseFilters + customToRange + Guard 6 shipped; tests live in tests/unit/ (not src/lib/) to match project runner scope; Guard 6 wired into existing single-file scripts/ci-guards.sh runner
 - [Phase 06-filter-foundation]: 06-03: transactions_filterable_v wrapper view (JWT-scoped); loader refactored to parseFilters(url) as sole URL->state converter; chip-scoped tiles honor sales_type+payment_method via .in(); distinct option arrays loaded unfiltered (D-14); fixed reference tiles stay unscoped per UI-SPEC; 6 integration tests via hand-rolled chainable supabase mock
@@ -149,7 +149,7 @@ Plan: Not started
 
 - (v1.1) Confirm with founder whether monthly retention needs its own card in UI or can share the weekly Card with a toggle
 - (v1.1) Decide final bucket boundaries once we eyeball visit_seq distribution on real data (Phase 08 can print a histogram)
-- (deferred) v1.0 Plan 05-06 Task 2 fork walkthrough — revisit only when onboarding other restaurants becomes a goal
+- (deferred, out of v1 scope) v1.0 Plan 05-06 Task 2 fork walkthrough — forkability is not a v1 concern per user direction; revisit only when onboarding other restaurants becomes an explicit goal
 
 ### Blockers
 
