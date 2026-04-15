@@ -11,13 +11,15 @@
 set -u
 fail=0
 
-# Guard 1 (D-14.1 + Phase 3 D-24): No raw _mv or raw analytics-source-table refs from src/.
-# Frontend may only touch the *_v wrapper views — never a raw MV and never raw
-# tables `transactions` or `stg_orderbird_order_items`. src/ does not exist
-# until Phase 4; guard is a no-op until then.
+# Guard 1 (D-14.1 + Phase 3 D-24 + Phase 5 D-16): No raw _mv or raw
+# analytics/insights base-table refs from src/. Frontend may only touch the
+# *_v wrapper views — never a raw MV, never raw `transactions` /
+# `stg_orderbird_order_items`, and (Phase 5) never raw `insights` (must go
+# through `insights_v`). src/ does not exist until Phase 4; guard is a no-op
+# until then.
 if [ -d src ]; then
-  if grep -rnE "from[[:space:]]+['\"]?transactions['\"]?|\.from\(['\"]transactions['\"]\)|\bstg_orderbird_order_items\b|\b[a-z_]+_mv\b" src/ 2>/dev/null; then
-    echo "::error::Guard 1 FAILED: src/ references a materialized view or raw analytics table directly. Use the *_v wrapper views (cohort_v, kpi_daily_v, retention_curve_v, ltv_v, frequency_v, new_vs_returning_v)."
+  if grep -rnE "from[[:space:]]+['\"]?transactions['\"]?|\.from\(['\"]transactions['\"]\)|\.from\(['\"]insights['\"]\)|\bstg_orderbird_order_items\b|\b[a-z_]+_mv\b" src/ 2>/dev/null; then
+    echo "::error::Guard 1 FAILED: src/ references a materialized view or raw analytics/insights table directly. Use the *_v wrapper views (cohort_v, kpi_daily_v, retention_curve_v, ltv_v, frequency_v, new_vs_returning_v, insights_v)."
     fail=1
   fi
 fi

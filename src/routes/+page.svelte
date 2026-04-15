@@ -7,6 +7,7 @@
   import LtvCard from '$lib/components/LtvCard.svelte';
   import FrequencyCard from '$lib/components/FrequencyCard.svelte';
   import NewVsReturningCard from '$lib/components/NewVsReturningCard.svelte';
+  import InsightCard from '$lib/components/InsightCard.svelte';
 
   let { data } = $props();
 </script>
@@ -18,6 +19,12 @@
 </div>
 <main class="mx-auto max-w-screen-sm px-4 pb-12">
   <div class="flex flex-col gap-6">
+    <!-- Insight card (05-04) — text-only headline + body, prepended above tiles.
+         Hidden when no insight row exists (brand-new tenant). -->
+    {#if data.latestInsight}
+      <InsightCard insight={data.latestInsight} />
+    {/if}
+
     <!-- Fixed revenue tiles: always show Today / 7d / 30d regardless of chip (D-06) -->
     <KpiTile
       title="Revenue · Today"

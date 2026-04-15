@@ -113,6 +113,29 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     .then(r => (r.data ?? []) as NvrRaw[])
     .catch((e: unknown) => { console.error('[new_vs_returning_v]', e); return [] as NvrRaw[]; });
 
+  // insights_v: latest row only — JWT-filtered wrapper view (05-01).
+  // Per-card error isolation: failure logs and yields null (UI hides card).
+  type InsightRow = {
+    id: string;
+    business_date: string;
+    headline: string;
+    body: string;
+    fallback_used: boolean;
+  };
+  const insightP = locals.supabase
+    .from('insights_v')
+    .select('id, business_date, headline, body, fallback_used')
+    .order('business_date', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+    .then((r: { data: InsightRow | null; error: unknown }) => {
+      if (r.error) {
+        console.error('[insights_v]', r.error);
+        return null;
+      }
+      return r.data;
+    });
+
   // retention_curve_v + ltv_v are weekly-grain views (no grain column in the SQL).
   // Both views are queried in full — the UI filters down to last 4 cohorts.
   const retentionP = locals.supabase
@@ -127,7 +150,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     .then(r => (r.data ?? []) as LtvRow[])
     .catch((e: unknown) => { console.error('[ltv_v]', e); return [] as LtvRow[]; });
 
-  // 12 parallel queries: 8 KPI + retention + LTV + frequency + NVR.
+  // 13 parallel queries: 8 KPI + retention + LTV + frequency + NVR + insight.
   const [
     kToday, kTodayPrior,
     k7, k7Prior,
@@ -136,7 +159,8 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     retentionData,
     ltvData,
     freqData,
-    nvrRaw
+    nvrRaw,
+    latestInsightRow
   ] = await Promise.all([
     queryKpi(todayW.from, todayW.to),
     queryKpi(priorTodayW.from, priorTodayW.to),
@@ -152,8 +176,25 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     retentionP,
     ltvP,
     freqP,
-    nvrP
+    nvrP,
+    insightP
   ]);
+
+  // Compute today in tenant timezone (Berlin — single-tenant v1) for is_yesterday flag.
+  const todayBerlin = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Berlin',
+    year: 'numeric', month: '2-digit', day: '2-digit'
+  }).format(new Date());
+
+  const latestInsight = latestInsightRow
+    ? {
+        headline: latestInsightRow.headline,
+        body: latestInsightRow.body,
+        business_date: latestInsightRow.business_date,
+        fallback_used: latestInsightRow.fallback_used,
+        is_yesterday: latestInsightRow.business_date !== todayBerlin
+      }
+    : null;
 
   // monthsOfHistory for LTV caveat (D-17): whole months from first cohort to today.
   // ltv data sorted by cohort_week ASC from DB; first row has earliest cohort.
@@ -203,7 +244,8 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     ltv: ltvData,
     monthsOfHistory,
     frequency: freqData,
-    newVsReturning: nvrShaped
+    newVsReturning: nvrShaped,
+    latestInsight
   };
 };
 
