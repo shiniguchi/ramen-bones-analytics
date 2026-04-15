@@ -114,7 +114,7 @@ A restaurant owner opens the site on their phone and makes a real business decis
 
 ### Phases
 
-- [ ] **Phase 6: Filter Foundation** — Custom date-range picker, day/week/month toggle, 4 dropdown filters wired through zod-validated SSR params against existing wrapper views
+- [x] **Phase 6: Filter Foundation** — Custom date-range picker, day/week/month toggle, 4 dropdown filters wired through zod-validated SSR params against existing wrapper views (completed 2026-04-15)
 - [ ] **Phase 7: Column Promotion** — Lift `wl_issuing_country` + `card_type` from staging into `transactions` via migration + loader + backfill
 - [ ] **Phase 8: Star Schema** — Build `dim_customer` and `fct_transactions` MVs with window fns, indexes, RLS wrappers, and DAG-ordered refresh
 - [ ] **Phase 9: Chart Rollups** — Four thin day-grain aggregation MVs on top of `fct_transactions` (`mv_new_customers_daily`, `mv_repeater_daily`, `mv_retention_monthly`, `mv_inter_visit_histogram`)

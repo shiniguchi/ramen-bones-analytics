@@ -3,8 +3,8 @@ status: passed
 phase: 06-filter-foundation
 source: [06-05-PLAN.md, 06-04-SUMMARY.md]
 started: 2026-04-15T19:30:00Z
-updated: 2026-04-15T20:33:27Z
-venue: localhost:5173 (iframe@375x812, DEV deploy pipeline still blocked — smoke-retest on DEV once CF Pages is fixed)
+updated: 2026-04-15T21:50:00Z
+venue: localhost:5173 (full 12-item walk @ 375px iframe) + https://ramen-bones-analytics.pages.dev (DEV smoke retest of 8 core items after manual wrangler deploy)
 ---
 
 ## Current Test
@@ -74,9 +74,10 @@ blocked: 0
 
 ## Gaps
 
-- **None blocking Phase 6.**
-- **Follow-up on deploy pipeline** (orthogonal to Phase 6 code):
-  - CF Pages Git integration broken since commit `a3623b9` — 27+ commits stale. User must reconnect in dashboard before a DEV smoke-retest of these 12 items is possible.
-  - GH Actions missing secrets: `DEV_SUPABASE_PROJECT_REF`, `DEV_SUPABASE_DB_PASSWORD`, `TEST_SUPABASE_*`. Workflow CLI syntax was repaired in commit `1589cd7`; needs secrets populated before Tests + DB Migrations workflows go green.
-- **Once DEV pipeline is fixed**: re-walk these 12 items on DEV (should be mechanical — same dataset, same code).
-- **375px sticky bar polish seed**: see D-05 follow-up options above. Not blocking.
+- **None blocking Phase 6.** DEV smoke retest completed 2026-04-15T21:50:00Z — 8 core items re-verified on https://ramen-bones-analytics.pages.dev with real Supabase data, all green, console clean.
+- **Non-blocking follow-ups tracked outside Phase 6**:
+  - **Tests workflow still red** — TEST_SUPABASE_DB_PASSWORD re-set didn't match. Orthogonal to Phase 6 (tests workflow runs integration tests, not deployments). DB Migrations (DEV) workflow is now green.
+  - **CF Pages Git integration still broken** — auto-deploy didn't reconnect; Phase 6 was shipped to DEV via one-shot `wrangler pages deploy`. Reconnect the Git source in the CF dash before Phase 7 work starts.
+  - **Security headers don't apply to Worker-served pages** — `_headers` file only covers static assets; adapter-cloudflare routes all page requests through the Worker. Move CSP/XFO/etc. to `src/hooks.server.ts` `handle` in a follow-up (closes qa-gate HIGH properly).
+  - **375px sticky bar polish seed**: 119px two-row layout is pragmatic minimum with 3 controls at 44px tap targets. Polish options documented in D-05 test above.
+  - **NewVsReturningCard bug fix (commit 46d1e81)** was latent since Phase 3 and not a Phase 6 regression, but caught during Phase 6 UAT walk. Worth noting for audit trail.
