@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Dashboard Simplification & Visit Attribution
-status: completed
-stopped_at: Completed 09-02-PLAN.md
-last_updated: "2026-04-16T21:05:36.869Z"
+status: executing
+stopped_at: Completed 09-03-PLAN.md (gap closure — Phase 9 UAT Test 1 passed on DEV)
+last_updated: "2026-04-16T22:15:20.296Z"
 progress:
   total_phases: 7
   completed_phases: 7
@@ -20,7 +20,7 @@ progress:
 ## Project Reference
 
 - **Core Value:** A restaurant owner opens the site on their phone and makes a real business decision from the numbers they see.
-- **Current Focus:** Phase 05 — insights-forkability
+- **Current Focus:** Phase 09 — filter-simplification-performance
 - **Timeline:** Slow and deliberate — understand data first, ship one layer at a time
 - **Granularity:** standard
 - **Tenants in v1:** 1 (architecture multi-tenant-ready)
@@ -28,10 +28,10 @@ progress:
 ## Current Position
 
 Milestone: v1.1 (Dashboard Redesign) — DEFINING REQUIREMENTS → ready to start Phase 06
-Phase: 09
-Plan: Not started
+Phase: 09 (filter-simplification-performance) — EXECUTING
+Plan: 2 of 3
 
-- **Status:** Milestone complete
+- **Status:** Ready to execute
 - **Progress:** [██████████] 100%
 - **v1.0 status:** Shipping to friend (97% plans complete; repo flipped PUBLIC 2026-04-15 with topics + description set; Plan 05-06 Task 2 fork walkthrough deferred out of v1 scope — forkability is explicitly not a v1 concern per user direction)
 
@@ -76,6 +76,7 @@ Plan: Not started
 | Phase 06-filter-foundation P05 | 4min | 1 tasks | 4 files |
 | Phase 09-filter-simplification-performance P01 | 6min | 2 tasks | 6 files |
 | Phase 09 P02 | 8min | 2 tasks | 12 files |
+| Phase 09 P03 | 45 min | 5 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -151,6 +152,8 @@ Plan: Not started
 - [Phase 09]: SSR returns raw dailyRows instead of pre-aggregated kpi object — 12+ queries reduced to 4
 - [Phase 09]: All filter controls use replaceState (no SSR round-trip) for <200ms client response
 - [Phase 09]: FilterSheet + MultiSelectDropdown deleted, replaced by inline SegmentedToggles in FilterBar
+- [Phase 09]: 09-03 gap-closure: 0020/0022 t.id -> source_tx_id, tx_id text (transactions PK is composite, no surrogate id) — Migration 0003 established (restaurant_id, source_tx_id text) as the composite PK; Phase 8 D-04 incorrectly specified tx_id uuid. Fixed in place (migrations unpushed, history stays clean).
+- [Phase 09]: 09-03: 0021 rewritten as DROP VIEW IF EXISTS + CREATE VIEW — Postgres forbids column removal via CREATE OR REPLACE VIEW (SQLSTATE 42P16) — Surfaced during TEST verification. Rule 3 deviation. Pattern: view column-shape changes require DROP + CREATE, not CREATE OR REPLACE.
 
 ### Open Todos
 
@@ -170,8 +173,8 @@ Plan: Not started
 
 **Resume hint:** Milestone v1.1 Dashboard Redesign was scoped in this session. Architecture is a pragmatic star schema: `dim_customer` (lifetime attrs) + `fct_transactions` (atomic fact MV with visit_seq / days_since_prev_visit window fns + denormalized filter dims) + 4 thin day-grain rollup MVs (`mv_new_customers_daily`, `mv_repeater_daily`, `mv_retention_monthly`, `mv_inter_visit_histogram`). Two bucket columns materialized: `lifetime_bucket` (how customer ended up) and `visit_seq_bucket` (point-in-time). Six filters: date range, granularity, sales_type, payment_method, wl_issuing_country, repeater bucket — dropdowns auto-populated from DISTINCT values. All refresh stays inside existing `refresh_analytics_mvs()` cron. Start with Phase 06 (Filter Foundation) for a quick UX win before any schema change.
 
-**Last session:** 2026-04-16T20:56:41.226Z
-**Stopped At:** Completed 09-02-PLAN.md
+**Last session:** 2026-04-16T22:15:20.286Z
+**Stopped At:** Completed 09-03-PLAN.md (gap closure — Phase 9 UAT Test 1 passed on DEV)
 
 ---
 *State initialized: 2026-04-13*

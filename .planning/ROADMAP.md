@@ -165,7 +165,7 @@ Plans:
 Plans:
   - [x] 09-01-PLAN.md — Data foundation: transactions_filterable_v + is_cash, filter schema, dashboard store, SegmentedToggle
   - [x] 09-02-PLAN.md — UI wiring: FilterBar rewrite, +page.server.ts simplify, 2 KPI tiles, replaceState, delete dead components
-  - [ ] 09-03-PLAN.md — Gap closure: fix 0020/0022 t.id→source_tx_id + tx_id type (text), correct 08-CONTEXT D-04
+  - [x] 09-03-PLAN.md — Gap closure: fix 0020/0022 t.id→source_tx_id + tx_id type (text), correct 08-CONTEXT D-04
 **UI hint**: yes
 
 ### Phase 10: Charts
@@ -195,7 +195,7 @@ Plans:
 | 6. Filter Foundation | v1.1 | 5/5 | Complete | 2026-04-15 |
 | 7. Column Promotion | v1.1 | 4/4 | Complete | 2026-04-15 |
 | 8. Visit Attribution Data Model | v1.2 | 2/2 | Complete | 2026-04-16 |
-| 9. Filter Simplification & Performance | v1.2 | 2/3 | In progress (gap closure) | - |
+| 9. Filter Simplification & Performance | v1.2 | 3/3 | Complete | 2026-04-16 |
 | 10. Charts | v1.2 | 0/- | Not started | - |
 
 ## Coverage Summary

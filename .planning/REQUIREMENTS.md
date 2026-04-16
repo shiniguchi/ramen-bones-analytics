@@ -262,21 +262,21 @@ Each requirement maps to exactly one roadmap phase.
 
 ### v1.2
 
-| Requirement | Phase | Status |
-|-------------|-------|--------|
-| VA-01 | Phase 8 — Visit Attribution Data Model | Pending |
-| VA-02 | Phase 8 — Visit Attribution Data Model | Pending |
-| VA-03 | Phase 8 — Visit Attribution Data Model | Pending |
-| VA-04 | Phase 10 — Charts | Pending |
-| VA-05 | Phase 10 — Charts | Pending |
-| VA-06 | Phase 10 — Charts | Pending |
-| VA-07 | Phase 10 — Charts | Pending |
-| VA-08 | Phase 10 — Charts | Pending |
-| VA-09 | Phase 10 — Charts | Pending |
-| VA-10 | Phase 10 — Charts | Pending |
-| VA-11 | Phase 9 — Filter Simplification & Performance | Complete |
-| VA-12 | Phase 9 — Filter Simplification & Performance | Complete |
-| VA-13 | Phase 9 — Filter Simplification & Performance | Complete |
+| Requirement | Phase | Status | Evidence |
+|-------------|-------|--------|----------|
+| VA-01 | Phase 8 — Visit Attribution Data Model | Pending | 09-03 (gap closure: tx_id text fix) |
+| VA-02 | Phase 8 — Visit Attribution Data Model | Pending | 09-03 (gap closure: is_cash JOIN fix) |
+| VA-03 | Phase 8 — Visit Attribution Data Model | Pending | — |
+| VA-04 | Phase 10 — Charts | Pending | — |
+| VA-05 | Phase 10 — Charts | Pending | — |
+| VA-06 | Phase 10 — Charts | Pending | — |
+| VA-07 | Phase 10 — Charts | Pending | — |
+| VA-08 | Phase 10 — Charts | Pending | — |
+| VA-09 | Phase 10 — Charts | Pending | — |
+| VA-10 | Phase 10 — Charts | Pending | — |
+| VA-11 | Phase 9 — Filter Simplification & Performance | Complete | 09-01, 09-02, 09-03 |
+| VA-12 | Phase 9 — Filter Simplification & Performance | Complete | 09-01, 09-02, 09-03 |
+| VA-13 | Phase 9 — Filter Simplification & Performance | Complete | 09-01, 09-02, 09-03 |
 
 **Coverage:**
 - v1.0 requirements: 39 total (shipped)
@@ -286,4 +286,4 @@ Each requirement maps to exactly one roadmap phase.
 
 ---
 *Requirements defined: 2026-04-13*
-*Last updated: 2026-04-16 — v1.2 roadmap mapped; v1.1 Phases 8-11 requirements marked superseded*
+*Last updated: 2026-04-16 — v1.2 roadmap mapped; v1.1 Phases 8-11 requirements marked superseded; 09-03 gap closure evidence added for VA-01, VA-02, VA-11, VA-12, VA-13*
