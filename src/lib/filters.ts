@@ -1,17 +1,22 @@
-// Phase 6 — the one and only URL → FiltersState parser.
+// Phase 9 — the one and only URL → FiltersState parser.
 // D-17: every field uses .catch() so malformed params coerce to defaults;
 //       page load NEVER throws on bad input.
 // D-19: single flat schema lives here and nowhere else.
 // D-20: this module is the ONLY place default values are known.
+// D-01: is_cash 3-state toggle (all / cash / card).
+// D-03: sales_type is now a 3-state toggle (all / INHOUSE / TAKEAWAY).
 import { z } from 'zod';
 
 export const RANGE_VALUES = ['today', '7d', '30d', '90d', 'all', 'custom'] as const;
 export const GRAIN_VALUES = ['day', 'week', 'month'] as const;
-export const SALES_TYPE_VALUES = ['INHOUSE', 'TAKEAWAY'] as const;
+export const SALES_TYPE_FILTER_VALUES = ['all', 'INHOUSE', 'TAKEAWAY'] as const;
+export const IS_CASH_VALUES = ['all', 'cash', 'card'] as const;
 
 export const FILTER_DEFAULTS = Object.freeze({
   range: '7d' as const,
-  grain: 'week' as const
+  grain: 'week' as const,
+  sales_type: 'all' as const,
+  is_cash: 'all' as const
 });
 
 const isoDate = z
@@ -20,25 +25,11 @@ const isoDate = z
   .optional()
   .catch(() => undefined);
 
-// CSV multi-select parser. `allowed` whitelists enum values; a single invalid
-// value collapses the whole array to undefined (acceptable for v1, see D-17).
-const csvArray = (allowed?: readonly string[]) =>
-  z
-    .string()
-    .transform((s) => s.split(',').map((x) => x.trim()).filter(Boolean))
-    .pipe(
-      z.array(
-        allowed ? z.enum(allowed as unknown as [string, ...string[]]) : z.string().min(1)
-      )
-    )
-    .optional()
-    .catch(() => undefined);
-
 export const filtersSchema = z.object({
   range: z.enum(RANGE_VALUES).catch(FILTER_DEFAULTS.range),
   grain: z.enum(GRAIN_VALUES).catch(FILTER_DEFAULTS.grain),
-  sales_type: csvArray(SALES_TYPE_VALUES),
-  payment_method: csvArray(),
+  sales_type: z.enum(SALES_TYPE_FILTER_VALUES).catch(FILTER_DEFAULTS.sales_type),
+  is_cash: z.enum(IS_CASH_VALUES).catch(FILTER_DEFAULTS.is_cash),
   from: isoDate,
   to: isoDate
 });
