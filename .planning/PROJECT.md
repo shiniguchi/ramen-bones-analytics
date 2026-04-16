@@ -118,4 +118,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-16 — Phase 9 complete: filter simplification & client-side performance. Phases 8-9 done, Phase 10 (Charts) remaining.*
+*Last updated: 2026-04-16 — Phase 9 re-verified after 09-03 gap closure (migration PK-type fix). UAT Test 1 cold-start smoke passed on DEV; Tests 2-9 pending human re-run. Phase 10 (Charts) next.*
