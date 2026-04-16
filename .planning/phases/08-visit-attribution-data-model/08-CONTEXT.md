@@ -17,7 +17,7 @@ Every transaction carries its card_hash's nth-visit number (`visit_seq`) and a b
 - **D-01:** New dedicated `visit_attribution_mv` with one row per transaction. Does NOT extend cohort_mv. Clean separation: cohort_mv stays per-customer, visit_attribution_mv is per-transaction.
 - **D-02:** MV includes ALL transactions (card and cash). Cash rows get `visit_seq=NULL`, `is_cash=true`. Makes the MV a universal join target for Phase 9/10 charts without needing to UNION cash rows back in.
 - **D-03:** `visit_seq` is computed via `ROW_NUMBER() OVER (PARTITION BY restaurant_id, card_hash ORDER BY occurred_at)` counting all transactions for that card_hash. Cash transactions (NULL card_hash) get `visit_seq=NULL`.
-- **D-04:** MV columns: `restaurant_id uuid`, `tx_id uuid`, `card_hash text`, `is_cash boolean`, `visit_seq integer` (NULL for cash), `business_date date`.
+- **D-04:** MV columns: `restaurant_id uuid`, `tx_id text` (sourced from `transactions.source_tx_id` — `transactions` has no surrogate `id`; PK is composite `(restaurant_id, source_tx_id)`), `card_hash text`, `is_cash boolean`, `visit_seq integer` (NULL for cash), `business_date date`.
 - **D-05:** Unique index on `(restaurant_id, tx_id)`. Follows canonical pattern: REVOKE ALL on raw MV + wrapper view `visit_attribution_v` with JWT restaurant_id filter + GRANT SELECT to authenticated.
 
 ### is_cash Derivation Rule
