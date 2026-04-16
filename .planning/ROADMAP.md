@@ -151,18 +151,19 @@ A restaurant owner opens the site on their phone and makes a real business decis
   5. The country dropdown filter (FLT-05) is wired through the existing Phase 6 filter schema (`src/lib/filters.ts`) and the loader now queries a refreshed `transactions_filterable_v` that exposes `wl_issuing_country`; supports "DE only" / "non-DE only" / individual-country multi-select.
 **Plans**: TBD
 
-### Phase 8: Star Schema
-**Goal**: `dim_customer` and `fct_transactions` exist as tenant-scoped materialized views with every attribution column computed once, the correct indexes in place, and refresh DAG-ordered inside the existing nightly cron
+### Phase 8: Visit Attribution Data Model
+**Goal**: Every transaction carries its card_hash's nth-visit number (visit_seq) and a binary cash/card flag (is_cash). Unused views and components are removed.
 **Depends on**: Phase 7
-**Requirements**: DM-04, DM-05, DM-06, DM-07, DM-08, FLT-06
-**Success Criteria**:
-  1. `dim_customer` has one row per `(restaurant_id, card_hash)` with a unique index for `REFRESH CONCURRENTLY`, `lifetime_bucket` correctly assigned by the agreed CASE ladder, and a `dim_customer_v` RLS wrapper — a two-tenant isolation test proves cross-tenant reads are zero
-  2. `fct_transactions` has one row per invoice with all 30+ columns materialized (time dims, measures, denormalized filter dims, visit-sequence window fns, customer-lifetime joins); a Nyquist test harness fixture of ≥3 customers with known visit sequences proves `visit_seq`, `is_first_visit`, `days_since_prev_visit`, and both bucket columns are computed correctly
-  3. All 6 declared indexes exist on `fct_transactions` (1 unique + 5 secondary/partial) and `EXPLAIN ANALYZE` on a representative filter query uses the composite filter index instead of a sequential scan
-  4. `refresh_analytics_mvs()` is modified in place to refresh `dim_customer` → `fct_transactions` → rollup MVs in DAG order, all `CONCURRENTLY`; the existing nightly 03:00 UTC pg_cron job still runs unchanged
-  5. `ci-guards` Guard 1 regex is extended; a contract test proves a synthetic `.from('fct_transactions')` usage in `src/` fails the build
-  6. The repeater-bucket dropdown filter (FLT-06) is wired through the Phase 6 filter schema against `dim_customer.lifetime_bucket` / `fct_transactions.lifetime_bucket`; supports all / first_timer / 2x / 3x / 4-5x / 6+.
-**Plans**: TBD
+**Requirements**: VA-01, VA-02, VA-03
+**Success Criteria** (what must be TRUE):
+  1. Each transaction with a non-NULL card_hash has a `visit_seq` integer (1, 2, 3...) computed via `ROW_NUMBER() OVER (PARTITION BY card_hash ORDER BY occurred_at)`, verified by a fixture of 3+ customers with known visit sequences
+  2. Each transaction has an `is_cash` boolean derived from `card_hash IS NULL`, verified by asserting known cash and card transactions map correctly
+  3. The visit-attribution MV has a unique index, an RLS wrapper view, and `REVOKE ALL` on the raw MV — following the project's established pattern
+  4. `frequency_v`, `new_vs_returning_v`, `ltv_v`, `CountryMultiSelect.svelte`, `_applyCountryFilter`, and the `wl_issuing_country` column on `transactions_filterable_v` are all dropped; CI passes with zero references to the removed artifacts
+  5. `refresh_analytics_mvs()` includes the new visit-attribution MV in the correct DAG position; nightly cron verified green for at least 1 run
+**Plans:** 2 plans
+  - [ ] 08-01-PLAN.md — visit_attribution_mv + wrapper view + test helper + refresh function + integration tests
+  - [ ] 08-02-PLAN.md — Drop dead SQL views + frontend cleanup (components, queries, country filter)
 
 ### Phase 9: Chart Rollups
 **Goal**: Four chart-specific day-grain rollup MVs exist on top of `fct_transactions`, each with unique indexes, RLS wrappers, and slots in the refresh DAG
@@ -206,20 +207,18 @@ A restaurant owner opens the site on their phone and makes a real business decis
 
 ## Progress
 
-| Phase | Plans Complete | Status | Completed |
-|-------|----------------|--------|-----------|
-| 1. Foundation | 6/6 | Complete | 2026-04-14 |
-| 2. Ingestion | 4/4 | Complete | 2026-04-14 |
-| 3. Analytics SQL | 5/5 | Complete | 2026-04-14 |
-| 4. Mobile Reader UI | 5/5 | Complete | 2026-04-14 |
-| 5. Insights & Forkability | 9/9 | Complete (v1 shipped; 05-06 T2 fork walkthrough deferred out of v1 scope) | 2026-04-15 |
-| 6. Filter Foundation | 0/- | Pending | - |
-| 7. Column Promotion | 0/- | Pending | - |
-| 8. Star Schema | 0/- | Pending | - |
-| 9. Chart Rollups | 0/- | Pending | - |
-| 10. Chart Components | 0/- | Pending | - |
-| 11. Bug Fixes | 0/- | Pending | - |
-| 12. Brainstorm Extras | 0/- | Optional / parkable | - |
+| Phase | Milestone | Plans Complete | Status | Completed |
+|-------|-----------|----------------|--------|-----------|
+| 1. Foundation | v1.0 | 6/6 | Complete | 2026-04-14 |
+| 2. Ingestion | v1.0 | 4/4 | Complete | 2026-04-14 |
+| 3. Analytics SQL | v1.0 | 5/5 | Complete | 2026-04-14 |
+| 4. Mobile Reader UI | v1.0 | 5/5 | Complete | 2026-04-14 |
+| 5. Insights & Forkability | v1.0 | 9/9 | Complete | 2026-04-15 |
+| 6. Filter Foundation | v1.1 | 5/5 | Complete | 2026-04-15 |
+| 7. Column Promotion | v1.1 | 4/4 | Complete | 2026-04-15 |
+| 8. Visit Attribution Data Model | v1.2 | 0/2 | Planned | - |
+| 9. Filter Simplification & Performance | v1.2 | 0/- | Not started | - |
+| 10. Charts | v1.2 | 0/- | Not started | - |
 
 ## Coverage Summary
 
