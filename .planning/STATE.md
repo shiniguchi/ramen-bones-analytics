@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: — Dashboard Redesign
-status: verifying
+status: "Phase 07 shipped — PR #1"
 stopped_at: Completed 07-04-PLAN.md (FLT-05 country filter wired end-to-end; Phase 7 code-complete)
-last_updated: "2026-04-15T23:53:02.121Z"
+last_updated: "2026-04-16T00:04:56.155Z"
 progress:
   total_phases: 12
   completed_phases: 7
@@ -31,7 +31,7 @@ Milestone: v1.1 (Dashboard Redesign) — DEFINING REQUIREMENTS → ready to star
 Phase: 07 (column-promotion) — EXECUTING
 Plan: 4 of 4
 
-- **Status:** Phase complete — ready for verification
+- **Status:** Phase 07 shipped — PR #1
 - **Progress:** [██████████] 100%
 - **v1.0 status:** Shipping to friend (97% plans complete; repo flipped PUBLIC 2026-04-15 with topics + description set; Plan 05-06 Task 2 fork walkthrough deferred out of v1 scope — forkability is explicitly not a v1 concern per user direction)
 
