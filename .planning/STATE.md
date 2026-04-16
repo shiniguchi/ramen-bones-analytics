@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Dashboard Simplification & Visit Attribution
 status: completed
-stopped_at: Phase 9 context gathered
-last_updated: "2026-04-16T14:51:12.267Z"
+stopped_at: Phase 9 UI-SPEC approved
+last_updated: "2026-04-16T16:14:25.362Z"
 progress:
   total_phases: 7
   completed_phases: 7
@@ -77,8 +77,8 @@ Plan: Not started
 
 **Resume hint:** v1.2 roadmap created with 3 phases (8-10). Phase 8 = visit_seq MV + is_cash flag + drop dead views. Phase 9 = filter simplification + client-side granularity. Phase 10 = 7 charts with visit-count attribution. All 13 VA-* requirements mapped.
 
-**Last session:** 2026-04-16T14:51:12.249Z
-**Stopped At:** Phase 9 context gathered
+**Last session:** 2026-04-16T16:14:25.343Z
+**Stopped At:** Phase 9 UI-SPEC approved
 
 ---
 *State initialized: 2026-04-13*
