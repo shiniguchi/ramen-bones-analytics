@@ -14,8 +14,12 @@ DROP VIEW IF EXISTS public.new_vs_returning_v;
 DROP VIEW IF EXISTS public.ltv_v;
 
 -- 3. Rewrite transactions_filterable_v without country column
--- CREATE OR REPLACE with trailing column removed is safe (no dependents reference it by position).
-CREATE OR REPLACE VIEW public.transactions_filterable_v
+-- Postgres disallows removing columns via CREATE OR REPLACE VIEW (SQLSTATE 42P16).
+-- Drop + recreate is required. No dependent DB objects (verified); only application
+-- code reads this view, and 0022 immediately appends is_cash right after this.
+DROP VIEW IF EXISTS public.transactions_filterable_v;
+
+CREATE VIEW public.transactions_filterable_v
 WITH (security_invoker = true) AS
 SELECT
   t.restaurant_id,
@@ -26,3 +30,5 @@ SELECT
 FROM public.transactions t
 JOIN public.restaurants r ON r.id = t.restaurant_id
 WHERE t.restaurant_id::text = (auth.jwt() ->> 'restaurant_id');
+
+GRANT SELECT ON public.transactions_filterable_v TO authenticated;
