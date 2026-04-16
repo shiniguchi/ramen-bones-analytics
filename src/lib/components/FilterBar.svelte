@@ -1,5 +1,5 @@
 <script lang="ts">
-  // Phase 6 — sticky top filter bar (≤72px budget).
+  // Phase 6 — sticky top filter bar (<=72px budget).
   // Hosts DatePickerPopover (instant), GrainToggle (instant), and the
   // "Filters" button that opens a draft-and-apply FilterSheet.
   import Button from '$lib/components/ui/button.svelte';
@@ -15,28 +15,24 @@
     window: RangeWindow;
     distinctSalesTypes: string[];
     distinctPaymentMethods: string[];
-    distinctCountries: string[];
   }
 
   let {
     filters,
     window: rangeWindow,
     distinctSalesTypes,
-    distinctPaymentMethods,
-    distinctCountries
+    distinctPaymentMethods
   }: Props = $props();
 
   let sheetOpen = $state(false);
 
   const showFiltersButton = $derived(
     distinctSalesTypes.length > 0 ||
-      distinctPaymentMethods.length > 0 ||
-      distinctCountries.length > 0
+      distinctPaymentMethods.length > 0
   );
   const filtersActive = $derived(
     filters.sales_type !== undefined ||
-      filters.payment_method !== undefined ||
-      filters.country !== undefined
+      filters.payment_method !== undefined
   );
 </script>
 
@@ -72,6 +68,5 @@
     {filters}
     {distinctSalesTypes}
     {distinctPaymentMethods}
-    {distinctCountries}
   />
 {/if}

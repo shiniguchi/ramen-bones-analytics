@@ -91,9 +91,6 @@ function freshState(extra?: Partial<MockState['canned']>): MockState {
       { business_date: '2026-04-10', gross_cents: 2000, sales_type: 'TAKEAWAY', payment_method: 'Visa' }
     ]],
     ['retention_curve_v', []],
-    ['ltv_v', []],
-    ['frequency_v', []],
-    ['new_vs_returning_v', []],
     ['insights_v', []],
     ['data_freshness_v', [{ last_ingested_at: '2026-04-14T00:00:00Z' }]]
   ]);

@@ -4,9 +4,6 @@
   import FreshnessLabel from '$lib/components/FreshnessLabel.svelte';
   import KpiTile from '$lib/components/KpiTile.svelte';
   import CohortRetentionCard from '$lib/components/CohortRetentionCard.svelte';
-  import LtvCard from '$lib/components/LtvCard.svelte';
-  import FrequencyCard from '$lib/components/FrequencyCard.svelte';
-  import NewVsReturningCard from '$lib/components/NewVsReturningCard.svelte';
   import InsightCard from '$lib/components/InsightCard.svelte';
 
   let { data } = $props();
@@ -18,7 +15,6 @@
   window={data.window}
   distinctSalesTypes={data.distinctSalesTypes}
   distinctPaymentMethods={data.distinctPaymentMethods}
-  distinctCountries={data.distinctCountries}
 />
 <div class="px-4 py-2">
   <FreshnessLabel lastIngestedAt={data.freshness} />
@@ -78,14 +74,5 @@
 
     <!-- Cohort retention curve (04-04) — chip-independent, grain-synced via ?grain= -->
     <CohortRetentionCard data={data.retention} grain={data.grain} />
-
-    <!-- LTV-to-date bars with persistent caveat (04-04) — chip-independent -->
-    <LtvCard data={data.ltv} monthsOfHistory={data.monthsOfHistory} />
-
-    <!-- Frequency distribution (04-05) — chip-independent, all-time buckets -->
-    <FrequencyCard data={data.frequency} />
-
-    <!-- New vs returning stacked bar (04-05) — chip-scoped (D-19a exception) -->
-    <NewVsReturningCard data={data.newVsReturning} />
   </div>
 </main>

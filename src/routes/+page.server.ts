@@ -1,59 +1,16 @@
 // Root dashboard loader. Single SSR choke point for filter state.
 //
 // Wave 3 (04-03): 8 parallel kpi_daily_v queries for KPI tiles.
-// Wave 4 (04-04): cohort + LTV queries extend below the kpi block.
+// Wave 4 (04-04): cohort queries extend below the kpi block.
 // Phase 6 (06-03): parseFilters(url) is the ONE source of truth (FLT-07).
-//   Chip-scoped tiles (txCount, avgTicket, chip revenue) query the new
-//   transactions_filterable_v wrapper with .in()-honored sales_type and
-//   payment_method filters. Fixed reference tiles (Today / 7d / 30d) stay
-//   unscoped per UI-SPEC. distinctSalesTypes + distinctPaymentMethods are
-//   loaded unfiltered every request (D-14).
+// Phase 8 (08-02): dead views (frequency_v, new_vs_returning_v, ltv_v) and
+//   country filter pipeline removed (VA-03).
 import { redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { chipToRange, customToRange, type Range, type Grain } from '$lib/dateRange';
 import { sumKpi, type KpiRow } from '$lib/kpiAgg';
-import { shapeNvr } from '$lib/nvrAgg';
 import { parseFilters } from '$lib/filters';
 import { differenceInMonths, parseISO } from 'date-fns';
-
-// Phase 7 FLT-05 — translate filters.country into a Supabase WHERE
-// clause on transactions_filterable_v.wl_issuing_country. Meta sentinels:
-//   __de_only__      → WHERE wl_issuing_country = 'DE'
-//   __non_de_only__  → WHERE wl_issuing_country IS NULL OR <> 'DE' (D-06)
-//   __unknown__      → WHERE wl_issuing_country IS NULL
-// Specific ISO-2 codes flow through .in(); mixed __unknown__ + specifics
-// merge into a single .or() call. Meta sentinels short-circuit specifics.
-//
-// Exported for the FLT-05 integration test. SvelteKit only allows exports
-// prefixed with `_` on server route modules, so the test imports this as
-// `_applyCountryFilter`. The `.or()` template only interpolates values that
-// came from SELECT DISTINCT on a typed column, never raw user input —
-// FLT-07 / ci-guards Guard 6 stays satisfied.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function _applyCountryFilter<T extends Record<string, any>>(
-  q: T,
-  country: string[] | undefined
-): T {
-  if (!country || country.length === 0) return q;
-  if (country.includes('__de_only__')) {
-    return q.eq('wl_issuing_country', 'DE');
-  }
-  if (country.includes('__non_de_only__')) {
-    return q.or('wl_issuing_country.is.null,wl_issuing_country.neq.DE');
-  }
-  const hasUnknown = country.includes('__unknown__');
-  const specific = country.filter((c) => !c.startsWith('__'));
-  if (hasUnknown && specific.length > 0) {
-    return q.or(`wl_issuing_country.is.null,wl_issuing_country.in.(${specific.join(',')})`);
-  }
-  if (hasUnknown) {
-    return q.is('wl_issuing_country', null);
-  }
-  if (specific.length > 0) {
-    return q.in('wl_issuing_country', specific);
-  }
-  return q;
-}
 
 export const load: PageServerLoad = async ({ locals, url }) => {
   // Phase 6 FLT-07: parseFilters is the ONLY place filter params are read.
@@ -65,12 +22,12 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 
   // E2E chart-fixture bypass — only active when preview is launched with
   // E2E_FIXTURES=1 (set by playwright webServer). Returns seeded non-empty
-  // retention + LTV data so the charts-with-data spec can exercise the
-  // non-empty chart path without touching Supabase. Dead code in prod.
+  // retention data so the charts-with-data spec can exercise the non-empty
+  // chart path without touching Supabase. Dead code in prod.
   // __e2e is a bypass flag, NOT a filter param, so reading it directly from
   // url.searchParams does not violate FLT-07.
   if (process.env.E2E_FIXTURES === '1' && url.searchParams.get('__e2e') === 'charts') {
-    const { E2E_LTV_ROWS, E2E_RETENTION_ROWS } = await import('$lib/e2eChartFixtures');
+    const { E2E_RETENTION_ROWS } = await import('$lib/e2eChartFixtures');
     return {
       range,
       grain,
@@ -79,7 +36,6 @@ export const load: PageServerLoad = async ({ locals, url }) => {
       window: chipToRange((range === 'custom' ? '7d' : range) as Range),
       distinctSalesTypes: ['INHOUSE', 'TAKEAWAY'] as string[],
       distinctPaymentMethods: ['Bar', 'Visa'] as string[],
-      distinctCountries: ['__de_only__', '__non_de_only__', 'DE', 'AT', '__unknown__'] as string[],
       kpi: {
         revenueToday: { value: 12345, prior: 10000, priorLabel: 'prior day' },
         revenue7d:    { value: 67890, prior: 60000, priorLabel: 'prior 7d' },
@@ -88,17 +44,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
         avgTicket:    { value: 1600, prior: 1550, priorLabel: 'prior 7d' }
       },
       retention: E2E_RETENTION_ROWS,
-      ltv: E2E_LTV_ROWS,
-      monthsOfHistory: 2,
-      frequency: [
-        { bucket: '1 visit', customer_count: 20 },
-        { bucket: '2-3 visits', customer_count: 10 }
-      ],
-      newVsReturning: [
-        { segment: 'new', revenue_cents: 50000 },
-        { segment: 'returning', revenue_cents: 30000 },
-        { segment: 'cash_anonymous', revenue_cents: 10000 }
-      ]
+      monthsOfHistory: 2
     };
   }
 
@@ -116,7 +62,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     console.error('[+page.server] data_freshness_v query failed', err);
   }
 
-  // ── KPI windows ────────────────────────────────────────────────────────────
+  // -- KPI windows --
   // Fixed reference windows — always show absolute figures regardless of
   // the filter state (UI-SPEC "Fixed-reference KPI tiles behavior under filters").
   const todayW = chipToRange('today');
@@ -169,7 +115,6 @@ export const load: PageServerLoad = async ({ locals, url }) => {
       .lte('business_date', to);
     if (filters.sales_type) q = q.in('sales_type', filters.sales_type);
     if (filters.payment_method) q = q.in('payment_method', filters.payment_method);
-    q = _applyCountryFilter(q, filters.country);
     const { data, error } = await q;
     if (error) {
       console.error('[transactions_filterable_v]', error);
@@ -188,31 +133,8 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     return { revenue_cents, tx_count, avg_ticket_cents };
   };
 
-  // Query helpers for retention/LTV — per-card error isolation, do not throw.
+  // Query helpers for retention — per-card error isolation, do not throw.
   type RetentionRow = { cohort_week: string; period_weeks: number; retention_rate: number; cohort_size_week: number; cohort_age_weeks: number };
-  type LtvRow = { cohort_week: string; period_weeks: number; ltv_cents: number; cohort_size_week: number; cohort_age_weeks: number };
-
-  // ── Frequency + NVR queries ─────────────────────────────────────────────
-  // frequency_v is chip-independent (all-time bucket counts).
-  // new_vs_returning_v is filtered by the chip window (D-19a exception).
-
-  type FreqRow = { bucket: string; customer_count: number };
-  type NvrRaw = { segment: 'new' | 'returning' | 'cash_anonymous' | 'blackout_unknown'; revenue_cents: number };
-
-  const freqP = locals.supabase
-    .from('frequency_v')
-    .select('bucket,customer_count')
-    .then(r => (r.data ?? []) as FreqRow[])
-    .catch((e: unknown) => { console.error('[frequency_v]', e); return [] as FreqRow[]; });
-
-  // View column is `bucket` (0012_leaf_views.sql); alias to `segment` for shapeNvr().
-  const nvrP = locals.supabase
-    .from('new_vs_returning_v')
-    .select('segment:bucket,revenue_cents')
-    .gte('business_date', chipW.from)
-    .lte('business_date', chipW.to)
-    .then(r => (r.data ?? []) as NvrRaw[])
-    .catch((e: unknown) => { console.error('[new_vs_returning_v]', e); return [] as NvrRaw[]; });
 
   // insights_v: latest row only — JWT-filtered wrapper view (05-01).
   type InsightRow = {
@@ -242,12 +164,6 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     .then(r => (r.data ?? []) as RetentionRow[])
     .catch((e: unknown) => { console.error('[retention_curve_v]', e); return [] as RetentionRow[]; });
 
-  const ltvP = locals.supabase
-    .from('ltv_v')
-    .select('cohort_week,period_weeks,ltv_cents,cohort_size_week,cohort_age_weeks')
-    .then(r => (r.data ?? []) as LtvRow[])
-    .catch((e: unknown) => { console.error('[ltv_v]', e); return [] as LtvRow[]; });
-
   // D-14: distinct option arrays loaded UNFILTERED so dropdown contents
   // never depend on the current filter state. Supabase JS has no DISTINCT,
   // so we select the column and dedupe in JS (FLT-07: no dynamic SQL).
@@ -271,36 +187,17 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     })
     .catch((e: unknown) => { console.error('[distinctPaymentMethods]', e); return [] as string[]; });
 
-  // Phase 7 FLT-05: distinct issuing countries prepend meta-sentinels and
-  // append the Unknown bucket. Unfiltered SELECT over the wrapper view so
-  // the dropdown contents never depend on the current filter state (D-14).
-  const distinctCountriesP = locals.supabase
-    .from('transactions_filterable_v')
-    .select('wl_issuing_country')
-    .then(r => {
-      const rows = (r.data ?? []) as Array<{ wl_issuing_country: string | null }>;
-      const real = [...new Set(
-        rows.map(x => x.wl_issuing_country).filter((v): v is string => !!v)
-      )].sort();
-      return ['__de_only__', '__non_de_only__', ...real, '__unknown__'];
-    })
-    .catch((e: unknown) => { console.error('[distinctCountries]', e); return [] as string[]; });
-
   // Parallel fan-out: 6 fixed-tile queries + 2 chip-scoped (current + prior)
-  // + retention + LTV + frequency + NVR + insight + 2 distinct dropdown loads.
+  // + retention + insight + 2 distinct dropdown loads.
   const [
     kToday, kTodayPrior,
     k7, k7Prior,
     k30, k30Prior,
     kChipRows, kChipPriorRows,
     retentionData,
-    ltvData,
-    freqData,
-    nvrRaw,
     latestInsightRow,
     distinctSalesTypes,
-    distinctPaymentMethods,
-    distinctCountries
+    distinctPaymentMethods
   ] = await Promise.all([
     queryKpi(todayW.from, todayW.to),
     queryKpi(priorTodayW.from, priorTodayW.to),
@@ -314,13 +211,9 @@ export const load: PageServerLoad = async ({ locals, url }) => {
       ? queryFiltered(chipW.priorFrom, chipW.priorTo!)
       : Promise.resolve([] as TxFilterableRow[]),
     retentionP,
-    ltvP,
-    freqP,
-    nvrP,
     insightP,
     distinctSalesTypesP,
-    distinctPaymentMethodsP,
-    distinctCountriesP
+    distinctPaymentMethodsP
   ]);
 
   // Compute today in tenant timezone (Berlin — single-tenant v1) for is_yesterday flag.
@@ -339,8 +232,8 @@ export const load: PageServerLoad = async ({ locals, url }) => {
       }
     : null;
 
-  // monthsOfHistory for LTV caveat (D-17): whole months from first cohort to today.
-  const firstCohortDate = (ltvData[0]?.cohort_week ?? retentionData[0]?.cohort_week) ?? null;
+  // monthsOfHistory for retention caveat: whole months from first cohort to today.
+  const firstCohortDate = retentionData[0]?.cohort_week ?? null;
   const monthsOfHistory = firstCohortDate
     ? differenceInMonths(new Date(), parseISO(firstCohortDate))
     : 0;
@@ -379,9 +272,6 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     }
   };
 
-  // Shape NVR rows: aggregate by segment within chip window.
-  const nvrShaped = shapeNvr(nvrRaw);
-
   return {
     range,
     grain,
@@ -390,13 +280,9 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     window: chipW,
     distinctSalesTypes,
     distinctPaymentMethods,
-    distinctCountries,
     kpi,
     retention: retentionData,
-    ltv: ltvData,
     monthsOfHistory,
-    frequency: freqData,
-    newVsReturning: nvrShaped,
     latestInsight
   };
 };

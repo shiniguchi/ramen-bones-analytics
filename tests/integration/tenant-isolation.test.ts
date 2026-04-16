@@ -65,10 +65,7 @@ afterAll(async () => {
 const wrapperViews = [
   'kpi_daily_v',
   'cohort_v',
-  'retention_curve_v',
-  'ltv_v',
-  'frequency_v',
-  'new_vs_returning_v'
+  'retention_curve_v'
 ];
 
 // Raw MVs must be unreachable from authenticated/anon roles.

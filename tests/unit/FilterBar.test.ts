@@ -29,7 +29,6 @@ describe('FilterBar', () => {
       window: baseWindow,
       distinctSalesTypes: ['INHOUSE', 'TAKEAWAY'],
       distinctPaymentMethods: ['Visa', 'Bar'],
-      distinctCountries: ['__de_only__', '__non_de_only__', 'DE', 'AT', '__unknown__']
     });
     // Sticky wrapper present
     expect(container.querySelector('[data-slot="filter-bar"]')).not.toBeNull();
@@ -48,7 +47,6 @@ describe('FilterBar', () => {
       window: baseWindow,
       distinctSalesTypes: [],
       distinctPaymentMethods: [],
-      distinctCountries: []
     });
     const filtersBtn = Array.from(container.querySelectorAll('button')).find(
       (b) => b.textContent?.trim() === 'Filters'
@@ -62,7 +60,6 @@ describe('FilterBar', () => {
       window: baseWindow,
       distinctSalesTypes: ['INHOUSE', 'TAKEAWAY'],
       distinctPaymentMethods: ['Visa'],
-      distinctCountries: []
     });
     const filtersBtn = Array.from(container.querySelectorAll('button')).find(
       (b) => b.textContent?.trim() === 'Filters'

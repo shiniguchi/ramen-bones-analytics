@@ -39,7 +39,6 @@ export const filtersSchema = z.object({
   grain: z.enum(GRAIN_VALUES).catch(FILTER_DEFAULTS.grain),
   sales_type: csvArray(SALES_TYPE_VALUES),
   payment_method: csvArray(),
-  country: csvArray(),
   from: isoDate,
   to: isoDate
 });

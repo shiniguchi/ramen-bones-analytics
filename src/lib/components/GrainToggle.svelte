@@ -1,6 +1,6 @@
 <script lang="ts">
   // GrainToggle — segmented Day/Week/Month control that syncs ?grain= URL param.
-  // Lives inside the CohortRetentionCard header; also shared with LtvCard (D-16).
+  // Lives inside the CohortRetentionCard header (D-16).
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
   import type { Grain } from '$lib/dateRange';

@@ -5,13 +5,10 @@ import { render, screen } from '@testing-library/svelte';
 import EmptyState from '../../src/lib/components/EmptyState.svelte';
 import FreshnessLabel from '../../src/lib/components/FreshnessLabel.svelte';
 import KpiTile from '../../src/lib/components/KpiTile.svelte';
-import LtvCard from '../../src/lib/components/LtvCard.svelte';
 import GrainToggle from '../../src/lib/components/GrainToggle.svelte';
 import CohortRetentionCard from '../../src/lib/components/CohortRetentionCard.svelte';
-import FrequencyCard from '../../src/lib/components/FrequencyCard.svelte';
 import { emptyStates } from '../../src/lib/emptyStates';
 import { pickVisibleCohorts, type RetentionRow } from '../../src/lib/sparseFilter';
-import { shapeNvr, type NvrRow } from '../../src/lib/nvrAgg';
 
 // LayerChart uses window.matchMedia internally; JSDOM doesn't provide it.
 // Mock it so LayerChart initialises without errors in the test environment.
@@ -179,81 +176,6 @@ describe('Phase 4 card components (RED stubs — flip to it() as cards land)', (
     const visible = pickVisibleCohorts(rows);
     const cohortCount = new Set(visible.map(r => r.cohort_week)).size;
     expect(cohortCount).toBe(4);
-  });
-
-  // ── LtvCard tests (flipped from todo in 04-04) ─────────────────────────
-
-  it('LtvCard renders persistent italic caveat footer (D-17)', () => {
-    // Even with empty data, the italic caveat must be present in the DOM.
-    const { container } = render(LtvCard, {
-      data: [],
-      monthsOfHistory: 9
-    });
-    const footer = container.querySelector('p.italic');
-    expect(footer).toBeInTheDocument();
-    expect(footer?.textContent).toMatch(/9 months of history/);
-  });
-
-  it('LtvCard uses same grain URL param as cohort card (D-16)', () => {
-    // GrainToggle renders Day/Week/Month buttons; grain prop sets initial active.
-    const { container } = render(GrainToggle, { grain: 'month' });
-    // Active button should be labeled "Month"
-    const activeBtn = container.querySelector('button[aria-pressed="true"], button[data-state="on"]');
-    // At minimum, "Month" text should be present in the toggle
-    expect(container.textContent).toMatch(/Month/);
-    // GrainToggle uses URL ?grain= param to keep cohort + LTV in sync
-    expect(container.innerHTML).toMatch(/month/i);
-  });
-
-  // ── FrequencyCard / NewVsReturningCard (04-05) ────────────────────────
-  it('FrequencyCard uses plain divs not LayerChart (D-18)', () => {
-    // Render with 2-row fixture to exercise bar rendering
-    const rows = [
-      { bucket: '1', customer_count: 50 },
-      { bucket: '2', customer_count: 30 }
-    ];
-    const { container } = render(FrequencyCard, { data: rows });
-    // Must render a list item per row
-    const items = container.querySelectorAll('li');
-    expect(items.length).toBe(2);
-    // Must NOT import from layerchart — verified structurally via source assertion
-    // (the actual import check is in the verify command; here we assert plain-div bars)
-    const bars = container.querySelectorAll('div.bg-zinc-500');
-    expect(bars.length).toBe(2);
-    // Max bar should be 100% wide (50/50 * 100 = 100%)
-    expect((bars[0] as HTMLElement).style.width).toBe('100%');
-  });
-
-  it('NewVsReturningCard IS chip-scoped (D-19a exception)', () => {
-    // shapeNvr aggregates raw view rows by segment — used by loader to pass shaped data.
-    // This test documents via naming that the NVR card receives chip-windowed data.
-    const rawRows: NvrRow[] = [
-      { segment: 'returning', revenue_cents: 1000 },
-      { segment: 'returning', revenue_cents: 500 },
-      { segment: 'new', revenue_cents: 200 },
-      { segment: 'cash_anonymous', revenue_cents: 100 }
-    ];
-    const shaped = shapeNvr(rawRows);
-    // shapeNvr must produce one row per segment
-    expect(shaped.find(r => r.segment === 'returning')?.revenue_cents).toBe(1500);
-    expect(shaped.find(r => r.segment === 'new')?.revenue_cents).toBe(200);
-    expect(shaped.find(r => r.segment === 'cash_anonymous')?.revenue_cents).toBe(100);
-  });
-
-  it('NewVsReturningCard tie-out: returning + new + cash === revenue (D-19)', () => {
-    // Loader sums revenue_cents per segment before passing to card.
-    const rawRows: NvrRow[] = [
-      { segment: 'returning', revenue_cents: 3000 },
-      { segment: 'new', revenue_cents: 1200 },
-      { segment: 'cash_anonymous', revenue_cents: 800 }
-    ];
-    const shaped = shapeNvr(rawRows);
-    const ret = shaped.find(r => r.segment === 'returning')?.revenue_cents ?? 0;
-    const neu = shaped.find(r => r.segment === 'new')?.revenue_cents ?? 0;
-    const cash = shaped.find(r => r.segment === 'cash_anonymous')?.revenue_cents ?? 0;
-    // Tie-out: sum of all segments equals total revenue (D-19)
-    const totalRevenue = 3000 + 1200 + 800;
-    expect(ret + neu + cash).toBe(totalRevenue);
   });
 
   it('EmptyState renders per-card copy from emptyStates.ts (D-20)', () => {
