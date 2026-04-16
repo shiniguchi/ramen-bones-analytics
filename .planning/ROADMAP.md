@@ -161,11 +161,12 @@ Plans:
   2. Changing granularity (day/week/month) or date range re-renders charts in under 200ms perceived response without a full page navigation or SSR round-trip — the data is fetched once and re-bucketed client-side
   3. The dashboard shows 1 revenue reference card (using active date range and granularity) instead of the previous 3 fixed cards (today/7d/30d); the card respects both filters
   4. All remaining tiles and charts respect both filters — no unscoped reference tiles exist anywhere on the dashboard
-**Plans:** 3 plans
+**Plans:** 4 plans
 Plans:
   - [x] 09-01-PLAN.md — Data foundation: transactions_filterable_v + is_cash, filter schema, dashboard store, SegmentedToggle
   - [x] 09-02-PLAN.md — UI wiring: FilterBar rewrite, +page.server.ts simplify, 2 KPI tiles, replaceState, delete dead components
   - [x] 09-03-PLAN.md — Gap closure: fix 0020/0022 t.id→source_tx_id + tx_id type (text), correct 08-CONTEXT D-04
+  - [ ] 09-04-PLAN.md — Gap closure: reactive filters state in dashboardStore — fix UAT Tests 7/9 (stale FilterBar labels/aria-checked after replaceState)
 **UI hint**: yes
 
 ### Phase 10: Charts
@@ -195,7 +196,7 @@ Plans:
 | 6. Filter Foundation | v1.1 | 5/5 | Complete | 2026-04-15 |
 | 7. Column Promotion | v1.1 | 4/4 | Complete | 2026-04-15 |
 | 8. Visit Attribution Data Model | v1.2 | 2/2 | Complete | 2026-04-16 |
-| 9. Filter Simplification & Performance | v1.2 | 3/3 | Complete | 2026-04-16 |
+| 9. Filter Simplification & Performance | v1.2 | 3/4 | In progress | - |
 | 10. Charts | v1.2 | 0/- | Not started | - |
 
 ## Coverage Summary
