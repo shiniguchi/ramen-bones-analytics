@@ -73,7 +73,7 @@ Requirements for initial release. Each maps to exactly one roadmap phase.
 - [x] **FLT-03**: Sales-type dropdown filter (all / INHOUSE / TAKEAWAY) applied across all filterable cards
 - [x] **FLT-04**: Payment-method dropdown filter — auto-populated from `SELECT DISTINCT payment_method` at page load, no hardcoded whitelist
 - [x] **FLT-05**: Card issuing-country dropdown filter — auto-populated from `SELECT DISTINCT wl_issuing_country`, supports "DE only" / "non-DE only" / individual countries
-- [ ] **FLT-06**: Repeater-bucket dropdown filter against `lifetime_bucket` (all / first_timer / 2x / 3x / 4-5x / 6+)
+- [ ] **FLT-06**: Repeater-bucket dropdown filter against `lifetime_bucket` (all / first_timer / 2x / 3x / 4-5x / 6+) — **SUPERSEDED by v1.2** (visit_seq replaces lifetime_bucket approach)
 - [x] **FLT-07**: All 6 filters compile to zod-validated query params; no dynamic SQL strings anywhere; SSR load function composes WHERE clauses from validated params only
 
 ### Data Model — Column Promotion
@@ -82,34 +82,34 @@ Requirements for initial release. Each maps to exactly one roadmap phase.
 - [x] **DM-02**: One-shot backfill populates both columns from `stg_orderbird_order_items` first-row-per-invoice, verified against ≥20 invoices
 - [x] **DM-03**: CSV loader writes both columns on future ingests, preserving idempotency on re-run
 
-### Data Model — Star Schema
+### Data Model — Star Schema (SUPERSEDED by v1.2)
 
-- [ ] **DM-04**: `dim_customer` MV exposes one row per `(restaurant_id, card_hash)` with `first_visit_at`, `first_visit_date`, `cohort_week`, `cohort_month`, `lifetime_visits`, `lifetime_revenue_cents`, `lifetime_avg_ticket_cents`, `lifetime_bucket`, `primary_country`; has unique index `(restaurant_id, card_hash)` and a `dim_customer_v` RLS wrapper
-- [ ] **DM-05**: `fct_transactions` MV holds one row per invoice with time dimensions (`business_date`, `business_week`, `business_month`, `hour_of_day`, `day_of_week`, `is_weekend`), measures (`gross_cents`, `net_cents`, `tip_cents`), denormalized filter dims (`sales_type`, `payment_method`, `wl_issuing_country`, `is_domestic`, `card_type`), visit-sequence window fns (`visit_seq`, `is_first_visit`, `prev_visit_at`, `days_since_prev_visit`), and customer-lifetime joins (`first_visit_date`, `cohort_week`, `cohort_month`, `days_since_first_visit`, `lifetime_bucket`, `visit_seq_bucket`)
-- [ ] **DM-06**: `fct_transactions` has hot-path indexes: unique `(restaurant_id, source_tx_id)`, composite `(restaurant_id, business_date)`, partial `(restaurant_id, first_visit_date) WHERE is_first_visit`, composite `(restaurant_id, business_date, lifetime_bucket)`, partial `(restaurant_id, days_since_prev_visit) WHERE days_since_prev_visit IS NOT NULL`, composite filter index `(restaurant_id, business_date, sales_type, payment_method, wl_issuing_country)`
-- [ ] **DM-07**: `refresh_analytics_mvs()` refreshes `dim_customer` → `fct_transactions` → rollup MVs in correct DAG order, all via `REFRESH MATERIALIZED VIEW CONCURRENTLY`
-- [ ] **DM-08**: `ci-guards` Guard 1 regex extended to forbid `.from('fct_transactions')` and `.from('dim_customer')` from `src/`; raw MVs have `REVOKE ALL` on `authenticated`
+- [ ] **DM-04**: `dim_customer` MV — **SUPERSEDED by v1.2 VA-01** (visit_seq approach replaces star schema)
+- [ ] **DM-05**: `fct_transactions` MV — **SUPERSEDED by v1.2 VA-01** (visit-attribution MV replaces fct_transactions)
+- [ ] **DM-06**: `fct_transactions` indexes — **SUPERSEDED by v1.2**
+- [ ] **DM-07**: `refresh_analytics_mvs()` DAG ordering — **SUPERSEDED by v1.2 VA-01**
+- [ ] **DM-08**: `ci-guards` extension — **SUPERSEDED by v1.2 VA-03**
 
-### Chart Rollup MVs
+### Chart Rollup MVs (SUPERSEDED by v1.2)
 
-- [ ] **CHT-01**: `mv_new_customers_daily` rolls up `COUNT(*) WHERE is_first_visit GROUP BY first_visit_date`, with `dim_customer_v`-grade RLS wrapper and unique index
-- [ ] **CHT-02**: `mv_repeater_daily` rolls up additive measures (`customers`, `visits`, `revenue_cents`, `tip_cents`) at `(day × lifetime_bucket × visit_seq_bucket × sales_type × payment_method × wl_issuing_country)` grain; avg ticket computed on read
-- [ ] **CHT-03**: `mv_retention_monthly` adds monthly retention curve variant (weekly already lives in existing `retention_curve_v`)
-- [ ] **CHT-04**: `mv_inter_visit_histogram` bins `days_since_prev_visit` into `0-3d / 4-7d / 8-14d / 15-30d / 31-60d / 61+d` with counts per day
+- [ ] **CHT-01**: `mv_new_customers_daily` — **SUPERSEDED by v1.2 VA-04/VA-05**
+- [ ] **CHT-02**: `mv_repeater_daily` — **SUPERSEDED by v1.2 VA-04/VA-05**
+- [ ] **CHT-03**: `mv_retention_monthly` — **SUPERSEDED by v1.2 VA-06**
+- [ ] **CHT-04**: `mv_inter_visit_histogram` — **SUPERSEDED by v1.2**
 
-### Chart Components
+### Chart Components (SUPERSEDED by v1.2)
 
-- [ ] **CHT-05**: `NewCustomersChart.svelte` renders a time series of new customers per period from `mv_new_customers_daily_v`, honoring all 6 filters, with a trustworthy empty state
-- [ ] **CHT-06**: `RepeaterAttributionChart.svelte` renders stacked bars for first_timer/2x/3x/4-5x/6+ with a measure toggle (customer count / revenue / avg ticket), reading from `mv_repeater_daily_v`
-- [ ] **CHT-07**: `CohortRetentionChart.svelte` renders both weekly (from existing `retention_curve_v`) and monthly (from `mv_retention_monthly_v`) variants with a toggle
-- [ ] **CHT-08**: `InterVisitHistogramChart.svelte` renders the return-day distribution from `mv_inter_visit_histogram_v`
-- [ ] **CHT-09**: Every chart honors all 6 filters (date range, granularity, sales type, payment method, country, repeater bucket) via the same SSR load-function pipeline
-- [ ] **CHT-10**: All charts verified at the 375px viewport before merge, matching the v1.0 mobile-first contract
+- [ ] **CHT-05**: `NewCustomersChart.svelte` — **SUPERSEDED by v1.2 VA-05**
+- [ ] **CHT-06**: `RepeaterAttributionChart.svelte` — **SUPERSEDED by v1.2 VA-04**
+- [ ] **CHT-07**: `CohortRetentionChart.svelte` — **SUPERSEDED by v1.2 VA-06**
+- [ ] **CHT-08**: `InterVisitHistogramChart.svelte` — **SUPERSEDED by v1.2**
+- [ ] **CHT-09**: All charts honor 6 filters — **SUPERSEDED by v1.2** (2 filters)
+- [ ] **CHT-10**: 375px viewport verification — carried forward as v1.2 standard
 
-### Bug Fixes (inherited from Phase 4 UAT)
+### Bug Fixes (SUPERSEDED by v1.2)
 
-- [ ] **BUG-01**: `NewVsReturningCard.svelte` renders non-empty on `range=all` with 6,842 transactions present; fixes the empty-state trigger / loader query bug captured in `04-VERIFICATION.md` Gap E
-- [ ] **BUG-02**: LTV chart shows full history (10+ months) instead of 3 weeks of bars on `range=all`; fixes the sparse `ltv_mv` / chart-window truncation captured in `04-VERIFICATION.md` Gap F
+- [ ] **BUG-01**: NewVsReturningCard empty on range=all — **SUPERSEDED** (new_vs_returning_v being dropped in VA-03)
+- [ ] **BUG-02**: LTV chart sparse bars — **SUPERSEDED** (ltv_v being dropped in VA-03; replaced by VA-07)
 
 ## v1.2 Requirements — Dashboard Simplification & Visit Attribution
 
@@ -182,7 +182,9 @@ Deferred to future release. Tracked but not in current roadmap.
 
 ## Traceability
 
-Each v1 requirement maps to exactly one roadmap phase.
+Each requirement maps to exactly one roadmap phase.
+
+### v1.0 (shipped)
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
@@ -225,40 +227,63 @@ Each v1 requirement maps to exactly one roadmap phase.
 | INS-04 | Phase 5 — Insights & Forkability | Complete |
 | INS-05 | Phase 5 — Insights & Forkability | Complete |
 | INS-06 | Phase 5 — Insights & Forkability | Complete |
+
+### v1.1 (Phases 6-7 complete; Phases 8-11 superseded by v1.2)
+
+| Requirement | Phase | Status |
+|-------------|-------|--------|
 | FLT-01 | Phase 6 — Filter Foundation | Complete |
 | FLT-02 | Phase 6 — Filter Foundation | Complete |
 | FLT-03 | Phase 6 — Filter Foundation | Complete |
 | FLT-04 | Phase 6 — Filter Foundation | Complete |
 | FLT-05 | Phase 7 — Column Promotion | Complete |
-| FLT-06 | Phase 8 — Star Schema | Pending |
+| FLT-06 | — | Superseded by v1.2 |
 | FLT-07 | Phase 6 — Filter Foundation | Complete |
 | DM-01 | Phase 7 — Column Promotion | Complete |
 | DM-02 | Phase 7 — Column Promotion | Complete |
 | DM-03 | Phase 7 — Column Promotion | Complete |
-| DM-04 | Phase 8 — Star Schema | Pending |
-| DM-05 | Phase 8 — Star Schema | Pending |
-| DM-06 | Phase 8 — Star Schema | Pending |
-| DM-07 | Phase 8 — Star Schema | Pending |
-| DM-08 | Phase 8 — Star Schema | Pending |
-| CHT-01 | Phase 9 — Chart Rollups | Pending |
-| CHT-02 | Phase 9 — Chart Rollups | Pending |
-| CHT-03 | Phase 9 — Chart Rollups | Pending |
-| CHT-04 | Phase 9 — Chart Rollups | Pending |
-| CHT-05 | Phase 10 — Chart Components | Pending |
-| CHT-06 | Phase 10 — Chart Components | Pending |
-| CHT-07 | Phase 10 — Chart Components | Pending |
-| CHT-08 | Phase 10 — Chart Components | Pending |
-| CHT-09 | Phase 10 — Chart Components | Pending |
-| CHT-10 | Phase 10 — Chart Components | Pending |
-| BUG-01 | Phase 11 — Bug Fixes | Pending |
-| BUG-02 | Phase 11 — Bug Fixes | Pending |
+| DM-04 | — | Superseded by v1.2 |
+| DM-05 | — | Superseded by v1.2 |
+| DM-06 | — | Superseded by v1.2 |
+| DM-07 | — | Superseded by v1.2 |
+| DM-08 | — | Superseded by v1.2 |
+| CHT-01 | — | Superseded by v1.2 |
+| CHT-02 | — | Superseded by v1.2 |
+| CHT-03 | — | Superseded by v1.2 |
+| CHT-04 | — | Superseded by v1.2 |
+| CHT-05 | — | Superseded by v1.2 |
+| CHT-06 | — | Superseded by v1.2 |
+| CHT-07 | — | Superseded by v1.2 |
+| CHT-08 | — | Superseded by v1.2 |
+| CHT-09 | — | Superseded by v1.2 |
+| CHT-10 | — | Superseded by v1.2 |
+| BUG-01 | — | Superseded by v1.2 |
+| BUG-02 | — | Superseded by v1.2 |
+
+### v1.2
+
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| VA-01 | Phase 8 — Visit Attribution Data Model | Pending |
+| VA-02 | Phase 8 — Visit Attribution Data Model | Pending |
+| VA-03 | Phase 8 — Visit Attribution Data Model | Pending |
+| VA-04 | Phase 10 — Charts | Pending |
+| VA-05 | Phase 10 — Charts | Pending |
+| VA-06 | Phase 10 — Charts | Pending |
+| VA-07 | Phase 10 — Charts | Pending |
+| VA-08 | Phase 10 — Charts | Pending |
+| VA-09 | Phase 10 — Charts | Pending |
+| VA-10 | Phase 10 — Charts | Pending |
+| VA-11 | Phase 9 — Filter Simplification & Performance | Pending |
+| VA-12 | Phase 9 — Filter Simplification & Performance | Pending |
+| VA-13 | Phase 9 — Filter Simplification & Performance | Pending |
 
 **Coverage:**
-- v1 requirements: 39 total (shipped)
-- v1.1 requirements: 26 total (Phases 6-7 complete, 8-11 superseded by v1.2)
-- v1.2 requirements: 13 total
-- Mapped to phases: pending roadmap
+- v1.0 requirements: 39 total (shipped)
+- v1.1 requirements: 14 active (Phases 6-7 complete), 12 superseded by v1.2
+- v1.2 requirements: 13 total, 13 mapped
+- Orphaned: 0
 
 ---
 *Requirements defined: 2026-04-13*
-*Last updated: 2026-04-16 — v1.2 Dashboard Simplification & Visit Attribution requirements added*
+*Last updated: 2026-04-16 — v1.2 roadmap mapped; v1.1 Phases 8-11 requirements marked superseded*
