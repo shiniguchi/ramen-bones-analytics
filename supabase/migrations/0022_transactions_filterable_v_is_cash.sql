@@ -15,5 +15,5 @@ SELECT
 FROM public.transactions t
 JOIN public.restaurants r ON r.id = t.restaurant_id
 LEFT JOIN public.visit_attribution_mv va
-  ON va.restaurant_id = t.restaurant_id AND va.tx_id = t.id
+  ON va.restaurant_id = t.restaurant_id AND va.tx_id = t.source_tx_id
 WHERE t.restaurant_id::text = (auth.jwt() ->> 'restaurant_id');
