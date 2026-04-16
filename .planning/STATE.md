@@ -1,16 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.1
-milestone_name: — Dashboard Redesign
-status: "Phase 07 shipped — PR #1"
-stopped_at: Completed 07-04-PLAN.md (FLT-05 country filter wired end-to-end; Phase 7 code-complete)
-last_updated: "2026-04-16T00:04:56.155Z"
+milestone: v1.2
+milestone_name: — Dashboard Simplification & Visit Attribution
+status: "Defining requirements"
+stopped_at: ""
+last_updated: "2026-04-16T02:45:00.000Z"
 progress:
-  total_phases: 12
-  completed_phases: 7
-  total_plans: 42
-  completed_plans: 42
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # STATE: Ramen Bones Analytics
@@ -20,20 +20,19 @@ progress:
 ## Project Reference
 
 - **Core Value:** A restaurant owner opens the site on their phone and makes a real business decision from the numbers they see.
-- **Current Focus:** Phase 07 — column-promotion
+- **Current Focus:** Milestone v1.2 — defining requirements
 - **Timeline:** Slow and deliberate — understand data first, ship one layer at a time
 - **Granularity:** standard
 - **Tenants in v1:** 1 (architecture multi-tenant-ready)
 
 ## Current Position
 
-Milestone: v1.1 (Dashboard Redesign) — DEFINING REQUIREMENTS → ready to start Phase 06
-Phase: 07 (column-promotion) — EXECUTING
-Plan: 4 of 4
+Milestone: v1.2 (Dashboard Simplification & Visit Attribution) — DEFINING REQUIREMENTS
+Phase: Not started
+Plan: —
 
-- **Status:** Phase 07 shipped — PR #1
-- **Progress:** [██████████] 100%
-- **v1.0 status:** Shipping to friend (97% plans complete; repo flipped PUBLIC 2026-04-15 with topics + description set; Plan 05-06 Task 2 fork walkthrough deferred out of v1 scope — forkability is explicitly not a v1 concern per user direction)
+- **Status:** Defining requirements
+- **Progress:** [░░░░░░░░░░] 0%
 
 ## Performance Metrics
 
@@ -165,14 +164,12 @@ Plan: 4 of 4
 
 ## Session Continuity
 
-**Next command:** `/gsd:discuss-phase 06` to gather context for the Filter Foundation phase (custom date range + granularity toggle + 4 dropdown filters wired to existing views)
+**Next command:** `/gsd:plan-phase 08` after requirements + roadmap are defined
 
-**Authoritative spec for v1.1:** `.planning/v1.1-DATA-MODEL.md` — read first. Has every column, SQL body, index, CASE ladder, and filter contract.
+**Resume hint:** Milestone v1.2 simplifies dashboard to 3 charts with visit-count attribution. Filters: inhouse/takeaway + cash/card only (country dropped, payment_method simplified to binary). All filters apply to everything. Per-transaction visit-sequence number is the core new metric. Drop unused views (frequency_v, new_vs_returning_v, ltv_v). Fix 2s SSR lag on granularity toggle.
 
-**Resume hint:** Milestone v1.1 Dashboard Redesign was scoped in this session. Architecture is a pragmatic star schema: `dim_customer` (lifetime attrs) + `fct_transactions` (atomic fact MV with visit_seq / days_since_prev_visit window fns + denormalized filter dims) + 4 thin day-grain rollup MVs (`mv_new_customers_daily`, `mv_repeater_daily`, `mv_retention_monthly`, `mv_inter_visit_histogram`). Two bucket columns materialized: `lifetime_bucket` (how customer ended up) and `visit_seq_bucket` (point-in-time). Six filters: date range, granularity, sales_type, payment_method, wl_issuing_country, repeater bucket — dropdowns auto-populated from DISTINCT values. All refresh stays inside existing `refresh_analytics_mvs()` cron. Start with Phase 06 (Filter Foundation) for a quick UX win before any schema change.
-
-**Last session:** 2026-04-15T23:53:02.110Z
-**Stopped At:** Completed 07-04-PLAN.md (FLT-05 country filter wired end-to-end; Phase 7 code-complete)
+**Last session:** 2026-04-16
+**Stopped At:** Starting milestone v1.2 — defining requirements
 
 ---
 *State initialized: 2026-04-13*

@@ -77,25 +77,28 @@ A restaurant owner opens the site on their phone and makes a real business decis
 | Card hash as customer ID | Works without opt-in, captures all repeat visits | — Pending |
 | Forkable open-source, no paid tier | Product philosophy — give the banking playbook away | — Pending |
 
-## Current Milestone: v1.1 Dashboard Redesign
+## Current Milestone: v1.2 Dashboard Simplification & Visit Attribution
 
-**Goal:** Replace the v1.0 KPI-tile dashboard with a chart-first, richly-filterable analytics surface built on a pragmatic star schema so every new chart reuses one atomic transaction fact.
+**Goal:** Strip the dashboard to 3 core charts with per-transaction visit-count attribution, simplify filters to cash/card + inhouse/takeaway, and fix the SSR performance lag.
 
 **Target features:**
-- Global filter foundation: custom date range, day/week/month granularity toggle, dropdowns for sales type / payment method / issuing country / repeater bucket (auto-populated)
-- Column promotion: `wl_issuing_country` + `card_type` lifted from `stg_orderbird_order_items` into `transactions`
-- Star-schema data model: `dim_customer` (lifetime attributes) + `fct_transactions` (atomic fact MV with visit-sequence window fns and denormalized filter dims)
-- Chart rollup MVs at day-grain, re-bucketed to week/month in wrapper views
-- Six new charts: new-customers-per-period, first-timer-vs-repeater by count/revenue/avg-ticket, weekly+monthly retention, inter-visit histogram
-- Bug fixes inherited from Phase 4 UAT: empty NVR card, LTV sparse-bars
-
-**Authoritative data-model spec:** [`.planning/v1.1-DATA-MODEL.md`](./v1.1-DATA-MODEL.md) — every column, SQL body, index, CASE ladder, refresh DAG step, and filter contract lives there. Phase 07/08/09/10/11 plans implement it verbatim. Read that file first in any new context.
+- Visit-count attribution: each transaction gets its card_hash's nth-visit number (1st, 2nd, 3rd, 4x, 5x, 6x, 7x, 8x+), attributed to the date it occurred
+- Calendar revenue chart with visit-count breakdown (stacked bars by 1st timer, 2nd timer, etc.)
+- Calendar customer counts chart with same visit-count breakdown
+- Retention curve per weekly/monthly first-time acquisition date cohort
+- Simplified filters: inhouse/takeaway + cash/card only — all filters apply to ALL tiles and charts (no unscoped reference tiles)
+- Drop 2 of 3 revenue cards — keep 1 card using selected granularity
+- Fix 2s granularity toggle lag (current goto+invalidateAll forces full SSR round-trip)
+- Drop unused views: frequency_v, new_vs_returning_v, ltv_v, country filter components
 
 **Key context:**
-- Forkability/public-flip (v1.0 Plan 05-06 Task 2) is **explicitly deferred** — repo stays private; fork walkthrough revisits only when onboarding other restaurants becomes a goal
-- Star schema is pragmatic, not dogmatic: payment/country/sales_type stay denormalized on the fact because cardinality is low and join cost is non-zero
-- Two repeater buckets ship on `fct_transactions` (`lifetime_bucket` for "how the customer ended up", `visit_seq_bucket` for per-visit attribution) to avoid a second model revision later
-- All refresh lives inside the existing nightly `refresh_analytics_mvs()` — no new cron, no new infra
+- Visit-count attribution is the core new metric — "how many 3rd-timers came in on Tuesday?"
+- Existing cohort_mv can feed retention curve with modifications
+- New MV needed for per-transaction visit-sequence number
+- Country filter (FLT-05, shipped in Phase 7) dropped — user doesn't need it
+- Payment method simplifies from specific networks (Visa/Mastercard/Maestro/Bar) to binary cash/card
+- All filters apply to everything — no unscoped reference tiles
+- v1.1 DATA-MODEL.md is superseded — v1.2 simplifies the schema significantly
 
 ## Evolution
 
@@ -115,4 +118,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-15 — milestone v1.1 Dashboard Redesign started*
+*Last updated: 2026-04-16 — milestone v1.2 Dashboard Simplification & Visit Attribution started*
