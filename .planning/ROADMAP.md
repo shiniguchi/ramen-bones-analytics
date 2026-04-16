@@ -186,7 +186,7 @@ A restaurant owner opens the site on their phone and makes a real business decis
 | 5. Insights & Forkability | v1.0 | 9/9 | Complete | 2026-04-15 |
 | 6. Filter Foundation | v1.1 | 5/5 | Complete | 2026-04-15 |
 | 7. Column Promotion | v1.1 | 4/4 | Complete | 2026-04-15 |
-| 8. Visit Attribution Data Model | v1.2 | 0/- | Not started | - |
+| 8. Visit Attribution Data Model | v1.2 | 1/2 | In Progress | - |
 | 9. Filter Simplification & Performance | v1.2 | 0/- | Not started | - |
 | 10. Charts | v1.2 | 0/- | Not started | - |
 

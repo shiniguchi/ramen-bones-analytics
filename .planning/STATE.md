@@ -27,12 +27,12 @@ progress:
 
 ## Current Position
 
-Milestone: v1.2 (Dashboard Simplification & Visit Attribution) — ROADMAP CREATED
-Phase: 8 (Visit Attribution Data Model) — ready to plan
-Plan: —
+Milestone: v1.2 (Dashboard Simplification & Visit Attribution) — IN PROGRESS
+Phase: 8 (Visit Attribution Data Model) — executing
+Plan: 1 of 2 complete
 
-- **Status:** Ready to plan Phase 8
-- **Progress:** [░░░░░░░░░░] 0%
+- **Status:** Executing Phase 8
+- **Progress:** [█████░░░░░] 50%
 
 ## Performance Metrics
 
@@ -41,7 +41,8 @@ Plan: —
 | v1.2 Phases planned | 3 (Phase 8, 9, 10) |
 | v1.2 Phases complete | 0 |
 | v1.2 Requirements mapped | 13/13 |
-| Plans executed | 0 |
+| Plans executed | 1 |
+| Phase 08 P01 | 5min | 1 task | 2 files |
 
 ## Accumulated Context
 
@@ -54,6 +55,12 @@ Plan: —
 - Visit-count attribution (visit_seq per transaction) is the core new metric
 - Filters simplify to inhouse/takeaway + cash/card (drop country, payment_method granularity)
 - Client-side granularity toggle replaces SSR round-trip for performance
+
+### Decisions
+
+- [Phase 08-01]: visit_attribution_mv placed last in refresh_analytics_mvs() DAG (no cross-MV dependency)
+- [Phase 08-01]: is_cash derived from card_hash IS NULL (not payment_method) per D-06
+- [Phase 08-01]: ROW_NUMBER wrapped in CASE to prevent NULL card_hash partition producing meaningless sequence
 
 ### Load-Bearing Architectural Rules
 
@@ -73,12 +80,12 @@ Plan: —
 
 ## Session Continuity
 
-**Next command:** `/gsd:plan-phase 08`
+**Next command:** `/gsd:execute-phase 08` (continue with plan 08-02)
 
-**Resume hint:** v1.2 roadmap created with 3 phases (8-10). Phase 8 = visit_seq MV + is_cash flag + drop dead views. Phase 9 = filter simplification + client-side granularity. Phase 10 = 7 charts with visit-count attribution. All 13 VA-* requirements mapped.
+**Resume hint:** Plan 08-01 complete — visit_attribution_mv exists with visit_seq, is_cash, wrapper view, test helper, and refresh function update. Plan 08-02 does dead code cleanup (drop frequency_v, new_vs_returning_v, ltv_v, CountryMultiSelect, country filter).
 
-**Last session:** 2026-04-16
-**Stopped At:** Roadmap created for milestone v1.2
+**Last session:** 2026-04-16T11:05:00Z
+**Stopped At:** Completed 08-01-PLAN.md
 
 ---
 *State initialized: 2026-04-13*
