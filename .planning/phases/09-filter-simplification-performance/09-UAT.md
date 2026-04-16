@@ -60,7 +60,7 @@ depends_on_gap: 7
 ## Summary
 
 total: 9
-passed: 6
+passed: 7
 issues: 2
 pending: 0
 skipped: 0
