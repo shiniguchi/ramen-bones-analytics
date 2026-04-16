@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Dashboard Simplification & Visit Attribution
-status: completed
-stopped_at: Completed 09-04-PLAN.md (Phase 09 complete — 4/4 plans; Tests 7/9 expected to flip at next UAT run)
-last_updated: "2026-04-16T23:32:15.997Z"
+status: "v1.2 partial shipped — PR #2 (Phases 7-tail/8/9 + SSR headers)"
+stopped_at: Completed quick task 260417-29v (SSR security headers applied to hooks.server.ts — 5 headers verified via curl). Phase 09 complete (4/4 plans). Ready to ship v1.2 partial to main.
+last_updated: "2026-04-16T23:43:38.685Z"
 progress:
   total_phases: 7
   completed_phases: 7
@@ -31,7 +31,7 @@ Milestone: v1.2 (Dashboard Simplification & Visit Attribution) — Phase 09 comp
 Phase: 09
 Plan: Not started
 
-- **Status:** Milestone complete
+- **Status:** v1.2 partial shipped — PR #2 (Phases 7-tail/8/9 + SSR headers)
 - **Progress:** [██████████] 100%
 - **v1.0 status:** Shipping to friend (97% plans complete; repo flipped PUBLIC 2026-04-15 with topics + description set; Plan 05-06 Task 2 fork walkthrough deferred out of v1 scope — forkability is explicitly not a v1 concern per user direction)
 
