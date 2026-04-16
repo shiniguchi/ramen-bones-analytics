@@ -9,7 +9,7 @@
 create materialized view public.visit_attribution_mv as
 select
   t.restaurant_id,
-  t.id                          as tx_id,
+  t.source_tx_id                as tx_id,
   t.card_hash,
   (t.card_hash is null)         as is_cash,
   case
@@ -46,7 +46,7 @@ grant select on public.visit_attribution_v to authenticated;
 create or replace function public.test_visit_attribution(rid uuid)
 returns table (
   restaurant_id uuid,
-  tx_id         uuid,
+  tx_id         text,
   card_hash     text,
   is_cash       boolean,
   visit_seq     integer,
