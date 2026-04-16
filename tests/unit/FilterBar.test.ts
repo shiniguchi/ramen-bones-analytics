@@ -1,7 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect } from 'vitest';
 import { render } from '@testing-library/svelte';
-import FilterBar from '$lib/components/FilterBar.svelte';
 import DatePickerPopover from '$lib/components/DatePickerPopover.svelte';
 import type { FiltersState } from '$lib/filters';
 import type { RangeWindow } from '$lib/dateRange';
@@ -16,57 +15,15 @@ const baseWindow: RangeWindow = {
 const baseFilters: FiltersState = {
   range: '7d',
   grain: 'week',
-  sales_type: undefined,
-  payment_method: undefined,
+  sales_type: 'all',
+  is_cash: 'all',
   from: undefined,
   to: undefined
 };
 
-describe('FilterBar', () => {
-  it('renders date picker, grain toggle, and Filters button when both distinct arrays non-empty', () => {
-    const { container } = render(FilterBar, {
-      filters: baseFilters,
-      window: baseWindow,
-      distinctSalesTypes: ['INHOUSE', 'TAKEAWAY'],
-      distinctPaymentMethods: ['Visa', 'Bar'],
-    });
-    // Sticky wrapper present
-    expect(container.querySelector('[data-slot="filter-bar"]')).not.toBeNull();
-    // Grain toggle present
-    expect(container.querySelector('[role="group"][aria-label="Grain selector"]')).not.toBeNull();
-    // Filters button present
-    const filtersBtn = Array.from(container.querySelectorAll('button')).find(
-      (b) => b.textContent?.trim() === 'Filters'
-    );
-    expect(filtersBtn).toBeTruthy();
-  });
-
-  it('hides the Filters button when both distinct arrays are empty (D-13)', () => {
-    const { container } = render(FilterBar, {
-      filters: baseFilters,
-      window: baseWindow,
-      distinctSalesTypes: [],
-      distinctPaymentMethods: [],
-    });
-    const filtersBtn = Array.from(container.querySelectorAll('button')).find(
-      (b) => b.textContent?.trim() === 'Filters'
-    );
-    expect(filtersBtn).toBeUndefined();
-  });
-
-  it('applies border-primary tint to Filters button when sales_type is set (D-04)', () => {
-    const { container } = render(FilterBar, {
-      filters: { ...baseFilters, sales_type: ['INHOUSE'] },
-      window: baseWindow,
-      distinctSalesTypes: ['INHOUSE', 'TAKEAWAY'],
-      distinctPaymentMethods: ['Visa'],
-    });
-    const filtersBtn = Array.from(container.querySelectorAll('button')).find(
-      (b) => b.textContent?.trim() === 'Filters'
-    );
-    expect(filtersBtn?.className).toMatch(/border-primary\/60/);
-  });
-});
+// FilterBar is now a thin layout wrapper with no complex logic to unit-test.
+// The FilterSheet and MultiSelectDropdown tests are removed (components deleted).
+// DatePickerPopover tests remain as they validate the trigger label logic.
 
 describe('DatePickerPopover trigger', () => {
   it("renders 'Custom' on line 1 when filters.range === 'custom'", () => {
@@ -77,9 +34,9 @@ describe('DatePickerPopover trigger', () => {
         to: '2026-04-10',
         priorFrom: '2026-03-22',
         priorTo: '2026-03-31'
-      }
+      },
+      onrangechange: () => {}
     });
-    // Trigger button is the only <button> before popover opens.
     const btn = container.querySelector('button');
     expect(btn?.textContent).toMatch(/Custom/);
   });
@@ -87,12 +44,12 @@ describe('DatePickerPopover trigger', () => {
   it("renders '7d' on line 1 and formatted date range on line 2 when range === '7d'", () => {
     const { container } = render(DatePickerPopover, {
       filters: baseFilters,
-      window: baseWindow
+      window: baseWindow,
+      onrangechange: () => {}
     });
     const btn = container.querySelector('button');
     const text = btn?.textContent ?? '';
     expect(text).toMatch(/7d/);
-    // Formatted "MMM d – MMM d" — Apr 9 – Apr 15
     expect(text).toMatch(/Apr\s*9\s*–\s*Apr\s*15/);
   });
 });

@@ -1,31 +1,22 @@
 // Root dashboard loader. Single SSR choke point for filter state.
 //
-// Wave 3 (04-03): 8 parallel kpi_daily_v queries for KPI tiles.
-// Wave 4 (04-04): cohort queries extend below the kpi block.
-// Phase 6 (06-03): parseFilters(url) is the ONE source of truth (FLT-07).
-// Phase 8 (08-02): dead views (frequency_v, new_vs_returning_v, ltv_v) and
-//   country filter pipeline removed (VA-03).
+// Phase 9 (09-02): SSR returns raw daily rows for client-side rebucketing.
+// All KPI computation + grain bucketing happens in dashboardStore (D-05, D-08).
+// Server still handles: freshness, retention, insights, monthsOfHistory.
 import { redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { chipToRange, customToRange, type Range, type Grain } from '$lib/dateRange';
-import { sumKpi, type KpiRow } from '$lib/kpiAgg';
 import { parseFilters } from '$lib/filters';
 import { differenceInMonths, parseISO } from 'date-fns';
+import type { DailyRow } from '$lib/dashboardStore.svelte';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
   // Phase 6 FLT-07: parseFilters is the ONLY place filter params are read.
-  // Never reach back into url.searchParams for a filter key — everything
-  // flows through this single zod-validated object.
   const filters = parseFilters(url);
   const range = filters.range as Range | 'custom';
   const grain = filters.grain as Grain;
 
-  // E2E chart-fixture bypass — only active when preview is launched with
-  // E2E_FIXTURES=1 (set by playwright webServer). Returns seeded non-empty
-  // retention data so the charts-with-data spec can exercise the non-empty
-  // chart path without touching Supabase. Dead code in prod.
-  // __e2e is a bypass flag, NOT a filter param, so reading it directly from
-  // url.searchParams does not violate FLT-07.
+  // E2E chart-fixture bypass — dead code in prod.
   if (process.env.E2E_FIXTURES === '1' && url.searchParams.get('__e2e') === 'charts') {
     const { E2E_RETENTION_ROWS } = await import('$lib/e2eChartFixtures');
     return {
@@ -34,23 +25,24 @@ export const load: PageServerLoad = async ({ locals, url }) => {
       filters,
       freshness: new Date().toISOString(),
       window: chipToRange((range === 'custom' ? '7d' : range) as Range),
-      distinctSalesTypes: ['INHOUSE', 'TAKEAWAY'] as string[],
-      distinctPaymentMethods: ['Bar', 'Visa'] as string[],
-      kpi: {
-        revenueToday: { value: 12345, prior: 10000, priorLabel: 'prior day' },
-        revenue7d:    { value: 67890, prior: 60000, priorLabel: 'prior 7d' },
-        revenue30d:   { value: 234567, prior: 200000, priorLabel: 'prior 30d' },
-        txCount:      { value: 42, prior: 38, priorLabel: 'prior 7d' },
-        avgTicket:    { value: 1600, prior: 1550, priorLabel: 'prior 7d' }
-      },
+      dailyRows: [
+        { business_date: '2026-04-14', gross_cents: 4500, sales_type: 'INHOUSE', is_cash: false },
+        { business_date: '2026-04-14', gross_cents: 2000, sales_type: 'TAKEAWAY', is_cash: true },
+        { business_date: '2026-04-15', gross_cents: 5500, sales_type: 'INHOUSE', is_cash: false },
+        { business_date: '2026-04-15', gross_cents: 1800, sales_type: 'INHOUSE', is_cash: true },
+        { business_date: '2026-04-16', gross_cents: 3200, sales_type: 'TAKEAWAY', is_cash: false },
+      ] as DailyRow[],
+      priorDailyRows: [
+        { business_date: '2026-04-07', gross_cents: 3800, sales_type: 'INHOUSE', is_cash: false },
+        { business_date: '2026-04-08', gross_cents: 4200, sales_type: 'INHOUSE', is_cash: false },
+      ] as DailyRow[],
       retention: E2E_RETENTION_ROWS,
-      monthsOfHistory: 2
+      monthsOfHistory: 2,
+      latestInsight: null
     };
   }
 
-  // `locals.supabase` is already JWT-bound via hooks + layout (Guard 2).
-  // Per-card error isolation: a freshness query failure must NOT throw —
-  // the FreshnessLabel renders "No data yet" when null.
+  // Freshness query — per-card error isolation.
   let freshness: string | null = null;
   try {
     const { data } = await locals.supabase
@@ -62,81 +54,42 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     console.error('[+page.server] data_freshness_v query failed', err);
   }
 
-  // -- KPI windows --
-  // Fixed reference windows — always show absolute figures regardless of
-  // the filter state (UI-SPEC "Fixed-reference KPI tiles behavior under filters").
-  const todayW = chipToRange('today');
-  const w7 = chipToRange('7d');
-  const w30 = chipToRange('30d');
-
-  // Chip window (the "variable" one) honors the filter.range — and custom
-  // ranges route through customToRange for literal user-picked dates.
+  // Chip window honors filter.range; custom ranges use literal user dates.
   const chipW =
     range === 'custom' && filters.from && filters.to
       ? customToRange({ from: filters.from, to: filters.to })
       : chipToRange(range as Range);
 
-  // Prior windows for the three fixed revenue tiles (D-08 requires delta).
-  const priorTodayW = { from: todayW.priorFrom!, to: todayW.priorTo! };
-  const priorW7 = { from: w7.priorFrom!, to: w7.priorTo! };
-  const priorW30 = { from: w30.priorFrom!, to: w30.priorTo! };
+  // Single query: all daily-grain rows for the chip window.
+  // Client-side handles filtering + rebucketing (D-05, D-08).
+  const dailyRowsP = locals.supabase
+    .from('transactions_filterable_v')
+    .select('business_date,gross_cents,sales_type,is_cash')
+    .gte('business_date', chipW.from)
+    .lte('business_date', chipW.to)
+    .then(r => (r.data ?? []) as DailyRow[])
+    .catch((e: unknown) => { console.error('[transactions_filterable_v]', e); return [] as DailyRow[]; });
 
-  // Fixed-tile KPI query — per-card error isolation.
-  const queryKpi = async (from: string, to: string): Promise<KpiRow[] | null> => {
-    const { data, error } = await locals.supabase
-      .from('kpi_daily_v')
-      .select('revenue_cents,tx_count,avg_ticket_cents')
-      .gte('business_date', from)
-      .lte('business_date', to);
-    if (error) {
-      console.error('[kpi_daily_v]', error);
-      return null;
-    }
-    return data as KpiRow[];
-  };
+  // Prior window rows for delta computation.
+  const priorDailyRowsP = chipW.priorFrom
+    ? locals.supabase
+        .from('transactions_filterable_v')
+        .select('business_date,gross_cents,sales_type,is_cash')
+        .gte('business_date', chipW.priorFrom)
+        .lte('business_date', chipW.priorTo!)
+        .then(r => (r.data ?? []) as DailyRow[])
+        .catch((e: unknown) => { console.error('[transactions_filterable_v prior]', e); return [] as DailyRow[]; })
+    : Promise.resolve([] as DailyRow[]);
 
-  // Chip-scoped tile query — hits transactions_filterable_v so we can honor
-  // sales_type + payment_method via .in() (FLT-03 / FLT-04). No raw
-  // transactions read from the frontend; wrapper view enforces JWT tenancy.
-  type TxFilterableRow = {
-    business_date: string;
-    gross_cents: number;
-    sales_type: string | null;
-    payment_method: string | null;
-  };
-  const queryFiltered = async (
-    from: string,
-    to: string
-  ): Promise<TxFilterableRow[] | null> => {
-    let q = locals.supabase
-      .from('transactions_filterable_v')
-      .select('business_date,gross_cents,sales_type,payment_method')
-      .gte('business_date', from)
-      .lte('business_date', to);
-    if (filters.sales_type) q = q.in('sales_type', filters.sales_type);
-    if (filters.payment_method) q = q.in('payment_method', filters.payment_method);
-    const { data, error } = await q;
-    if (error) {
-      console.error('[transactions_filterable_v]', error);
-      return null;
-    }
-    return data as TxFilterableRow[];
-  };
-
-  // Local aggregator mirroring sumKpi semantics so the chip-scoped path
-  // returns the same KpiAgg shape the UI already consumes.
-  const aggregate = (rows: TxFilterableRow[] | null) => {
-    if (!rows) return null;
-    const revenue_cents = rows.reduce((s, r) => s + Number(r.gross_cents), 0);
-    const tx_count = rows.length;
-    const avg_ticket_cents = tx_count === 0 ? 0 : revenue_cents / tx_count;
-    return { revenue_cents, tx_count, avg_ticket_cents };
-  };
-
-  // Query helpers for retention — per-card error isolation, do not throw.
+  // Retention — per-card error isolation.
   type RetentionRow = { cohort_week: string; period_weeks: number; retention_rate: number; cohort_size_week: number; cohort_age_weeks: number };
+  const retentionP = locals.supabase
+    .from('retention_curve_v')
+    .select('cohort_week,period_weeks,retention_rate,cohort_size_week,cohort_age_weeks')
+    .then(r => (r.data ?? []) as RetentionRow[])
+    .catch((e: unknown) => { console.error('[retention_curve_v]', e); return [] as RetentionRow[]; });
 
-  // insights_v: latest row only — JWT-filtered wrapper view (05-01).
+  // Insights — latest row only (05-01).
   type InsightRow = {
     id: string;
     business_date: string;
@@ -158,65 +111,20 @@ export const load: PageServerLoad = async ({ locals, url }) => {
       return r.data;
     });
 
-  const retentionP = locals.supabase
-    .from('retention_curve_v')
-    .select('cohort_week,period_weeks,retention_rate,cohort_size_week,cohort_age_weeks')
-    .then(r => (r.data ?? []) as RetentionRow[])
-    .catch((e: unknown) => { console.error('[retention_curve_v]', e); return [] as RetentionRow[]; });
-
-  // D-14: distinct option arrays loaded UNFILTERED so dropdown contents
-  // never depend on the current filter state. Supabase JS has no DISTINCT,
-  // so we select the column and dedupe in JS (FLT-07: no dynamic SQL).
-  const distinctSalesTypesP = locals.supabase
-    .from('transactions_filterable_v')
-    .select('sales_type')
-    .not('sales_type', 'is', null)
-    .then(r => {
-      const rows = (r.data ?? []) as Array<{ sales_type: string | null }>;
-      return [...new Set(rows.map(x => x.sales_type).filter((v): v is string => !!v))].sort();
-    })
-    .catch((e: unknown) => { console.error('[distinctSalesTypes]', e); return [] as string[]; });
-
-  const distinctPaymentMethodsP = locals.supabase
-    .from('transactions_filterable_v')
-    .select('payment_method')
-    .not('payment_method', 'is', null)
-    .then(r => {
-      const rows = (r.data ?? []) as Array<{ payment_method: string | null }>;
-      return [...new Set(rows.map(x => x.payment_method).filter((v): v is string => !!v))].sort();
-    })
-    .catch((e: unknown) => { console.error('[distinctPaymentMethods]', e); return [] as string[]; });
-
-  // Parallel fan-out: 6 fixed-tile queries + 2 chip-scoped (current + prior)
-  // + retention + insight + 2 distinct dropdown loads.
+  // Parallel fan-out: daily rows + prior + retention + insight.
   const [
-    kToday, kTodayPrior,
-    k7, k7Prior,
-    k30, k30Prior,
-    kChipRows, kChipPriorRows,
+    dailyRows,
+    priorDailyRows,
     retentionData,
-    latestInsightRow,
-    distinctSalesTypes,
-    distinctPaymentMethods
+    latestInsightRow
   ] = await Promise.all([
-    queryKpi(todayW.from, todayW.to),
-    queryKpi(priorTodayW.from, priorTodayW.to),
-    queryKpi(w7.from, w7.to),
-    queryKpi(priorW7.from, priorW7.to),
-    queryKpi(w30.from, w30.to),
-    queryKpi(priorW30.from, priorW30.to),
-    queryFiltered(chipW.from, chipW.to),
-    // chipPrior is null when range is 'all' (no prior window)
-    chipW.priorFrom
-      ? queryFiltered(chipW.priorFrom, chipW.priorTo!)
-      : Promise.resolve([] as TxFilterableRow[]),
+    dailyRowsP,
+    priorDailyRowsP,
     retentionP,
-    insightP,
-    distinctSalesTypesP,
-    distinctPaymentMethodsP
+    insightP
   ]);
 
-  // Compute today in tenant timezone (Berlin — single-tenant v1) for is_yesterday flag.
+  // Berlin timezone for is_yesterday flag.
   const todayBerlin = new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Europe/Berlin',
     year: 'numeric', month: '2-digit', day: '2-digit'
@@ -232,45 +140,11 @@ export const load: PageServerLoad = async ({ locals, url }) => {
       }
     : null;
 
-  // monthsOfHistory for retention caveat: whole months from first cohort to today.
+  // monthsOfHistory for retention caveat.
   const firstCohortDate = retentionData[0]?.cohort_week ?? null;
   const monthsOfHistory = firstCohortDate
     ? differenceInMonths(new Date(), parseISO(firstCohortDate))
     : 0;
-
-  // Aggregate chip-scoped rows into the shape the UI expects.
-  const chipAgg = aggregate(kChipRows);
-  const chipPriorAgg = aggregate(kChipPriorRows);
-
-  const priorChipLabel = range === 'all' ? null : `prior ${range}`;
-
-  const kpi = {
-    revenueToday: {
-      value: kToday  ? sumKpi(kToday).revenue_cents  : null,
-      prior: kTodayPrior ? sumKpi(kTodayPrior).revenue_cents : null,
-      priorLabel: 'prior day'
-    },
-    revenue7d: {
-      value: k7  ? sumKpi(k7).revenue_cents  : null,
-      prior: k7Prior ? sumKpi(k7Prior).revenue_cents : null,
-      priorLabel: 'prior 7d'
-    },
-    revenue30d: {
-      value: k30  ? sumKpi(k30).revenue_cents  : null,
-      prior: k30Prior ? sumKpi(k30Prior).revenue_cents : null,
-      priorLabel: 'prior 30d'
-    },
-    txCount: {
-      value: chipAgg ? chipAgg.tx_count : null,
-      prior: chipPriorAgg ? chipPriorAgg.tx_count : null,
-      priorLabel: priorChipLabel
-    },
-    avgTicket: {
-      value: chipAgg ? chipAgg.avg_ticket_cents : null,
-      prior: chipPriorAgg ? chipPriorAgg.avg_ticket_cents : null,
-      priorLabel: priorChipLabel
-    }
-  };
 
   return {
     range,
@@ -278,9 +152,8 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     filters,
     freshness,
     window: chipW,
-    distinctSalesTypes,
-    distinctPaymentMethods,
-    kpi,
+    dailyRows,
+    priorDailyRows,
     retention: retentionData,
     monthsOfHistory,
     latestInsight

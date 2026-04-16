@@ -1,8 +1,9 @@
 <script lang="ts">
-  // GrainToggle — segmented Day/Week/Month control that syncs ?grain= URL param.
-  // Lives inside the CohortRetentionCard header (D-16).
-  import { goto } from '$app/navigation';
+  // GrainToggle — segmented Day/Week/Month control.
+  // Phase 9: uses replaceState (no SSR round-trip) + updates dashboard store.
+  import { replaceState } from '$app/navigation';
   import { page } from '$app/state';
+  import { setGrain } from '$lib/dashboardStore.svelte';
   import type { Grain } from '$lib/dateRange';
 
   let { grain }: { grain: Grain } = $props();
@@ -14,9 +15,10 @@
   ];
 
   function select(value: Grain) {
-    const params = new URLSearchParams(page.url.search);
-    params.set('grain', value);
-    goto(`?${params.toString()}`, { keepFocus: true, noScroll: true });
+    const url = new URL(page.url);
+    url.searchParams.set('grain', value);
+    replaceState(url, {});
+    setGrain(value);
   }
 </script>
 
