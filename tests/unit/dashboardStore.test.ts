@@ -1,6 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { bucketKey, filterRows, aggregateByBucket, computeKpiTotals } from '../../src/lib/dashboardStore.svelte';
+import {
+  bucketKey, filterRows, aggregateByBucket, computeKpiTotals,
+  initStore, getFilters, setSalesType, setCashFilter, setGrain, setRangeId, setRange
+} from '../../src/lib/dashboardStore.svelte';
 import type { DailyRow } from '../../src/lib/dashboardStore.svelte';
+import type { FiltersState } from '../../src/lib/filters';
 
 // Phase 9 Plan 01 — dashboard store pure function tests.
 // These test filter/bucket/aggregate logic independent of Svelte reactivity.
@@ -116,5 +120,99 @@ describe('computeKpiTotals', () => {
     expect(result.tx_count).toBe(5);
     expect(result.prior_revenue_cents).toBe(1000 + 2000 + 1500 + 3000 + 500);
     expect(result.prior_tx_count).toBe(5);
+  });
+});
+
+// Phase 9 Plan 04 — reactive filters state tests.
+// Fix UAT 7/9: data.filters is frozen at SSR; store.getFilters() tracks clicks.
+describe('reactive filters state', () => {
+  // Helper to produce a full seed for initStore with a controllable filters object.
+  const seed = (filters: FiltersState) => ({
+    dailyRows: [] as DailyRow[],
+    window: { from: '2026-04-10', to: '2026-04-16', priorFrom: null, priorTo: null },
+    grain: filters.grain,
+    salesType: filters.sales_type,
+    cashFilter: filters.is_cash,
+    filters
+  });
+
+  const baseFilters: FiltersState = {
+    range: '7d',
+    grain: 'week',
+    sales_type: 'all',
+    is_cash: 'all'
+  };
+
+  it('Test A: getFilters() returns seeded object after initStore', () => {
+    initStore(seed({ ...baseFilters, range: '30d', sales_type: 'INHOUSE' }));
+    const f = getFilters();
+    expect(f.range).toBe('30d');
+    expect(f.sales_type).toBe('INHOUSE');
+    expect(f.grain).toBe('week');
+    expect(f.is_cash).toBe('all');
+  });
+
+  it("Test B: setSalesType('INHOUSE') updates getFilters().sales_type", () => {
+    initStore(seed(baseFilters));
+    setSalesType('INHOUSE');
+    expect(getFilters().sales_type).toBe('INHOUSE');
+  });
+
+  it("Test C: setCashFilter('cash') updates getFilters().is_cash", () => {
+    initStore(seed(baseFilters));
+    setCashFilter('cash');
+    expect(getFilters().is_cash).toBe('cash');
+  });
+
+  it("Test D: setGrain('day') updates getFilters().grain", () => {
+    initStore(seed(baseFilters));
+    setGrain('day');
+    expect(getFilters().grain).toBe('day');
+  });
+
+  it('Test E: setRange (window-based) does NOT change getFilters().range/from/to by itself', () => {
+    initStore(seed({ ...baseFilters, range: '7d' }));
+    const rangeBefore = getFilters().range;
+    const fromBefore = getFilters().from;
+    const toBefore = getFilters().to;
+    setRange({ from: '2026-01-01', to: '2026-01-31', priorFrom: null, priorTo: null });
+    expect(getFilters().range).toBe(rangeBefore);
+    expect(getFilters().from).toBe(fromBefore);
+    expect(getFilters().to).toBe(toBefore);
+  });
+
+  it("Test F: setRangeId('30d') sets range to 30d and clears from/to", () => {
+    initStore(seed({
+      ...baseFilters,
+      range: 'custom',
+      from: '2026-01-01',
+      to: '2026-01-31'
+    }));
+    setRangeId('30d');
+    const f = getFilters();
+    expect(f.range).toBe('30d');
+    expect(f.from).toBeUndefined();
+    expect(f.to).toBeUndefined();
+  });
+
+  it("Test G: setRangeId('custom', {from,to}) sets range=custom and stores from/to", () => {
+    initStore(seed(baseFilters));
+    setRangeId('custom', { from: '2026-03-01', to: '2026-03-15' });
+    const f = getFilters();
+    expect(f.range).toBe('custom');
+    expect(f.from).toBe('2026-03-01');
+    expect(f.to).toBe('2026-03-15');
+  });
+
+  it('Test H: combined setSalesType + setCashFilter composes (UAT Test 9 proof)', () => {
+    initStore(seed(baseFilters));
+    setSalesType('INHOUSE');
+    setCashFilter('cash');
+    const f = getFilters();
+    expect(f.sales_type).toBe('INHOUSE');
+    expect(f.is_cash).toBe('cash');
+    // Defaults untouched
+    expect(f.range).toBe('7d');
+    expect(f.grain).toBe('week');
   });
 });
