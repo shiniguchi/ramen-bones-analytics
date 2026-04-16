@@ -34,8 +34,25 @@ export const handle: Handle = async ({ event, resolve }) => {
     return { session, user: session.user, claims };
   };
 
-  return resolve(event, {
+  const response = await resolve(event, {
     filterSerializedResponseHeaders: (name) =>
       name === 'content-range' || name === 'x-supabase-api-version'
   });
+
+  // Security headers for SSR responses.
+  // adapter-cloudflare only applies `_headers` to static assets, so SSR responses
+  // must set these directly. Values mirror `_headers` verbatim — defense-in-depth.
+  response.headers.set('X-Frame-Options', 'DENY');
+  response.headers.set('X-Content-Type-Options', 'nosniff');
+  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  response.headers.set(
+    'Permissions-Policy',
+    'geolocation=(), microphone=(), camera=(), payment=(), usb=()'
+  );
+  response.headers.set(
+    'Content-Security-Policy',
+    "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https://*.supabase.co wss://*.supabase.co; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+  );
+
+  return response;
 };
