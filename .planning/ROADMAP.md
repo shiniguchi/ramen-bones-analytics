@@ -163,8 +163,8 @@ Plans:
   4. All remaining tiles and charts respect both filters — no unscoped reference tiles exist anywhere on the dashboard
 **Plans:** 2 plans
 Plans:
-  - [ ] 09-01-PLAN.md — Data foundation: transactions_filterable_v + is_cash, filter schema, dashboard store, SegmentedToggle
-  - [ ] 09-02-PLAN.md — UI wiring: FilterBar rewrite, +page.server.ts simplify, 2 KPI tiles, replaceState, delete dead components
+  - [x] 09-01-PLAN.md — Data foundation: transactions_filterable_v + is_cash, filter schema, dashboard store, SegmentedToggle
+  - [x] 09-02-PLAN.md — UI wiring: FilterBar rewrite, +page.server.ts simplify, 2 KPI tiles, replaceState, delete dead components
 **UI hint**: yes
 
 ### Phase 10: Charts

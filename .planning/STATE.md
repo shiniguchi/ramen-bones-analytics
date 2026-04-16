@@ -1,15 +1,15 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.1
-milestone_name: — Dashboard Redesign
+milestone: v1.2
+milestone_name: Dashboard Simplification & Visit Attribution
 status: planning
-stopped_at: Completed 09-01-PLAN.md
-last_updated: "2026-04-16T20:43:35.248Z"
+stopped_at: Completed 09-02-PLAN.md
+last_updated: "2026-04-16T20:56:41.238Z"
 progress:
-  total_phases: 12
-  completed_phases: 6
-  total_plans: 38
-  completed_plans: 39
+  total_phases: 7
+  completed_phases: 7
+  total_plans: 42
+  completed_plans: 42
   percent: 100
 ---
 
@@ -75,6 +75,7 @@ Plan: Not started
 | Phase 06 P04 | 9min | 2 tasks | 8 files |
 | Phase 06-filter-foundation P05 | 4min | 1 tasks | 4 files |
 | Phase 09-filter-simplification-performance P01 | 6min | 2 tasks | 6 files |
+| Phase 09 P02 | 8min | 2 tasks | 12 files |
 
 ## Accumulated Context
 
@@ -147,6 +148,9 @@ Plan: Not started
 - [Phase 06-filter-foundation]: 06-05: Task 2 (375px human UAT) deferred — CF Pages deploy pipeline broken (~27 commits stale behind a3623b9); UAT script persisted in 06-HUMAN-UAT.md status=blocked; Phase 6 code green locally but not yet live on DEV
 - [Phase 09]: Svelte 5 forbids exporting $derived from .svelte.ts modules; dashboardStore uses getter functions as public API
 - [Phase 09]: COALESCE(va.is_cash, true) treats unattributed rows as cash; payment_method kept in SQL view for backward compat
+- [Phase 09]: SSR returns raw dailyRows instead of pre-aggregated kpi object — 12+ queries reduced to 4
+- [Phase 09]: All filter controls use replaceState (no SSR round-trip) for <200ms client response
+- [Phase 09]: FilterSheet + MultiSelectDropdown deleted, replaced by inline SegmentedToggles in FilterBar
 
 ### Open Todos
 
@@ -166,8 +170,8 @@ Plan: Not started
 
 **Resume hint:** Milestone v1.1 Dashboard Redesign was scoped in this session. Architecture is a pragmatic star schema: `dim_customer` (lifetime attrs) + `fct_transactions` (atomic fact MV with visit_seq / days_since_prev_visit window fns + denormalized filter dims) + 4 thin day-grain rollup MVs (`mv_new_customers_daily`, `mv_repeater_daily`, `mv_retention_monthly`, `mv_inter_visit_histogram`). Two bucket columns materialized: `lifetime_bucket` (how customer ended up) and `visit_seq_bucket` (point-in-time). Six filters: date range, granularity, sales_type, payment_method, wl_issuing_country, repeater bucket — dropdowns auto-populated from DISTINCT values. All refresh stays inside existing `refresh_analytics_mvs()` cron. Start with Phase 06 (Filter Foundation) for a quick UX win before any schema change.
 
-**Last session:** 2026-04-16T20:43:35.237Z
-**Stopped At:** Completed 09-01-PLAN.md
+**Last session:** 2026-04-16T20:56:41.226Z
+**Stopped At:** Completed 09-02-PLAN.md
 
 ---
 *State initialized: 2026-04-13*

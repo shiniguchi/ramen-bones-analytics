@@ -134,9 +134,9 @@ Requirements for initial release. Each maps to exactly one roadmap phase.
 
 ### Filters & UX
 
-- [ ] **VA-11**: Filters simplified to inhouse/takeaway + cash/card only — all tiles and charts respect both filters (no unscoped reference tiles)
-- [ ] **VA-12**: Granularity/range toggle is client-side (no full SSR round-trip) — target <200ms perceived response
-- [ ] **VA-13**: Drop 2 of 3 revenue reference cards — keep 1 revenue card using the active date range/granularity, respects all filters
+- [x] **VA-11**: Filters simplified to inhouse/takeaway + cash/card only — all tiles and charts respect both filters (no unscoped reference tiles)
+- [x] **VA-12**: Granularity/range toggle is client-side (no full SSR round-trip) — target <200ms perceived response
+- [x] **VA-13**: Drop 2 of 3 revenue reference cards — keep 1 revenue card using the active date range/granularity, respects all filters
 
 ## v2 Requirements
 
@@ -274,9 +274,9 @@ Each requirement maps to exactly one roadmap phase.
 | VA-08 | Phase 10 — Charts | Pending |
 | VA-09 | Phase 10 — Charts | Pending |
 | VA-10 | Phase 10 — Charts | Pending |
-| VA-11 | Phase 9 — Filter Simplification & Performance | Pending |
-| VA-12 | Phase 9 — Filter Simplification & Performance | Pending |
-| VA-13 | Phase 9 — Filter Simplification & Performance | Pending |
+| VA-11 | Phase 9 — Filter Simplification & Performance | Complete |
+| VA-12 | Phase 9 — Filter Simplification & Performance | Complete |
+| VA-13 | Phase 9 — Filter Simplification & Performance | Complete |
 
 **Coverage:**
 - v1.0 requirements: 39 total (shipped)
