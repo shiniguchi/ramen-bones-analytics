@@ -82,5 +82,20 @@ blocked: 8
   reason: "User reported: supabase db push failed on migration 0020_visit_attribution_mv.sql — ERROR: column t.id does not exist (SQLSTATE 42703). public.transactions has no id column; PK is composite (restaurant_id, source_tx_id). Migration 0020 references t.id at the materialized view definition. Migrations 0020, 0021, 0022 cannot land on DEV until 0020 is fixed."
   severity: blocker
   test: 1
-  artifacts: []
-  missing: []
+  root_cause: "Migration 0020 (and Phase 8 plan D-04) assumed transactions.id uuid exists; real PK is composite (restaurant_id, source_tx_id text), so tx_id must be sourced from source_tx_id and typed text, not uuid."
+  artifacts:
+    - path: "supabase/migrations/0020_visit_attribution_mv.sql:12"
+      issue: "t.id as tx_id — transactions has no id column (triggers SQLSTATE 42703)"
+    - path: "supabase/migrations/0020_visit_attribution_mv.sql:49"
+      issue: "test_visit_attribution RETURNS TABLE declares tx_id uuid — must be text"
+    - path: "supabase/migrations/0022_transactions_filterable_v_is_cash.sql:18"
+      issue: "LEFT JOIN predicate va.tx_id = t.id — same missing column, blocks Phase 9 view"
+    - path: ".planning/phases/08-visit-attribution-data-model/08-CONTEXT.md:20"
+      issue: "D-04 specifies tx_id uuid — incorrect, source column is text"
+  missing:
+    - "Replace t.id with t.source_tx_id in 0020 MV select (line 12)"
+    - "Change tx_id column type from uuid to text in test_visit_attribution RETURNS TABLE (0020 line 49)"
+    - "Replace va.tx_id = t.id with va.tx_id = t.source_tx_id in 0022 JOIN predicate (line 18)"
+    - "Update 08-CONTEXT.md D-04 to document tx_id text (doc-only correction)"
+    - "Run supabase db push against TEST locally and re-run phase8-visit-attribution.test.ts before pushing to DEV"
+  debug_session: ".planning/debug/09-migration-0020-tx-id.md"
