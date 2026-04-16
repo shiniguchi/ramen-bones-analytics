@@ -8,12 +8,13 @@
   import CohortRetentionCard from '$lib/components/CohortRetentionCard.svelte';
   import InsightCard from '$lib/components/InsightCard.svelte';
   import {
-    initStore, getKpiTotals, setRange, setSalesType, setCashFilter,
+    initStore, getKpiTotals, getFilters, setRange, setRangeId, setSalesType, setCashFilter,
     cacheCovers, type DailyRow
   } from '$lib/dashboardStore.svelte';
   import { replaceState } from '$app/navigation';
   import { page } from '$app/state';
-  import { chipToRange, customToRange, type Range } from '$lib/dateRange';
+  import { chipToRange, customToRange, type Range, type RangeWindow } from '$lib/dateRange';
+  import type { FiltersState } from '$lib/filters';
 
   let { data } = $props();
 
@@ -24,18 +25,23 @@
       window: data.window,
       grain: data.grain as 'day' | 'week' | 'month',
       salesType: (data.filters.sales_type ?? 'all') as 'all' | 'INHOUSE' | 'TAKEAWAY',
-      cashFilter: (data.filters.is_cash ?? 'all') as 'all' | 'cash' | 'card'
+      cashFilter: (data.filters.is_cash ?? 'all') as 'all' | 'cash' | 'card',
+      filters: data.filters
     });
   });
 
   // Reactive KPI totals from store (getter function, not direct export).
   const kpi = $derived(getKpiTotals());
 
+  // Reactive filters — single source of truth for FilterBar + label derivations.
+  // Fixes UAT 7/9: data.filters is frozen at SSR; store.getFilters() tracks clicks.
+  const storeFilters = $derived(getFilters());
+
   // Range label for tile titles
   const rangeLabel = $derived.by(() => {
-    const r = data.filters.range;
-    if (r === 'custom' && data.filters.from && data.filters.to) {
-      return `${data.filters.from} \u2013 ${data.filters.to}`;
+    const r = storeFilters.range;
+    if (r === 'custom' && storeFilters.from && storeFilters.to) {
+      return `${storeFilters.from} \u2013 ${storeFilters.to}`;
     }
     if (r === 'today') return 'Today';
     return r;
@@ -43,14 +49,26 @@
 
   // Prior period label for delta display
   const priorLabel = $derived(
-    data.filters.range === 'all' ? null : `prior ${data.filters.range === 'today' ? 'day' : data.filters.range}`
+    storeFilters.range === 'all'
+      ? null
+      : `prior ${storeFilters.range === 'today' ? 'day' : storeFilters.range}`
   );
 
-  // Handle range change from DatePickerPopover
+  // Handle range change from DatePickerPopover.
+  // Preset ids come through directly; 'custom' means the popover has already
+  // written from/to to the URL via replaceState — we read them off page.url.
   function handleRangeChange(rangeValue: string) {
-    const window = rangeValue === 'custom'
-      ? customToRange({ from: data.filters.from!, to: data.filters.to! })
-      : chipToRange(rangeValue as Range);
+    let window: RangeWindow;
+    if (rangeValue === 'custom') {
+      const url = new URL(page.url);
+      const from = url.searchParams.get('from')!;
+      const to = url.searchParams.get('to')!;
+      window = customToRange({ from, to });
+      setRangeId('custom', { from, to });
+    } else {
+      window = chipToRange(rangeValue as Range);
+      setRangeId(rangeValue as FiltersState['range']);
+    }
 
     // Check if cache covers the new window (widest-window strategy)
     const allFrom = window.priorFrom && window.priorFrom < window.from
@@ -61,7 +79,7 @@
       return;
     }
 
-    // Cache doesn't cover — update store with what we have, SSR will refetch on next load
+    // Cache doesn't cover — update store with what we have, SSR refetches on next load.
     setRange(window);
   }
 
@@ -84,7 +102,7 @@
 
 <DashboardHeader />
 <FilterBar
-  filters={data.filters}
+  filters={storeFilters}
   window={data.window}
   onrangechange={handleRangeChange}
   onsalestypechange={handleSalesType}
