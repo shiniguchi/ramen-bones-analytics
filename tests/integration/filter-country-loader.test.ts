@@ -30,7 +30,7 @@ function makeChain(): ChainStub {
 async function applyCountryFilter(_q: any, _country: string[] | undefined) {
   const mod: any = await import('../../src/routes/+page.server');
   // Not yet exported — intentional failure until 07-04.
-  return mod.applyCountryFilter(_q, _country);
+  return mod._applyCountryFilter(_q, _country);
 }
 
 describe('filters.country → Supabase WHERE clause (FLT-05)', () => {

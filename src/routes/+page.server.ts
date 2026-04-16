@@ -24,11 +24,13 @@ import { differenceInMonths, parseISO } from 'date-fns';
 // Specific ISO-2 codes flow through .in(); mixed __unknown__ + specifics
 // merge into a single .or() call. Meta sentinels short-circuit specifics.
 //
-// Exported for the FLT-05 integration test. The `.or()` template only
-// interpolates values that came from SELECT DISTINCT on a typed column,
-// never raw user input — FLT-07 / ci-guards Guard 6 stays satisfied.
+// Exported for the FLT-05 integration test. SvelteKit only allows exports
+// prefixed with `_` on server route modules, so the test imports this as
+// `_applyCountryFilter`. The `.or()` template only interpolates values that
+// came from SELECT DISTINCT on a typed column, never raw user input —
+// FLT-07 / ci-guards Guard 6 stays satisfied.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function applyCountryFilter<T extends Record<string, any>>(
+export function _applyCountryFilter<T extends Record<string, any>>(
   q: T,
   country: string[] | undefined
 ): T {
@@ -167,7 +169,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
       .lte('business_date', to);
     if (filters.sales_type) q = q.in('sales_type', filters.sales_type);
     if (filters.payment_method) q = q.in('payment_method', filters.payment_method);
-    q = applyCountryFilter(q, filters.country);
+    q = _applyCountryFilter(q, filters.country);
     const { data, error } = await q;
     if (error) {
       console.error('[transactions_filterable_v]', error);
