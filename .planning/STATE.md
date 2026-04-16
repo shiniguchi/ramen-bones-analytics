@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: — Dashboard Redesign
 status: planning
-stopped_at: Completed 06-05-PLAN.md (Task 2 deferred, blocked on CF Pages deploy)
-last_updated: "2026-04-15T22:49:51.737Z"
+stopped_at: Completed 09-01-PLAN.md
+last_updated: "2026-04-16T20:43:35.248Z"
 progress:
   total_phases: 12
   completed_phases: 6
   total_plans: 38
-  completed_plans: 38
-  percent: 95
+  completed_plans: 39
+  percent: 100
 ---
 
 # STATE: Ramen Bones Analytics
@@ -32,7 +32,7 @@ Phase: 06
 Plan: Not started
 
 - **Status:** Ready to plan
-- **Progress:** [██████████] 95%
+- **Progress:** [██████████] 100%
 - **v1.0 status:** Shipping to friend (97% plans complete; repo flipped PUBLIC 2026-04-15 with topics + description set; Plan 05-06 Task 2 fork walkthrough deferred out of v1 scope — forkability is explicitly not a v1 concern per user direction)
 
 ## Performance Metrics
@@ -74,6 +74,7 @@ Plan: Not started
 | Phase 06-filter-foundation P03 | 18min | 2 tasks | 3 files |
 | Phase 06 P04 | 9min | 2 tasks | 8 files |
 | Phase 06-filter-foundation P05 | 4min | 1 tasks | 4 files |
+| Phase 09-filter-simplification-performance P01 | 6min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -144,6 +145,8 @@ Plan: Not started
 - [Phase 06]: 06-01: zod filter schema + parseFilters + customToRange + Guard 6 shipped; tests live in tests/unit/ (not src/lib/) to match project runner scope; Guard 6 wired into existing single-file scripts/ci-guards.sh runner
 - [Phase 06-filter-foundation]: 06-03: transactions_filterable_v wrapper view (JWT-scoped); loader refactored to parseFilters(url) as sole URL->state converter; chip-scoped tiles honor sales_type+payment_method via .in(); distinct option arrays loaded unfiltered (D-14); fixed reference tiles stay unscoped per UI-SPEC; 6 integration tests via hand-rolled chainable supabase mock
 - [Phase 06-filter-foundation]: 06-05: Task 2 (375px human UAT) deferred — CF Pages deploy pipeline broken (~27 commits stale behind a3623b9); UAT script persisted in 06-HUMAN-UAT.md status=blocked; Phase 6 code green locally but not yet live on DEV
+- [Phase 09]: Svelte 5 forbids exporting $derived from .svelte.ts modules; dashboardStore uses getter functions as public API
+- [Phase 09]: COALESCE(va.is_cash, true) treats unattributed rows as cash; payment_method kept in SQL view for backward compat
 
 ### Open Todos
 
@@ -163,8 +166,8 @@ Plan: Not started
 
 **Resume hint:** Milestone v1.1 Dashboard Redesign was scoped in this session. Architecture is a pragmatic star schema: `dim_customer` (lifetime attrs) + `fct_transactions` (atomic fact MV with visit_seq / days_since_prev_visit window fns + denormalized filter dims) + 4 thin day-grain rollup MVs (`mv_new_customers_daily`, `mv_repeater_daily`, `mv_retention_monthly`, `mv_inter_visit_histogram`). Two bucket columns materialized: `lifetime_bucket` (how customer ended up) and `visit_seq_bucket` (point-in-time). Six filters: date range, granularity, sales_type, payment_method, wl_issuing_country, repeater bucket — dropdowns auto-populated from DISTINCT values. All refresh stays inside existing `refresh_analytics_mvs()` cron. Start with Phase 06 (Filter Foundation) for a quick UX win before any schema change.
 
-**Last session:** 2026-04-15T19:37:00.736Z
-**Stopped At:** Completed 06-05-PLAN.md (Task 2 deferred, blocked on CF Pages deploy)
+**Last session:** 2026-04-16T20:43:35.237Z
+**Stopped At:** Completed 09-01-PLAN.md
 
 ---
 *State initialized: 2026-04-13*
