@@ -147,6 +147,10 @@ A restaurant owner opens the site on their phone and makes a real business decis
   3. The visit-attribution MV has a unique index, an RLS wrapper view, and `REVOKE ALL` on the raw MV — following the project's established pattern
   4. `frequency_v`, `new_vs_returning_v`, `ltv_v`, `CountryMultiSelect.svelte`, `_applyCountryFilter`, and the `wl_issuing_country` column on `transactions_filterable_v` are all dropped; CI passes with zero references to the removed artifacts
   5. `refresh_analytics_mvs()` includes the new visit-attribution MV in the correct DAG position; nightly cron verified green for at least 1 run
+**Plans:** 2 plans
+Plans:
+  - [ ] 08-01-PLAN.md — visit_attribution_mv + wrapper view + test helper + refresh function + integration tests
+  - [ ] 08-02-PLAN.md — Drop dead SQL views + frontend cleanup (components, queries, country filter)
 
 ### Phase 9: Filter Simplification & Performance
 **Goal**: The filter bar shows only inhouse/takeaway + cash/card, granularity/range toggles respond in under 200ms (no SSR round-trip), and the dashboard shows 1 revenue card instead of 3
@@ -186,7 +190,7 @@ A restaurant owner opens the site on their phone and makes a real business decis
 | 5. Insights & Forkability | v1.0 | 9/9 | Complete | 2026-04-15 |
 | 6. Filter Foundation | v1.1 | 5/5 | Complete | 2026-04-15 |
 | 7. Column Promotion | v1.1 | 4/4 | Complete | 2026-04-15 |
-| 8. Visit Attribution Data Model | v1.2 | 0/- | Not started | - |
+| 8. Visit Attribution Data Model | v1.2 | 0/2 | Planned | - |
 | 9. Filter Simplification & Performance | v1.2 | 0/- | Not started | - |
 | 10. Charts | v1.2 | 0/- | Not started | - |
 
