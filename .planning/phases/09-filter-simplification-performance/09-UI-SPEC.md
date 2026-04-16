@@ -48,11 +48,19 @@ Exceptions: Segmented toggle button min-height is 44px (`min-h-11`) for touch ta
 | Role | Size | Weight | Line Height |
 |------|------|--------|-------------|
 | Body | 14px (`text-sm`) | 400 (regular) | 1.5 (`leading-normal`) |
-| Label | 12px (`text-xs`) | 500 (medium) | 1.5 |
+| Label | 12px (`text-xs`) | 400 (regular) | 1.5 |
 | Heading (KPI title) | 14px (`text-sm`) | 600 (semibold) | 1.5 |
 | Display (KPI number) | 32px (`text-[32px]`) | 600 (semibold) | 1.1 (`leading-[1.1]`) |
 
+2 weights total: 400 (regular) for body and label text, 600 (semibold) for headings and display numbers. Labels are visually distinct from body text through size alone (12px vs 14px) — no medium weight needed.
+
 Source: Existing `KpiTile.svelte` and `GrainToggle.svelte` patterns. No new type sizes introduced.
+
+---
+
+## Visual Hierarchy & Focal Point
+
+**Primary focal point:** KPI display numbers (32px semibold). These are the largest, heaviest elements on the page and serve as the visual anchor that a restaurant owner's eye hits first when opening the dashboard. All other elements (filter bar, chart, cards) are subordinate to these numbers.
 
 ---
 
@@ -90,7 +98,7 @@ Additional semantic colors (existing, unchanged):
 |-----------|---------|
 | `FilterBar.svelte` | Rewrite: 2-row layout. Row 1 = DatePickerPopover. Row 2 = horizontally scrollable row with GrainToggle + SalesType toggle + CashCard toggle, separated by 1px zinc-200 vertical dividers |
 | `GrainToggle.svelte` | Replace `goto()` with `replaceState()`. Use `SegmentedToggle` internally or keep standalone (discretion). Move from CohortRetentionCard to FilterBar |
-| `KpiTile.svelte` | Dynamic title prop (already supports it via `title` string). No structural change needed -- callers pass `"Revenue \u00b7 7d"` etc. |
+| `KpiTile.svelte` | Dynamic title prop (already supports it via `title` string). No structural change needed -- callers pass `"Revenue · 7d"` etc. |
 | `DatePickerPopover.svelte` | Replace `goto()` + `invalidateAll` with `replaceState()` + widest-window-cache fetch trigger |
 | `CohortRetentionCard.svelte` | Remove GrainToggle from header |
 
@@ -187,14 +195,14 @@ All three toggles (grain, sales_type, is_cash) compose additively. Changing any 
 | Element | Copy |
 |---------|------|
 | Primary CTA | "Apply range" (custom date range confirmation -- existing, unchanged) |
-| KPI tile title (revenue) | "Revenue \u00b7 {range}" where {range} is the active preset label (Today / 7d / 30d / 90d / All / custom date string) |
-| KPI tile title (transactions) | "Transactions \u00b7 {range}" |
-| KPI delta (positive) | "\u25b2 +{N}% vs {windowLabel}" |
-| KPI delta (negative) | "\u25bc \u2212{N}% vs {windowLabel}" |
-| KPI delta (flat) | "\u2014 flat vs {windowLabel}" |
-| KPI delta (no prior) | "\u2014 no prior data" |
-| KPI delta (all range) | "\u2014 no prior data" (range=all has no meaningful prior period) |
-| Empty state heading | "No data" (existing EmptyState component) |
+| KPI tile title (revenue) | "Revenue · {range}" where {range} is the active preset label (Today / 7d / 30d / 90d / All / custom date string) |
+| KPI tile title (transactions) | "Transactions · {range}" |
+| KPI delta (positive) | "▲ +{N}% vs {windowLabel}" |
+| KPI delta (negative) | "▼ −{N}% vs {windowLabel}" |
+| KPI delta (flat) | "— flat vs {windowLabel}" |
+| KPI delta (no prior) | "— no prior data" |
+| KPI delta (all range) | "— no prior data" (range=all has no meaningful prior period) |
+| Empty state heading | "No transactions found" |
 | Empty state body | "No transactions found for this date range and filter combination." |
 | Error state | "Failed to load data. Pull down to refresh." |
 | Sales type toggle label (aria) | "Sales type" |
