@@ -111,6 +111,33 @@ Requirements for initial release. Each maps to exactly one roadmap phase.
 - [ ] **BUG-01**: `NewVsReturningCard.svelte` renders non-empty on `range=all` with 6,842 transactions present; fixes the empty-state trigger / loader query bug captured in `04-VERIFICATION.md` Gap E
 - [ ] **BUG-02**: LTV chart shows full history (10+ months) instead of 3 weeks of bars on `range=all`; fixes the sparse `ltv_mv` / chart-window truncation captured in `04-VERIFICATION.md` Gap F
 
+## v1.2 Requirements — Dashboard Simplification & Visit Attribution
+
+**Defined:** 2026-04-16
+**Milestone goal:** Strip dashboard to 7 core charts with per-transaction visit-count attribution, simplify filters to cash/card + inhouse/takeaway, fix SSR performance lag.
+
+### Data Model
+
+- [ ] **VA-01**: Each transaction has a `visit_seq` integer — the card_hash's nth visit (1st, 2nd, 3rd...) via `ROW_NUMBER() OVER (PARTITION BY card_hash ORDER BY occurred_at)`. Materialized in a new MV with visit-attribution columns, refreshed nightly.
+- [ ] **VA-02**: Each transaction has an `is_cash` boolean — derived from payment_method (replaces full payment_method filter granularity with binary cash/card)
+- [ ] **VA-03**: Drop unused views/MVs: `frequency_v`, `new_vs_returning_v`, `ltv_v`, country filter UI components (`CountryMultiSelect.svelte`, `_applyCountryFilter`, `wl_issuing_country` on `transactions_filterable_v`). Clean up dead code paths.
+
+### Charts
+
+- [ ] **VA-04**: Calendar revenue chart — stacked bars by visit-count bucket (1st/2nd/3rd/4x/5x/6x/7x/8x+) per day/week/month granularity, respects all filters
+- [ ] **VA-05**: Calendar customer counts chart — same visit-count breakdown per day/week/month, respects all filters
+- [ ] **VA-06**: Retention curve chart — weekly/monthly first-time acquisition cohort retention rates, respects all filters
+- [ ] **VA-07**: LTV per customer chart — individual or bucketed customer lifetime value distribution, respects all filters
+- [ ] **VA-08**: Calendar order item counts chart — broken down by order item name (from `stg_orderbird_order_items.item_name`), per day/week/month, respects all filters
+- [ ] **VA-09**: First-time date cohort total revenue chart — sum of all lifetime revenue per acquisition cohort (weekly/monthly), respects all filters
+- [ ] **VA-10**: First-time date cohort average LTV chart — average lifetime value per customer per acquisition cohort (weekly/monthly), respects all filters
+
+### Filters & UX
+
+- [ ] **VA-11**: Filters simplified to inhouse/takeaway + cash/card only — all tiles and charts respect both filters (no unscoped reference tiles)
+- [ ] **VA-12**: Granularity/range toggle is client-side (no full SSR round-trip) — target <200ms perceived response
+- [ ] **VA-13**: Drop 2 of 3 revenue reference cards — keep 1 revenue card using the active date range/granularity, respects all filters
+
 ## v2 Requirements
 
 Deferred to future release. Tracked but not in current roadmap.
@@ -228,10 +255,10 @@ Each v1 requirement maps to exactly one roadmap phase.
 
 **Coverage:**
 - v1 requirements: 39 total (shipped)
-- v1.1 requirements: 26 total
-- Mapped to phases: 65 (100%)
-- Unmapped: 0
+- v1.1 requirements: 26 total (Phases 6-7 complete, 8-11 superseded by v1.2)
+- v1.2 requirements: 13 total
+- Mapped to phases: pending roadmap
 
 ---
 *Requirements defined: 2026-04-13*
-*Last updated: 2026-04-15 — v1.1 Dashboard Redesign requirements added*
+*Last updated: 2026-04-16 — v1.2 Dashboard Simplification & Visit Attribution requirements added*
