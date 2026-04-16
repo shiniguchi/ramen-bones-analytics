@@ -150,7 +150,7 @@ A restaurant owner opens the site on their phone and makes a real business decis
 **Plans:** 2 plans
 Plans:
   - [x] 08-01-PLAN.md — visit_attribution_mv + wrapper view + test helper + refresh function + integration tests
-  - [ ] 08-02-PLAN.md — Drop dead SQL views + frontend cleanup (components, queries, country filter)
+  - [x] 08-02-PLAN.md — Drop dead SQL views + frontend cleanup (components, queries, country filter)
 
 ### Phase 9: Filter Simplification & Performance
 **Goal**: The filter bar shows only inhouse/takeaway + cash/card, granularity/range toggles respond in under 200ms (no SSR round-trip), and the dashboard shows 1 revenue card instead of 3
