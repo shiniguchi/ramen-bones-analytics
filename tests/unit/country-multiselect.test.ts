@@ -24,7 +24,7 @@ describe('CountryMultiSelect mutual exclusion (FLT-05 / D-05)', () => {
       selected: [],
       onSelectionChange,
     });
-    await fireEvent.click(container.querySelector('[data-option="__de_only__"]')!);
+    await fireEvent.click(container.querySelector('[data-option="__de_only__"] label')!);
     expect(onSelectionChange).toHaveBeenLastCalledWith(['__de_only__']);
   });
 
@@ -35,7 +35,7 @@ describe('CountryMultiSelect mutual exclusion (FLT-05 / D-05)', () => {
       selected: ['__de_only__'],
       onSelectionChange,
     });
-    await fireEvent.click(container.querySelector('[data-option="AT"]')!);
+    await fireEvent.click(container.querySelector('[data-option="AT"] label')!);
     expect(onSelectionChange).toHaveBeenLastCalledWith(['AT']);
   });
 
@@ -46,7 +46,7 @@ describe('CountryMultiSelect mutual exclusion (FLT-05 / D-05)', () => {
       selected: ['AT'],
       onSelectionChange,
     });
-    await fireEvent.click(container.querySelector('[data-option="__non_de_only__"]')!);
+    await fireEvent.click(container.querySelector('[data-option="__non_de_only__"] label')!);
     expect(onSelectionChange).toHaveBeenLastCalledWith(['__non_de_only__']);
   });
 
@@ -57,7 +57,7 @@ describe('CountryMultiSelect mutual exclusion (FLT-05 / D-05)', () => {
       selected: ['__non_de_only__'],
       onSelectionChange,
     });
-    await fireEvent.click(container.querySelector('[data-option="__de_only__"]')!);
+    await fireEvent.click(container.querySelector('[data-option="__de_only__"] label')!);
     expect(onSelectionChange).toHaveBeenLastCalledWith(['__de_only__']);
   });
 
@@ -68,7 +68,7 @@ describe('CountryMultiSelect mutual exclusion (FLT-05 / D-05)', () => {
       selected: ['DE', 'AT'],
       onSelectionChange,
     });
-    await fireEvent.click(container.querySelector('[data-option="AT"]')!);
+    await fireEvent.click(container.querySelector('[data-option="AT"] label')!);
     expect(onSelectionChange).toHaveBeenLastCalledWith(['DE']);
   });
 });

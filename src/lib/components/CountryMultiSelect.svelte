@@ -141,19 +141,12 @@
   {#if metaOptions.length > 0}
     <div class="flex flex-col">
       {#each metaOptions as opt (opt)}
-        <div
-          data-option={opt}
-          role="button"
-          tabindex="0"
-          onclick={() => toggle(opt)}
-          onkeydown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault();
-              toggle(opt);
-            }
-          }}
-        >
-          <Checkbox label={labelOf(opt)} checked={isChecked(opt)} />
+        <div data-option={opt}>
+          <Checkbox
+            label={labelOf(opt)}
+            checked={isChecked(opt)}
+            onCheckedChange={() => toggle(opt)}
+          />
         </div>
       {/each}
     </div>
@@ -162,19 +155,12 @@
 
   <div class="flex flex-col">
     {#each specificOptions as opt (opt)}
-      <div
-        data-option={opt}
-        role="button"
-        tabindex="0"
-        onclick={() => toggle(opt)}
-        onkeydown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            toggle(opt);
-          }
-        }}
-      >
-        <Checkbox label={labelOf(opt)} checked={isChecked(opt)} />
+      <div data-option={opt}>
+        <Checkbox
+          label={labelOf(opt)}
+          checked={isChecked(opt)}
+          onCheckedChange={() => toggle(opt)}
+        />
       </div>
     {/each}
   </div>

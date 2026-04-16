@@ -116,7 +116,8 @@
     {#if distinctCountries.length > 0}
       <CountryMultiSelect
         options={distinctCountries}
-        bind:selected={countryDraft}
+        selected={countryDraft}
+        onSelectionChange={(next) => (countryDraft = next)}
       />
     {/if}
   </div>
