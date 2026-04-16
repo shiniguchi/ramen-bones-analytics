@@ -5,6 +5,8 @@
 
 import { startOfWeek, startOfMonth, format, parseISO } from 'date-fns';
 import type { RangeWindow } from '$lib/dateRange';
+import type { FiltersState } from '$lib/filters';
+import { FILTER_DEFAULTS } from '$lib/filters';
 
 // -- Types --
 
@@ -113,6 +115,12 @@ let cashFilter = $state<'all' | 'cash' | 'card'>('all');
 let priorFrom = $state<string | null>(null);
 let priorTo = $state<string | null>(null);
 
+// Reactive snapshot of FiltersState. Seeded by initStore from SSR data.filters;
+// updated by every set* action so UI components reading getFilters() stay in sync
+// with URL state. Fixes UAT Test 7/9 — filter clicks used to update URL + KPI
+// math but leave FilterBar aria-checked + range labels frozen at SSR.
+let _filters = $state<FiltersState>({ ...FILTER_DEFAULTS });
+
 // -- Derived values --
 // Svelte 5 forbids exporting $derived from modules. Use getter functions instead.
 
@@ -137,6 +145,9 @@ export function getPriorFiltered(): DailyRow[] { return _priorFiltered; }
 export function getBucketed(): Map<string, BucketAgg> { return _bucketed; }
 /** KPI totals for current + prior windows. */
 export function getKpiTotals(): KpiSummary { return _kpiTotals; }
+/** Current reactive filters state (range, grain, sales_type, is_cash, from, to).
+ *  Read this in UI instead of `data.filters` (which is the frozen SSR snapshot). */
+export function getFilters(): FiltersState { return _filters; }
 
 // -- Actions --
 
@@ -147,6 +158,7 @@ export function initStore(data: {
   grain: 'day' | 'week' | 'month';
   salesType: 'all' | 'INHOUSE' | 'TAKEAWAY';
   cashFilter: 'all' | 'cash' | 'card';
+  filters: FiltersState;
 }) {
   rawRows = data.dailyRows;
   dateFrom = data.window.from;
@@ -158,18 +170,23 @@ export function initStore(data: {
   grain = data.grain;
   salesTypeFilter = data.salesType;
   cashFilter = data.cashFilter;
+  // Seed the reactive filters snapshot — replaces `data.filters` reads in UI paths.
+  _filters = { ...data.filters };
 }
 
 export function setGrain(g: 'day' | 'week' | 'month') {
   grain = g;
+  _filters = { ..._filters, grain: g };
 }
 
 export function setSalesType(v: 'all' | 'INHOUSE' | 'TAKEAWAY') {
   salesTypeFilter = v;
+  _filters = { ..._filters, sales_type: v };
 }
 
 export function setCashFilter(v: 'all' | 'cash' | 'card') {
   cashFilter = v;
+  _filters = { ..._filters, is_cash: v };
 }
 
 export function setRange(window: RangeWindow) {
@@ -177,6 +194,19 @@ export function setRange(window: RangeWindow) {
   dateTo = window.to;
   priorFrom = window.priorFrom;
   priorTo = window.priorTo;
+}
+
+/** Update the range identity (preset or 'custom'). For 'custom', pass {from,to}.
+ *  For presets, clears any prior from/to so rangeLabel derivation stays clean. */
+export function setRangeId(
+  range: FiltersState['range'],
+  custom?: { from: string; to: string }
+) {
+  if (range === 'custom' && custom) {
+    _filters = { ..._filters, range, from: custom.from, to: custom.to };
+  } else {
+    _filters = { ..._filters, range, from: undefined, to: undefined };
+  }
 }
 
 /** Check if the local cache covers the requested range (widest-window strategy). */
