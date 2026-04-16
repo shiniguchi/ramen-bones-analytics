@@ -149,7 +149,7 @@ A restaurant owner opens the site on their phone and makes a real business decis
   5. `refresh_analytics_mvs()` includes the new visit-attribution MV in the correct DAG position; nightly cron verified green for at least 1 run
 **Plans:** 2 plans
 Plans:
-  - [ ] 08-01-PLAN.md — visit_attribution_mv + wrapper view + test helper + refresh function + integration tests
+  - [x] 08-01-PLAN.md — visit_attribution_mv + wrapper view + test helper + refresh function + integration tests
   - [ ] 08-02-PLAN.md — Drop dead SQL views + frontend cleanup (components, queries, country filter)
 
 ### Phase 9: Filter Simplification & Performance
@@ -190,7 +190,7 @@ Plans:
 | 5. Insights & Forkability | v1.0 | 9/9 | Complete | 2026-04-15 |
 | 6. Filter Foundation | v1.1 | 5/5 | Complete | 2026-04-15 |
 | 7. Column Promotion | v1.1 | 4/4 | Complete | 2026-04-15 |
-| 8. Visit Attribution Data Model | v1.2 | 0/2 | Planned | - |
+| 8. Visit Attribution Data Model | v1.2 | 1/2 | In Progress | - |
 | 9. Filter Simplification & Performance | v1.2 | 0/- | Not started | - |
 | 10. Charts | v1.2 | 0/- | Not started | - |
 
