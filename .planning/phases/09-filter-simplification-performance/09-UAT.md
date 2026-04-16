@@ -1,0 +1,86 @@
+---
+status: partial
+phase: 09-filter-simplification-performance
+source: 09-01-SUMMARY.md, 09-02-SUMMARY.md
+started: 2026-04-16T21:00:00Z
+updated: 2026-04-16T21:20:00Z
+---
+
+## Current Test
+
+[testing paused — 1 blocker issue, 8 tests blocked on prior-phase migration fix]
+
+## Tests
+
+### 1. Cold Start Smoke Test
+expected: Kill any running dev server. Run `npm run dev` from scratch. Server boots without errors, migration 0022 is applied against DEV Supabase, and opening the dashboard URL returns a live page with KPI tiles populated from real data (no 500s, no empty state, no "transactions_filterable_v column is_cash does not exist" errors).
+result: issue
+reported: "supabase db push failed on migration 0020_visit_attribution_mv.sql — ERROR: column t.id does not exist (SQLSTATE 42703). public.transactions has no id column; PK is composite (restaurant_id, source_tx_id). Migration 0020 references t.id at the materialized view definition. Migrations 0020, 0021, 0022 cannot land on DEV until 0020 is fixed. Dashboard cannot be smoke-tested against DEV."
+severity: blocker
+
+### 2. Dashboard Shows Exactly 2 KPI Tiles
+expected: Dashboard page renders exactly 2 KPI tiles — Revenue and Transactions. Each tile shows a current value, the date range label, and a delta vs prior period. No other KPI tiles (AOV, customer count, etc.) are visible.
+result: blocked
+blocked_by: prior-phase
+reason: Depends on migrations 0020/0021/0022 landing on DEV (blocked by Test 1 issue).
+
+### 3. FilterBar 2-Row Layout
+expected: FilterBar shows two rows. Row 1 contains the DatePickerPopover (range selector). Row 2 contains three horizontally-arranged inline controls: Grain toggle (day/week/month), Sales Type toggle (all/INHOUSE/TAKEAWAY), and Cash/Card toggle (all/cash/card). No FilterSheet bottom sheet, no multi-select dropdowns.
+result: blocked
+blocked_by: prior-phase
+reason: Depends on migrations 0020/0021/0022 landing on DEV (blocked by Test 1 issue).
+
+### 4. Sales Type Toggle Filters Instantly
+expected: Clicking INHOUSE on the Sales Type segmented toggle updates the 2 KPI tiles instantly (<200ms, no full page reload). Clicking TAKEAWAY filters to takeaway-only numbers. Clicking "all" restores the full total. URL query param reflects the selection without a server round-trip.
+result: blocked
+blocked_by: prior-phase
+reason: Depends on migrations 0020/0021/0022 landing on DEV (blocked by Test 1 issue).
+
+### 5. Cash/Card Toggle Filters Instantly
+expected: Clicking "cash" on the Cash/Card segmented toggle updates the KPI tiles to show cash-only totals instantly. Clicking "card" shows card-only totals. Clicking "all" restores full totals. Each click updates the URL via replaceState (no reload, no spinner).
+result: blocked
+blocked_by: prior-phase
+reason: Depends on migrations 0020/0021/0022 landing on DEV (blocked by Test 1 issue).
+
+### 6. Grain Toggle Changes Bucketing
+expected: Clicking day/week/month on the Grain toggle changes how the dashboard data is bucketed. URL query param updates via replaceState (no full reload). Any charts or bucketed views reflect the new grain. KPI tile totals remain correct (grain affects bucketing, not totals).
+result: blocked
+blocked_by: prior-phase
+reason: Depends on migrations 0020/0021/0022 landing on DEV (blocked by Test 1 issue).
+
+### 7. Date Picker Updates Range Without Reload
+expected: Opening the DatePickerPopover and selecting a new range updates the KPI tiles and the range label. URL `from`/`to` params update via replaceState (no full SSR round-trip visible as a page reload). Delta vs prior period recomputes against the new range.
+result: blocked
+blocked_by: prior-phase
+reason: Depends on migrations 0020/0021/0022 landing on DEV (blocked by Test 1 issue).
+
+### 8. Cohort Retention Card Still Renders
+expected: The Cohort Retention card is visible below the KPI tiles and renders its retention curve/data as before. The GrainToggle is no longer inside the retention card header (it moved to the FilterBar) — the card still respects the global grain setting.
+result: blocked
+blocked_by: prior-phase
+reason: Depends on migrations 0020/0021/0022 landing on DEV (blocked by Test 1 issue).
+
+### 9. Combined Filters Compose Correctly
+expected: Apply Sales Type = INHOUSE AND Cash/Card = cash together. KPI tiles show the intersection (in-house cash sales only). Toggling either filter back to "all" broadens the result. Filters compose multiplicatively, not replace each other.
+result: blocked
+blocked_by: prior-phase
+reason: Depends on migrations 0020/0021/0022 landing on DEV (blocked by Test 1 issue).
+
+## Summary
+
+total: 9
+passed: 0
+issues: 1
+pending: 0
+skipped: 0
+blocked: 8
+
+## Gaps
+
+- truth: "Cold start against DEV succeeds: migrations apply cleanly, dev server boots, dashboard loads with live data from transactions_filterable_v.is_cash."
+  status: failed
+  reason: "User reported: supabase db push failed on migration 0020_visit_attribution_mv.sql — ERROR: column t.id does not exist (SQLSTATE 42703). public.transactions has no id column; PK is composite (restaurant_id, source_tx_id). Migration 0020 references t.id at the materialized view definition. Migrations 0020, 0021, 0022 cannot land on DEV until 0020 is fixed."
+  severity: blocker
+  test: 1
+  artifacts: []
+  missing: []
