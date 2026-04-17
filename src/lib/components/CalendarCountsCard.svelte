@@ -6,6 +6,7 @@
   import EmptyState from './EmptyState.svelte';
   import VisitSeqLegend from './VisitSeqLegend.svelte';
   import { VISIT_SEQ_COLORS, CASH_COLOR } from '$lib/chartPalettes';
+  import { formatIntShort } from '$lib/format';
   import {
     getFiltered,
     getFilters,
@@ -60,7 +61,7 @@
         orientation="vertical"
         bandPadding={0.2}
         width={chartW}
-        props={{ xAxis: { ticks: MAX_X_TICKS } }}
+        props={{ xAxis: { ticks: MAX_X_TICKS }, yAxis: { format: formatIntShort } }}
         tooltipContext={{ touchEvents: 'pan-x' }}
       />
     </div>

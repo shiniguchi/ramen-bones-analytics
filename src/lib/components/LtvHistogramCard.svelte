@@ -6,6 +6,7 @@
   import { BarChart } from 'layerchart';
   import EmptyState from './EmptyState.svelte';
   import { LTV_BINS, binCustomerRevenue } from '$lib/ltvBins';
+  import { formatIntShort } from '$lib/format';
 
   type CustomerLtvRow = {
     card_hash: string;
@@ -42,6 +43,7 @@
         y="customers"
         orientation="vertical"
         bandPadding={0.2}
+        props={{ yAxis: { format: formatIntShort } }}
       />
     </div>
   {/if}

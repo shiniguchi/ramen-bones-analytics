@@ -8,6 +8,7 @@
   import EmptyState from './EmptyState.svelte';
   import VisitSeqLegend from './VisitSeqLegend.svelte';
   import { VISIT_SEQ_COLORS, CASH_COLOR } from '$lib/chartPalettes';
+  import { formatEURShort } from '$lib/format';
   import {
     getFiltered,
     getFilters,
@@ -20,15 +21,29 @@
 
   // Stack order = series array order. Light (1st) at bottom, dark (8x+) at top (D-06).
   const VISIT_KEYS = ['1st', '2nd', '3rd', '4x', '5x', '6x', '7x', '8x+'] as const;
+  // Every numeric column emitted by shapeForChart for the revenue_cents metric
+  // (all visit_seq buckets + the cash segment). Driven by the same stacked shape
+  // produced upstream in dashboardStore.svelte.ts shapeForChart.
+  const SERIES_KEYS = [...VISIT_KEYS, 'cash'] as const;
 
   const chartData = $derived.by(() => {
     const filtered = getFiltered();
     const grain = getFilters().grain as 'day' | 'week' | 'month';
     const nested = aggregateByBucketAndVisitSeq(filtered, grain);
-    return shapeForChart(nested, 'revenue_cents').map((r) => ({
-      ...r,
-      bucket: formatBucketLabel(r.bucket as string, grain)
-    }));
+    // shapeForChart emits integer CENTS for every series column. Convert each
+    // column to EUR integer here so the Y-axis renders euros, not raw cents
+    // (mirrors CohortRevenueCard's `Math.round(total_revenue_cents / 100)`).
+    return shapeForChart(nested, 'revenue_cents').map((r) => {
+      const row: Record<string, string | number> = {
+        ...r,
+        bucket: formatBucketLabel(r.bucket as string, grain)
+      };
+      for (const k of SERIES_KEYS) {
+        const v = r[k];
+        row[k] = typeof v === 'number' ? Math.round(v / 100) : 0;
+      }
+      return row;
+    });
   });
 
   // Dynamic series list respects the cash filter:
@@ -69,7 +84,7 @@
         orientation="vertical"
         bandPadding={0.2}
         width={chartW}
-        props={{ xAxis: { ticks: MAX_X_TICKS } }}
+        props={{ xAxis: { ticks: MAX_X_TICKS }, yAxis: { format: formatEURShort } }}
         tooltipContext={{ touchEvents: 'pan-x' }}
       />
     </div>

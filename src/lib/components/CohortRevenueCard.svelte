@@ -7,6 +7,7 @@
   import { BarChart } from 'layerchart';
   import EmptyState from './EmptyState.svelte';
   import { cohortRevenueSum, type CustomerLtvRow } from '$lib/cohortAgg';
+  import { formatEURShort } from '$lib/format';
   import { getFilters, formatBucketLabel, computeChartWidth, MAX_X_TICKS } from '$lib/dashboardStore.svelte';
 
   let { data }: { data: CustomerLtvRow[] } = $props();
@@ -62,7 +63,7 @@
         orientation="vertical"
         bandPadding={0.2}
         width={chartW}
-        props={{ xAxis: { ticks: MAX_X_TICKS } }}
+        props={{ xAxis: { ticks: MAX_X_TICKS }, yAxis: { format: formatEURShort } }}
         tooltipContext={{ touchEvents: 'pan-x' }}
       />
     </div>

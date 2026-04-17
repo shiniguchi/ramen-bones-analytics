@@ -10,6 +10,7 @@
   import EmptyState from './EmptyState.svelte';
   import { ITEM_COLORS, OTHER_COLOR } from '$lib/chartPalettes';
   import { rollupTopNWithOther } from '$lib/itemCountsRollup';
+  import { formatIntShort } from '$lib/format';
   import { bucketKey, getFilters, formatBucketLabel, computeChartWidth, MAX_X_TICKS } from '$lib/dashboardStore.svelte';
 
   type ItemCountRow = {
@@ -99,7 +100,7 @@
         orientation="vertical"
         bandPadding={0.2}
         width={chartW}
-        props={{ xAxis: { ticks: MAX_X_TICKS } }}
+        props={{ xAxis: { ticks: MAX_X_TICKS }, yAxis: { format: formatIntShort } }}
         tooltipContext={{ touchEvents: 'pan-x' }}
       />
     </div>
