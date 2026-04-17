@@ -274,9 +274,9 @@ Each requirement maps to exactly one roadmap phase.
 | VA-08 | Phase 10 — Charts | Pending | — |
 | VA-09 | Phase 10 — Charts | Pending | — |
 | VA-10 | Phase 10 — Charts | Pending | — |
-| VA-11 | Phase 9 — Filter Simplification & Performance | Complete | 09-01, 09-02, 09-03, 09-04 |
-| VA-12 | Phase 9 — Filter Simplification & Performance | Complete | 09-01, 09-02, 09-03, 09-04 |
-| VA-13 | Phase 9 — Filter Simplification & Performance | Complete | 09-01, 09-02, 09-03, 09-04 |
+| VA-11 | Phase 9 — Filter Simplification & Performance | Complete | 09-01, 09-02, 09-03, 09-04, 09-05 |
+| VA-12 | Phase 9 — Filter Simplification & Performance | Complete | 09-01, 09-02, 09-03, 09-04, 09-05 |
+| VA-13 | Phase 9 — Filter Simplification & Performance | Complete | 09-01, 09-02, 09-03, 09-04, 09-05 |
 
 **Coverage:**
 - v1.0 requirements: 39 total (shipped)
@@ -286,4 +286,4 @@ Each requirement maps to exactly one roadmap phase.
 
 ---
 *Requirements defined: 2026-04-13*
-*Last updated: 2026-04-17 — 09-04 gap closure evidence added for VA-11/12/13 (reactive filters state fix); Phase 9 all 4 plans complete*
+*Last updated: 2026-04-17 — 09-05 gap closure evidence added for VA-11/12/13 (reactive date subtitle via getWindow() + mergeSearchParams URL composition helper — fix UAT Tests 7 & 9); Phase 9 all 5 plans complete*

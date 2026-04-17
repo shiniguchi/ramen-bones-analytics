@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Dashboard Simplification & Visit Attribution
-status: "v1.2 partial shipped — PR #2 (Phases 7-tail/8/9 + SSR headers)"
-stopped_at: Completed quick task 260417-29v (SSR security headers applied to hooks.server.ts — 5 headers verified via curl). Phase 09 complete (4/4 plans). Ready to ship v1.2 partial to main.
-last_updated: "2026-04-16T23:43:38.685Z"
+status: executing
+stopped_at: "09-05 code complete (3 commits: 3ea3d11 RED, c369ae6 GREEN, 75b48fc fix). Human UAT pending on DEV/prod per plan Task 3."
+last_updated: "2026-04-17T00:35:55.030Z"
 progress:
   total_phases: 7
   completed_phases: 7
@@ -27,11 +27,11 @@ progress:
 
 ## Current Position
 
-Milestone: v1.2 (Dashboard Simplification & Visit Attribution) — Phase 09 complete (4/4), Phase 10 Charts next
-Phase: 09
-Plan: Not started
+Milestone: v1.2 (Dashboard Simplification & Visit Attribution) — Phase 09 complete (5/5 plans including gap closures), Phase 10 Charts next
+Phase: 09 (filter-simplification-performance) — AWAITING UAT GATE
+Plan: 09-05 (human UAT on DEV/prod — 14 verification steps)
 
-- **Status:** v1.2 partial shipped — PR #2 (Phases 7-tail/8/9 + SSR headers)
+- **Status:** 09-05 code complete; human UAT pending
 - **Progress:** [██████████] 100%
 - **v1.0 status:** Shipping to friend (97% plans complete; repo flipped PUBLIC 2026-04-15 with topics + description set; Plan 05-06 Task 2 fork walkthrough deferred out of v1 scope — forkability is explicitly not a v1 concern per user direction)
 
@@ -78,6 +78,7 @@ Plan: Not started
 | Phase 09 P02 | 8min | 2 tasks | 12 files |
 | Phase 09 P03 | 45 min | 5 tasks | 5 files |
 | Phase 09 P04 | 7min | 3 tasks | 3 files |
+| Phase 09-filter-simplification-performance P05 | 4min | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -156,6 +157,8 @@ Plan: Not started
 - [Phase 09]: 09-03 gap-closure: 0020/0022 t.id -> source_tx_id, tx_id text (transactions PK is composite, no surrogate id) — Migration 0003 established (restaurant_id, source_tx_id text) as the composite PK; Phase 8 D-04 incorrectly specified tx_id uuid. Fixed in place (migrations unpushed, history stays clean).
 - [Phase 09]: 09-03: 0021 rewritten as DROP VIEW IF EXISTS + CREATE VIEW — Postgres forbids column removal via CREATE OR REPLACE VIEW (SQLSTATE 42P16) — Surfaced during TEST verification. Rule 3 deviation. Pattern: view column-shape changes require DROP + CREATE, not CREATE OR REPLACE.
 - [Phase 09]: 09-04: Reactive filters state pattern — module-private $state + public getFilters() getter + object-spread in setters so downstream $derived re-runs. Collapses the dual-source drift between SSR data.filters (used for labels) and store private state (used for KPI math). Zero child-component changes needed.
+- [Phase 09-filter-simplification-performance]: 09-05: page.url from $app/state is stale after replaceState — window.location.href is the live source. mergeSearchParams(updates): URL helper centralizes URL composition so filter write-paths can't silently drop params.
+- [Phase 09-filter-simplification-performance]: 09-05: getWindow(): RangeWindow getter returns a fresh object every call — identity-change invariant that $derived(getWindow()) in +page.svelte depends on; memoizing would silently break DatePickerPopover subtitle reactivity (locked by test W3).
 
 ### Open Todos
 
@@ -181,8 +184,8 @@ Plan: Not started
 
 **Resume hint:** Milestone v1.1 Dashboard Redesign was scoped in this session. Architecture is a pragmatic star schema: `dim_customer` (lifetime attrs) + `fct_transactions` (atomic fact MV with visit_seq / days_since_prev_visit window fns + denormalized filter dims) + 4 thin day-grain rollup MVs (`mv_new_customers_daily`, `mv_repeater_daily`, `mv_retention_monthly`, `mv_inter_visit_histogram`). Two bucket columns materialized: `lifetime_bucket` (how customer ended up) and `visit_seq_bucket` (point-in-time). Six filters: date range, granularity, sales_type, payment_method, wl_issuing_country, repeater bucket — dropdowns auto-populated from DISTINCT values. All refresh stays inside existing `refresh_analytics_mvs()` cron. Start with Phase 06 (Filter Foundation) for a quick UX win before any schema change.
 
-**Last session:** 2026-04-16T23:10:22.029Z
-**Stopped At:** Completed quick task 260417-29v (SSR security headers applied to hooks.server.ts — 5 headers verified via curl). Phase 09 complete (4/4 plans). Ready to ship v1.2 partial to main.
+**Last session:** 2026-04-17T00:35:48.194Z
+**Stopped At:** 09-05 code complete (3 commits: 3ea3d11 RED, c369ae6 GREEN, 75b48fc fix). Human UAT pending on DEV/prod per plan Task 3.
 
 ---
 *State initialized: 2026-04-13*
