@@ -7,11 +7,11 @@ export type CustomerLtvRow = {
   revenue_cents: number;
   visit_count: number;
   cohort_week: string;   // YYYY-MM-DD (Monday)
-  cohort_month: string;  // YYYY-MM-01
+  cohort_month: string;  // YYYY-MM-DD (Postgres DATE via customer_ltv_v) — sliced to YYYY-MM by pickCohortKey
 };
 
 function pickCohortKey(row: CustomerLtvRow, grain: 'week' | 'month'): string {
-  return grain === 'week' ? row.cohort_week : row.cohort_month;
+  return grain === 'week' ? row.cohort_week : row.cohort_month.slice(0, 7);
 }
 
 /** VA-09: SUM revenue_cents per cohort. Drops cohorts below SPARSE_MIN_COHORT_SIZE. */
