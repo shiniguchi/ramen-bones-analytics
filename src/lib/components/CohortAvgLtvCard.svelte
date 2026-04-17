@@ -5,7 +5,7 @@
   import { BarChart } from 'layerchart';
   import EmptyState from './EmptyState.svelte';
   import { cohortAvgLtv, type CustomerLtvRow } from '$lib/cohortAgg';
-  import { getFilters } from '$lib/dashboardStore.svelte';
+  import { getFilters, formatBucketLabel } from '$lib/dashboardStore.svelte';
 
   let { data }: { data: CustomerLtvRow[] } = $props();
 
@@ -19,7 +19,7 @@
   const chartData = $derived.by(() => {
     const aggs = cohortAvgLtv(data, cohortGrain);
     return aggs.slice(-12).map((a) => ({
-      cohort: a.cohort,
+      cohort: formatBucketLabel(a.cohort, cohortGrain),
       avg_eur: Math.round(a.avg_revenue_cents / 100)
     }));
   });
