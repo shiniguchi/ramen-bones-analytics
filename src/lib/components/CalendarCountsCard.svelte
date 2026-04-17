@@ -11,7 +11,9 @@
     getFilters,
     aggregateByBucketAndVisitSeq,
     shapeForChart,
-    formatBucketLabel
+    formatBucketLabel,
+    computeChartWidth,
+    MAX_X_TICKS
   } from '$lib/dashboardStore.svelte';
 
   const VISIT_KEYS = ['1st', '2nd', '3rd', '4x', '5x', '6x', '7x', '8x+'] as const;
@@ -39,6 +41,9 @@
   });
 
   const showCash = $derived(getFilters().is_cash !== 'card');
+
+  let cardW = $state(0);
+  const chartW = $derived(computeChartWidth(chartData.length, cardW));
 </script>
 
 <div data-testid="calendar-counts-card" class="rounded-xl border border-zinc-200 bg-white p-4">
@@ -46,7 +51,7 @@
   {#if chartData.length === 0}
     <EmptyState card="calendar-counts" />
   {:else}
-    <div class="mt-4 h-64">
+    <div bind:clientWidth={cardW} class="mt-4 h-64 overflow-x-auto">
       <BarChart
         data={chartData}
         x="bucket"
@@ -54,6 +59,8 @@
         seriesLayout="stack"
         orientation="vertical"
         bandPadding={0.2}
+        width={chartW}
+        props={{ xAxis: { ticks: MAX_X_TICKS } }}
       />
     </div>
     <VisitSeqLegend {showCash} />

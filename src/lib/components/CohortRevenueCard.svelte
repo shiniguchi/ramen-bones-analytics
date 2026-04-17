@@ -7,7 +7,7 @@
   import { BarChart } from 'layerchart';
   import EmptyState from './EmptyState.svelte';
   import { cohortRevenueSum, type CustomerLtvRow } from '$lib/cohortAgg';
-  import { getFilters, formatBucketLabel } from '$lib/dashboardStore.svelte';
+  import { getFilters, formatBucketLabel, computeChartWidth, MAX_X_TICKS } from '$lib/dashboardStore.svelte';
 
   let { data }: { data: CustomerLtvRow[] } = $props();
 
@@ -28,6 +28,9 @@
       revenue_eur: Math.round(a.total_revenue_cents / 100)
     }));
   });
+
+  let cardW = $state(0);
+  const chartW = $derived(computeChartWidth(chartData.length, cardW));
 </script>
 
 <div
@@ -51,13 +54,15 @@
   {#if chartData.length === 0}
     <EmptyState card="cohort-revenue" />
   {:else}
-    <div class="mt-4 h-64">
+    <div bind:clientWidth={cardW} class="mt-4 h-64 overflow-x-auto">
       <BarChart
         data={chartData}
         x="cohort"
         y="revenue_eur"
         orientation="vertical"
         bandPadding={0.2}
+        width={chartW}
+        props={{ xAxis: { ticks: MAX_X_TICKS } }}
       />
     </div>
   {/if}
