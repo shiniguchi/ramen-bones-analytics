@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import {
   bucketKey, filterRows, aggregateByBucket, computeKpiTotals,
-  initStore, getFilters, setSalesType, setCashFilter, setGrain, setRangeId, setRange
+  initStore, getFilters, getWindow,
+  setSalesType, setCashFilter, setGrain, setRangeId, setRange
 } from '../../src/lib/dashboardStore.svelte';
 import type { DailyRow } from '../../src/lib/dashboardStore.svelte';
 import type { FiltersState } from '../../src/lib/filters';
@@ -214,5 +215,58 @@ describe('reactive filters state', () => {
     // Defaults untouched
     expect(f.range).toBe('7d');
     expect(f.grain).toBe('week');
+  });
+});
+
+// Phase 9 Plan 05 — reactive window getter tests.
+// Fix UAT Test 7: DatePickerPopover subtitle reads from data.window (frozen SSR).
+// getWindow() exposes the reactive window so the subtitle tracks range clicks.
+describe('getWindow', () => {
+  it('W1: returns seeded window after initStore', () => {
+    initStore({
+      dailyRows: [],
+      window: { from: '2026-04-10', to: '2026-04-16', priorFrom: null, priorTo: null },
+      grain: 'week',
+      salesType: 'all',
+      cashFilter: 'all',
+      filters: { range: '7d', grain: 'week', sales_type: 'all', is_cash: 'all' }
+    });
+    const w = getWindow();
+    expect(w.from).toBe('2026-04-10');
+    expect(w.to).toBe('2026-04-16');
+    expect(w.priorFrom).toBeNull();
+    expect(w.priorTo).toBeNull();
+  });
+
+  it('W2: reflects setRange() output', () => {
+    initStore({
+      dailyRows: [],
+      window: { from: '2026-04-10', to: '2026-04-16', priorFrom: null, priorTo: null },
+      grain: 'week',
+      salesType: 'all',
+      cashFilter: 'all',
+      filters: { range: '7d', grain: 'week', sales_type: 'all', is_cash: 'all' }
+    });
+    setRange({ from: '2026-01-01', to: '2026-01-31', priorFrom: '2025-12-01', priorTo: '2025-12-31' });
+    const w = getWindow();
+    expect(w.from).toBe('2026-01-01');
+    expect(w.to).toBe('2026-01-31');
+    expect(w.priorFrom).toBe('2025-12-01');
+    expect(w.priorTo).toBe('2025-12-31');
+  });
+
+  it('W3: returns a fresh object on every call (identity change)', () => {
+    // Locks the object-identity-change invariant that $derived(getWindow())
+    // in +page.svelte depends on. A memoized getter would return the same
+    // reference twice and silently break DatePickerPopover subtitle reactivity.
+    initStore({
+      dailyRows: [],
+      window: { from: '2026-04-10', to: '2026-04-16', priorFrom: null, priorTo: null },
+      grain: 'week',
+      salesType: 'all',
+      cashFilter: 'all',
+      filters: { range: '7d', grain: 'week', sales_type: 'all', is_cash: 'all' }
+    });
+    expect(getWindow()).not.toBe(getWindow());
   });
 });
