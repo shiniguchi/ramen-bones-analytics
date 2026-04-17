@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Dashboard Simplification & Visit Attribution
 status: "Phase 10 shipped — PR #4"
-stopped_at: Completed quick task 260418-0td — MCP config cleanup (consolidated .mcp.json, restored Context7 + claude-in-chrome, documented mcp-servers/)
-last_updated: "2026-04-17T22:40:00Z"
+stopped_at: Completed quick task 260418-1ja — Pass 1 dashboard overhaul (titles + order swap + Y-axis readability fix on dashboard-feedback-overhaul branch)
+last_updated: "2026-04-17T23:15:00Z"
 progress:
   total_phases: 10
   completed_phases: 10
@@ -204,6 +204,7 @@ Plan: Not started
 | 260417-mfo | 3 mobile UI fixes: FilterBar spinner, Takeaway label nowrap, CohortRetentionCard grain-aware | 2026-04-17 | 28ba150, e02b272, c0f0a2b | [260417-mfo-3-ui-fixes-loading-spinner-takeaway-over](./quick/260417-mfo-3-ui-fixes-loading-spinner-takeaway-over/) |
 | 260417-mp2 | Fix silent dashboard crash (RangeError in formatBucketLabel on month grain) — 1-line slice in pickCohortKey + regression tests | 2026-04-17 | 62fab3e, c389bd4 | [260417-mp2-fix-silent-dashboard-bug-formatbucketlab](./quick/260417-mp2-fix-silent-dashboard-bug-formatbucketlab/) |
 | 260418-0td | Clean up unstaged MCP config — restored Context7 + claude-in-chrome, promoted .mcp.json to tracked, documented mcp-servers/ | 2026-04-17 | f8970f2, b20cad6 | [260418-0td-clean-up-unstaged-mcp-config-changes-res](./quick/260418-0td-clean-up-unstaged-mcp-config-changes-res/) |
+| 260418-1ja | Pass 1 dashboard feedback: swap Counts/Revenue order, rename 7 chart titles, add compact €/int Y-axis formatters, fix revenue-chart cents→EUR bug | 2026-04-17 | f569933, af8f546, 00a0325 | [260418-1ja-pass-1-card-titles-order-swap-y-axis-rea](./quick/260418-1ja-pass-1-card-titles-order-swap-y-axis-rea/) |
 
 ## Session Continuity
 
