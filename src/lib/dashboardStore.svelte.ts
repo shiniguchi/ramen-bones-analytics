@@ -15,6 +15,8 @@ export type DailyRow = {
   gross_cents: number;
   sales_type: string | null;
   is_cash: boolean;
+  visit_seq: number | null;   // NEW — NULL for cash / unattributed (Phase 10)
+  card_hash: string | null;   // NEW — NULL for cash (Phase 10)
 };
 
 export type BucketAgg = {
@@ -81,6 +83,57 @@ export function aggregateByBucket(
     }
   }
   return map;
+}
+
+/** Bucket a visit_seq integer into a chart label per D-05. NULL = 'cash'. */
+export function visitSeqBucket(visit_seq: number | null): string {
+  if (visit_seq === null) return 'cash';
+  if (visit_seq === 1) return '1st';
+  if (visit_seq === 2) return '2nd';
+  if (visit_seq === 3) return '3rd';
+  if (visit_seq >= 8) return '8x+';
+  return `${visit_seq}x`; // 4x, 5x, 6x, 7x
+}
+
+/** Aggregate filtered rows into nested map: bucket -> visit_seq_bucket -> { revenue, count }.
+ *  Feeds both VA-04 (revenue_cents) and VA-05 (tx_count) via shapeForChart metric arg. */
+export function aggregateByBucketAndVisitSeq(
+  rows: DailyRow[],
+  grain: 'day' | 'week' | 'month'
+): Map<string, Map<string, { revenue_cents: number; tx_count: number }>> {
+  const outer = new Map<string, Map<string, { revenue_cents: number; tx_count: number }>>();
+  for (const r of rows) {
+    const bucket = bucketKey(r.business_date, grain);
+    const vs = visitSeqBucket(r.visit_seq);
+    let inner = outer.get(bucket);
+    if (!inner) { inner = new Map(); outer.set(bucket, inner); }
+    const existing = inner.get(vs);
+    if (existing) {
+      existing.revenue_cents += r.gross_cents;
+      existing.tx_count += 1;
+    } else {
+      inner.set(vs, { revenue_cents: r.gross_cents, tx_count: 1 });
+    }
+  }
+  return outer;
+}
+
+/** Shape nested aggregation map into wide-format rows for LayerChart BarChart.
+ *  Missing series keys filled with 0. Output sorted by bucket key ascending. */
+export function shapeForChart(
+  nested: Map<string, Map<string, { revenue_cents: number; tx_count: number }>>,
+  metric: 'revenue_cents' | 'tx_count'
+): Array<Record<string, string | number>> {
+  const VISIT_KEYS = ['1st', '2nd', '3rd', '4x', '5x', '6x', '7x', '8x+', 'cash'] as const;
+  const out: Array<Record<string, string | number>> = [];
+  for (const [bucket, inner] of nested) {
+    const row: Record<string, string | number> = { bucket };
+    for (const key of VISIT_KEYS) {
+      row[key] = inner.get(key)?.[metric] ?? 0;
+    }
+    out.push(row);
+  }
+  return out.sort((a, b) => String(a.bucket).localeCompare(String(b.bucket)));
 }
 
 /** Compute KPI totals for current and prior windows. */

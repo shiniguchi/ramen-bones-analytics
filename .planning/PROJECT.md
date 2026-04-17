@@ -118,4 +118,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-17 — Phase 9 complete (5/5 plans, 9/9 UAT tests pass). 09-05 gap closure landed reactive date subtitle (getWindow() store getter) + URL filter composition (mergeSearchParams() live-URL read) — closed both residual bugs from post-09-04 prod UAT. 97/97 unit tests pass (+9 from 09-05). Phase 10 (Charts) next.*
+*Last updated: 2026-04-17 — Phase 10 (Charts) complete (8/8 plans, 7/7 must-haves verified). All v1.2 charts shipped: VA-04 calendar revenue, VA-05 calendar counts, VA-06 retention weekly-clamp hint, VA-07 LTV histogram, VA-08 calendar item counts, VA-09 cohort revenue, VA-10 cohort avg LTV. 12-card dashboard composed in D-10 order with SSR fan-out (6 parallel queries). 157/157 unit tests pass; 11/12 E2E pass (1 LayerChart 2.x selector deferred). Lazy-mount + LCP measurement deferred (Path C — pending CF Pages deploy). Milestone v1.2 at 100% (57/57 plans).*

@@ -135,7 +135,7 @@ A restaurant owner opens the site on their phone and makes a real business decis
 
 </details>
 
-### v1.2 Phase Details
+### Phase Details — Current Milestone
 
 ### Phase 8: Visit Attribution Data Model
 **Goal**: Every transaction carries its card_hash's nth-visit number and a binary cash/card flag; unused views and dead code are removed
@@ -182,7 +182,16 @@ Plans:
   5. Calendar order item counts chart renders item-name breakdown (from `stg_orderbird_order_items.item_name`) per granularity period — the owner can see which menu items sell most
   6. First-time date cohort total revenue and average LTV charts render per acquisition cohort (weekly/monthly); the owner can compare "did my January cohort spend more than my March cohort?"
   7. All 7 charts render at 375px viewport with touch-friendly tooltips, graceful empty states, and both filters (inhouse/takeaway + cash/card) applied
-**Plans**: TBD
+**Plans**: 8 plans
+Plans:
+  - [x] 10-01-PLAN.md — Wave 0 RED test scaffolds + 90-day seed extension + CF Pages unblock decision
+  - [x] 10-02-PLAN.md — Migration 0023: extend transactions_filterable_v with visit_seq + card_hash
+  - [x] 10-03-PLAN.md — Migrations 0024/0025: customer_ltv_mv + item_counts_daily_mv + refresh DAG
+  - [x] 10-04-PLAN.md — Client libs: chartPalettes + ltvBins + itemCountsRollup + cohortAgg + dashboardStore ext
+  - [x] 10-05-PLAN.md — Calendar charts: VA-04 CalendarRevenueCard + VA-05 CalendarCountsCard + VisitSeqLegend
+  - [x] 10-06-PLAN.md — VA-07 LtvHistogramCard + VA-08 CalendarItemsCard with top-8+Other rollup
+  - [x] 10-07-PLAN.md — VA-09 CohortRevenueCard + VA-10 CohortAvgLtvCard + VA-06 D-17 hint
+  - [x] 10-08-PLAN.md — SSR fan-out + +page.svelte composition in D-10 order + LazyMount measurement checkpoint
 **UI hint**: yes
 
 ## Progress
@@ -198,7 +207,7 @@ Plans:
 | 7. Column Promotion | v1.1 | 4/4 | Complete | 2026-04-15 |
 | 8. Visit Attribution Data Model | v1.2 | 2/2 | Complete | 2026-04-16 |
 | 9. Filter Simplification & Performance | v1.2 | 5/5 | Complete   | 2026-04-17 |
-| 10. Charts | v1.2 | 0/- | Not started | - |
+| 10. Charts | v1.2 | 7/8 | Complete    | 2026-04-17 |
 
 ## Coverage Summary
 

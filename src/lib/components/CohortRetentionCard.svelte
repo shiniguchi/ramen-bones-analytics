@@ -7,8 +7,15 @@
   import { scaleLinear } from 'd3-scale';
   import EmptyState from './EmptyState.svelte';
   import { pickVisibleCohorts, type RetentionRow } from '$lib/sparseFilter';
+  import { getFilters } from '$lib/dashboardStore.svelte';
 
   let { data }: { data: RetentionRow[] } = $props();
+
+  // D-17: cohort-semantic charts show the weekly-clamp hint when global grain=day
+  // (VA-06 UX parity with VA-09/VA-10 per B2 fix). grain=month passes through
+  // without a hint — users can explicitly switch to week to match the retention
+  // chart's intrinsic weekly resolution if they want.
+  const showClampHint = $derived(getFilters().grain === 'day');
 
   // Chart palette for ≤4 cohort lines (375px legible).
   const palette = ['#2563eb', '#0891b2', '#7c3aed', '#db2777'];
@@ -45,6 +52,16 @@
   <div class="flex items-center justify-between gap-2">
     <h2 class="text-base font-semibold text-zinc-900">Cohort retention</h2>
   </div>
+
+  {#if showClampHint}
+    <!-- D-17: cohort weekly-clamp hint — matches VA-09/VA-10 UX parity. -->
+    <p
+      data-testid="cohort-clamp-hint"
+      class="mt-2 text-xs text-amber-600"
+    >
+      Cohort view shows weekly — other grains not applicable.
+    </p>
+  {/if}
 
   {#if allSparse && series.length > 0}
     <!-- Sparse hint: shown when all visible cohorts are below SPARSE_MIN_COHORT_SIZE (D-14) -->

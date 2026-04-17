@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Dashboard Simplification & Visit Attribution
-status: completed
-stopped_at: "09-05 code complete (3 commits: 3ea3d11 RED, c369ae6 GREEN, 75b48fc fix). Human UAT pending on DEV/prod per plan Task 3."
-last_updated: "2026-04-17T00:46:06.966Z"
+status: "Phase 10 shipped — PR #4"
+stopped_at: Completed 10-08-PLAN.md — 6-query SSR fan-out + 12-card D-10 composition + Path C eager-mount; 11/12 E2E charts-all pass (1 deferred selector); Phase 10 complete
+last_updated: "2026-04-17T10:16:20.326Z"
 progress:
-  total_phases: 7
-  completed_phases: 7
-  total_plans: 42
-  completed_plans: 42
+  total_phases: 10
+  completed_phases: 10
+  total_plans: 57
+  completed_plans: 57
   percent: 100
 ---
 
@@ -20,7 +20,7 @@ progress:
 ## Project Reference
 
 - **Core Value:** A restaurant owner opens the site on their phone and makes a real business decision from the numbers they see.
-- **Current Focus:** Phase 09 — filter-simplification-performance
+- **Current Focus:** Phase 10 — charts
 - **Timeline:** Slow and deliberate — understand data first, ship one layer at a time
 - **Granularity:** standard
 - **Tenants in v1:** 1 (architecture multi-tenant-ready)
@@ -28,10 +28,10 @@ progress:
 ## Current Position
 
 Milestone: v1.2 (Dashboard Simplification & Visit Attribution) — Phase 09 complete (5/5 plans including gap closures), Phase 10 Charts next
-Phase: 09
+Phase: 10
 Plan: Not started
 
-- **Status:** Milestone complete
+- **Status:** Phase 10 shipped — PR #4
 - **Progress:** [██████████] 100%
 - **v1.0 status:** Shipping to friend (97% plans complete; repo flipped PUBLIC 2026-04-15 with topics + description set; Plan 05-06 Task 2 fork walkthrough deferred out of v1 scope — forkability is explicitly not a v1 concern per user direction)
 
@@ -79,6 +79,14 @@ Plan: Not started
 | Phase 09 P03 | 45 min | 5 tasks | 5 files |
 | Phase 09 P04 | 7min | 3 tasks | 3 files |
 | Phase 09-filter-simplification-performance P05 | 4min | 3 tasks | 7 files |
+| Phase 10-charts P01 | 11min | 4 tasks | 12 files |
+| Phase 10-charts P03 | 4min | 2 tasks | 2 files |
+| Phase 10-charts P02 | 4min | 1 tasks | 1 files |
+| Phase 10-charts P04 | 6min | 2 tasks | 6 files |
+| Phase 10-charts P06 | 4min | 2 tasks | 4 files |
+| Phase 10-charts P07 | 4min | 2 tasks | 5 files |
+| Phase 10-charts P05 | 6min | 2 tasks | 6 files |
+| Phase 10-charts P08 | 7min | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -159,6 +167,24 @@ Plan: Not started
 - [Phase 09]: 09-04: Reactive filters state pattern — module-private $state + public getFilters() getter + object-spread in setters so downstream $derived re-runs. Collapses the dual-source drift between SSR data.filters (used for labels) and store private state (used for KPI math). Zero child-component changes needed.
 - [Phase 09-filter-simplification-performance]: 09-05: page.url from $app/state is stale after replaceState — window.location.href is the live source. mergeSearchParams(updates): URL helper centralizes URL composition so filter write-paths can't silently drop params.
 - [Phase 09-filter-simplification-performance]: 09-05: getWindow(): RangeWindow getter returns a fresh object every call — identity-change invariant that $derived(getWindow()) in +page.svelte depends on; memoizing would silently break DatePickerPopover subtitle reactivity (locked by test W3).
+- [Phase 10-charts]: 10-01: Nyquist RED wave authored — 8 test files (505 lines) covering all Phase 10 requirements VA-04..VA-10; every downstream task (10-02..10-08) has a pre-existing failing test to flip GREEN
+- [Phase 10-charts]: 10-01: CF Pages deploy unblocked (Path A) — workflow 24481554088 added deploy.yml on 2026-04-15; 5 most-recent main-branch deploys all succeeded. Phase branches trigger off main-merge or 'gh workflow run --ref'. No local-preview fallback needed.
+- [Phase 10-charts]: 10-01: Seed-demo-data.sql extended idempotently — 76 tx + 15 cash + 76 order-items under demo-phase10- prefix (guarded-delete compatible); stg_orderbird_order_items uses hashtext(source_tx_id) mod 11 for deterministic item selection; do-block asserts ≥75/15/75/8 thresholds
+- [Phase 10-charts]: 10-02: transactions_filterable_v extended to 8 cols (+visit_seq +card_hash) via DROP+CREATE; LEFT JOIN on visit_attribution_mv reused from 0022. Dual-push to DEV (paafpikebsudoqxwumgm) and TEST (akyugfvsdfrwuzirmylo) projects required — no TEST_DB_URL in .env so used supabase link re-ref.
+- [Phase 10-charts]: 10-03: customer_ltv_mv (4462 rows) + item_counts_daily_mv (4432 rows) shipped with wrapper views, test helpers, full 5-step D-04 refresh DAG. Integration tests 8/10 green (2 it.todo remain). All CI guards pass.
+- [Phase 10-charts]: 10-03: item_counts_daily_mv join key verified: transactions.source_tx_id = stg_orderbird_order_items.invoice_number (normalize.ts:185). is_cash derived from visit_attribution_mv via LEFT JOIN + COALESCE(..., true) matching 0022 pattern.
+- [Phase 10-charts]: 10-04: d3-scale-chromatic promoted from transitive (layerchart) to direct dep — chartPalettes imports interpolateBlues/schemeTableau10 are now load-bearing and can't silently break on layerchart bumps
+- [Phase 10-charts]: 10-04: Plan's +page.server.ts build-break caveat did NOT materialize — existing `as DailyRow[]` cast on E2E bypass literals bypasses strict-mode checks for added visit_seq/card_hash fields. Wave 4 does NOT need to wait on 10-08 for build-gate unblock.
+- [Phase 10-charts]: 10-04: cohortAgg duplicates `>= SPARSE_MIN_COHORT_SIZE` check instead of reusing pickVisibleCohorts() — that helper is typed for RetentionRow only; threshold constant shared via sparseFilter.ts import.
+- [Phase 10-charts]: 10-06: LtvHistogramCard is filter-independent (no range prop) — LTV is lifetime; filter-scoping would be semantically wrong. CalendarItemsCard computes top-8 client-side from the filtered window per D-14; zero-fills missing series keys to prevent LayerChart stack-gap artifacts.
+- [Phase 10-charts]: 10-07: D-17 hint contract unified across VA-06/09/10 — byte-identical cohort-clamp-hint testid + copy + amber-600 styling; grain='day' only triggers hint (B2 fix; month passes through because cohort chart natively honors monthly cohorts)
+- [Phase 10-charts]: 10-07: Cohort Revenue/AvgLtv cards use plain <BarChart data x y orientation bandPadding> composition (not Chart+Svg+Axis stack); LayerChart handles scales/axes/tooltips internally — simpler than retention card pattern
+- [Phase 10-charts]: 10-05: cards self-subscribe to dashboardStore via getter calls in $derived.by() — no prop-drilling from +page.svelte; same pattern as KpiTile
+- [Phase 10-charts]: 10-05: LayerChart high-level <BarChart seriesLayout='stack'> handles stack math/scales/tooltip internally — hand-rolled <Rect>/<Bars> forbidden per RESEARCH anti-patterns
+- [Phase 10-charts]: 10-05: JSDOM normalizes inline-style hex to rgb on set; swatch tests assert computed style + palette constant separately so regression in either layer shows up
+- [Phase 10-charts]: 10-08: Path C eager-mount — Lighthouse crashed on Mac Silicon/x64 Node mismatch + branch not deployed to CF Pages; fell through to eager-mount per plan's hard-stop clause. No LazyMount.svelte shipped.
+- [Phase 10-charts]: 10-08: customer_ltv_v NOT range-filtered at SSR — LTV is lifetime; filter-scoping would hide customers outside chip window, breaking VA-07/09/10 semantics. item_counts_daily_v IS window-scoped per D-21 payload budget.
+- [Phase 10-charts]: 10-08: SSR fan-out grows 4→6 queries with per-card try/catch + empty fallback; Promise.all preserves Phase 4 D-22 per-card error isolation across all new queries.
 
 ### Open Todos
 
@@ -168,7 +194,7 @@ Plan: Not started
 
 ### Blockers
 
-- CF Pages deploy pipeline broken since a3623b9 — blocks Phase 6 visual UAT at 375px on DEV
+- (none — CF Pages unblocked 2026-04-15 by `ci: add CF Pages deploy workflow`; all deploys to `main` since have succeeded. See .planning/phases/10-charts/10-01-SUMMARY-cf-pages-decision.md for evidence.)
 
 ### Quick Tasks Completed
 
@@ -184,8 +210,8 @@ Plan: Not started
 
 **Resume hint:** Milestone v1.1 Dashboard Redesign was scoped in this session. Architecture is a pragmatic star schema: `dim_customer` (lifetime attrs) + `fct_transactions` (atomic fact MV with visit_seq / days_since_prev_visit window fns + denormalized filter dims) + 4 thin day-grain rollup MVs (`mv_new_customers_daily`, `mv_repeater_daily`, `mv_retention_monthly`, `mv_inter_visit_histogram`). Two bucket columns materialized: `lifetime_bucket` (how customer ended up) and `visit_seq_bucket` (point-in-time). Six filters: date range, granularity, sales_type, payment_method, wl_issuing_country, repeater bucket — dropdowns auto-populated from DISTINCT values. All refresh stays inside existing `refresh_analytics_mvs()` cron. Start with Phase 06 (Filter Foundation) for a quick UX win before any schema change.
 
-**Last session:** 2026-04-17T00:35:48.194Z
-**Stopped At:** 09-05 code complete (3 commits: 3ea3d11 RED, c369ae6 GREEN, 75b48fc fix). Human UAT pending on DEV/prod per plan Task 3.
+**Last session:** 2026-04-17T09:59:26.075Z
+**Stopped At:** Completed 10-08-PLAN.md — 6-query SSR fan-out + 12-card D-10 composition + Path C eager-mount; 11/12 E2E charts-all pass (1 deferred selector); Phase 10 complete
 
 ---
 *State initialized: 2026-04-13*
