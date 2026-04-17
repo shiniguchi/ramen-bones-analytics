@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Dashboard Simplification & Visit Attribution
 status: "Phase 10 shipped — PR #4"
-stopped_at: Completed 10-08-PLAN.md — 6-query SSR fan-out + 12-card D-10 composition + Path C eager-mount; 11/12 E2E charts-all pass (1 deferred selector); Phase 10 complete
-last_updated: "2026-04-17T10:16:20.326Z"
+stopped_at: Completed quick task 260417-mfo — 3 mobile UI fixes (FilterBar spinner + Takeaway nowrap + CohortRetentionCard grain-aware), 157/157 unit tests pass
+last_updated: "2026-04-17T14:18:33Z"
 progress:
   total_phases: 10
   completed_phases: 10
@@ -201,6 +201,7 @@ Plan: Not started
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
 | 260417-29v | Apply security headers to SSR responses in hooks.server.ts | 2026-04-16 | 11e85b9 | [260417-29v-apply-security-headers-to-ssr-responses-](./quick/260417-29v-apply-security-headers-to-ssr-responses-/) |
+| 260417-mfo | 3 mobile UI fixes: FilterBar spinner, Takeaway label nowrap, CohortRetentionCard grain-aware | 2026-04-17 | 28ba150, e02b272, c0f0a2b | [260417-mfo-3-ui-fixes-loading-spinner-takeaway-over](./quick/260417-mfo-3-ui-fixes-loading-spinner-takeaway-over/) |
 
 ## Session Continuity
 
@@ -210,8 +211,8 @@ Plan: Not started
 
 **Resume hint:** Milestone v1.1 Dashboard Redesign was scoped in this session. Architecture is a pragmatic star schema: `dim_customer` (lifetime attrs) + `fct_transactions` (atomic fact MV with visit_seq / days_since_prev_visit window fns + denormalized filter dims) + 4 thin day-grain rollup MVs (`mv_new_customers_daily`, `mv_repeater_daily`, `mv_retention_monthly`, `mv_inter_visit_histogram`). Two bucket columns materialized: `lifetime_bucket` (how customer ended up) and `visit_seq_bucket` (point-in-time). Six filters: date range, granularity, sales_type, payment_method, wl_issuing_country, repeater bucket — dropdowns auto-populated from DISTINCT values. All refresh stays inside existing `refresh_analytics_mvs()` cron. Start with Phase 06 (Filter Foundation) for a quick UX win before any schema change.
 
-**Last session:** 2026-04-17T09:59:26.075Z
-**Stopped At:** Completed 10-08-PLAN.md — 6-query SSR fan-out + 12-card D-10 composition + Path C eager-mount; 11/12 E2E charts-all pass (1 deferred selector); Phase 10 complete
+**Last session:** 2026-04-17T14:18:33Z
+**Stopped At:** Completed quick task 260417-mfo — 3 mobile UI fixes (FilterBar spinner + Takeaway nowrap + CohortRetentionCard grain-aware), 157/157 unit tests pass
 
 ---
 *State initialized: 2026-04-13*
