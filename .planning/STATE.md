@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Dashboard Simplification & Visit Attribution
-status: completed
-stopped_at: "09-05 code complete (3 commits: 3ea3d11 RED, c369ae6 GREEN, 75b48fc fix). Human UAT pending on DEV/prod per plan Task 3."
+status: in-progress
+stopped_at: "Phase 09 complete (5/5 plans). Phase 10 Charts next — starting discuss-phase."
 last_updated: "2026-04-17T00:46:06.966Z"
 progress:
-  total_phases: 7
-  completed_phases: 7
+  total_phases: 3
+  completed_phases: 2
   total_plans: 42
   completed_plans: 42
-  percent: 100
+  percent: 67
 ---
 
 # STATE: Ramen Bones Analytics

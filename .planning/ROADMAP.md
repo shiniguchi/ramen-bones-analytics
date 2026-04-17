@@ -135,7 +135,7 @@ A restaurant owner opens the site on their phone and makes a real business decis
 
 </details>
 
-### v1.2 Phase Details
+### Phase Details — Current Milestone
 
 ### Phase 8: Visit Attribution Data Model
 **Goal**: Every transaction carries its card_hash's nth-visit number and a binary cash/card flag; unused views and dead code are removed
