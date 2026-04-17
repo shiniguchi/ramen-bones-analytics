@@ -228,3 +228,143 @@ commit;
 --    The refresh function is SECURITY DEFINER (see migration 0013) and can
 --    be called as postgres / service_role.
 -- ────────────────────────────────────────────────────────────────────────────
+
+-- ============================================================================
+-- Phase 10 seed extensions: 90-day history + menu items + cash rows
+-- Source: .planning/phases/10-charts/10-RESEARCH.md §Existing Seed/Fixture Data Gaps
+-- Goals (per RESEARCH Concerns #3):
+--   - ≥5 weekly cohorts with cohort_size_week ≥ SPARSE_MIN_COHORT_SIZE(=5)
+--   - ≥15 cash (card_hash NULL) rows spread across 10+ distinct dates
+--   - stg_orderbird_order_items seeded with 8 real menu items + 3 "Other" fillers
+--     so VA-08 calendar items chart + top-8 rollup have material to render.
+-- Idempotency: new rows use 'demo-phase10-' prefix. The guarded DELETE at the
+-- top of this file (`source_tx_id like 'demo-%'`) already wipes them on re-run.
+-- Belt-and-suspenders: `on conflict do nothing` on every INSERT.
+-- Literal tenant UUID is reused throughout — the restaurants table has no slug.
+-- ============================================================================
+
+begin;
+
+-- Phase 10 scoped delete for the staging-items mirror (transactions are already
+-- wiped by the `demo-%` delete at line 37; order-items needs its own cleanup
+-- because its natural key is invoice_number, not source_tx_id).
+delete from public.stg_orderbird_order_items
+where restaurant_id = 'ba1bf707-aae9-46a9-8166-4b6459e6c2fd'
+  and invoice_number like 'demo-phase10-%';
+
+-- 1. Extend transactions to 90-day history.
+-- Source-tx-ids prefixed 'demo-phase10-' so existing guarded delete handles re-runs.
+-- Cohort structure: 25 distinct card_hash values (g % 25), first visit keyed off g.
+-- Over 76 days (g=15..90), each card appears ~3x → enough to populate ≥5 weekly
+-- cohorts above the SPARSE_MIN_COHORT_SIZE=5 threshold.
+insert into public.transactions (
+  restaurant_id, source_tx_id, occurred_at,
+  gross_cents, net_cents, tip_cents,
+  card_hash, sales_type, payment_method
+)
+select
+  'ba1bf707-aae9-46a9-8166-4b6459e6c2fd'::uuid,
+  'demo-phase10-tx-' || g,
+  now() - (g || ' days')::interval,
+  (1000 + (g % 3) * 500)::int                                         as gross_cents,
+  ((1000 + (g % 3) * 500) * 0.935)::int                               as net_cents,
+  0                                                                   as tip_cents,
+  case when g % 7 = 0 then null else 'demo-phase10-card-' || (g % 25) end,
+  case when g % 3 = 0 then 'TAKEAWAY' else 'INHOUSE' end              as sales_type,
+  case when g % 7 = 0 then 'Bar' else 'Visa' end                      as payment_method
+from generate_series(15, 90) g
+on conflict (restaurant_id, source_tx_id) do nothing;
+
+-- 2. Add 15 cash rows distributed across 10+ distinct dates (g*5 spreads them
+-- through the 90-day window). Drives the 9th "cash" segment in VA-04/05 stacks.
+insert into public.transactions (
+  restaurant_id, source_tx_id, occurred_at,
+  gross_cents, net_cents, tip_cents,
+  card_hash, sales_type, payment_method
+)
+select
+  'ba1bf707-aae9-46a9-8166-4b6459e6c2fd'::uuid,
+  'demo-phase10-cash-' || g,
+  now() - (g * 5 || ' days')::interval,
+  (700 + g * 50)::int                                                 as gross_cents,
+  ((700 + g * 50) * 0.935)::int                                       as net_cents,
+  0                                                                   as tip_cents,
+  null                                                                as card_hash,
+  'INHOUSE'                                                           as sales_type,
+  'Bar'                                                               as payment_method
+from generate_series(1, 15) g
+on conflict (restaurant_id, source_tx_id) do nothing;
+
+-- 3. Seed stg_orderbird_order_items — one row per phase10 transaction.
+-- Menu: 8 real items (first 8) + 3 fillers (Coke/Water/Tea) that fall into the
+-- top-8 + "Other" rollup. item_name selected by stable hash of source_tx_id.
+-- Schema per migration 0007: restaurant_id + invoice_number + row_index is PK,
+-- all other columns are text. row_index=1 since each transaction seeds exactly
+-- one item line. vat 7 for food (indices 0..4), 19 for drinks/dessert (5..10).
+insert into public.stg_orderbird_order_items (
+  restaurant_id, invoice_number, row_index,
+  item_name, tax_rate_pct, sales_type,
+  item_gross_amount_eur, quantity, source_file
+)
+select
+  t.restaurant_id,
+  t.source_tx_id                                                      as invoice_number,
+  1                                                                   as row_index,
+  (array[
+     'Tonkotsu Ramen','Miso Ramen','Shoyu Ramen','Gyoza','Edamame',
+     'Matcha Ice Cream','Beer','Sake','Coke','Water','Tea'
+   ])[1 + (abs(hashtext(t.source_tx_id)) % 11)]                       as item_name,
+  case
+    when (abs(hashtext(t.source_tx_id)) % 11) in (0,1,2,3,4) then '7'
+    else '19'
+  end                                                                 as tax_rate_pct,
+  t.sales_type,
+  round(t.gross_cents::numeric / 100, 2)::text                        as item_gross_amount_eur,
+  '1'                                                                 as quantity,
+  'seed-phase10'                                                      as source_file
+from public.transactions t
+where t.restaurant_id = 'ba1bf707-aae9-46a9-8166-4b6459e6c2fd'::uuid
+  and t.source_tx_id like 'demo-phase10-%'
+on conflict (restaurant_id, invoice_number, row_index) do nothing;
+
+-- Sanity assertion for Phase 10 seed extensions.
+do $$
+declare
+  tx_count     int;
+  cash_count   int;
+  item_count   int;
+  distinct_items int;
+begin
+  select count(*) into tx_count
+    from public.transactions
+   where restaurant_id = 'ba1bf707-aae9-46a9-8166-4b6459e6c2fd'
+     and source_tx_id like 'demo-phase10-%';
+
+  select count(*) into cash_count
+    from public.transactions
+   where restaurant_id = 'ba1bf707-aae9-46a9-8166-4b6459e6c2fd'
+     and source_tx_id like 'demo-phase10-cash-%';
+
+  select count(*), count(distinct item_name) into item_count, distinct_items
+    from public.stg_orderbird_order_items
+   where restaurant_id = 'ba1bf707-aae9-46a9-8166-4b6459e6c2fd'
+     and invoice_number like 'demo-phase10-%';
+
+  if tx_count < 75 then
+    raise exception 'seed-demo-data phase10: expected >= 75 tx rows, got %', tx_count;
+  end if;
+  if cash_count < 15 then
+    raise exception 'seed-demo-data phase10: expected >= 15 cash rows, got %', cash_count;
+  end if;
+  if item_count < 75 then
+    raise exception 'seed-demo-data phase10: expected >= 75 order-item rows, got %', item_count;
+  end if;
+  if distinct_items < 8 then
+    raise exception 'seed-demo-data phase10: expected >= 8 distinct item_name values, got %', distinct_items;
+  end if;
+
+  raise notice 'seed-demo-data phase10 OK — tx=% cash=% items=% distinct_items=%',
+    tx_count, cash_count, item_count, distinct_items;
+end $$;
+
+commit;
