@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Dashboard Simplification & Visit Attribution
 status: executing
-stopped_at: Completed 10-03-PLAN.md — customer_ltv_mv + item_counts_daily_mv shipped, refresh DAG 5-step, 8 integration tests green
-last_updated: "2026-04-17T09:32:58.901Z"
+stopped_at: Completed 10-04-PLAN.md — 5 Wave 0 RED tests flipped GREEN; chartPalettes+ltvBins+itemCountsRollup+cohortAgg shipped; dashboardStore extended with visit_seq; 129 unit tests pass; build+guards green
+last_updated: "2026-04-17T09:39:53.204Z"
 progress:
   total_phases: 10
   completed_phases: 9
   total_plans: 57
-  completed_plans: 52
-  percent: 91
+  completed_plans: 53
+  percent: 93
 ---
 
 # STATE: Ramen Bones Analytics
@@ -29,10 +29,10 @@ progress:
 
 Milestone: v1.2 (Dashboard Simplification & Visit Attribution) — Phase 09 complete (5/5 plans including gap closures), Phase 10 Charts next
 Phase: 10 (charts) — EXECUTING
-Plan: 4 of 8
+Plan: 5 of 8
 
 - **Status:** Ready to execute
-- **Progress:** [█████████░] 91%
+- **Progress:** [█████████░] 93%
 - **v1.0 status:** Shipping to friend (97% plans complete; repo flipped PUBLIC 2026-04-15 with topics + description set; Plan 05-06 Task 2 fork walkthrough deferred out of v1 scope — forkability is explicitly not a v1 concern per user direction)
 
 ## Performance Metrics
@@ -82,6 +82,7 @@ Plan: 4 of 8
 | Phase 10-charts P01 | 11min | 4 tasks | 12 files |
 | Phase 10-charts P03 | 4min | 2 tasks | 2 files |
 | Phase 10-charts P02 | 4min | 1 tasks | 1 files |
+| Phase 10-charts P04 | 6min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -168,6 +169,9 @@ Plan: 4 of 8
 - [Phase 10-charts]: 10-02: transactions_filterable_v extended to 8 cols (+visit_seq +card_hash) via DROP+CREATE; LEFT JOIN on visit_attribution_mv reused from 0022. Dual-push to DEV (paafpikebsudoqxwumgm) and TEST (akyugfvsdfrwuzirmylo) projects required — no TEST_DB_URL in .env so used supabase link re-ref.
 - [Phase 10-charts]: 10-03: customer_ltv_mv (4462 rows) + item_counts_daily_mv (4432 rows) shipped with wrapper views, test helpers, full 5-step D-04 refresh DAG. Integration tests 8/10 green (2 it.todo remain). All CI guards pass.
 - [Phase 10-charts]: 10-03: item_counts_daily_mv join key verified: transactions.source_tx_id = stg_orderbird_order_items.invoice_number (normalize.ts:185). is_cash derived from visit_attribution_mv via LEFT JOIN + COALESCE(..., true) matching 0022 pattern.
+- [Phase 10-charts]: 10-04: d3-scale-chromatic promoted from transitive (layerchart) to direct dep — chartPalettes imports interpolateBlues/schemeTableau10 are now load-bearing and can't silently break on layerchart bumps
+- [Phase 10-charts]: 10-04: Plan's +page.server.ts build-break caveat did NOT materialize — existing `as DailyRow[]` cast on E2E bypass literals bypasses strict-mode checks for added visit_seq/card_hash fields. Wave 4 does NOT need to wait on 10-08 for build-gate unblock.
+- [Phase 10-charts]: 10-04: cohortAgg duplicates `>= SPARSE_MIN_COHORT_SIZE` check instead of reusing pickVisibleCohorts() — that helper is typed for RetentionRow only; threshold constant shared via sparseFilter.ts import.
 
 ### Open Todos
 
@@ -193,8 +197,8 @@ Plan: 4 of 8
 
 **Resume hint:** Milestone v1.1 Dashboard Redesign was scoped in this session. Architecture is a pragmatic star schema: `dim_customer` (lifetime attrs) + `fct_transactions` (atomic fact MV with visit_seq / days_since_prev_visit window fns + denormalized filter dims) + 4 thin day-grain rollup MVs (`mv_new_customers_daily`, `mv_repeater_daily`, `mv_retention_monthly`, `mv_inter_visit_histogram`). Two bucket columns materialized: `lifetime_bucket` (how customer ended up) and `visit_seq_bucket` (point-in-time). Six filters: date range, granularity, sales_type, payment_method, wl_issuing_country, repeater bucket — dropdowns auto-populated from DISTINCT values. All refresh stays inside existing `refresh_analytics_mvs()` cron. Start with Phase 06 (Filter Foundation) for a quick UX win before any schema change.
 
-**Last session:** 2026-04-17T09:32:58.890Z
-**Stopped At:** Completed 10-03-PLAN.md — customer_ltv_mv + item_counts_daily_mv shipped, refresh DAG 5-step, 8 integration tests green
+**Last session:** 2026-04-17T09:39:53.193Z
+**Stopped At:** Completed 10-04-PLAN.md — 5 Wave 0 RED tests flipped GREEN; chartPalettes+ltvBins+itemCountsRollup+cohortAgg shipped; dashboardStore extended with visit_seq; 129 unit tests pass; build+guards green
 
 ---
 *State initialized: 2026-04-13*
