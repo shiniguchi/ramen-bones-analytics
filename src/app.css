@@ -62,13 +62,3 @@
   }
 }
 
-/* Touch devices: let finger swipes scroll wide charts horizontally.
-   LayerChart renders an invisible `.lc-tooltip-rect` per bar that otherwise
-   swallows the touchstart and blocks the overflow-x-auto wrapper from
-   scrolling. Disabling pointer-events on these rects only on coarse pointers
-   keeps desktop hover-tooltips intact. */
-@media (pointer: coarse) {
-  .lc-tooltip-rect {
-    pointer-events: none;
-  }
-}
