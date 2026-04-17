@@ -7,6 +7,9 @@
 //  - does NOT contain any queryKpi calls
 //  - handles custom date ranges
 //  - retains retention + insight queries
+//
+// Quick 260417-o8a Task 2 extended:
+//  - Regression tests A/B/C pin the fetchAll pagination fix
 import { describe, it, expect, beforeEach } from 'vitest';
 import { load } from '../../src/routes/+page.server';
 
@@ -21,6 +24,8 @@ interface RecordedQuery {
 interface MockState {
   queries: RecordedQuery[];
   canned: Map<string, unknown>;
+  // Per-table error override for error isolation tests
+  errors: Map<string, { message: string }>;
 }
 
 function makeSupabase(state: MockState) {
@@ -38,6 +43,20 @@ function makeSupabase(state: MockState) {
         return chain;
       };
 
+    // .range() is called by fetchAll — returns a Promise with a data slice.
+    // Supports pagination: slices the canned array using from/to bounds.
+    // If the table has a forced error, returns { data: null, error } on first call.
+    const range = (from: number, to: number) => {
+      q.calls.push({ method: 'range', args: [from, to] });
+      const forcedError = state.errors.get(table);
+      if (forcedError) {
+        return Promise.resolve({ data: null, error: forcedError });
+      }
+      const arr = Array.isArray(q.result.data) ? (q.result.data as unknown[]) : [];
+      const slice = arr.slice(from, to + 1);
+      return Promise.resolve({ data: slice, error: null });
+    };
+
     const chain: any = {
       select: record('select'),
       gte: record('gte'),
@@ -47,6 +66,7 @@ function makeSupabase(state: MockState) {
       not: record('not'),
       order: record('order'),
       limit: record('limit'),
+      range,
       maybeSingle: () => {
         q.calls.push({ method: 'maybeSingle', args: [] });
         const data = Array.isArray(q.result.data)
@@ -82,7 +102,7 @@ function freshState(): MockState {
     ['insights_v', []],
     ['data_freshness_v', [{ last_ingested_at: '2026-04-14T00:00:00Z' }]]
   ]);
-  return { queries: [], canned };
+  return { queries: [], canned, errors: new Map() };
 }
 
 function mkLocals(state: MockState) {
@@ -180,5 +200,111 @@ describe('+page.server load — Phase 9 simplified loader', () => {
 
     expect(callsFor(state, 'retention_curve_v').length).toBe(1);
     expect(callsFor(state, 'insights_v').length).toBe(1);
+  });
+});
+
+// -- Quick 260417-o8a Regression Tests --
+// These fail if any of the four fetchAll-wrapped queries is reverted to an
+// uncapped single .select(). See .planning/quick/260417-o8a for context.
+describe('+page.server load — PostgREST 1000-row cap regression (260417-o8a)', () => {
+  let state: MockState;
+  beforeEach(() => {
+    state = freshState();
+  });
+
+  it('Regression A: returns ALL rows when view yields 2500 (PostgREST cap regression)', async () => {
+    // Seed 2500 rows — fetchAll must paginate: [0,999], [1000,1999], [2000,2999]
+    const rows2500 = Array.from({ length: 2500 }, (_, i) => ({
+      business_date: '2026-04-10',
+      gross_cents: i * 100,
+      sales_type: 'INHOUSE',
+      is_cash: false,
+      visit_seq: i + 1,
+      card_hash: `h${i}`
+    }));
+    state.canned.set('transactions_filterable_v', rows2500);
+
+    const data: any = await load({
+      url: new URL('http://x/?range=all'),
+      locals: mkLocals(state),
+      depends: () => {}
+    } as any);
+
+    expect(data.dailyRows.length, [
+      'If this fails, PostgREST 1000-row cap silently truncated',
+      'transactions_filterable_v again — see .planning/quick/260417-o8a'
+    ].join(' ')).toBe(2500);
+
+    // fetchAll calls buildQuery() once per page — each page creates a fresh RecordedQuery.
+    // Collect all .range() calls across all queries for this table and verify bounds.
+    const filterable = callsFor(state, 'transactions_filterable_v');
+    const allRangeCalls = filterable.flatMap(q =>
+      q.calls.filter(c => c.method === 'range').map(c => c.args)
+    );
+    // Current window alone: 3 pages of 1000 (range=all spans the full dataset)
+    // There may also be prior-window queries with their own range calls.
+    // We only need to verify the three expected bounds appear in the call list.
+    expect(allRangeCalls).toContainEqual([0, 999]);
+    expect(allRangeCalls).toContainEqual([1000, 1999]);
+    expect(allRangeCalls).toContainEqual([2000, 2999]);
+  });
+
+  it('Regression B: paginates every large-result query (range called for all 4 tables)', async () => {
+    // 2-row fixtures trigger 1 range call (short page = stop), confirming pagination is wired.
+    // The key check: .range() IS called — not .then() on a raw chain.
+    state.canned.set('customer_ltv_v', [
+      { card_hash: 'h1', revenue_cents: 5000, visit_count: 3, cohort_week: '2025-06-09', cohort_month: '2025-06' }
+    ]);
+    state.canned.set('item_counts_daily_v', [
+      { business_date: '2026-04-10', item_name: 'Ramen', sales_type: 'INHOUSE', is_cash: false, item_count: 5 }
+    ]);
+
+    await load({
+      url: new URL('http://x/'),
+      locals: mkLocals(state),
+      depends: () => {}
+    } as any);
+
+    // transactions_filterable_v: range must appear (both current + prior windows)
+    const filterableRangeCalls = callsFor(state, 'transactions_filterable_v').flatMap(q =>
+      q.calls.filter(c => c.method === 'range')
+    );
+    expect(filterableRangeCalls.length, 'transactions_filterable_v must use .range() (pagination wired)').toBeGreaterThanOrEqual(1);
+
+    // customer_ltv_v
+    const ltvRangeCalls = callsFor(state, 'customer_ltv_v').flatMap(q =>
+      q.calls.filter(c => c.method === 'range')
+    );
+    expect(ltvRangeCalls.length, 'customer_ltv_v must use .range() (pagination wired)').toBeGreaterThanOrEqual(1);
+
+    // item_counts_daily_v
+    const itemRangeCalls = callsFor(state, 'item_counts_daily_v').flatMap(q =>
+      q.calls.filter(c => c.method === 'range')
+    );
+    expect(itemRangeCalls.length, 'item_counts_daily_v must use .range() (pagination wired)').toBeGreaterThanOrEqual(1);
+  });
+
+  it('Regression C: per-card error isolation preserved when customer_ltv_v throws', async () => {
+    // customer_ltv_v returns a PostgREST error — other cards must still populate.
+    // fetchAll throws on error; loader's .catch converts to [] (D-22 pattern).
+    state.errors.set('customer_ltv_v', { message: 'boom' });
+    state.canned.set('item_counts_daily_v', [
+      { business_date: '2026-04-10', item_name: 'Ramen', sales_type: 'INHOUSE', is_cash: false, item_count: 5 }
+    ]);
+
+    // load() must resolve (not throw) — per-card .catch swallows the error
+    const data: any = await load({
+      url: new URL('http://x/'),
+      locals: mkLocals(state),
+      depends: () => {}
+    } as any);
+
+    // customer_ltv_v error → fallback to []
+    expect(data.customerLtv).toEqual([]);
+    // dailyRows survive (transactions_filterable_v has no error)
+    expect(Array.isArray(data.dailyRows)).toBe(true);
+    expect(data.dailyRows.length).toBeGreaterThan(0);
+    // itemCounts survive
+    expect(Array.isArray(data.itemCounts)).toBe(true);
   });
 });

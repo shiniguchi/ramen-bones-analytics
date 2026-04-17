@@ -9,6 +9,7 @@ import { chipToRange, customToRange, type Range, type Grain } from '$lib/dateRan
 import { parseFilters } from '$lib/filters';
 import { differenceInMonths, parseISO } from 'date-fns';
 import type { DailyRow } from '$lib/dashboardStore.svelte';
+import { fetchAll } from '$lib/supabasePagination';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
   // Phase 6 FLT-07: parseFilters is the ONLY place filter params are read.
@@ -65,23 +66,22 @@ export const load: PageServerLoad = async ({ locals, url }) => {
   // Single query: all daily-grain rows for the chip window.
   // Client-side handles filtering + rebucketing (D-05, D-08).
   // Phase 10: visit_seq + card_hash feed VA-04/VA-05 stacked bars (D-05).
-  const dailyRowsP = locals.supabase
+  // fetchAll paginates via .range() to bypass PostgREST max_rows=1000 cap (260417-o8a).
+  const dailyRowsP = fetchAll<DailyRow>(() => locals.supabase
     .from('transactions_filterable_v')
     .select('business_date,gross_cents,sales_type,is_cash,visit_seq,card_hash')
     .gte('business_date', chipW.from)
     .lte('business_date', chipW.to)
-    .then(r => (r.data ?? []) as DailyRow[])
-    .catch((e: unknown) => { console.error('[transactions_filterable_v]', e); return [] as DailyRow[]; });
+  ).catch((e: unknown) => { console.error('[transactions_filterable_v]', e); return [] as DailyRow[]; });
 
   // Prior window rows for delta computation.
   const priorDailyRowsP = chipW.priorFrom
-    ? locals.supabase
+    ? fetchAll<DailyRow>(() => locals.supabase
         .from('transactions_filterable_v')
         .select('business_date,gross_cents,sales_type,is_cash,visit_seq,card_hash')
         .gte('business_date', chipW.priorFrom)
         .lte('business_date', chipW.priorTo!)
-        .then(r => (r.data ?? []) as DailyRow[])
-        .catch((e: unknown) => { console.error('[transactions_filterable_v prior]', e); return [] as DailyRow[]; })
+      ).catch((e: unknown) => { console.error('[transactions_filterable_v prior]', e); return [] as DailyRow[]; })
     : Promise.resolve([] as DailyRow[]);
 
   // Phase 10: customer_ltv_v feeds VA-07 (LTV histogram), VA-09 (cohort revenue),
@@ -93,11 +93,10 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     cohort_week: string;
     cohort_month: string;
   };
-  const customerLtvP = locals.supabase
+  const customerLtvP = fetchAll<CustomerLtvRow>(() => locals.supabase
     .from('customer_ltv_v')
     .select('card_hash,revenue_cents,visit_count,cohort_week,cohort_month')
-    .then(r => (r.data ?? []) as CustomerLtvRow[])
-    .catch((e: unknown) => { console.error('[customer_ltv_v]', e); return [] as CustomerLtvRow[]; });
+  ).catch((e: unknown) => { console.error('[customer_ltv_v]', e); return [] as CustomerLtvRow[]; });
 
   // Phase 10: item_counts_daily_v feeds VA-08 (calendar item counts).
   // Scoped to active window to keep payload <500kB (D-21).
@@ -108,13 +107,12 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     is_cash: boolean;
     item_count: number;
   };
-  const itemCountsP = locals.supabase
+  const itemCountsP = fetchAll<ItemCountRow>(() => locals.supabase
     .from('item_counts_daily_v')
     .select('business_date,item_name,sales_type,is_cash,item_count')
     .gte('business_date', chipW.from)
     .lte('business_date', chipW.to)
-    .then(r => (r.data ?? []) as ItemCountRow[])
-    .catch((e: unknown) => { console.error('[item_counts_daily_v]', e); return [] as ItemCountRow[]; });
+  ).catch((e: unknown) => { console.error('[item_counts_daily_v]', e); return [] as ItemCountRow[]; });
 
   // Retention — per-card error isolation.
   type RetentionRow = { cohort_week: string; period_weeks: number; retention_rate: number; cohort_size_week: number; cohort_age_weeks: number };

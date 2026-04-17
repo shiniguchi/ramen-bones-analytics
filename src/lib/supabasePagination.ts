@@ -14,11 +14,12 @@
 // Throws: on any PostgREST error (caller handles via .catch for empty-fallback).
 // Safety: caps at MAX_PAGES (1000 pages = 1M rows) to prevent runaway loops.
 
-// Minimal structural type for the builder parameter — we only need .range()
-// to return a thenable resolving to { data, error }. Avoids importing
-// @supabase/postgrest-js directly while preserving generic T flow-through.
+// Minimal structural type for the builder parameter.
+// .range() returns a PromiseLike (Thenable) — the real PostgrestFilterBuilder
+// is chainable AND Thenable, so using PromiseLike satisfies both the unit-test
+// mock (plain Promise) and the real supabase-js builder.
 interface RangeBuilder<T> {
-  range(from: number, to: number): Promise<{ data: T[] | null; error: { message: string } | null }>;
+  range(from: number, to: number): PromiseLike<{ data: T[] | null; error: { message: string } | null }>;
 }
 
 const MAX_PAGES = 1000; // safety cap: 1M rows at default pageSize
