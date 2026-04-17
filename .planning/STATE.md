@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Dashboard Simplification & Visit Attribution
 status: executing
-stopped_at: Completed 10-04-PLAN.md — 5 Wave 0 RED tests flipped GREEN; chartPalettes+ltvBins+itemCountsRollup+cohortAgg shipped; dashboardStore extended with visit_seq; 129 unit tests pass; build+guards green
-last_updated: "2026-04-17T09:39:53.204Z"
+stopped_at: Completed 10-06-PLAN.md — LtvHistogramCard (VA-07) + CalendarItemsCard (VA-08) shipped; 6 unit tests pass; build green
+last_updated: "2026-04-17T09:47:10.102Z"
 progress:
   total_phases: 10
   completed_phases: 9
   total_plans: 57
-  completed_plans: 53
-  percent: 93
+  completed_plans: 54
+  percent: 95
 ---
 
 # STATE: Ramen Bones Analytics
@@ -29,10 +29,10 @@ progress:
 
 Milestone: v1.2 (Dashboard Simplification & Visit Attribution) — Phase 09 complete (5/5 plans including gap closures), Phase 10 Charts next
 Phase: 10 (charts) — EXECUTING
-Plan: 5 of 8
+Plan: 6 of 8
 
 - **Status:** Ready to execute
-- **Progress:** [█████████░] 93%
+- **Progress:** [██████████] 95%
 - **v1.0 status:** Shipping to friend (97% plans complete; repo flipped PUBLIC 2026-04-15 with topics + description set; Plan 05-06 Task 2 fork walkthrough deferred out of v1 scope — forkability is explicitly not a v1 concern per user direction)
 
 ## Performance Metrics
@@ -83,6 +83,7 @@ Plan: 5 of 8
 | Phase 10-charts P03 | 4min | 2 tasks | 2 files |
 | Phase 10-charts P02 | 4min | 1 tasks | 1 files |
 | Phase 10-charts P04 | 6min | 2 tasks | 6 files |
+| Phase 10-charts P06 | 4min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -172,6 +173,7 @@ Plan: 5 of 8
 - [Phase 10-charts]: 10-04: d3-scale-chromatic promoted from transitive (layerchart) to direct dep — chartPalettes imports interpolateBlues/schemeTableau10 are now load-bearing and can't silently break on layerchart bumps
 - [Phase 10-charts]: 10-04: Plan's +page.server.ts build-break caveat did NOT materialize — existing `as DailyRow[]` cast on E2E bypass literals bypasses strict-mode checks for added visit_seq/card_hash fields. Wave 4 does NOT need to wait on 10-08 for build-gate unblock.
 - [Phase 10-charts]: 10-04: cohortAgg duplicates `>= SPARSE_MIN_COHORT_SIZE` check instead of reusing pickVisibleCohorts() — that helper is typed for RetentionRow only; threshold constant shared via sparseFilter.ts import.
+- [Phase 10-charts]: 10-06: LtvHistogramCard is filter-independent (no range prop) — LTV is lifetime; filter-scoping would be semantically wrong. CalendarItemsCard computes top-8 client-side from the filtered window per D-14; zero-fills missing series keys to prevent LayerChart stack-gap artifacts.
 
 ### Open Todos
 
@@ -197,8 +199,8 @@ Plan: 5 of 8
 
 **Resume hint:** Milestone v1.1 Dashboard Redesign was scoped in this session. Architecture is a pragmatic star schema: `dim_customer` (lifetime attrs) + `fct_transactions` (atomic fact MV with visit_seq / days_since_prev_visit window fns + denormalized filter dims) + 4 thin day-grain rollup MVs (`mv_new_customers_daily`, `mv_repeater_daily`, `mv_retention_monthly`, `mv_inter_visit_histogram`). Two bucket columns materialized: `lifetime_bucket` (how customer ended up) and `visit_seq_bucket` (point-in-time). Six filters: date range, granularity, sales_type, payment_method, wl_issuing_country, repeater bucket — dropdowns auto-populated from DISTINCT values. All refresh stays inside existing `refresh_analytics_mvs()` cron. Start with Phase 06 (Filter Foundation) for a quick UX win before any schema change.
 
-**Last session:** 2026-04-17T09:39:53.193Z
-**Stopped At:** Completed 10-04-PLAN.md — 5 Wave 0 RED tests flipped GREEN; chartPalettes+ltvBins+itemCountsRollup+cohortAgg shipped; dashboardStore extended with visit_seq; 129 unit tests pass; build+guards green
+**Last session:** 2026-04-17T09:47:10.091Z
+**Stopped At:** Completed 10-06-PLAN.md — LtvHistogramCard (VA-07) + CalendarItemsCard (VA-08) shipped; 6 unit tests pass; build green
 
 ---
 *State initialized: 2026-04-13*
