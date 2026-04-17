@@ -49,6 +49,15 @@
   // Fixes UAT Test 7: data.window is frozen at SSR; getWindow() tracks setRange().
   const storeWindow = $derived(getWindow());
 
+  // Filter-change loading indicator — flashes a spinner in FilterBar for ~300ms
+  // so the UI doesn't look frozen while store + URL updates propagate.
+  let isUpdating = $state(false);
+  function withUpdate(fn: () => void) {
+    isUpdating = true;
+    fn();
+    setTimeout(() => { isUpdating = false; }, 300);
+  }
+
   // Range label for tile titles
   const rangeLabel = $derived.by(() => {
     const r = storeFilters.range;
@@ -70,45 +79,51 @@
   // Preset ids come through directly; 'custom' means the popover has already
   // written from/to to the URL via replaceState — we read them off the live URL.
   function handleRangeChange(rangeValue: string) {
-    let window: RangeWindow;
-    if (rangeValue === 'custom') {
-      // Read custom from/to from live browser URL — DatePickerPopover.applyCustom
-      // has already written them via replaceState. page.url is stale; use
-      // globalThis.window.location.href (the local `window: RangeWindow` shadows
-      // the browser `window` inside this function).
-      const url = new URL(globalThis.window.location.href);
-      const from = url.searchParams.get('from')!;
-      const to = url.searchParams.get('to')!;
-      window = customToRange({ from, to });
-      setRangeId('custom', { from, to });
-    } else {
-      window = chipToRange(rangeValue as Range);
-      setRangeId(rangeValue as FiltersState['range']);
-    }
+    withUpdate(() => {
+      let window: RangeWindow;
+      if (rangeValue === 'custom') {
+        // Read custom from/to from live browser URL — DatePickerPopover.applyCustom
+        // has already written them via replaceState. page.url is stale; use
+        // globalThis.window.location.href (the local `window: RangeWindow` shadows
+        // the browser `window` inside this function).
+        const url = new URL(globalThis.window.location.href);
+        const from = url.searchParams.get('from')!;
+        const to = url.searchParams.get('to')!;
+        window = customToRange({ from, to });
+        setRangeId('custom', { from, to });
+      } else {
+        window = chipToRange(rangeValue as Range);
+        setRangeId(rangeValue as FiltersState['range']);
+      }
 
-    // Check if cache covers the new window (widest-window strategy)
-    const allFrom = window.priorFrom && window.priorFrom < window.from
-      ? window.priorFrom : window.from;
+      // Check if cache covers the new window (widest-window strategy)
+      const allFrom = window.priorFrom && window.priorFrom < window.from
+        ? window.priorFrom : window.from;
 
-    if (cacheCovers(allFrom, window.to)) {
+      if (cacheCovers(allFrom, window.to)) {
+        setRange(window);
+        return;
+      }
+
+      // Cache doesn't cover — update store with what we have, SSR refetches on next load.
       setRange(window);
-      return;
-    }
-
-    // Cache doesn't cover — update store with what we have, SSR refetches on next load.
-    setRange(window);
+    });
   }
 
   // Handle sales type toggle
   function handleSalesType(v: string) {
-    replaceState(mergeSearchParams({ sales_type: v }), {});
-    setSalesType(v as 'all' | 'INHOUSE' | 'TAKEAWAY');
+    withUpdate(() => {
+      replaceState(mergeSearchParams({ sales_type: v }), {});
+      setSalesType(v as 'all' | 'INHOUSE' | 'TAKEAWAY');
+    });
   }
 
   // Handle cash/card toggle
   function handleCashFilter(v: string) {
-    replaceState(mergeSearchParams({ is_cash: v }), {});
-    setCashFilter(v as 'all' | 'cash' | 'card');
+    withUpdate(() => {
+      replaceState(mergeSearchParams({ is_cash: v }), {});
+      setCashFilter(v as 'all' | 'cash' | 'card');
+    });
   }
 </script>
 
@@ -116,6 +131,7 @@
 <FilterBar
   filters={storeFilters}
   window={storeWindow}
+  isLoading={isUpdating}
   onrangechange={handleRangeChange}
   onsalestypechange={handleSalesType}
   oncashfilterchange={handleCashFilter}

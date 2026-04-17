@@ -11,12 +11,13 @@
   interface Props {
     filters: FiltersState;
     window: RangeWindow;
+    isLoading?: boolean;
     onrangechange: (range: string) => void;
     onsalestypechange: (v: string) => void;
     oncashfilterchange: (v: string) => void;
   }
 
-  let { filters, window: rangeWindow, onrangechange, onsalestypechange, oncashfilterchange }: Props = $props();
+  let { filters, window: rangeWindow, isLoading = false, onrangechange, onsalestypechange, oncashfilterchange }: Props = $props();
 
   const salesTypeOptions = [
     { value: 'all', label: 'All' },
@@ -33,9 +34,15 @@
 
 <div class="sticky top-0 z-30 border-b bg-background/95 px-4 py-2 backdrop-blur"
      data-slot="filter-bar">
-  <!-- Row 1: Date picker -->
-  <div class="mb-2">
+  <!-- Row 1: Date picker + filter-change spinner -->
+  <div class="mb-2 flex items-center gap-2">
     <DatePickerPopover {filters} window={rangeWindow} {onrangechange} />
+    {#if isLoading}
+      <svg class="h-4 w-4 shrink-0 animate-spin text-zinc-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" data-testid="filter-loading-spinner">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+      </svg>
+    {/if}
   </div>
   <!-- Row 2: Grain + Sales Type + Cash/Card, horizontal scroll -->
   <div class="flex items-center gap-2 overflow-x-auto"
