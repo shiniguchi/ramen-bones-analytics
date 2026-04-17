@@ -5,3 +5,4 @@
 - [Dashboard redesign direction (post-v1.0)](project_dashboard_redesign.md) — chart-heavy redesign planned for v1.1 after Phase 5 ships
 - [Route direction-change feedback to backlog](feedback_scope_preservation.md) — ship-first for 2-week MVP; capture new scope verbatim to `.planning/backlog/`
 - [Forkability is not a v1 concern](feedback_forkability_not_v1.md) — do not treat fork dry-run walkthroughs as ship blockers; strike or defer
+- [Per-card error isolation silently hid dashboard-breaking bug (2026-04-17)](project_silent_error_isolation.md) — `.catch(() => [])` pattern hides backend failures; verify real views with auth'd JWT, not E2E fixtures
