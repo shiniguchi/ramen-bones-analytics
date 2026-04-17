@@ -1,0 +1,99 @@
+<script lang="ts">
+  // VA-08: Calendar order item counts — stacked bars by item_name per grain.
+  // Top-8 + "Other" rollup computed client-side per D-14 (window-dependent).
+  // Metric = COUNT (D-16). Palette: schemeTableau10 slice + gray "Other" (D-15, D-07).
+  //
+  // Filters respected: sales_type + is_cash (via client-side filter on the prop)
+  // and grain (via bucketKey rebucket). Range is already applied upstream by the
+  // SSR query in Plan 10-08.
+  import { BarChart } from 'layerchart';
+  import EmptyState from './EmptyState.svelte';
+  import { ITEM_COLORS, OTHER_COLOR } from '$lib/chartPalettes';
+  import { rollupTopNWithOther } from '$lib/itemCountsRollup';
+  import { bucketKey, getFilters } from '$lib/dashboardStore.svelte';
+
+  type ItemCountRow = {
+    business_date: string;
+    item_name: string;
+    sales_type: string | null;
+    is_cash: boolean;
+    item_count: number;
+  };
+
+  let { data }: { data: ItemCountRow[] } = $props();
+
+  // Apply client-side filters — mirrors dashboardStore.filterRows but for ItemCountRow shape.
+  const filtered = $derived.by(() => {
+    const f = getFilters();
+    return data.filter(r => {
+      if (f.sales_type !== 'all' && r.sales_type !== f.sales_type) return false;
+      if (f.is_cash === 'cash' && !r.is_cash) return false;
+      if (f.is_cash === 'card' && r.is_cash) return false;
+      return true;
+    });
+  });
+
+  // Pick top-8 items by total item_count across the filtered window.
+  const topItems = $derived.by(() => {
+    const totals = new Map<string, number>();
+    for (const r of filtered) {
+      totals.set(r.item_name, (totals.get(r.item_name) ?? 0) + r.item_count);
+    }
+    const rows = Array.from(totals.entries()).map(([item_name, item_count]) => ({ item_name, item_count }));
+    const rolled = rollupTopNWithOther(rows, 8);
+    return rolled.map(r => r.item_name); // ordered item names (top-8 + maybe 'Other')
+  });
+
+  // Build wide-format chart data: one row per bucket with columns for each topItem + Other.
+  const chartData = $derived.by(() => {
+    const grain = getFilters().grain as 'day' | 'week' | 'month';
+    const topSet = new Set(topItems.filter(n => n !== 'Other'));
+    const bucketMap = new Map<string, Record<string, number | string>>();
+    for (const r of filtered) {
+      const bucket = bucketKey(r.business_date, grain);
+      let row = bucketMap.get(bucket);
+      if (!row) {
+        row = { bucket };
+        bucketMap.set(bucket, row);
+      }
+      const col = topSet.has(r.item_name) ? r.item_name : 'Other';
+      row[col] = ((row[col] as number) ?? 0) + r.item_count;
+    }
+    // Zero-fill missing series keys for each bucket row — LayerChart stack math
+    // can render hairline gaps when a key is missing on one bucket but present on another.
+    return Array.from(bucketMap.values()).map(row => {
+      for (const name of topItems) {
+        if (!(name in row)) row[name] = 0;
+      }
+      return row;
+    }).sort((a, b) => String(a.bucket).localeCompare(String(b.bucket)));
+  });
+
+  // Series config: ITEM_COLORS for top-8, OTHER_COLOR for "Other".
+  const series = $derived.by(() =>
+    topItems.map((name, i) => ({
+      key: name,
+      label: name,
+      color: name === 'Other' ? OTHER_COLOR : ITEM_COLORS[i % ITEM_COLORS.length]
+    }))
+  );
+</script>
+
+<div data-testid="calendar-items-card" class="rounded-xl border border-zinc-200 bg-white p-4">
+  <h2 class="text-base font-semibold text-zinc-900">Items sold</h2>
+  <p class="mt-1 text-xs text-zinc-500">Top 8 menu items per period. Rest grouped as "Other".</p>
+  {#if chartData.length === 0}
+    <EmptyState card="calendar-items" />
+  {:else}
+    <div class="mt-4 h-64">
+      <BarChart
+        data={chartData}
+        x="bucket"
+        {series}
+        seriesLayout="stack"
+        orientation="vertical"
+        bandPadding={0.2}
+      />
+    </div>
+  {/if}
+</div>
