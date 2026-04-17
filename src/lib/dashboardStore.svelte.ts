@@ -149,6 +149,16 @@ export function getKpiTotals(): KpiSummary { return _kpiTotals; }
  *  Read this in UI instead of `data.filters` (which is the frozen SSR snapshot). */
 export function getFilters(): FiltersState { return _filters; }
 
+/** Current reactive {from,to,priorFrom,priorTo} window driving KPI math.
+ *  Updated by setRange() on every range click. UI components (e.g.
+ *  DatePickerPopover's date subtitle) should read this instead of
+ *  data.window (SSR-frozen). Fix for UAT Test 7.
+ *  Returns a FRESH object literal every call — downstream $derived(getWindow())
+ *  relies on identity change to re-run. Do NOT memoize. */
+export function getWindow(): RangeWindow {
+  return { from: dateFrom, to: dateTo, priorFrom, priorTo };
+}
+
 // -- Actions --
 
 /** Initialize store from SSR-loaded data. */

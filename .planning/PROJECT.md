@@ -118,4 +118,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-17 — Phase 9 complete (4/4 plans). 09-04 gap closure landed reactive `_filters` state in dashboardStore, resolving UAT Tests 7 & 9 (stale FilterBar labels/aria-checked after replaceState). All 4 success criteria verified; 88/88 unit tests pass. Phase 10 (Charts) next.*
+*Last updated: 2026-04-17 — Phase 9 complete (5/5 plans, 9/9 UAT tests pass). 09-05 gap closure landed reactive date subtitle (getWindow() store getter) + URL filter composition (mergeSearchParams() live-URL read) — closed both residual bugs from post-09-04 prod UAT. 97/97 unit tests pass (+9 from 09-05). Phase 10 (Charts) next.*

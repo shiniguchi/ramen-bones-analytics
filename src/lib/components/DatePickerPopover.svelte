@@ -4,7 +4,7 @@
   // draft-and-apply via the "Apply range" button.
   // D-06: replaceState instead of goto — no SSR round-trip.
   import { replaceState } from '$app/navigation';
-  import { page } from '$app/state';
+  import { mergeSearchParams } from '$lib/urlState';
   import { format, parseISO } from 'date-fns';
   import Popover from '$lib/components/ui/popover.svelte';
   import Button from '$lib/components/ui/button.svelte';
@@ -64,23 +64,24 @@
   // Non-default active state: any range that isn't the default '7d'.
   const active = $derived(filters.range !== '7d');
 
+  // replaceState is synchronous — window.location.href reflects new params
+  // before onrangechange fires, so +page.svelte's handleRangeChange can read
+  // them back off the live URL.
   function applyPreset(id: 'today' | '7d' | '30d' | '90d' | 'all') {
-    const url = new URL(page.url);
-    url.searchParams.set('range', id);
-    url.searchParams.delete('from');
-    url.searchParams.delete('to');
-    replaceState(url, {});
+    replaceState(
+      mergeSearchParams({ range: id, from: null, to: null }),
+      {}
+    );
     open = false;
     onrangechange(id);
   }
 
   function applyCustom() {
     if (!fromDraft || !toDraft) return;
-    const url = new URL(page.url);
-    url.searchParams.set('range', 'custom');
-    url.searchParams.set('from', fromDraft);
-    url.searchParams.set('to', toDraft);
-    replaceState(url, {});
+    replaceState(
+      mergeSearchParams({ range: 'custom', from: fromDraft, to: toDraft }),
+      {}
+    );
     open = false;
     onrangechange('custom');
   }
