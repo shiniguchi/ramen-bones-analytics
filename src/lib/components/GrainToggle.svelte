@@ -1,9 +1,10 @@
 <script lang="ts">
   // GrainToggle — segmented Day/Week/Month control.
   // Phase 9: uses replaceState (no SSR round-trip) + updates dashboard store.
+  // Phase 9 Plan 5: mergeSearchParams() preserves other filter params on click.
   import { replaceState } from '$app/navigation';
-  import { page } from '$app/state';
   import { setGrain } from '$lib/dashboardStore.svelte';
+  import { mergeSearchParams } from '$lib/urlState';
   import type { Grain } from '$lib/dateRange';
 
   let { grain }: { grain: Grain } = $props();
@@ -15,9 +16,7 @@
   ];
 
   function select(value: Grain) {
-    const url = new URL(page.url);
-    url.searchParams.set('grain', value);
-    replaceState(url, {});
+    replaceState(mergeSearchParams({ grain: value }), {});
     setGrain(value);
   }
 </script>

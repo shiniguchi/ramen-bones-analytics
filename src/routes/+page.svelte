@@ -8,11 +8,12 @@
   import CohortRetentionCard from '$lib/components/CohortRetentionCard.svelte';
   import InsightCard from '$lib/components/InsightCard.svelte';
   import {
-    initStore, getKpiTotals, getFilters, setRange, setRangeId, setSalesType, setCashFilter,
+    initStore, getKpiTotals, getFilters, getWindow,
+    setRange, setRangeId, setSalesType, setCashFilter,
     cacheCovers, type DailyRow
   } from '$lib/dashboardStore.svelte';
   import { replaceState } from '$app/navigation';
-  import { page } from '$app/state';
+  import { mergeSearchParams } from '$lib/urlState';
   import { chipToRange, customToRange, type Range, type RangeWindow } from '$lib/dateRange';
   import type { FiltersState } from '$lib/filters';
 
@@ -37,6 +38,10 @@
   // Fixes UAT 7/9: data.filters is frozen at SSR; store.getFilters() tracks clicks.
   const storeFilters = $derived(getFilters());
 
+  // Reactive window — DatePickerPopover reads from/to for its date subtitle.
+  // Fixes UAT Test 7: data.window is frozen at SSR; getWindow() tracks setRange().
+  const storeWindow = $derived(getWindow());
+
   // Range label for tile titles
   const rangeLabel = $derived.by(() => {
     const r = storeFilters.range;
@@ -56,11 +61,15 @@
 
   // Handle range change from DatePickerPopover.
   // Preset ids come through directly; 'custom' means the popover has already
-  // written from/to to the URL via replaceState — we read them off page.url.
+  // written from/to to the URL via replaceState — we read them off the live URL.
   function handleRangeChange(rangeValue: string) {
     let window: RangeWindow;
     if (rangeValue === 'custom') {
-      const url = new URL(page.url);
+      // Read custom from/to from live browser URL — DatePickerPopover.applyCustom
+      // has already written them via replaceState. page.url is stale; use
+      // globalThis.window.location.href (the local `window: RangeWindow` shadows
+      // the browser `window` inside this function).
+      const url = new URL(globalThis.window.location.href);
       const from = url.searchParams.get('from')!;
       const to = url.searchParams.get('to')!;
       window = customToRange({ from, to });
@@ -85,17 +94,13 @@
 
   // Handle sales type toggle
   function handleSalesType(v: string) {
-    const url = new URL(page.url);
-    url.searchParams.set('sales_type', v);
-    replaceState(url, {});
+    replaceState(mergeSearchParams({ sales_type: v }), {});
     setSalesType(v as 'all' | 'INHOUSE' | 'TAKEAWAY');
   }
 
   // Handle cash/card toggle
   function handleCashFilter(v: string) {
-    const url = new URL(page.url);
-    url.searchParams.set('is_cash', v);
-    replaceState(url, {});
+    replaceState(mergeSearchParams({ is_cash: v }), {});
     setCashFilter(v as 'all' | 'cash' | 'card');
   }
 </script>
@@ -103,7 +108,7 @@
 <DashboardHeader />
 <FilterBar
   filters={storeFilters}
-  window={data.window}
+  window={storeWindow}
   onrangechange={handleRangeChange}
   onsalestypechange={handleSalesType}
   oncashfilterchange={handleCashFilter}
