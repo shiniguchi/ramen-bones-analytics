@@ -1,9 +1,9 @@
 ---
 status: complete
 phase: 09-filter-simplification-performance
-source: 09-01-SUMMARY.md, 09-02-SUMMARY.md
+source: 09-01-SUMMARY.md, 09-02-SUMMARY.md, 09-04-SUMMARY.md
 started: 2026-04-16T21:00:00Z
-updated: 2026-04-17T02:00:00Z
+updated: 2026-04-17T00:20:00Z
 ---
 
 ## Current Test
@@ -42,8 +42,8 @@ note: URL ?grain=day/week/month via replaceState; 0 reloads; aria-checked radio 
 ### 7. Date Picker Updates Range Without Reload
 expected: Opening the DatePickerPopover and selecting a new range updates the KPI tiles and the range label. URL `from`/`to` params update via replaceState (no full SSR round-trip visible as a page reload). Delta vs prior period recomputes against the new range.
 result: issue
-reported: "Clicking date-range preset (30d/90d) writes URL via replaceState but range label and DatePicker button stay frozen at SSR snapshot. rangeLabel / priorLabel in src/routes/+page.svelte:35-47 derive from data.filters.range (stale); filters prop passed to FilterBar (line 87) is also stale data.filters. Same class of bug affects handleSalesType / handleCashFilter labels — anything reading data.filters.* is SSR-frozen. Store setters (setRange/setSalesType/setCashFilter) do update store-backed computed values (KPIs) but UI labels read from data.filters and fall behind. Reload fixes it (SSR re-reads URL)."
-severity: major
+reported: "Live test on prod 2026-04-17 after 09-04 ship: primary reactivity fixed (button range ID '7d'→'30d'→'90d' flips, KPI titles 'Revenue · 30d' / 'Transactions · 30d' flip, URL writes ?range=30d/90d via replaceState, zero document reloads confirmed via performance.getEntriesByType('navigation').length stable at 1). NEW residual bug: DatePicker button DATE SUBTITLE stays frozen at SSR's 7d window 'Apr 11 – Apr 17' across 30d and 90d selections. Expected 30d ≈ 'Mar 18 – Apr 17', 90d ≈ 'Jan 17 – Apr 17'. Subtitle derives from a separate data.filters-or-window code path that 09-04 store-getter rewiring didn't cover. Same class as original bug, different element."
+severity: minor
 
 ### 8. Cohort Retention Card Still Renders
 expected: The Cohort Retention card is visible below the KPI tiles and renders its retention curve/data as before. The GrainToggle is no longer inside the retention card header (it moved to the FilterBar) — the card still respects the global grain setting.
@@ -53,9 +53,8 @@ note: Cohort heading renders, SVG chart with 4 retention paths, GrainToggle conf
 ### 9. Combined Filters Compose Correctly
 expected: Apply Sales Type = INHOUSE AND Cash/Card = cash together. KPI tiles show the intersection (in-house cash sales only). Toggling either filter back to "all" broadens the result. Filters compose multiplicatively, not replace each other.
 result: issue
-reported: "Clicking Sales Type=Inhouse + Payment Type=Cash updates URL to ?sales_type=INHOUSE&is_cash=cash (compositional at URL layer), but aria-checked stays false on Inhouse and Cash radios (frozen at SSR snapshot salesAll=true, cashAll=true). Labels also stale (Test 7 bug). No visible confirmation of composition. Store-level filterRows composes correctly per code review, but KPI values stay 0/0 on this tenant so data change cannot be observed. Same root cause as Test 7 — FilterBar.svelte:43/48/56 passes data.filters.* props which never update after replaceState. One gap plan fixes all: Tests 4, 5, 6 (cosmetic aria-checked noise), Test 7 (labels), Test 9 (composition signal)."
+reported: "Live test on prod 2026-04-17 after 09-04 ship: original aria-checked bug is FIXED — Inhouse radio aria-checked='true' and Cash radio aria-checked='true' both stay on simultaneously after sequential clicks (store composes correctly). NEW residual bug: URL drops previous filter params when a different filter is clicked. Sequence: click Inhouse → URL '/?sales_type=INHOUSE' (OK). Click Cash → URL '/?is_cash=cash' (sales_type=INHOUSE stripped, NOT merged). Expected '/?sales_type=INHOUSE&is_cash=cash'. Store state (aria-checked + KPI math) stays composed, but URL+SSR state would lose sales_type on reload. Bug likely in +page.svelte's handleSalesType / handleCashFilter replaceState callers building the URL from scratch instead of merging with existing URLSearchParams. Distinct from aria-checked fix in 09-04 (which targeted reactive READ from store)."
 severity: major
-depends_on_gap: 7
 
 ## Summary
 
@@ -69,24 +68,39 @@ blocked: 0
 ## Gaps
 
 - truth: "Date-range preset clicks update the range label and DatePicker button label without a reload."
-  status: failed
-  reason: "rangeLabel / priorLabel / FilterBar filters prop all read from data.filters (SSR-frozen). Store setters update KPI computations but UI labels diverge. Affects date presets, sales type toggle labels, and cash/card toggle labels. Page reload fixes display (SSR re-reads URL). Clicks do write URL via replaceState correctly."
+  status: resolved
+  reason: "Resolved by 09-04 gap closure. Prod UAT 2026-04-17: button range ID ('7d'→'30d'→'90d') flips, KPI titles flip to 'Revenue · 30d' etc., URL writes via replaceState, zero document reloads. Original aria-checked frozen-radio bug for Inhouse/Cash also resolved (both radios correctly composed)."
   severity: major
   test: 7
-  artifacts:
-    - path: "src/routes/+page.svelte:35-42"
-      issue: "rangeLabel derives from data.filters.range (SSR snapshot) instead of store-backed reactive value"
-    - path: "src/routes/+page.svelte:45-47"
-      issue: "priorLabel derives from data.filters.range same way"
-    - path: "src/routes/+page.svelte:87"
-      issue: "FilterBar receives filters={data.filters} — frozen at SSR; child components (DatePickerPopover, SegmentedToggle) reading filters.* for labels will all be stale"
-  missing:
-    - "Introduce reactive filters source of truth in dashboardStore (seeded from data.filters at init)"
-    - "Replace data.filters.range references in +page.svelte with store-backed $derived values"
-    - "Replace filters={data.filters} with store-backed getter when passing to FilterBar"
-    - "Verify DatePickerPopover uses the reactive source for both label and preset-active state"
-    - "Verify GrainToggle / SegmentedToggle aria-checked flips on click (same reactive prop fix)"
+  resolved_by_plan: "09-04"
   also_resolves_tests: [9]
+
+- truth: "DatePicker button date subtitle updates when a new range preset is selected."
+  status: failed
+  reason: "Prod live test 2026-04-17: primary range ID flip works (7d → 30d → 90d) and KPI titles flip correctly, but button's date subtitle ('Apr 11 – Apr 17') stays frozen at the SSR 7d window across all preset changes. Expected 30d ≈ 'Mar 18 – Apr 17', 90d ≈ 'Jan 17 – Apr 17'. Different code path from 09-04 store-getter rewiring; likely derives subtitle from data.filters.from/to or the SSR window prop rather than reactive store getFilters() output."
+  severity: minor
+  test: 7
+  artifacts:
+    - path: "src/lib/components/DatePickerPopover.svelte"
+      issue: "button subtitle date formatter reads from a non-reactive source (likely props.filters.from/to or the SSR window prop)"
+  missing:
+    - "Trace where DatePickerPopover reads the 'Apr 11 – Apr 17' date subtitle"
+    - "Rewire it to derive from the store's current window (getFilters() + chipToRange equivalent)"
+    - "Unit test: clicking preset should update both range ID and date subtitle"
+
+- truth: "Clicking one filter does not strip other filter params from the URL — all active filters persist in the query string."
+  status: failed
+  reason: "Prod live test 2026-04-17: Click Inhouse → URL '/?sales_type=INHOUSE' (correct). Click Cash → URL becomes '/?is_cash=cash' (sales_type=INHOUSE dropped, not merged). Store state stays composed (both aria-checked=true simultaneously), but URL reflects only the most recently clicked filter. Reload would lose the dropped filter (SSR reads URL). Likely in +page.svelte's filter click handlers — replaceState callers build URL from scratch rather than merging with existing URLSearchParams."
+  severity: major
+  test: 9
+  artifacts:
+    - path: "src/routes/+page.svelte"
+      issue: "handleSalesType / handleCashFilter / handleRangeChange write URL without preserving other existing query params"
+  missing:
+    - "Identify the URL-building callsite(s) for replaceState on filter clicks"
+    - "Preserve existing URLSearchParams when writing new values — merge, don't replace"
+    - "Verify all four filter handlers (grain, sales_type, is_cash, range) merge correctly"
+    - "Unit/integration test: sequential clicks compose URL (INHOUSE + cash → '?sales_type=INHOUSE&is_cash=cash')"
 
 - truth: "Cold start against DEV succeeds: migrations apply cleanly, dev server boots, dashboard loads with live data from transactions_filterable_v.is_cash."
   status: resolved
