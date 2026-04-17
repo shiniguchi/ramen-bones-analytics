@@ -41,9 +41,9 @@ note: URL ?grain=day/week/month via replaceState; 0 reloads; aria-checked radio 
 
 ### 7. Date Picker Updates Range Without Reload
 expected: Opening the DatePickerPopover and selecting a new range updates the KPI tiles and the range label. URL `from`/`to` params update via replaceState (no full SSR round-trip visible as a page reload). Delta vs prior period recomputes against the new range.
-result: issue
-reported: "Live test on prod 2026-04-17 after 09-04 ship: primary reactivity fixed (button range ID '7d'→'30d'→'90d' flips, KPI titles 'Revenue · 30d' / 'Transactions · 30d' flip, URL writes ?range=30d/90d via replaceState, zero document reloads confirmed via performance.getEntriesByType('navigation').length stable at 1). NEW residual bug: DatePicker button DATE SUBTITLE stays frozen at SSR's 7d window 'Apr 11 – Apr 17' across 30d and 90d selections. Expected 30d ≈ 'Mar 18 – Apr 17', 90d ≈ 'Jan 17 – Apr 17'. Subtitle derives from a separate data.filters-or-window code path that 09-04 store-getter rewiring didn't cover. Same class as original bug, different element."
-severity: minor
+result: pass
+resolved_by: 09-05
+note: "Verified via autonomous Chrome-MCP UAT on DEV 2026-04-17 after 09-05 ship. 30d click: subtitle flipped 'Apr 11 – Apr 17' → 'Mar 19 – Apr 17'. 90d click: subtitle → 'Jan 18 – Apr 17'. Button range ID flips, KPI titles flip, URL writes via replaceState, zero document reloads (nav count stable at 1). Residual subtitle bug from post-09-04 prod UAT is closed by getWindow() getter + reactive window={storeWindow} prop cascade to DatePickerPopover."
 
 ### 8. Cohort Retention Card Still Renders
 expected: The Cohort Retention card is visible below the KPI tiles and renders its retention curve/data as before. The GrainToggle is no longer inside the retention card header (it moved to the FilterBar) — the card still respects the global grain setting.
@@ -52,15 +52,15 @@ note: Cohort heading renders, SVG chart with 4 retention paths, GrainToggle conf
 
 ### 9. Combined Filters Compose Correctly
 expected: Apply Sales Type = INHOUSE AND Cash/Card = cash together. KPI tiles show the intersection (in-house cash sales only). Toggling either filter back to "all" broadens the result. Filters compose multiplicatively, not replace each other.
-result: issue
-reported: "Live test on prod 2026-04-17 after 09-04 ship: original aria-checked bug is FIXED — Inhouse radio aria-checked='true' and Cash radio aria-checked='true' both stay on simultaneously after sequential clicks (store composes correctly). NEW residual bug: URL drops previous filter params when a different filter is clicked. Sequence: click Inhouse → URL '/?sales_type=INHOUSE' (OK). Click Cash → URL '/?is_cash=cash' (sales_type=INHOUSE stripped, NOT merged). Expected '/?sales_type=INHOUSE&is_cash=cash'. Store state (aria-checked + KPI math) stays composed, but URL+SSR state would lose sales_type on reload. Bug likely in +page.svelte's handleSalesType / handleCashFilter replaceState callers building the URL from scratch instead of merging with existing URLSearchParams. Distinct from aria-checked fix in 09-04 (which targeted reactive READ from store)."
-severity: major
+result: pass
+resolved_by: 09-05
+note: "Verified via autonomous Chrome-MCP UAT on DEV 2026-04-17 after 09-05 ship. Sequential click chain Inhouse → Cash → Day → 30d produces URL '/?sales_type=INHOUSE&is_cash=cash&grain=day&range=30d' (full composition across all 4 filters). aria-checked stays composed (Inhouse=true, Cash=true, Day=true simultaneously). Reloading the composed URL re-hydrates all radios and the DatePicker subtitle correctly. Adversarial test: navigating to '/?range=custom&from=2026-02-01&to=2026-02-28&sales_type=INHOUSE' then clicking 7d correctly produces '/?range=7d&sales_type=INHOUSE' (from/to deleted, sales_type preserved). URL-write bug closed by mergeSearchParams() helper in src/lib/urlState.ts reading window.location.href (live) instead of page.url (stale after replaceState)."
 
 ## Summary
 
 total: 9
-passed: 7
-issues: 2
+passed: 9
+issues: 0
 pending: 0
 skipped: 0
 blocked: 0
