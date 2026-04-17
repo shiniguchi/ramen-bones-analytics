@@ -207,7 +207,7 @@ Plans:
 | 7. Column Promotion | v1.1 | 4/4 | Complete | 2026-04-15 |
 | 8. Visit Attribution Data Model | v1.2 | 2/2 | Complete | 2026-04-16 |
 | 9. Filter Simplification & Performance | v1.2 | 5/5 | Complete   | 2026-04-17 |
-| 10. Charts | v1.2 | 7/8 | In Progress|  |
+| 10. Charts | v1.2 | 7/8 | Complete    | 2026-04-17 |
 
 ## Coverage Summary
 
