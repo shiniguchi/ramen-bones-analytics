@@ -361,6 +361,147 @@ describe('Phase 3 — Analytics SQL', () => {
     });
   });
 
+  // quick-260418-28j — retention_curve_monthly_v (Pass 2 fix for period-0 != 1.0 on monthly grain)
+  describe('retention_curve_monthly_v', () => {
+    const M_COHORT = '2025-09-01'; // date_trunc('month') of 2025-09-*
+    const M1_COHORT = '2025-10-01'; // period_months=1 relative to M
+    // 10 fresh card_hashes, first-seen in month M; 3 of them return in month M+1.
+    const MONTHLY_CARDS = Array.from({ length: 10 }, (_, i) => `hash-monthly-${i}`);
+    const MONTHLY_RETURNERS = MONTHLY_CARDS.slice(0, 3);
+    const MONTHLY_FIXTURE_PREFIX = 'fixture-monthly-';
+    const FIRST_MONTH_DAY = '2025-09-15T12:00:00+02:00';
+    const SECOND_MONTH_DAY = '2025-10-15T12:00:00+02:00';
+
+    beforeAll(async () => {
+      // Clean any stragglers from a prior failed run.
+      await admin
+        .from('transactions')
+        .delete()
+        .eq('restaurant_id', restaurantId)
+        .like('source_tx_id', `${MONTHLY_FIXTURE_PREFIX}%`);
+
+      const rows: Array<Record<string, unknown>> = [];
+      // 10 cards first-visit in month M.
+      MONTHLY_CARDS.forEach((card_hash, i) => {
+        rows.push({
+          restaurant_id: restaurantId,
+          source_tx_id: `${MONTHLY_FIXTURE_PREFIX}${i}-m`,
+          card_hash,
+          occurred_at: FIRST_MONTH_DAY,
+          payment_method: 'card',
+          gross_cents: 1000,
+          tip_cents: 0,
+          net_cents: Math.round(1000 / 1.07)
+        });
+      });
+      // 3 of them return in month M+1.
+      MONTHLY_RETURNERS.forEach((card_hash, i) => {
+        rows.push({
+          restaurant_id: restaurantId,
+          source_tx_id: `${MONTHLY_FIXTURE_PREFIX}${i}-m1`,
+          card_hash,
+          occurred_at: SECOND_MONTH_DAY,
+          payment_method: 'card',
+          gross_cents: 1000,
+          tip_cents: 0,
+          net_cents: Math.round(1000 / 1.07)
+        });
+      });
+
+      const { error } = await admin
+        .from('transactions')
+        .upsert(rows, { onConflict: 'restaurant_id,source_tx_id' });
+      if (error) throw error;
+
+      // Rebuild MVs so cohort_mv picks up the new fixture.
+      const { error: refreshErr } = await admin.rpc('refresh_analytics_mvs');
+      if (refreshErr) throw refreshErr;
+    });
+
+    afterAll(async () => {
+      await admin
+        .from('transactions')
+        .delete()
+        .eq('restaurant_id', restaurantId)
+        .like('source_tx_id', `${MONTHLY_FIXTURE_PREFIX}%`);
+    });
+
+    it('period_months=0 is exactly 1.0 for every non-empty cohort', async () => {
+      const { data, error } = await admin.rpc('test_retention_curve_monthly', {
+        rid: restaurantId
+      });
+      if (error) throw error;
+      const rows = data as Array<{
+        cohort_month: string;
+        cohort_size_month: number;
+        period_months: number;
+        retention_rate: number | null;
+      }>;
+      const period0 = rows.filter(
+        (r) => r.period_months === 0 && Number(r.cohort_size_month) > 0
+      );
+      expect(period0.length).toBeGreaterThan(0);
+      for (const r of period0) {
+        expect(Number(r.retention_rate)).toBe(1);
+      }
+    });
+
+    it('seeded cohort: 10 customers in M, 3 return in M+1 → period_months=1 ≈ 0.3', async () => {
+      const { data, error } = await admin.rpc('test_retention_curve_monthly', {
+        rid: restaurantId
+      });
+      if (error) throw error;
+      const rows = data as Array<{
+        cohort_month: string;
+        cohort_size_month: number;
+        period_months: number;
+        retention_rate: number | null;
+      }>;
+      const seeded = rows.find(
+        (r) => r.cohort_month === M_COHORT && r.period_months === 1
+      );
+      expect(seeded).toBeTruthy();
+      // 3 returners / 10 new customers = 0.3.
+      expect(Math.abs(Number(seeded!.retention_rate) - 0.3)).toBeLessThan(0.0001);
+      // cohort_size_month should be 10 (all 10 seeded cards).
+      expect(Number(seeded!.cohort_size_month)).toBe(10);
+    });
+
+    it('row count per cohort ≤ 61 (period_months 0..60 × cohorts)', async () => {
+      const { data, error } = await admin.rpc('test_retention_curve_monthly', {
+        rid: restaurantId
+      });
+      if (error) throw error;
+      const rows = data as Array<{
+        cohort_month: string;
+        period_months: number;
+      }>;
+      // Group by cohort; each cohort has period_months 0..60 before NULL-mask
+      // (left join may drop nothing, so exactly 61 per cohort).
+      const byCohort = new Map<string, number[]>();
+      for (const r of rows) {
+        if (!byCohort.has(r.cohort_month)) byCohort.set(r.cohort_month, []);
+        byCohort.get(r.cohort_month)!.push(r.period_months);
+      }
+      for (const [, periods] of byCohort) {
+        expect(periods.length).toBe(61);
+        expect(Math.min(...periods)).toBe(0);
+        expect(Math.max(...periods)).toBe(60);
+      }
+    });
+
+    it('cohort_age_months is non-negative', async () => {
+      const { data, error } = await admin.rpc('test_retention_curve_monthly', {
+        rid: restaurantId
+      });
+      if (error) throw error;
+      const rows = data as Array<{ cohort_age_months: number }>;
+      for (const r of rows) {
+        expect(Number(r.cohort_age_months)).toBeGreaterThanOrEqual(0);
+      }
+    });
+  });
+
   // ANL-08 — wrapper tenancy (RLS footgun guard)
   describe('ANL-08 wrapper tenancy', () => {
     it('anon/authenticated client cannot SELECT directly from cohort_mv', async () => {
