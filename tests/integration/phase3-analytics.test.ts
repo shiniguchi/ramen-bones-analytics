@@ -363,14 +363,17 @@ describe('Phase 3 — Analytics SQL', () => {
 
   // quick-260418-28j — retention_curve_monthly_v (Pass 2 fix for period-0 != 1.0 on monthly grain)
   describe('retention_curve_monthly_v', () => {
-    const M_COHORT = '2025-09-01'; // date_trunc('month') of 2025-09-*
-    const M1_COHORT = '2025-10-01'; // period_months=1 relative to M
+    // Use a month not present in any other test fixture to keep the 10/3 ratio
+    // clean. 2025-09-01 is used by the phase10 fixture seed (26 customers);
+    // 2025-08/10/11 have 1–2 each. 2024-07 is untouched by any current seed.
+    const M_COHORT = '2024-07-01'; // date_trunc('month') of the fixture first-visit day
+    const M1_COHORT = '2024-08-01'; // period_months=1 relative to M
     // 10 fresh card_hashes, first-seen in month M; 3 of them return in month M+1.
     const MONTHLY_CARDS = Array.from({ length: 10 }, (_, i) => `hash-monthly-${i}`);
     const MONTHLY_RETURNERS = MONTHLY_CARDS.slice(0, 3);
     const MONTHLY_FIXTURE_PREFIX = 'fixture-monthly-';
-    const FIRST_MONTH_DAY = '2025-09-15T12:00:00+02:00';
-    const SECOND_MONTH_DAY = '2025-10-15T12:00:00+02:00';
+    const FIRST_MONTH_DAY = '2024-07-15T12:00:00+02:00';
+    const SECOND_MONTH_DAY = '2024-08-15T12:00:00+02:00';
 
     beforeAll(async () => {
       // Clean any stragglers from a prior failed run.
