@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Dashboard Simplification & Visit Attribution
 status: executing
-stopped_at: Completed 10-07-PLAN.md — VA-09/VA-10 cards shipped; CohortRetentionCard gained D-17 hint; 3 RED unit tests flipped GREEN; 2 task commits (ec6abb5, dea571b); build+guards clean
-last_updated: "2026-04-17T09:48:01.014Z"
+stopped_at: Completed 10-05-PLAN.md — VisitSeqLegend + CalendarRevenueCard (VA-04) + CalendarCountsCard (VA-05) shipped; 157 unit tests pass (+28); build+guards green; Plan 10-07 deferred-item resolved
+last_updated: "2026-04-17T09:48:59.521Z"
 progress:
   total_phases: 10
   completed_phases: 9
   total_plans: 57
-  completed_plans: 55
-  percent: 96
+  completed_plans: 56
+  percent: 98
 ---
 
 # STATE: Ramen Bones Analytics
@@ -29,10 +29,10 @@ progress:
 
 Milestone: v1.2 (Dashboard Simplification & Visit Attribution) — Phase 09 complete (5/5 plans including gap closures), Phase 10 Charts next
 Phase: 10 (charts) — EXECUTING
-Plan: 7 of 8
+Plan: 8 of 8
 
 - **Status:** Ready to execute
-- **Progress:** [██████████] 96%
+- **Progress:** [██████████] 98%
 - **v1.0 status:** Shipping to friend (97% plans complete; repo flipped PUBLIC 2026-04-15 with topics + description set; Plan 05-06 Task 2 fork walkthrough deferred out of v1 scope — forkability is explicitly not a v1 concern per user direction)
 
 ## Performance Metrics
@@ -85,6 +85,7 @@ Plan: 7 of 8
 | Phase 10-charts P04 | 6min | 2 tasks | 6 files |
 | Phase 10-charts P06 | 4min | 2 tasks | 4 files |
 | Phase 10-charts P07 | 4min | 2 tasks | 5 files |
+| Phase 10-charts P05 | 6min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -177,6 +178,9 @@ Plan: 7 of 8
 - [Phase 10-charts]: 10-06: LtvHistogramCard is filter-independent (no range prop) — LTV is lifetime; filter-scoping would be semantically wrong. CalendarItemsCard computes top-8 client-side from the filtered window per D-14; zero-fills missing series keys to prevent LayerChart stack-gap artifacts.
 - [Phase 10-charts]: 10-07: D-17 hint contract unified across VA-06/09/10 — byte-identical cohort-clamp-hint testid + copy + amber-600 styling; grain='day' only triggers hint (B2 fix; month passes through because cohort chart natively honors monthly cohorts)
 - [Phase 10-charts]: 10-07: Cohort Revenue/AvgLtv cards use plain <BarChart data x y orientation bandPadding> composition (not Chart+Svg+Axis stack); LayerChart handles scales/axes/tooltips internally — simpler than retention card pattern
+- [Phase 10-charts]: 10-05: cards self-subscribe to dashboardStore via getter calls in $derived.by() — no prop-drilling from +page.svelte; same pattern as KpiTile
+- [Phase 10-charts]: 10-05: LayerChart high-level <BarChart seriesLayout='stack'> handles stack math/scales/tooltip internally — hand-rolled <Rect>/<Bars> forbidden per RESEARCH anti-patterns
+- [Phase 10-charts]: 10-05: JSDOM normalizes inline-style hex to rgb on set; swatch tests assert computed style + palette constant separately so regression in either layer shows up
 
 ### Open Todos
 
@@ -202,8 +206,8 @@ Plan: 7 of 8
 
 **Resume hint:** Milestone v1.1 Dashboard Redesign was scoped in this session. Architecture is a pragmatic star schema: `dim_customer` (lifetime attrs) + `fct_transactions` (atomic fact MV with visit_seq / days_since_prev_visit window fns + denormalized filter dims) + 4 thin day-grain rollup MVs (`mv_new_customers_daily`, `mv_repeater_daily`, `mv_retention_monthly`, `mv_inter_visit_histogram`). Two bucket columns materialized: `lifetime_bucket` (how customer ended up) and `visit_seq_bucket` (point-in-time). Six filters: date range, granularity, sales_type, payment_method, wl_issuing_country, repeater bucket — dropdowns auto-populated from DISTINCT values. All refresh stays inside existing `refresh_analytics_mvs()` cron. Start with Phase 06 (Filter Foundation) for a quick UX win before any schema change.
 
-**Last session:** 2026-04-17T09:48:00.998Z
-**Stopped At:** Completed 10-07-PLAN.md — VA-09/VA-10 cards shipped; CohortRetentionCard gained D-17 hint; 3 RED unit tests flipped GREEN; 2 task commits (ec6abb5, dea571b); build+guards clean
+**Last session:** 2026-04-17T09:48:59.508Z
+**Stopped At:** Completed 10-05-PLAN.md — VisitSeqLegend + CalendarRevenueCard (VA-04) + CalendarCountsCard (VA-05) shipped; 157 unit tests pass (+28); build+guards green; Plan 10-07 deferred-item resolved
 
 ---
 *State initialized: 2026-04-13*

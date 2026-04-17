@@ -188,7 +188,7 @@ Plans:
   - [x] 10-02-PLAN.md — Migration 0023: extend transactions_filterable_v with visit_seq + card_hash
   - [x] 10-03-PLAN.md — Migrations 0024/0025: customer_ltv_mv + item_counts_daily_mv + refresh DAG
   - [x] 10-04-PLAN.md — Client libs: chartPalettes + ltvBins + itemCountsRollup + cohortAgg + dashboardStore ext
-  - [ ] 10-05-PLAN.md — Calendar charts: VA-04 CalendarRevenueCard + VA-05 CalendarCountsCard + VisitSeqLegend
+  - [x] 10-05-PLAN.md — Calendar charts: VA-04 CalendarRevenueCard + VA-05 CalendarCountsCard + VisitSeqLegend
   - [x] 10-06-PLAN.md — VA-07 LtvHistogramCard + VA-08 CalendarItemsCard with top-8+Other rollup
   - [x] 10-07-PLAN.md — VA-09 CohortRevenueCard + VA-10 CohortAvgLtvCard + VA-06 D-17 hint
   - [ ] 10-08-PLAN.md — SSR fan-out + +page.svelte composition in D-10 order + LazyMount measurement checkpoint
@@ -207,7 +207,7 @@ Plans:
 | 7. Column Promotion | v1.1 | 4/4 | Complete | 2026-04-15 |
 | 8. Visit Attribution Data Model | v1.2 | 2/2 | Complete | 2026-04-16 |
 | 9. Filter Simplification & Performance | v1.2 | 5/5 | Complete   | 2026-04-17 |
-| 10. Charts | v1.2 | 6/8 | In Progress|  |
+| 10. Charts | v1.2 | 7/8 | In Progress|  |
 
 ## Coverage Summary
 
