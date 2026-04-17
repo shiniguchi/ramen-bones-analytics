@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Dashboard Simplification & Visit Attribution
 status: "Phase 10 shipped — PR #4"
-stopped_at: Completed quick task 260417-mp2 — 1-line fix in pickCohortKey (slice cohort_month to YYYY-MM) unblocks live dashboard month-grain RangeError; 160/160 unit tests pass
-last_updated: "2026-04-17T14:26:30Z"
+stopped_at: Completed quick task 260418-0td — MCP config cleanup (consolidated .mcp.json, restored Context7 + claude-in-chrome, documented mcp-servers/)
+last_updated: "2026-04-17T22:40:00Z"
 progress:
   total_phases: 10
   completed_phases: 10
@@ -203,6 +203,7 @@ Plan: Not started
 | 260417-29v | Apply security headers to SSR responses in hooks.server.ts | 2026-04-16 | 11e85b9 | [260417-29v-apply-security-headers-to-ssr-responses-](./quick/260417-29v-apply-security-headers-to-ssr-responses-/) |
 | 260417-mfo | 3 mobile UI fixes: FilterBar spinner, Takeaway label nowrap, CohortRetentionCard grain-aware | 2026-04-17 | 28ba150, e02b272, c0f0a2b | [260417-mfo-3-ui-fixes-loading-spinner-takeaway-over](./quick/260417-mfo-3-ui-fixes-loading-spinner-takeaway-over/) |
 | 260417-mp2 | Fix silent dashboard crash (RangeError in formatBucketLabel on month grain) — 1-line slice in pickCohortKey + regression tests | 2026-04-17 | 62fab3e, c389bd4 | [260417-mp2-fix-silent-dashboard-bug-formatbucketlab](./quick/260417-mp2-fix-silent-dashboard-bug-formatbucketlab/) |
+| 260418-0td | Clean up unstaged MCP config — restored Context7 + claude-in-chrome, promoted .mcp.json to tracked, documented mcp-servers/ | 2026-04-17 | f8970f2, b20cad6 | [260418-0td-clean-up-unstaged-mcp-config-changes-res](./quick/260418-0td-clean-up-unstaged-mcp-config-changes-res/) |
 
 ## Session Continuity
 
