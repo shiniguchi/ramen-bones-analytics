@@ -6,3 +6,4 @@
 - [Route direction-change feedback to backlog](feedback_scope_preservation.md) — ship-first for 2-week MVP; capture new scope verbatim to `.planning/backlog/`
 - [Forkability is not a v1 concern](feedback_forkability_not_v1.md) — do not treat fork dry-run walkthroughs as ship blockers; strike or defer
 - [Per-card error isolation silently hid dashboard-breaking bug (2026-04-17)](project_silent_error_isolation.md) — `.catch(() => [])` pattern hides backend failures; verify real views with auth'd JWT, not E2E fixtures
+- [LayerChart mobile horizontal scroll needs touchEvents override](feedback_layerchart_mobile_scroll.md) — always pass `tooltipContext={{ touchEvents: 'pan-x' }}` on scrollable charts or inner touch-action:pan-y blocks iOS swipe scroll
