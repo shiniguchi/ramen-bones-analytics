@@ -10,7 +10,7 @@
   import EmptyState from './EmptyState.svelte';
   import { ITEM_COLORS, OTHER_COLOR } from '$lib/chartPalettes';
   import { rollupTopNWithOther } from '$lib/itemCountsRollup';
-  import { bucketKey, getFilters } from '$lib/dashboardStore.svelte';
+  import { bucketKey, getFilters, formatBucketLabel } from '$lib/dashboardStore.svelte';
 
   type ItemCountRow = {
     business_date: string;
@@ -66,7 +66,9 @@
         if (!(name in row)) row[name] = 0;
       }
       return row;
-    }).sort((a, b) => String(a.bucket).localeCompare(String(b.bucket)));
+    })
+      .sort((a, b) => String(a.bucket).localeCompare(String(b.bucket)))
+      .map(row => ({ ...row, bucket: formatBucketLabel(row.bucket as string, grain) }));
   });
 
   // Series config: ITEM_COLORS for top-8, OTHER_COLOR for "Other".

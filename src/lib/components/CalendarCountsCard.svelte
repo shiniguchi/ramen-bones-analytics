@@ -10,7 +10,8 @@
     getFiltered,
     getFilters,
     aggregateByBucketAndVisitSeq,
-    shapeForChart
+    shapeForChart,
+    formatBucketLabel
   } from '$lib/dashboardStore.svelte';
 
   const VISIT_KEYS = ['1st', '2nd', '3rd', '4x', '5x', '6x', '7x', '8x+'] as const;
@@ -19,7 +20,10 @@
     const filtered = getFiltered();
     const grain = getFilters().grain as 'day' | 'week' | 'month';
     const nested = aggregateByBucketAndVisitSeq(filtered, grain);
-    return shapeForChart(nested, 'tx_count');
+    return shapeForChart(nested, 'tx_count').map((r) => ({
+      ...r,
+      bucket: formatBucketLabel(r.bucket as string, grain)
+    }));
   });
 
   const series = $derived.by(() => {

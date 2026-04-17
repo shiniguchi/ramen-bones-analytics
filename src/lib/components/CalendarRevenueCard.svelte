@@ -12,7 +12,8 @@
     getFiltered,
     getFilters,
     aggregateByBucketAndVisitSeq,
-    shapeForChart
+    shapeForChart,
+    formatBucketLabel
   } from '$lib/dashboardStore.svelte';
 
   // Stack order = series array order. Light (1st) at bottom, dark (8x+) at top (D-06).
@@ -22,7 +23,10 @@
     const filtered = getFiltered();
     const grain = getFilters().grain as 'day' | 'week' | 'month';
     const nested = aggregateByBucketAndVisitSeq(filtered, grain);
-    return shapeForChart(nested, 'revenue_cents');
+    return shapeForChart(nested, 'revenue_cents').map((r) => ({
+      ...r,
+      bucket: formatBucketLabel(r.bucket as string, grain)
+    }));
   });
 
   // Dynamic series list respects the cash filter:

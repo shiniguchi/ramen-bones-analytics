@@ -46,6 +46,13 @@ export function bucketKey(date: string, grain: 'day' | 'week' | 'month'): string
   return format(startOfMonth(d), 'yyyy-MM');
 }
 
+/** Short display label for a bucket key — drops year so labels fit on 375px viewports.
+ *  'yyyy-MM-dd' → 'MMM d' (e.g., 'Feb 16') for day/week grain.
+ *  'yyyy-MM'    → 'MMM'   (e.g., 'Feb')    for month grain. */
+export function formatBucketLabel(bucket: string, grain: 'day' | 'week' | 'month'): string {
+  return grain === 'month' ? format(parseISO(bucket + '-01'), 'MMM') : format(parseISO(bucket), 'MMM d');
+}
+
 /** Filter rows by sales_type, cash/card, and date window. */
 export function filterRows(
   rows: DailyRow[],
