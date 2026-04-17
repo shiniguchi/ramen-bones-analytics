@@ -7,6 +7,10 @@
     "claude-in-chrome": {
       "command": "npx",
       "args": ["-y", "@anthropic/claude-in-chrome-mcp"]
+    },
+    "supabase-dev": {
+      "command": "npx",
+      "args": ["tsx", "./mcp-servers/postgres.ts"]
     }
   }
 }
