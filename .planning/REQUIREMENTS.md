@@ -124,13 +124,13 @@ Requirements for initial release. Each maps to exactly one roadmap phase.
 
 ### Charts
 
-- [ ] **VA-04**: Calendar revenue chart — stacked bars by visit-count bucket (1st/2nd/3rd/4x/5x/6x/7x/8x+) per day/week/month granularity, respects all filters
-- [ ] **VA-05**: Calendar customer counts chart — same visit-count breakdown per day/week/month, respects all filters
+- [x] **VA-04**: Calendar revenue chart — stacked bars by visit-count bucket (1st/2nd/3rd/4x/5x/6x/7x/8x+) per day/week/month granularity, respects all filters
+- [x] **VA-05**: Calendar customer counts chart — same visit-count breakdown per day/week/month, respects all filters
 - [ ] **VA-06**: Retention curve chart — weekly/monthly first-time acquisition cohort retention rates, respects all filters
-- [ ] **VA-07**: LTV per customer chart — individual or bucketed customer lifetime value distribution, respects all filters
-- [ ] **VA-08**: Calendar order item counts chart — broken down by order item name (from `stg_orderbird_order_items.item_name`), per day/week/month, respects all filters
-- [ ] **VA-09**: First-time date cohort total revenue chart — sum of all lifetime revenue per acquisition cohort (weekly/monthly), respects all filters
-- [ ] **VA-10**: First-time date cohort average LTV chart — average lifetime value per customer per acquisition cohort (weekly/monthly), respects all filters
+- [x] **VA-07**: LTV per customer chart — individual or bucketed customer lifetime value distribution, respects all filters
+- [x] **VA-08**: Calendar order item counts chart — broken down by order item name (from `stg_orderbird_order_items.item_name`), per day/week/month, respects all filters
+- [x] **VA-09**: First-time date cohort total revenue chart — sum of all lifetime revenue per acquisition cohort (weekly/monthly), respects all filters
+- [x] **VA-10**: First-time date cohort average LTV chart — average lifetime value per customer per acquisition cohort (weekly/monthly), respects all filters
 
 ### Filters & UX
 
@@ -267,13 +267,13 @@ Each requirement maps to exactly one roadmap phase.
 | VA-01 | Phase 8 — Visit Attribution Data Model | Pending | 09-03 (gap closure: tx_id text fix) |
 | VA-02 | Phase 8 — Visit Attribution Data Model | Pending | 09-03 (gap closure: is_cash JOIN fix) |
 | VA-03 | Phase 8 — Visit Attribution Data Model | Pending | — |
-| VA-04 | Phase 10 — Charts | Pending | — |
-| VA-05 | Phase 10 — Charts | Pending | — |
+| VA-04 | Phase 10 — Charts | Complete | — |
+| VA-05 | Phase 10 — Charts | Complete | — |
 | VA-06 | Phase 10 — Charts | Pending | — |
-| VA-07 | Phase 10 — Charts | Pending | — |
-| VA-08 | Phase 10 — Charts | Pending | — |
-| VA-09 | Phase 10 — Charts | Pending | — |
-| VA-10 | Phase 10 — Charts | Pending | — |
+| VA-07 | Phase 10 — Charts | Complete | — |
+| VA-08 | Phase 10 — Charts | Complete | — |
+| VA-09 | Phase 10 — Charts | Complete | — |
+| VA-10 | Phase 10 — Charts | Complete | — |
 | VA-11 | Phase 9 — Filter Simplification & Performance | Complete | 09-01, 09-02, 09-03, 09-04, 09-05 |
 | VA-12 | Phase 9 — Filter Simplification & Performance | Complete | 09-01, 09-02, 09-03, 09-04, 09-05 |
 | VA-13 | Phase 9 — Filter Simplification & Performance | Complete | 09-01, 09-02, 09-03, 09-04, 09-05 |

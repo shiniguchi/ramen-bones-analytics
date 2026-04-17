@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Dashboard Simplification & Visit Attribution
 status: executing
-stopped_at: Completed 10-01-PLAN.md — Wave 0 RED scaffolds + seed extension + CF Pages decision
-last_updated: "2026-04-17T09:25:40.733Z"
+stopped_at: Completed 10-03-PLAN.md — customer_ltv_mv + item_counts_daily_mv shipped, refresh DAG 5-step, 8 integration tests green
+last_updated: "2026-04-17T09:32:58.901Z"
 progress:
   total_phases: 10
   completed_phases: 9
   total_plans: 57
-  completed_plans: 50
-  percent: 88
+  completed_plans: 52
+  percent: 91
 ---
 
 # STATE: Ramen Bones Analytics
@@ -29,10 +29,10 @@ progress:
 
 Milestone: v1.2 (Dashboard Simplification & Visit Attribution) — Phase 09 complete (5/5 plans including gap closures), Phase 10 Charts next
 Phase: 10 (charts) — EXECUTING
-Plan: 2 of 8
+Plan: 4 of 8
 
 - **Status:** Ready to execute
-- **Progress:** [█████████░] 88%
+- **Progress:** [█████████░] 91%
 - **v1.0 status:** Shipping to friend (97% plans complete; repo flipped PUBLIC 2026-04-15 with topics + description set; Plan 05-06 Task 2 fork walkthrough deferred out of v1 scope — forkability is explicitly not a v1 concern per user direction)
 
 ## Performance Metrics
@@ -80,6 +80,8 @@ Plan: 2 of 8
 | Phase 09 P04 | 7min | 3 tasks | 3 files |
 | Phase 09-filter-simplification-performance P05 | 4min | 3 tasks | 7 files |
 | Phase 10-charts P01 | 11min | 4 tasks | 12 files |
+| Phase 10-charts P03 | 4min | 2 tasks | 2 files |
+| Phase 10-charts P02 | 4min | 1 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -163,6 +165,9 @@ Plan: 2 of 8
 - [Phase 10-charts]: 10-01: Nyquist RED wave authored — 8 test files (505 lines) covering all Phase 10 requirements VA-04..VA-10; every downstream task (10-02..10-08) has a pre-existing failing test to flip GREEN
 - [Phase 10-charts]: 10-01: CF Pages deploy unblocked (Path A) — workflow 24481554088 added deploy.yml on 2026-04-15; 5 most-recent main-branch deploys all succeeded. Phase branches trigger off main-merge or 'gh workflow run --ref'. No local-preview fallback needed.
 - [Phase 10-charts]: 10-01: Seed-demo-data.sql extended idempotently — 76 tx + 15 cash + 76 order-items under demo-phase10- prefix (guarded-delete compatible); stg_orderbird_order_items uses hashtext(source_tx_id) mod 11 for deterministic item selection; do-block asserts ≥75/15/75/8 thresholds
+- [Phase 10-charts]: 10-02: transactions_filterable_v extended to 8 cols (+visit_seq +card_hash) via DROP+CREATE; LEFT JOIN on visit_attribution_mv reused from 0022. Dual-push to DEV (paafpikebsudoqxwumgm) and TEST (akyugfvsdfrwuzirmylo) projects required — no TEST_DB_URL in .env so used supabase link re-ref.
+- [Phase 10-charts]: 10-03: customer_ltv_mv (4462 rows) + item_counts_daily_mv (4432 rows) shipped with wrapper views, test helpers, full 5-step D-04 refresh DAG. Integration tests 8/10 green (2 it.todo remain). All CI guards pass.
+- [Phase 10-charts]: 10-03: item_counts_daily_mv join key verified: transactions.source_tx_id = stg_orderbird_order_items.invoice_number (normalize.ts:185). is_cash derived from visit_attribution_mv via LEFT JOIN + COALESCE(..., true) matching 0022 pattern.
 
 ### Open Todos
 
@@ -188,8 +193,8 @@ Plan: 2 of 8
 
 **Resume hint:** Milestone v1.1 Dashboard Redesign was scoped in this session. Architecture is a pragmatic star schema: `dim_customer` (lifetime attrs) + `fct_transactions` (atomic fact MV with visit_seq / days_since_prev_visit window fns + denormalized filter dims) + 4 thin day-grain rollup MVs (`mv_new_customers_daily`, `mv_repeater_daily`, `mv_retention_monthly`, `mv_inter_visit_histogram`). Two bucket columns materialized: `lifetime_bucket` (how customer ended up) and `visit_seq_bucket` (point-in-time). Six filters: date range, granularity, sales_type, payment_method, wl_issuing_country, repeater bucket — dropdowns auto-populated from DISTINCT values. All refresh stays inside existing `refresh_analytics_mvs()` cron. Start with Phase 06 (Filter Foundation) for a quick UX win before any schema change.
 
-**Last session:** 2026-04-17T09:25:40.721Z
-**Stopped At:** Completed 10-01-PLAN.md — Wave 0 RED scaffolds + seed extension + CF Pages decision
+**Last session:** 2026-04-17T09:32:58.890Z
+**Stopped At:** Completed 10-03-PLAN.md — customer_ltv_mv + item_counts_daily_mv shipped, refresh DAG 5-step, 8 integration tests green
 
 ---
 *State initialized: 2026-04-13*
