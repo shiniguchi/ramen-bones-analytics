@@ -37,14 +37,14 @@ describe('LtvHistogramCard (VA-07)', () => {
     expect(container.textContent).toContain(copy.body);
   });
 
-  it('renders heading "LTV distribution" when data present', () => {
+  it('renders heading "Customer count by lifetime revenue bucket" when data present', () => {
     const data = [
       { card_hash: 'a', revenue_cents: 500,   visit_count: 1, cohort_week: '2026-03-23', cohort_month: '2026-03-01' },
       { card_hash: 'b', revenue_cents: 3000,  visit_count: 2, cohort_week: '2026-03-23', cohort_month: '2026-03-01' },
       { card_hash: 'c', revenue_cents: 30000, visit_count: 5, cohort_week: '2026-03-23', cohort_month: '2026-03-01' }
     ];
     const { container } = render(LtvHistogramCard, { data });
-    expect(container.textContent).toMatch(/LTV distribution/);
+    expect(container.textContent).toMatch(/Customer count by lifetime revenue bucket/);
     const card = container.querySelector('[data-testid="ltv-histogram-card"]');
     expect(card).toBeInTheDocument();
   });

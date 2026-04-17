@@ -85,7 +85,7 @@
 </script>
 
 <div data-testid="calendar-items-card" class="rounded-xl border border-zinc-200 bg-white p-4">
-  <h2 class="text-base font-semibold text-zinc-900">Items sold</h2>
+  <h2 class="text-base font-semibold text-zinc-900">Items sold per period — top 8 menu items</h2>
   <p class="mt-1 text-xs text-zinc-500">Top 8 menu items per period. Rest grouped as "Other".</p>
   {#if chartData.length === 0}
     <EmptyState card="calendar-items" />

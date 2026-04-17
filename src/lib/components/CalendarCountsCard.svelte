@@ -47,7 +47,7 @@
 </script>
 
 <div data-testid="calendar-counts-card" class="rounded-xl border border-zinc-200 bg-white p-4">
-  <h2 class="text-base font-semibold text-zinc-900">Customers by visit</h2>
+  <h2 class="text-base font-semibold text-zinc-900">Transactions per period — by visit number</h2>
   {#if chartData.length === 0}
     <EmptyState card="calendar-counts" />
   {:else}

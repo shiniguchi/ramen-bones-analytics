@@ -165,11 +165,11 @@
       />
     </div>
 
-    <!-- D-10 card 7: Calendar revenue (VA-04) — self-subscribes to dashboardStore -->
-    <CalendarRevenueCard />
-
-    <!-- D-10 card 8: Calendar counts (VA-05) — self-subscribes to dashboardStore -->
+    <!-- D-10 card 7: Calendar counts (VA-05) — self-subscribes to dashboardStore -->
     <CalendarCountsCard />
+
+    <!-- D-10 card 8: Calendar revenue (VA-04) — self-subscribes to dashboardStore -->
+    <CalendarRevenueCard />
 
     <!-- D-10 card 9: Calendar items (VA-08) — receives window-scoped rows from SSR -->
     <CalendarItemsCard data={data.itemCounts} />

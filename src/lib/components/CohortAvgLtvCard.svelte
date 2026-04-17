@@ -32,7 +32,7 @@
   data-testid="cohort-avg-ltv-card"
   class="rounded-xl border border-zinc-200 bg-white p-4"
 >
-  <h2 class="text-base font-semibold text-zinc-900">Cohort avg LTV</h2>
+  <h2 class="text-base font-semibold text-zinc-900">Average LTV per customer by cohort — new vs. repeat</h2>
   <p class="mt-1 text-xs text-zinc-500">
     Average lifetime value per customer, by acquisition cohort.
   </p>

@@ -37,7 +37,7 @@
   data-testid="cohort-revenue-card"
   class="rounded-xl border border-zinc-200 bg-white p-4"
 >
-  <h2 class="text-base font-semibold text-zinc-900">Cohort total revenue</h2>
+  <h2 class="text-base font-semibold text-zinc-900">Total lifetime revenue by cohort — new vs. repeat</h2>
   <p class="mt-1 text-xs text-zinc-500">
     Lifetime revenue per acquisition cohort.
   </p>

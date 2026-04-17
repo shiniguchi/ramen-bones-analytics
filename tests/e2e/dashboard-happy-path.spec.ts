@@ -40,7 +40,7 @@ async function assertAllCardsHealthy(
   await expect(page.getByTestId('kpi-transactions-7d').or(page.locator('[data-testid^="kpi-transactions"]').first())).toBeVisible();
 
   // Cohort retention card
-  await expect(page.getByRole('heading', { name: /Cohort retention/i })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /Retention rate by acquisition cohort/i })).toBeVisible();
 
   // Cohort card SVG has >= 1 <path>
   const lines = page.locator('[data-testid="cohort-card"] svg path');

@@ -51,14 +51,14 @@ describe('CalendarItemsCard (VA-08)', () => {
     expect(container.textContent).toContain(copy.body);
   });
 
-  it('renders "Items sold" heading when data present', () => {
+  it('renders "Items sold per period" heading when data present', () => {
     seedStore();
     const data = [
       { business_date: '2026-04-13', item_name: 'Tonkotsu Ramen', sales_type: 'INHOUSE', is_cash: false, item_count: 10 },
       { business_date: '2026-04-13', item_name: 'Gyoza',          sales_type: 'INHOUSE', is_cash: false, item_count: 8 }
     ];
     const { container } = render(CalendarItemsCard, { data });
-    expect(container.textContent).toMatch(/Items sold/);
+    expect(container.textContent).toMatch(/Items sold per period/);
     const card = container.querySelector('[data-testid="calendar-items-card"]');
     expect(card).toBeInTheDocument();
   });

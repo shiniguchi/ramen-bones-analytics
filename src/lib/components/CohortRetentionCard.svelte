@@ -116,7 +116,7 @@
 <div data-testid="cohort-card" class="rounded-xl border border-zinc-200 bg-white p-4">
   <!-- Card header -->
   <div class="flex items-center justify-between gap-2">
-    <h2 class="text-base font-semibold text-zinc-900">Cohort retention</h2>
+    <h2 class="text-base font-semibold text-zinc-900">Retention rate by acquisition cohort</h2>
   </div>
 
   {#if showClampHint}

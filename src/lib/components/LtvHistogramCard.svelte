@@ -30,7 +30,7 @@
 </script>
 
 <div data-testid="ltv-histogram-card" class="rounded-xl border border-zinc-200 bg-white p-4">
-  <h2 class="text-base font-semibold text-zinc-900">LTV distribution</h2>
+  <h2 class="text-base font-semibold text-zinc-900">Customer count by lifetime revenue bucket — new vs. repeat</h2>
   <p class="mt-1 text-xs text-zinc-500">Customers per lifetime revenue bucket.</p>
   {#if data.length === 0}
     <EmptyState card="ltv-histogram" />
