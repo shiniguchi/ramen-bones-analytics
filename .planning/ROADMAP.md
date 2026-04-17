@@ -184,7 +184,7 @@ Plans:
   7. All 7 charts render at 375px viewport with touch-friendly tooltips, graceful empty states, and both filters (inhouse/takeaway + cash/card) applied
 **Plans**: 8 plans
 Plans:
-  - [ ] 10-01-PLAN.md — Wave 0 RED test scaffolds + 90-day seed extension + CF Pages unblock decision
+  - [x] 10-01-PLAN.md — Wave 0 RED test scaffolds + 90-day seed extension + CF Pages unblock decision
   - [ ] 10-02-PLAN.md — Migration 0023: extend transactions_filterable_v with visit_seq + card_hash
   - [ ] 10-03-PLAN.md — Migrations 0024/0025: customer_ltv_mv + item_counts_daily_mv + refresh DAG
   - [ ] 10-04-PLAN.md — Client libs: chartPalettes + ltvBins + itemCountsRollup + cohortAgg + dashboardStore ext
@@ -207,7 +207,7 @@ Plans:
 | 7. Column Promotion | v1.1 | 4/4 | Complete | 2026-04-15 |
 | 8. Visit Attribution Data Model | v1.2 | 2/2 | Complete | 2026-04-16 |
 | 9. Filter Simplification & Performance | v1.2 | 5/5 | Complete   | 2026-04-17 |
-| 10. Charts | v1.2 | 0/8 | Not started | - |
+| 10. Charts | v1.2 | 1/8 | In Progress|  |
 
 ## Coverage Summary
 

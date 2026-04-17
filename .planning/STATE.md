@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Dashboard Simplification & Visit Attribution
 status: executing
-stopped_at: Phase 10 context gathered — 7 charts, hybrid data layer (extend filterable_v + 2 new MVs), linear scroll, visit_seq sequential palette + cash segment
-last_updated: "2026-04-17T09:16:50.907Z"
+stopped_at: Completed 10-01-PLAN.md — Wave 0 RED scaffolds + seed extension + CF Pages decision
+last_updated: "2026-04-17T09:25:40.733Z"
 progress:
   total_phases: 10
   completed_phases: 9
   total_plans: 57
-  completed_plans: 49
-  percent: 100
+  completed_plans: 50
+  percent: 88
 ---
 
 # STATE: Ramen Bones Analytics
@@ -29,10 +29,10 @@ progress:
 
 Milestone: v1.2 (Dashboard Simplification & Visit Attribution) — Phase 09 complete (5/5 plans including gap closures), Phase 10 Charts next
 Phase: 10 (charts) — EXECUTING
-Plan: 1 of 8
+Plan: 2 of 8
 
-- **Status:** Executing Phase 10
-- **Progress:** [██████████] 100%
+- **Status:** Ready to execute
+- **Progress:** [█████████░] 88%
 - **v1.0 status:** Shipping to friend (97% plans complete; repo flipped PUBLIC 2026-04-15 with topics + description set; Plan 05-06 Task 2 fork walkthrough deferred out of v1 scope — forkability is explicitly not a v1 concern per user direction)
 
 ## Performance Metrics
@@ -79,6 +79,7 @@ Plan: 1 of 8
 | Phase 09 P03 | 45 min | 5 tasks | 5 files |
 | Phase 09 P04 | 7min | 3 tasks | 3 files |
 | Phase 09-filter-simplification-performance P05 | 4min | 3 tasks | 7 files |
+| Phase 10-charts P01 | 11min | 4 tasks | 12 files |
 
 ## Accumulated Context
 
@@ -159,6 +160,9 @@ Plan: 1 of 8
 - [Phase 09]: 09-04: Reactive filters state pattern — module-private $state + public getFilters() getter + object-spread in setters so downstream $derived re-runs. Collapses the dual-source drift between SSR data.filters (used for labels) and store private state (used for KPI math). Zero child-component changes needed.
 - [Phase 09-filter-simplification-performance]: 09-05: page.url from $app/state is stale after replaceState — window.location.href is the live source. mergeSearchParams(updates): URL helper centralizes URL composition so filter write-paths can't silently drop params.
 - [Phase 09-filter-simplification-performance]: 09-05: getWindow(): RangeWindow getter returns a fresh object every call — identity-change invariant that $derived(getWindow()) in +page.svelte depends on; memoizing would silently break DatePickerPopover subtitle reactivity (locked by test W3).
+- [Phase 10-charts]: 10-01: Nyquist RED wave authored — 8 test files (505 lines) covering all Phase 10 requirements VA-04..VA-10; every downstream task (10-02..10-08) has a pre-existing failing test to flip GREEN
+- [Phase 10-charts]: 10-01: CF Pages deploy unblocked (Path A) — workflow 24481554088 added deploy.yml on 2026-04-15; 5 most-recent main-branch deploys all succeeded. Phase branches trigger off main-merge or 'gh workflow run --ref'. No local-preview fallback needed.
+- [Phase 10-charts]: 10-01: Seed-demo-data.sql extended idempotently — 76 tx + 15 cash + 76 order-items under demo-phase10- prefix (guarded-delete compatible); stg_orderbird_order_items uses hashtext(source_tx_id) mod 11 for deterministic item selection; do-block asserts ≥75/15/75/8 thresholds
 
 ### Open Todos
 
@@ -184,8 +188,8 @@ Plan: 1 of 8
 
 **Resume hint:** Milestone v1.1 Dashboard Redesign was scoped in this session. Architecture is a pragmatic star schema: `dim_customer` (lifetime attrs) + `fct_transactions` (atomic fact MV with visit_seq / days_since_prev_visit window fns + denormalized filter dims) + 4 thin day-grain rollup MVs (`mv_new_customers_daily`, `mv_repeater_daily`, `mv_retention_monthly`, `mv_inter_visit_histogram`). Two bucket columns materialized: `lifetime_bucket` (how customer ended up) and `visit_seq_bucket` (point-in-time). Six filters: date range, granularity, sales_type, payment_method, wl_issuing_country, repeater bucket — dropdowns auto-populated from DISTINCT values. All refresh stays inside existing `refresh_analytics_mvs()` cron. Start with Phase 06 (Filter Foundation) for a quick UX win before any schema change.
 
-**Last session:** 2026-04-17T01:15:34.732Z
-**Stopped At:** Phase 10 context gathered — 7 charts, hybrid data layer (extend filterable_v + 2 new MVs), linear scroll, visit_seq sequential palette + cash segment
+**Last session:** 2026-04-17T09:25:40.721Z
+**Stopped At:** Completed 10-01-PLAN.md — Wave 0 RED scaffolds + seed extension + CF Pages decision
 
 ---
 *State initialized: 2026-04-13*
