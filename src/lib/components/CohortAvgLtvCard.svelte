@@ -49,7 +49,7 @@
   {#if chartData.length === 0}
     <EmptyState card="cohort-avg-ltv" />
   {:else}
-    <div bind:clientWidth={cardW} class="mt-4 h-64 overflow-x-auto">
+    <div bind:clientWidth={cardW} class="mt-4 h-64 overflow-x-auto touch-pan-x overscroll-x-contain">
       <BarChart
         data={chartData}
         x="cohort"
