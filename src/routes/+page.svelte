@@ -7,6 +7,13 @@
   import KpiTile from '$lib/components/KpiTile.svelte';
   import CohortRetentionCard from '$lib/components/CohortRetentionCard.svelte';
   import InsightCard from '$lib/components/InsightCard.svelte';
+  // Phase 10: 6 new chart cards (VA-04..VA-10) inserted in D-10 order below.
+  import CalendarRevenueCard from '$lib/components/CalendarRevenueCard.svelte';
+  import CalendarCountsCard from '$lib/components/CalendarCountsCard.svelte';
+  import CalendarItemsCard from '$lib/components/CalendarItemsCard.svelte';
+  import CohortRevenueCard from '$lib/components/CohortRevenueCard.svelte';
+  import CohortAvgLtvCard from '$lib/components/CohortAvgLtvCard.svelte';
+  import LtvHistogramCard from '$lib/components/LtvHistogramCard.svelte';
   import {
     initStore, getKpiTotals, getFilters, getWindow,
     setRange, setRangeId, setSalesType, setCashFilter,
@@ -122,7 +129,7 @@
       <InsightCard insight={data.latestInsight} />
     {/if}
 
-    <!-- 2 KPI tiles: Revenue + Transactions (D-09, D-10, D-11) -->
+    <!-- D-10 cards 4-5: Revenue + Transactions KPI tiles -->
     <div class="grid grid-cols-2 gap-4">
       <KpiTile
         title="Revenue · {rangeLabel}"
@@ -142,7 +149,25 @@
       />
     </div>
 
-    <!-- Cohort retention — still SSR, no client-side rebucket needed -->
+    <!-- D-10 card 7: Calendar revenue (VA-04) — self-subscribes to dashboardStore -->
+    <CalendarRevenueCard />
+
+    <!-- D-10 card 8: Calendar counts (VA-05) — self-subscribes to dashboardStore -->
+    <CalendarCountsCard />
+
+    <!-- D-10 card 9: Calendar items (VA-08) — receives window-scoped rows from SSR -->
+    <CalendarItemsCard data={data.itemCounts} />
+
+    <!-- D-10 card 10: Cohort retention (VA-06 — existing, unchanged) -->
     <CohortRetentionCard data={data.retention} />
+
+    <!-- D-10 card 11: Cohort total revenue (VA-09) — lifetime, no range scoping -->
+    <CohortRevenueCard data={data.customerLtv} />
+
+    <!-- D-10 card 12: Cohort avg LTV (VA-10) — lifetime, no range scoping -->
+    <CohortAvgLtvCard data={data.customerLtv} />
+
+    <!-- D-10 card 13: LTV histogram (VA-07) — retrospective, placed last -->
+    <LtvHistogramCard data={data.customerLtv} />
   </div>
 </main>
