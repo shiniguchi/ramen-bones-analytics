@@ -1,65 +1,61 @@
 <script lang="ts">
-  // Phase 6 — sticky top filter bar (≤72px budget).
-  // Hosts DatePickerPopover (instant), GrainToggle (instant), and the
-  // "Filters" button that opens a draft-and-apply FilterSheet.
-  import Button from '$lib/components/ui/button.svelte';
+  // Phase 9 — 2-row sticky filter bar with inline toggles.
+  // Row 1: DatePickerPopover. Row 2: Grain + Sales Type + Cash/Card toggles.
+  // No FilterSheet, no multi-selects, no "Filters" button.
   import GrainToggle from './GrainToggle.svelte';
+  import SegmentedToggle from './SegmentedToggle.svelte';
   import DatePickerPopover from './DatePickerPopover.svelte';
-  import FilterSheet from './FilterSheet.svelte';
-  import { cn } from '$lib/utils';
   import type { FiltersState } from '$lib/filters';
   import type { RangeWindow, Grain } from '$lib/dateRange';
 
   interface Props {
     filters: FiltersState;
     window: RangeWindow;
-    distinctSalesTypes: string[];
-    distinctPaymentMethods: string[];
+    onrangechange: (range: string) => void;
+    onsalestypechange: (v: string) => void;
+    oncashfilterchange: (v: string) => void;
   }
 
-  let { filters, window: rangeWindow, distinctSalesTypes, distinctPaymentMethods }: Props = $props();
+  let { filters, window: rangeWindow, onrangechange, onsalestypechange, oncashfilterchange }: Props = $props();
 
-  let sheetOpen = $state(false);
+  const salesTypeOptions = [
+    { value: 'all', label: 'All' },
+    { value: 'INHOUSE', label: 'Inhouse' },
+    { value: 'TAKEAWAY', label: 'Takeaway' }
+  ];
 
-  const showFiltersButton = $derived(
-    distinctSalesTypes.length > 0 || distinctPaymentMethods.length > 0
-  );
-  const filtersActive = $derived(
-    filters.sales_type !== undefined || filters.payment_method !== undefined
-  );
+  const cashOptions = [
+    { value: 'all', label: 'All' },
+    { value: 'cash', label: 'Cash' },
+    { value: 'card', label: 'Card' }
+  ];
 </script>
 
-<div
-  class="sticky top-0 z-30 min-h-[72px] border-b bg-background/95 px-4 py-2 backdrop-blur"
-  data-slot="filter-bar"
->
-  <div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-    <div class="flex items-center gap-2">
-      <DatePickerPopover {filters} window={rangeWindow} />
-      {#if showFiltersButton}
-        <Button
-          variant="outline"
-          class={cn(
-            'min-h-11',
-            filtersActive && 'border-primary/60 bg-primary/5'
-          )}
-          onclick={() => (sheetOpen = true)}
-          aria-haspopup="dialog"
-          aria-expanded={sheetOpen}
-        >
-          Filters
-        </Button>
-      {/if}
-    </div>
+<div class="sticky top-0 z-30 border-b bg-background/95 px-4 py-2 backdrop-blur"
+     data-slot="filter-bar">
+  <!-- Row 1: Date picker -->
+  <div class="mb-2">
+    <DatePickerPopover {filters} window={rangeWindow} {onrangechange} />
+  </div>
+  <!-- Row 2: Grain + Sales Type + Cash/Card, horizontal scroll -->
+  <div class="flex items-center gap-2 overflow-x-auto"
+       style="scrollbar-width: none; -webkit-overflow-scrolling: touch;">
     <GrainToggle grain={filters.grain as Grain} />
+    <!-- Separator -->
+    <div class="h-6 w-px shrink-0 bg-zinc-200" aria-hidden="true"></div>
+    <SegmentedToggle
+      options={salesTypeOptions}
+      selected={filters.sales_type ?? 'all'}
+      onchange={onsalestypechange}
+      label="Sales type"
+    />
+    <!-- Separator -->
+    <div class="h-6 w-px shrink-0 bg-zinc-200" aria-hidden="true"></div>
+    <SegmentedToggle
+      options={cashOptions}
+      selected={filters.is_cash ?? 'all'}
+      onchange={oncashfilterchange}
+      label="Payment type"
+    />
   </div>
 </div>
-
-{#if showFiltersButton}
-  <FilterSheet
-    bind:open={sheetOpen}
-    {filters}
-    {distinctSalesTypes}
-    {distinctPaymentMethods}
-  />
-{/if}

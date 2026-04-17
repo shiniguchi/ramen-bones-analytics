@@ -19,7 +19,7 @@ describe('toStagingRows + toTransactions (ING-01, ING-03)', () => {
     const rows = parseCsv(fixtureText);
     const staging = toStagingRows(rows, RID, SOURCE);
     expect(staging.length).toBe(rows.length);
-    expect(staging.length).toBe(24);
+    expect(staging.length).toBe(30);
   });
 
   it('T-3 split-bill: 3 staging rows with row_index 1,2,3 (no PK collision)', () => {
@@ -117,6 +117,83 @@ describe('toStagingRows + toTransactions (ING-01, ING-03)', () => {
     const t11 = tx.find((t: any) => t.invoice_number === 'T-11');
     expect(t11).toBeDefined();
     expect(t11!.net_cents).toBe(1402 + 935 + 1681);
+  });
+
+  describe('canonicalizeCardType (Wave 2 — DM-03, D-04)', () => {
+    it('maps Worldline card types + POS fallback to canonical buckets', async () => {
+      const { canonicalizeCardType } = await import(
+        '../../scripts/ingest/normalize'
+      );
+      // Canonical network mappings (single-arg raw form)
+      expect(canonicalizeCardType('Visa')).toBe('visa');
+      expect(canonicalizeCardType('VISA')).toBe('visa');
+      expect(canonicalizeCardType('MasterCard')).toBe('mastercard');
+      expect(canonicalizeCardType('mc')).toBe('mastercard');
+      expect(canonicalizeCardType('Master Card')).toBe('mastercard');
+      expect(canonicalizeCardType('girocard')).toBe('girocard');
+      expect(canonicalizeCardType('EC')).toBe('girocard');
+      expect(canonicalizeCardType('american express')).toBe('amex');
+      expect(canonicalizeCardType('Maestro')).toBe('maestro');
+      // Empty / null → unknown
+      expect(canonicalizeCardType('')).toBe('unknown');
+      expect(canonicalizeCardType(null)).toBe('unknown');
+      // Bare Debit/Credit funding flags → unknown (they are not networks)
+      expect(canonicalizeCardType('Debit')).toBe('unknown');
+      expect(canonicalizeCardType('Credit')).toBe('unknown');
+      // Long-tail → other
+      expect(canonicalizeCardType('Diners')).toBe('other');
+    });
+
+    it('matches every entry in canonical-card-types.json (TS↔SQL identity)', async () => {
+      const { canonicalizeCardType } = await import(
+        '../../scripts/ingest/normalize'
+      );
+      const fixturePath = resolve(
+        __dirname,
+        'fixtures/canonical-card-types.json',
+      );
+      const entries = JSON.parse(readFileSync(fixturePath, 'utf-8')) as Array<{
+        input: string | null;
+        expected: string;
+      }>;
+      for (const { input, expected } of entries) {
+        expect(canonicalizeCardType(input)).toBe(expected);
+      }
+    });
+
+    it('T-FALLBACK invoice: wl_* empty + POS card_type=Visa → card_type=visa', () => {
+      // Reducer path proof: the T-FALLBACK fixture row has wl_payment_type='',
+      // wl_card_type='', card_type='Visa'. The loader must fall through to the
+      // POS entry and produce canonical 'visa'.
+      const rows = parseCsv(fixtureText);
+      const staging = toStagingRows(rows, RID, SOURCE);
+      const tx = toTransactions(staging, RID);
+      const tFallback = tx.find(
+        (t: any) => t.invoice_number === 'T-FALLBACK',
+      );
+      expect(tFallback).toBeDefined();
+      expect((tFallback as any).card_type).toBe('visa');
+    });
+
+    it('T-UNK cash invoice: wl_* + POS empty → card_type=unknown, country=null', () => {
+      const rows = parseCsv(fixtureText);
+      const staging = toStagingRows(rows, RID, SOURCE);
+      const tx = toTransactions(staging, RID);
+      const tUnk = tx.find((t: any) => t.invoice_number === 'T-UNK');
+      expect(tUnk).toBeDefined();
+      expect((tUnk as any).card_type).toBe('unknown');
+      expect((tUnk as any).wl_issuing_country).toBeNull();
+    });
+
+    it('T-MC invoice: wl_payment_type=MasterCard + country AT → card_type=mastercard, country=AT', () => {
+      const rows = parseCsv(fixtureText);
+      const staging = toStagingRows(rows, RID, SOURCE);
+      const tx = toTransactions(staging, RID);
+      const tMc = tx.find((t: any) => t.invoice_number === 'T-MC');
+      expect(tMc).toBeDefined();
+      expect((tMc as any).card_type).toBe('mastercard');
+      expect((tMc as any).wl_issuing_country).toBe('AT');
+    });
   });
 
   it('T-6 missing wl_card_number → staging row exists but tx.card_hash is NULL', () => {

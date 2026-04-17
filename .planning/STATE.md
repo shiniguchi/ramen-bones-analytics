@@ -1,16 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.1
-milestone_name: — Dashboard Redesign
-status: planning
-stopped_at: Completed 06-05-PLAN.md (Task 2 deferred, blocked on CF Pages deploy)
-last_updated: "2026-04-15T22:49:51.737Z"
+milestone: v1.2
+milestone_name: Dashboard Simplification & Visit Attribution
+status: completed
+stopped_at: Completed 09-04-PLAN.md (Phase 09 complete — 4/4 plans; Tests 7/9 expected to flip at next UAT run)
+last_updated: "2026-04-16T23:32:15.997Z"
 progress:
-  total_phases: 12
-  completed_phases: 6
-  total_plans: 38
-  completed_plans: 38
-  percent: 95
+  total_phases: 7
+  completed_phases: 7
+  total_plans: 42
+  completed_plans: 42
+  percent: 100
 ---
 
 # STATE: Ramen Bones Analytics
@@ -20,19 +20,19 @@ progress:
 ## Project Reference
 
 - **Core Value:** A restaurant owner opens the site on their phone and makes a real business decision from the numbers they see.
-- **Current Focus:** Phase 05 — insights-forkability
+- **Current Focus:** Phase 09 — filter-simplification-performance
 - **Timeline:** Slow and deliberate — understand data first, ship one layer at a time
 - **Granularity:** standard
 - **Tenants in v1:** 1 (architecture multi-tenant-ready)
 
 ## Current Position
 
-Milestone: v1.1 (Dashboard Redesign) — DEFINING REQUIREMENTS → ready to start Phase 06
-Phase: 06
+Milestone: v1.2 (Dashboard Simplification & Visit Attribution) — Phase 09 complete (4/4), Phase 10 Charts next
+Phase: 09
 Plan: Not started
 
-- **Status:** Ready to plan
-- **Progress:** [██████████] 95%
+- **Status:** Milestone complete
+- **Progress:** [██████████] 100%
 - **v1.0 status:** Shipping to friend (97% plans complete; repo flipped PUBLIC 2026-04-15 with topics + description set; Plan 05-06 Task 2 fork walkthrough deferred out of v1 scope — forkability is explicitly not a v1 concern per user direction)
 
 ## Performance Metrics
@@ -74,6 +74,10 @@ Plan: Not started
 | Phase 06-filter-foundation P03 | 18min | 2 tasks | 3 files |
 | Phase 06 P04 | 9min | 2 tasks | 8 files |
 | Phase 06-filter-foundation P05 | 4min | 1 tasks | 4 files |
+| Phase 09-filter-simplification-performance P01 | 6min | 2 tasks | 6 files |
+| Phase 09 P02 | 8min | 2 tasks | 12 files |
+| Phase 09 P03 | 45 min | 5 tasks | 5 files |
+| Phase 09 P04 | 7min | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -144,6 +148,14 @@ Plan: Not started
 - [Phase 06]: 06-01: zod filter schema + parseFilters + customToRange + Guard 6 shipped; tests live in tests/unit/ (not src/lib/) to match project runner scope; Guard 6 wired into existing single-file scripts/ci-guards.sh runner
 - [Phase 06-filter-foundation]: 06-03: transactions_filterable_v wrapper view (JWT-scoped); loader refactored to parseFilters(url) as sole URL->state converter; chip-scoped tiles honor sales_type+payment_method via .in(); distinct option arrays loaded unfiltered (D-14); fixed reference tiles stay unscoped per UI-SPEC; 6 integration tests via hand-rolled chainable supabase mock
 - [Phase 06-filter-foundation]: 06-05: Task 2 (375px human UAT) deferred — CF Pages deploy pipeline broken (~27 commits stale behind a3623b9); UAT script persisted in 06-HUMAN-UAT.md status=blocked; Phase 6 code green locally but not yet live on DEV
+- [Phase 09]: Svelte 5 forbids exporting $derived from .svelte.ts modules; dashboardStore uses getter functions as public API
+- [Phase 09]: COALESCE(va.is_cash, true) treats unattributed rows as cash; payment_method kept in SQL view for backward compat
+- [Phase 09]: SSR returns raw dailyRows instead of pre-aggregated kpi object — 12+ queries reduced to 4
+- [Phase 09]: All filter controls use replaceState (no SSR round-trip) for <200ms client response
+- [Phase 09]: FilterSheet + MultiSelectDropdown deleted, replaced by inline SegmentedToggles in FilterBar
+- [Phase 09]: 09-03 gap-closure: 0020/0022 t.id -> source_tx_id, tx_id text (transactions PK is composite, no surrogate id) — Migration 0003 established (restaurant_id, source_tx_id text) as the composite PK; Phase 8 D-04 incorrectly specified tx_id uuid. Fixed in place (migrations unpushed, history stays clean).
+- [Phase 09]: 09-03: 0021 rewritten as DROP VIEW IF EXISTS + CREATE VIEW — Postgres forbids column removal via CREATE OR REPLACE VIEW (SQLSTATE 42P16) — Surfaced during TEST verification. Rule 3 deviation. Pattern: view column-shape changes require DROP + CREATE, not CREATE OR REPLACE.
+- [Phase 09]: 09-04: Reactive filters state pattern — module-private $state + public getFilters() getter + object-spread in setters so downstream $derived re-runs. Collapses the dual-source drift between SSR data.filters (used for labels) and store private state (used for KPI math). Zero child-component changes needed.
 
 ### Open Todos
 
@@ -155,6 +167,12 @@ Plan: Not started
 
 - CF Pages deploy pipeline broken since a3623b9 — blocks Phase 6 visual UAT at 375px on DEV
 
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 260417-29v | Apply security headers to SSR responses in hooks.server.ts | 2026-04-16 | 11e85b9 | [260417-29v-apply-security-headers-to-ssr-responses-](./quick/260417-29v-apply-security-headers-to-ssr-responses-/) |
+
 ## Session Continuity
 
 **Next command:** `/gsd:discuss-phase 06` to gather context for the Filter Foundation phase (custom date range + granularity toggle + 4 dropdown filters wired to existing views)
@@ -163,8 +181,8 @@ Plan: Not started
 
 **Resume hint:** Milestone v1.1 Dashboard Redesign was scoped in this session. Architecture is a pragmatic star schema: `dim_customer` (lifetime attrs) + `fct_transactions` (atomic fact MV with visit_seq / days_since_prev_visit window fns + denormalized filter dims) + 4 thin day-grain rollup MVs (`mv_new_customers_daily`, `mv_repeater_daily`, `mv_retention_monthly`, `mv_inter_visit_histogram`). Two bucket columns materialized: `lifetime_bucket` (how customer ended up) and `visit_seq_bucket` (point-in-time). Six filters: date range, granularity, sales_type, payment_method, wl_issuing_country, repeater bucket — dropdowns auto-populated from DISTINCT values. All refresh stays inside existing `refresh_analytics_mvs()` cron. Start with Phase 06 (Filter Foundation) for a quick UX win before any schema change.
 
-**Last session:** 2026-04-15T19:37:00.736Z
-**Stopped At:** Completed 06-05-PLAN.md (Task 2 deferred, blocked on CF Pages deploy)
+**Last session:** 2026-04-16T23:10:22.029Z
+**Stopped At:** Completed quick task 260417-29v (SSR security headers applied to hooks.server.ts — 5 headers verified via curl). Phase 09 complete (4/4 plans). Ready to ship v1.2 partial to main.
 
 ---
 *State initialized: 2026-04-13*

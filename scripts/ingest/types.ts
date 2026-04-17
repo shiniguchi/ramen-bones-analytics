@@ -53,6 +53,12 @@ export interface TxRow {
   tip_cents: number;
   payment_method: string;
   sales_type: string;
+  // Phase 07 DM-01/DM-03: promoted from stg_orderbird_order_items.
+  // wl_issuing_country is ISO-3166-1 alpha-2 (char(2)) or NULL for cash/blackout.
+  // card_type is canonical {visa,mastercard,amex,maestro,girocard,other,unknown};
+  // never NULL — loader writes 'unknown' as the floor value.
+  wl_issuing_country: string | null;
+  card_type: string;
   // Not a DB column; kept on the row for test assertions and log grouping.
   invoice_number: string;
 }

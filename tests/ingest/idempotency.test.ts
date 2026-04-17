@@ -95,4 +95,66 @@ describe('runIngest idempotency (ING-02, ING-05)', () => {
       expect(txAfter).toBe(txBefore);
     },
   );
+
+  // 07-03: loader writes wl_issuing_country + card_type on every ingest (DM-03).
+  // Migration 0019 has been applied to TEST project per 07-02 SUMMARY.
+  (HAS_TEST_ENV ? it : it.skip)(
+    'two sequential runs leave wl_issuing_country + card_type unchanged on re-ingested rows',
+    async () => {
+      const db = adminClient();
+
+      // First run (may already have been run by previous test).
+      await runIngest({ dryRun: false });
+
+      // Snapshot T-VISA before the second run — a canonical card-txn fixture
+      // row with wl_payment_type=Visa, wl_issuing_country=DE.
+      const { data: before } = await db
+        .from('transactions')
+        .select('source_tx_id, wl_issuing_country, card_type')
+        .eq('restaurant_id', restaurantId)
+        .eq('source_tx_id', 'T-VISA')
+        .single();
+
+      expect(before?.wl_issuing_country).toBe('DE');
+      expect(before?.card_type).toBe('visa');
+
+      // Second run must be zero-diff on new rows; re-upserted rows are
+      // reported as updated (supabase has no insert-vs-update signal, so we
+      // only pin transactions_new=0 here).
+      const second = await runIngest({ dryRun: false });
+      expect(second.transactions_new).toBe(0);
+
+      const { data: after } = await db
+        .from('transactions')
+        .select('source_tx_id, wl_issuing_country, card_type')
+        .eq('restaurant_id', restaurantId)
+        .eq('source_tx_id', 'T-VISA')
+        .single();
+
+      expect(after?.wl_issuing_country).toBe(before?.wl_issuing_country);
+      expect(after?.card_type).toBe(before?.card_type);
+
+      // T-FALLBACK: POS fallback path. wl_payment_type='', wl_card_type='',
+      // POS card_type='Visa' → canonical 'visa'. wl_issuing_country='NL'.
+      const { data: fallback } = await db
+        .from('transactions')
+        .select('wl_issuing_country, card_type')
+        .eq('restaurant_id', restaurantId)
+        .eq('source_tx_id', 'T-FALLBACK')
+        .single();
+      expect(fallback?.card_type).toBe('visa');
+      expect(fallback?.wl_issuing_country).toBe('NL');
+
+      // T-UNK: cash invoice, all wl_* + POS empty → card_type='unknown',
+      // wl_issuing_country=NULL (D-06 honest NULL).
+      const { data: unk } = await db
+        .from('transactions')
+        .select('wl_issuing_country, card_type')
+        .eq('restaurant_id', restaurantId)
+        .eq('source_tx_id', 'T-UNK')
+        .single();
+      expect(unk?.card_type).toBe('unknown');
+      expect(unk?.wl_issuing_country).toBeNull();
+    },
+  );
 });

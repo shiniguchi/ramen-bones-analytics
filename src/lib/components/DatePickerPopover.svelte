@@ -1,8 +1,9 @@
 <script lang="ts">
-  // Phase 6 — two-line date picker button + anchored popover.
+  // Phase 9 — two-line date picker button + anchored popover.
   // Presets are instant-apply (sticky-bar UX contract); custom range is
   // draft-and-apply via the "Apply range" button.
-  import { goto } from '$app/navigation';
+  // D-06: replaceState instead of goto — no SSR round-trip.
+  import { replaceState } from '$app/navigation';
   import { page } from '$app/state';
   import { format, parseISO } from 'date-fns';
   import Popover from '$lib/components/ui/popover.svelte';
@@ -15,9 +16,10 @@
   interface Props {
     filters: FiltersState;
     window: RangeWindow;
+    onrangechange: (range: string) => void;
   }
 
-  let { filters, window: rangeWindow }: Props = $props();
+  let { filters, window: rangeWindow, onrangechange }: Props = $props();
 
   let open = $state(false);
   let fromDraft = $state('');
@@ -31,7 +33,7 @@
     }
   });
 
-  // Preset labels in order. 'All' is the sentinel; displayed as "All".
+  // Preset labels in order.
   const PRESETS: { id: 'today' | '7d' | '30d' | '90d' | 'all'; label: string }[] = [
     { id: 'today', label: 'Today' },
     { id: '7d', label: '7d' },
@@ -62,27 +64,25 @@
   // Non-default active state: any range that isn't the default '7d'.
   const active = $derived(filters.range !== '7d');
 
-  // URL builder: patch current search params with new values.
-  function buildUrl(patch: Record<string, string | null>): string {
-    const u = new URL(page.url);
-    for (const [k, v] of Object.entries(patch)) {
-      if (v === null) u.searchParams.delete(k);
-      else u.searchParams.set(k, v);
-    }
-    return u.pathname + (u.search ? u.search : '');
-  }
-
   function applyPreset(id: 'today' | '7d' | '30d' | '90d' | 'all') {
-    const href = buildUrl({ range: id, from: null, to: null });
+    const url = new URL(page.url);
+    url.searchParams.set('range', id);
+    url.searchParams.delete('from');
+    url.searchParams.delete('to');
+    replaceState(url, {});
     open = false;
-    goto(href, { invalidateAll: true, keepFocus: true, noScroll: true });
+    onrangechange(id);
   }
 
   function applyCustom() {
     if (!fromDraft || !toDraft) return;
-    const href = buildUrl({ range: 'custom', from: fromDraft, to: toDraft });
+    const url = new URL(page.url);
+    url.searchParams.set('range', 'custom');
+    url.searchParams.set('from', fromDraft);
+    url.searchParams.set('to', toDraft);
+    replaceState(url, {});
     open = false;
-    goto(href, { invalidateAll: true, keepFocus: true, noScroll: true });
+    onrangechange('custom');
   }
 </script>
 
