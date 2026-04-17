@@ -10,7 +10,7 @@
   import EmptyState from './EmptyState.svelte';
   import { ITEM_COLORS, OTHER_COLOR } from '$lib/chartPalettes';
   import { rollupTopNWithOther } from '$lib/itemCountsRollup';
-  import { bucketKey, getFilters, formatBucketLabel } from '$lib/dashboardStore.svelte';
+  import { bucketKey, getFilters, formatBucketLabel, computeChartWidth, MAX_X_TICKS } from '$lib/dashboardStore.svelte';
 
   type ItemCountRow = {
     business_date: string;
@@ -79,6 +79,9 @@
       color: name === 'Other' ? OTHER_COLOR : ITEM_COLORS[i % ITEM_COLORS.length]
     }))
   );
+
+  let cardW = $state(0);
+  const chartW = $derived(computeChartWidth(chartData.length, cardW));
 </script>
 
 <div data-testid="calendar-items-card" class="rounded-xl border border-zinc-200 bg-white p-4">
@@ -87,7 +90,7 @@
   {#if chartData.length === 0}
     <EmptyState card="calendar-items" />
   {:else}
-    <div class="mt-4 h-64">
+    <div bind:clientWidth={cardW} class="mt-4 h-64 overflow-x-auto">
       <BarChart
         data={chartData}
         x="bucket"
@@ -95,6 +98,8 @@
         seriesLayout="stack"
         orientation="vertical"
         bandPadding={0.2}
+        width={chartW}
+        props={{ xAxis: { ticks: MAX_X_TICKS } }}
       />
     </div>
   {/if}

@@ -53,6 +53,36 @@ export function formatBucketLabel(bucket: string, grain: 'day' | 'week' | 'month
   return grain === 'month' ? format(parseISO(bucket + '-01'), 'MMM') : format(parseISO(bucket), 'MMM d');
 }
 
+/** Min per-bar slot width — keeps bars tappable on mobile. Bar ≈ slot × (1 - bandPadding). */
+export const MIN_BAR_SLOT_PX = 28;
+/** Reserved for y-axis + right margin inside the chart. */
+export const CHART_AXIS_PAD_PX = 48;
+/** Target number of x-axis tick labels — d3 thins scaleBand domain evenly to this count. */
+export const MAX_X_TICKS = 8;
+
+/** Decide whether a bar chart with `barCount` bars needs explicit width + horizontal scroll,
+ *  given the container's inner width. Returns undefined when the chart should stay responsive
+ *  (bars fit comfortably), otherwise returns the total pixel width to force — caller wraps
+ *  the chart in an overflow-x-auto div and passes `width={result}` to the chart.
+ *
+ *  @param barCount     — number of bars / buckets the chart will render
+ *  @param containerPx  — clientWidth of the card's chart wrapper (use bind:clientWidth)
+ *  @param minSlotPx    — override min per-bar slot (default MIN_BAR_SLOT_PX)
+ *  @param axisPad      — override y-axis + right margin reservation (default CHART_AXIS_PAD_PX)
+ */
+export function computeChartWidth(
+  barCount: number,
+  containerPx: number,
+  minSlotPx: number = MIN_BAR_SLOT_PX,
+  axisPad: number = CHART_AXIS_PAD_PX
+): number | undefined {
+  if (containerPx <= 0 || barCount <= 0) return undefined;
+  const plotAreaPx = Math.max(0, containerPx - axisPad);
+  const requiredPlotPx = barCount * minSlotPx;
+  if (requiredPlotPx <= plotAreaPx) return undefined; // fits, let Chart auto-size
+  return requiredPlotPx + axisPad;
+}
+
 /** Filter rows by sales_type, cash/card, and date window. */
 export function filterRows(
   rows: DailyRow[],
