@@ -191,7 +191,7 @@ Plans:
   - [x] 10-05-PLAN.md — Calendar charts: VA-04 CalendarRevenueCard + VA-05 CalendarCountsCard + VisitSeqLegend
   - [x] 10-06-PLAN.md — VA-07 LtvHistogramCard + VA-08 CalendarItemsCard with top-8+Other rollup
   - [x] 10-07-PLAN.md — VA-09 CohortRevenueCard + VA-10 CohortAvgLtvCard + VA-06 D-17 hint
-  - [ ] 10-08-PLAN.md — SSR fan-out + +page.svelte composition in D-10 order + LazyMount measurement checkpoint
+  - [x] 10-08-PLAN.md — SSR fan-out + +page.svelte composition in D-10 order + LazyMount measurement checkpoint
 **UI hint**: yes
 
 ## Progress

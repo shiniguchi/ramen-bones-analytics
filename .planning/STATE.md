@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Dashboard Simplification & Visit Attribution
-status: executing
-stopped_at: Completed 10-05-PLAN.md — VisitSeqLegend + CalendarRevenueCard (VA-04) + CalendarCountsCard (VA-05) shipped; 157 unit tests pass (+28); build+guards green; Plan 10-07 deferred-item resolved
-last_updated: "2026-04-17T09:48:59.521Z"
+status: verifying
+stopped_at: Completed 10-08-PLAN.md — 6-query SSR fan-out + 12-card D-10 composition + Path C eager-mount; 11/12 E2E charts-all pass (1 deferred selector); Phase 10 complete
+last_updated: "2026-04-17T09:59:26.086Z"
 progress:
   total_phases: 10
-  completed_phases: 9
+  completed_phases: 10
   total_plans: 57
-  completed_plans: 56
-  percent: 98
+  completed_plans: 57
+  percent: 100
 ---
 
 # STATE: Ramen Bones Analytics
@@ -31,8 +31,8 @@ Milestone: v1.2 (Dashboard Simplification & Visit Attribution) — Phase 09 comp
 Phase: 10 (charts) — EXECUTING
 Plan: 8 of 8
 
-- **Status:** Ready to execute
-- **Progress:** [██████████] 98%
+- **Status:** Phase complete — ready for verification
+- **Progress:** [██████████] 100%
 - **v1.0 status:** Shipping to friend (97% plans complete; repo flipped PUBLIC 2026-04-15 with topics + description set; Plan 05-06 Task 2 fork walkthrough deferred out of v1 scope — forkability is explicitly not a v1 concern per user direction)
 
 ## Performance Metrics
@@ -86,6 +86,7 @@ Plan: 8 of 8
 | Phase 10-charts P06 | 4min | 2 tasks | 4 files |
 | Phase 10-charts P07 | 4min | 2 tasks | 5 files |
 | Phase 10-charts P05 | 6min | 2 tasks | 6 files |
+| Phase 10-charts P08 | 7min | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -181,6 +182,9 @@ Plan: 8 of 8
 - [Phase 10-charts]: 10-05: cards self-subscribe to dashboardStore via getter calls in $derived.by() — no prop-drilling from +page.svelte; same pattern as KpiTile
 - [Phase 10-charts]: 10-05: LayerChart high-level <BarChart seriesLayout='stack'> handles stack math/scales/tooltip internally — hand-rolled <Rect>/<Bars> forbidden per RESEARCH anti-patterns
 - [Phase 10-charts]: 10-05: JSDOM normalizes inline-style hex to rgb on set; swatch tests assert computed style + palette constant separately so regression in either layer shows up
+- [Phase 10-charts]: 10-08: Path C eager-mount — Lighthouse crashed on Mac Silicon/x64 Node mismatch + branch not deployed to CF Pages; fell through to eager-mount per plan's hard-stop clause. No LazyMount.svelte shipped.
+- [Phase 10-charts]: 10-08: customer_ltv_v NOT range-filtered at SSR — LTV is lifetime; filter-scoping would hide customers outside chip window, breaking VA-07/09/10 semantics. item_counts_daily_v IS window-scoped per D-21 payload budget.
+- [Phase 10-charts]: 10-08: SSR fan-out grows 4→6 queries with per-card try/catch + empty fallback; Promise.all preserves Phase 4 D-22 per-card error isolation across all new queries.
 
 ### Open Todos
 
@@ -206,8 +210,8 @@ Plan: 8 of 8
 
 **Resume hint:** Milestone v1.1 Dashboard Redesign was scoped in this session. Architecture is a pragmatic star schema: `dim_customer` (lifetime attrs) + `fct_transactions` (atomic fact MV with visit_seq / days_since_prev_visit window fns + denormalized filter dims) + 4 thin day-grain rollup MVs (`mv_new_customers_daily`, `mv_repeater_daily`, `mv_retention_monthly`, `mv_inter_visit_histogram`). Two bucket columns materialized: `lifetime_bucket` (how customer ended up) and `visit_seq_bucket` (point-in-time). Six filters: date range, granularity, sales_type, payment_method, wl_issuing_country, repeater bucket — dropdowns auto-populated from DISTINCT values. All refresh stays inside existing `refresh_analytics_mvs()` cron. Start with Phase 06 (Filter Foundation) for a quick UX win before any schema change.
 
-**Last session:** 2026-04-17T09:48:59.508Z
-**Stopped At:** Completed 10-05-PLAN.md — VisitSeqLegend + CalendarRevenueCard (VA-04) + CalendarCountsCard (VA-05) shipped; 157 unit tests pass (+28); build+guards green; Plan 10-07 deferred-item resolved
+**Last session:** 2026-04-17T09:59:26.075Z
+**Stopped At:** Completed 10-08-PLAN.md — 6-query SSR fan-out + 12-card D-10 composition + Path C eager-mount; 11/12 E2E charts-all pass (1 deferred selector); Phase 10 complete
 
 ---
 *State initialized: 2026-04-13*
