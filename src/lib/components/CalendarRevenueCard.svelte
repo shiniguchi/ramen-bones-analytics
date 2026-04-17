@@ -70,6 +70,7 @@
         bandPadding={0.2}
         width={chartW}
         props={{ xAxis: { ticks: MAX_X_TICKS } }}
+        tooltipContext={{ touchEvents: 'pan-x' }}
       />
     </div>
     <VisitSeqLegend {showCash} />
