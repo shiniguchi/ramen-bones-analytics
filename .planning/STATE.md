@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Dashboard Simplification & Visit Attribution
-status: in-progress
-stopped_at: "Phase 09 complete (5/5 plans). Phase 10 Charts next — starting discuss-phase."
-last_updated: "2026-04-17T00:46:06.966Z"
+status: completed
+stopped_at: Phase 10 context gathered — 7 charts, hybrid data layer (extend filterable_v + 2 new MVs), linear scroll, visit_seq sequential palette + cash segment
+last_updated: "2026-04-17T01:15:34.751Z"
 progress:
-  total_phases: 3
-  completed_phases: 2
-  total_plans: 42
-  completed_plans: 42
-  percent: 67
+  total_phases: 10
+  completed_phases: 9
+  total_plans: 49
+  completed_plans: 49
+  percent: 100
 ---
 
 # STATE: Ramen Bones Analytics
@@ -184,8 +184,8 @@ Plan: Not started
 
 **Resume hint:** Milestone v1.1 Dashboard Redesign was scoped in this session. Architecture is a pragmatic star schema: `dim_customer` (lifetime attrs) + `fct_transactions` (atomic fact MV with visit_seq / days_since_prev_visit window fns + denormalized filter dims) + 4 thin day-grain rollup MVs (`mv_new_customers_daily`, `mv_repeater_daily`, `mv_retention_monthly`, `mv_inter_visit_histogram`). Two bucket columns materialized: `lifetime_bucket` (how customer ended up) and `visit_seq_bucket` (point-in-time). Six filters: date range, granularity, sales_type, payment_method, wl_issuing_country, repeater bucket — dropdowns auto-populated from DISTINCT values. All refresh stays inside existing `refresh_analytics_mvs()` cron. Start with Phase 06 (Filter Foundation) for a quick UX win before any schema change.
 
-**Last session:** 2026-04-17T00:35:48.194Z
-**Stopped At:** 09-05 code complete (3 commits: 3ea3d11 RED, c369ae6 GREEN, 75b48fc fix). Human UAT pending on DEV/prod per plan Task 3.
+**Last session:** 2026-04-17T01:15:34.732Z
+**Stopped At:** Phase 10 context gathered — 7 charts, hybrid data layer (extend filterable_v + 2 new MVs), linear scroll, visit_seq sequential palette + cash segment
 
 ---
 *State initialized: 2026-04-13*
