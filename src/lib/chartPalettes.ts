@@ -19,3 +19,14 @@ export const ITEM_COLORS: readonly string[] = schemeTableau10.slice(0, 8);
 
 /** Gray for "Other" rollup — same value as CASH_COLOR so "everything else" is visually consistent. */
 export const OTHER_COLOR: string = CASH_COLOR;
+
+/**
+ * Pass 2 (quick-260418-28j): 12 categorical colors for cohort retention lines (D-11).
+ * Hand-picked for mobile contrast — not from d3-scale-chromatic because schemeTableau10
+ * only has 10 and Paired/Set3 include near-white tones that vanish on white cards.
+ */
+export const COHORT_LINE_PALETTE: readonly string[] = [
+  '#2563eb', '#0891b2', '#7c3aed', '#db2777',
+  '#ea580c', '#ca8a04', '#16a34a', '#0d9488',
+  '#7e22ce', '#be123c', '#4d7c0f', '#b45309'
+];

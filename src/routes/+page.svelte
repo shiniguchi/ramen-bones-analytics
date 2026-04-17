@@ -174,8 +174,10 @@
     <!-- D-10 card 9: Calendar items (VA-08) — receives window-scoped rows from SSR -->
     <CalendarItemsCard data={data.itemCounts} />
 
-    <!-- D-10 card 10: Cohort retention (VA-06 — existing, unchanged) -->
-    <CohortRetentionCard data={data.retention} />
+    <!-- D-10 card 10: Cohort retention (VA-06)
+         quick-260418-28j: monthly grain now reads from retention_curve_monthly_v
+         instead of re-bucketing weekly rows client-side. -->
+    <CohortRetentionCard dataWeekly={data.retention} dataMonthly={data.retentionMonthly} />
 
     <!-- D-10 card 11: Cohort total revenue (VA-09) — lifetime, no range scoping -->
     <CohortRevenueCard data={data.customerLtv} />

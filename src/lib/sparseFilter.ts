@@ -2,6 +2,14 @@
 // to prevent retention lines from swinging on tiny samples.
 export const SPARSE_MIN_COHORT_SIZE = 5;
 
+// Pass 2 (quick-260418-28j): hard caps for the retention chart axis.
+// Month horizon parity with weekly SQL horizon (52w ≈ 12mo on x-axis).
+export const MAX_PERIOD_WEEKS = 52;
+export const MAX_PERIOD_MONTHS = 12;
+
+// Pass 2 (quick-260418-28j): max cohort lines rendered (was hard-coded 4 in two spots).
+export const MAX_COHORT_LINES = 12;
+
 // A single row from retention_curve_v — only fields needed for sparse filtering.
 export type RetentionRow = {
   cohort_week: string;
@@ -11,12 +19,22 @@ export type RetentionRow = {
   cohort_age_weeks: number;
 };
 
+// One row from retention_curve_monthly_v (migration 0027).
+// Used by the monthly branch of CohortRetentionCard — SQL-computed, not client re-buckets.
+export type RetentionMonthlyRow = {
+  cohort_month: string;      // YYYY-MM-DD (date_trunc('month'))
+  period_months: number;
+  retention_rate: number;
+  cohort_size_month: number;
+  cohort_age_months: number;
+};
+
 /**
  * Pick the visible cohorts for the chart:
  * 1. Group rows by cohort_week.
  * 2. Drop cohorts where cohort_size_week < SPARSE_MIN_COHORT_SIZE.
  * 3. If all cohorts are sparse, fall back to showing all of them.
- * 4. Slice to the last 4 (most-recent) cohorts.
+ * 4. Slice to the last MAX_COHORT_LINES (most-recent) cohorts.
  *
  * Returns unique cohort_week strings (not the full rows) so the caller can
  * group-filter the original row set.
@@ -41,8 +59,8 @@ export function pickVisibleCohorts(data: RetentionRow[]): RetentionRow[] {
   // Fallback: if all are sparse, show them anyway (D-14 fallback).
   const visible = nonSparse.length > 0 ? nonSparse : allCohorts;
 
-  // Last 4 most-recent cohorts (sort ascending, take tail).
-  const chosen = new Set(visible.slice(-4));
+  // Last MAX_COHORT_LINES most-recent cohorts (sort ascending, take tail).
+  const chosen = new Set(visible.slice(-MAX_COHORT_LINES));
 
   return data.filter(row => chosen.has(row.cohort_week));
 }

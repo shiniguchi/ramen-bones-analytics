@@ -38,6 +38,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
         { business_date: '2026-04-08', gross_cents: 4200, sales_type: 'INHOUSE', is_cash: false, visit_seq: 2, card_hash: 'h3' },
       ] as DailyRow[],
       retention: E2E_RETENTION_ROWS,
+      retentionMonthly: [],
       monthsOfHistory: 2,
       latestInsight: null,
       customerLtv: E2E_CUSTOMER_LTV_ROWS,
@@ -114,13 +115,22 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     .lte('business_date', chipW.to)
   ).catch((e: unknown) => { console.error('[item_counts_daily_v]', e); return [] as ItemCountRow[]; });
 
-  // Retention — per-card error isolation.
+  // Retention (weekly) — per-card error isolation.
+  // quick-260418-28j: switched to fetchAll pattern (matches customer_ltv_v / transactions_filterable_v)
+  // to bypass PostgREST max_rows=1000 cap. Previously .then/.catch silently truncated.
   type RetentionRow = { cohort_week: string; period_weeks: number; retention_rate: number; cohort_size_week: number; cohort_age_weeks: number };
-  const retentionP = locals.supabase
+  const retentionP = fetchAll<RetentionRow>(() => locals.supabase
     .from('retention_curve_v')
     .select('cohort_week,period_weeks,retention_rate,cohort_size_week,cohort_age_weeks')
-    .then(r => (r.data ?? []) as RetentionRow[])
-    .catch((e: unknown) => { console.error('[retention_curve_v]', e); return [] as RetentionRow[]; });
+  ).catch((e: unknown) => { console.error('[retention_curve_v]', e); return [] as RetentionRow[]; });
+
+  // Retention (monthly) — SQL-computed monthly cohorts (migration 0027).
+  // Replaces the client-side weeklyToMonthly() re-bucket that dropped period 0 to ~34%.
+  type RetentionMonthlyRow = { cohort_month: string; period_months: number; retention_rate: number; cohort_size_month: number; cohort_age_months: number };
+  const retentionMonthlyP = fetchAll<RetentionMonthlyRow>(() => locals.supabase
+    .from('retention_curve_monthly_v')
+    .select('cohort_month,period_months,retention_rate,cohort_size_month,cohort_age_months')
+  ).catch((e: unknown) => { console.error('[retention_curve_monthly_v]', e); return [] as RetentionMonthlyRow[]; });
 
   // Insights — latest row only (05-01).
   type InsightRow = {
@@ -144,12 +154,13 @@ export const load: PageServerLoad = async ({ locals, url }) => {
       return r.data;
     });
 
-  // Parallel fan-out: daily rows + prior + retention + insight + customer_ltv + item_counts.
-  // Phase 10: 6-query SSR fan-out with per-card error isolation (Phase 4 D-22).
+  // Parallel fan-out: daily rows + prior + retention weekly/monthly + insight + customer_ltv + item_counts.
+  // Phase 10 + quick-260418-28j: 7-query SSR fan-out with per-card error isolation (Phase 4 D-22).
   const [
     dailyRows,
     priorDailyRows,
     retentionData,
+    retentionMonthlyData,
     latestInsightRow,
     customerLtv,
     itemCounts
@@ -157,6 +168,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     dailyRowsP,
     priorDailyRowsP,
     retentionP,
+    retentionMonthlyP,
     insightP,
     customerLtvP,
     itemCountsP
@@ -193,6 +205,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     dailyRows,
     priorDailyRows,
     retention: retentionData,
+    retentionMonthly: retentionMonthlyData,
     monthsOfHistory,
     latestInsight,
     customerLtv,
