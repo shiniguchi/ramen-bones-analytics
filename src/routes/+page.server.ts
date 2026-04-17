@@ -125,7 +125,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
   ).catch((e: unknown) => { console.error('[retention_curve_v]', e); return [] as RetentionRow[]; });
 
   // Retention (monthly) — SQL-computed monthly cohorts (migration 0027).
-  // Replaces the client-side weeklyToMonthly() re-bucket that dropped period 0 to ~34%.
+  // Replaces the client-side week→month re-bucket that dropped period 0 to ~34%.
   type RetentionMonthlyRow = { cohort_month: string; period_months: number; retention_rate: number; cohort_size_month: number; cohort_age_months: number };
   const retentionMonthlyP = fetchAll<RetentionMonthlyRow>(() => locals.supabase
     .from('retention_curve_monthly_v')

@@ -1,94 +1,77 @@
 <script lang="ts">
   // CohortRetentionCard — cohort retention curves via LayerChart Spline (D-11..D-15).
-  // Props: data only (from retention_curve_v).
-  // NO range prop — this card is chip-independent (D-04 / Pitfall 6).
+  // quick-260418-28j Pass 2: monthly grain now reads pre-computed monthly cohorts
+  // from retention_curve_monthly_v (migration 0027) instead of re-bucketing
+  // weekly rows client-side. X-axis domain capped at 52 weeks / 12 months.
+  // Up to 12 cohort lines render using COHORT_LINE_PALETTE.
+  //
+  // Props: dataWeekly (from retention_curve_v), dataMonthly (from retention_curve_monthly_v).
+  // No range prop — this card is chip-independent (D-04 / Pitfall 6).
   // Phase 9: GrainToggle moved to FilterBar (D-14).
-  // quick-260417-mfo: grain-aware — day shows weekly+hint, week shows weekly,
-  // month re-buckets weekly rows into monthly cohorts (weighted average) and
-  // surfaces an "approximated" note.
   import { Chart, Svg, Axis, Spline, Highlight, Tooltip } from 'layerchart';
   import { scaleLinear } from 'd3-scale';
   import EmptyState from './EmptyState.svelte';
-  import { pickVisibleCohorts, type RetentionRow } from '$lib/sparseFilter';
+  import {
+    pickVisibleCohorts,
+    SPARSE_MIN_COHORT_SIZE,
+    MAX_PERIOD_WEEKS,
+    MAX_PERIOD_MONTHS,
+    MAX_COHORT_LINES,
+    type RetentionRow,
+    type RetentionMonthlyRow
+  } from '$lib/sparseFilter';
+  import { COHORT_LINE_PALETTE } from '$lib/chartPalettes';
   import { getFilters } from '$lib/dashboardStore.svelte';
 
-  let { data }: { data: RetentionRow[] } = $props();
+  let {
+    dataWeekly,
+    dataMonthly
+  }: { dataWeekly: RetentionRow[]; dataMonthly: RetentionMonthlyRow[] } = $props();
 
-  // Chart palette for ≤4 cohort lines (375px legible).
-  const palette = ['#2563eb', '#0891b2', '#7c3aed', '#db2777'];
+  // 12-color categorical palette for cohort lines (D-11). Sourced from chartPalettes
+  // so the legacy inline 4-color literal is gone — single source of truth.
+  const palette = COHORT_LINE_PALETTE;
 
   // Reactive grain — drives all branching below.
   const grain = $derived(getFilters().grain);
 
   // D-17: day-grain clamp hint. Copy is byte-identical to VA-09/VA-10 per the
-  // Phase 10-07 contract ("Cohort view shows weekly — other grains not applicable.")
-  // so the three cohort-semantic cards stay visually in sync.
+  // Phase 10-07 contract so the three cohort-semantic cards stay visually in sync.
   const showClampHint = $derived(grain === 'day');
-  // Monthly approximation notice — surfaced because weekly rows are re-bucketed
-  // client-side by dividing period_weeks by 4.33; not a true monthly cohort.
-  const showMonthNote = $derived(grain === 'month');
 
-  // --- Monthly re-bucket (client-side, weighted average by cohort_size_week) ---
-  type MonthlyRow = {
-    cohort_month: string;   // YYYY-MM
-    period_months: number;
-    retention_rate: number;
-    cohort_size_month: number;
-  };
+  // Weekly path: existing sparse-filter + MAX_COHORT_LINES slice.
+  const visibleRows = $derived(pickVisibleCohorts(dataWeekly));
 
-  function weeklyToMonthly(rows: RetentionRow[]): MonthlyRow[] {
-    type Acc = { sumW: number; sumSize: number; maxSize: number };
-    const buckets = new Map<string, Acc>();
-    for (const r of rows) {
-      const key = `${r.cohort_week.slice(0, 7)}|${Math.round(r.period_weeks / 4.33)}`;
-      const b = buckets.get(key) ?? { sumW: 0, sumSize: 0, maxSize: 0 };
-      b.sumW    += r.retention_rate * r.cohort_size_week;
-      b.sumSize += r.cohort_size_week;
-      b.maxSize  = Math.max(b.maxSize, r.cohort_size_week);
-      buckets.set(key, b);
-    }
-    return Array.from(buckets.entries())
-      .map(([key, b]) => {
-        const [cohort_month, pm] = key.split('|');
-        return {
-          cohort_month,
-          period_months: Number(pm),
-          retention_rate: b.sumSize > 0 ? b.sumW / b.sumSize : 0,
-          cohort_size_month: b.maxSize
-        };
-      })
-      .sort((a, b) => a.cohort_month.localeCompare(b.cohort_month) || a.period_months - b.period_months);
-  }
-
-  // Weekly path: existing sparse-filter + last-4 slice (unchanged).
-  const visibleRows = $derived(pickVisibleCohorts(data));
-
-  // Sparse hint only meaningful on weekly paths — month branch pre-buckets
-  // into ≤4 series internally so "all sparse" isn't computed there.
+  // Sparse hint only meaningful on weekly paths — month branch runs against
+  // SQL-computed monthly cohorts (cohort_size_month already materialized), so
+  // "all sparse" isn't computed there.
   const allSparse = $derived.by(() => {
-    if (data.length === 0 || grain === 'month') return false;
+    if (dataWeekly.length === 0 || grain === 'month') return false;
     const sizes = new Map<string, number>();
-    for (const r of data) {
+    for (const r of dataWeekly) {
       const cur = sizes.get(r.cohort_week) ?? 0;
       if (r.cohort_size_week > cur) sizes.set(r.cohort_week, r.cohort_size_week);
     }
-    return Array.from(sizes.values()).every(s => s < 5);
+    return Array.from(sizes.values()).every(s => s < SPARSE_MIN_COHORT_SIZE);
   });
 
-  // Unified series — branches on grain.
+  // Unified series — branches on grain. Monthly path is SQL-backed.
   const series = $derived.by(() => {
     if (grain === 'month') {
-      const monthly = weeklyToMonthly(data);
+      if (dataMonthly.length === 0) return [];
+      // Group cohort_size_month per cohort_month (all rows for the same cohort
+      // share the same size, but take max defensively for future view changes).
       const cohortSizes = new Map<string, number>();
-      for (const r of monthly) {
+      for (const r of dataMonthly) {
         const cur = cohortSizes.get(r.cohort_month) ?? 0;
         if (r.cohort_size_month > cur) cohortSizes.set(r.cohort_month, r.cohort_size_month);
       }
-      const allMonths = Array.from(cohortSizes.keys()).sort();
-      const nonSparse = allMonths.filter(m => (cohortSizes.get(m) ?? 0) >= 5);
-      const chosen = new Set((nonSparse.length > 0 ? nonSparse : allMonths).slice(-4));
-      const byCohort = new Map<string, MonthlyRow[]>();
-      for (const r of monthly.filter(r => chosen.has(r.cohort_month))) {
+      const allCohorts = Array.from(cohortSizes.keys()).sort();
+      const nonSparse = allCohorts.filter(c => (cohortSizes.get(c) ?? 0) >= SPARSE_MIN_COHORT_SIZE);
+      const visible = nonSparse.length > 0 ? nonSparse : allCohorts;
+      const chosen = new Set(visible.slice(-MAX_COHORT_LINES));
+      const byCohort = new Map<string, RetentionMonthlyRow[]>();
+      for (const r of dataMonthly.filter(r => chosen.has(r.cohort_month))) {
         if (!byCohort.has(r.cohort_month)) byCohort.set(r.cohort_month, []);
         byCohort.get(r.cohort_month)!.push(r);
       }
@@ -96,7 +79,7 @@
         .sort(([a], [b]) => a.localeCompare(b))
         .map(([cohort, rows], i) => ({ cohort, rows, color: palette[i % palette.length] }));
     }
-    // Weekly (day or week grain) — existing logic.
+    // Weekly (day or week grain).
     const byCohort = new Map<string, RetentionRow[]>();
     for (const r of visibleRows) {
       if (!byCohort.has(r.cohort_week)) byCohort.set(r.cohort_week, []);
@@ -107,10 +90,13 @@
       .map(([cohort, rows], i) => ({ cohort, rows, color: palette[i % palette.length] }));
   });
 
-  // Chart x-axis key and label depend on grain.
+  // Chart x-axis key, label, tooltip key depend on grain.
   const xKey    = $derived(grain === 'month' ? 'period_months' : 'period_weeks');
   const xLabel  = $derived(grain === 'month' ? 'Months since first visit' : 'Weeks since first visit');
   const xTipKey = $derived(grain === 'month' ? 'Month' : 'Week');
+
+  // X-axis domain cap — 12 months or 52 weeks. Points past the cap don't render.
+  const xDomainMax = $derived(grain === 'month' ? MAX_PERIOD_MONTHS : MAX_PERIOD_WEEKS);
 </script>
 
 <div data-testid="cohort-card" class="rounded-xl border border-zinc-200 bg-white p-4">
@@ -129,16 +115,6 @@
     </p>
   {/if}
 
-  {#if showMonthNote}
-    <!-- Monthly re-bucket disclaimer — weekly rows divided by 4.33, weighted avg. -->
-    <p
-      data-testid="cohort-month-note"
-      class="mt-2 text-xs text-zinc-400"
-    >
-      Monthly cohorts approximated from weekly data.
-    </p>
-  {/if}
-
   {#if allSparse && series.length > 0}
     <!-- Sparse hint: shown when all visible cohorts are below SPARSE_MIN_COHORT_SIZE (D-14) -->
     <p
@@ -153,13 +129,16 @@
     <EmptyState card="cohort" />
   {:else}
     <div class="mt-4 h-64">
-      <!-- layerchart 2.x: explicit D3 scales (string presets removed in 2.x) -->
+      <!-- layerchart 2.x: explicit D3 scales (string presets removed in 2.x).
+           xDomain capped at MAX_PERIOD_* so the chart doesn't trail off past
+           the readable window on a 375px phone. -->
       <Chart
         data={series.flatMap((s, i) => s.rows.map(r => ({ ...r, cohortLabel: s.cohort, color: palette[i % palette.length] })))}
         x={xKey}
         y="retention_rate"
         xScale={scaleLinear()}
         yScale={scaleLinear()}
+        xDomain={[0, xDomainMax]}
         yDomain={[0, 1]}
         padding={{ left: 32, bottom: 24, top: 8, right: 8 }}
       >

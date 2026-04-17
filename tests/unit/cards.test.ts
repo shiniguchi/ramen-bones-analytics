@@ -135,10 +135,12 @@ describe('Phase 4 card components (RED stubs — flip to it() as cards land)', (
     // surface a "Unused '@ts-expect-error' directive" error here, catching
     // the regression at type-check time.
     render(CohortRetentionCard, {
-      data: [],
-      grain: 'week',
-      // @ts-expect-error — CohortRetentionCard must NOT accept a range prop (Pitfall 6)
-      range: '7d'
+      props: {
+        dataWeekly: [],
+        dataMonthly: [],
+        // @ts-expect-error — CohortRetentionCard must NOT accept a range prop (Pitfall 6)
+        range: '7d'
+      }
     });
     // If we reach here without TS error, the component renders (empty state) but
     // the `@ts-expect-error` above WOULD error if range became a valid prop.
@@ -163,8 +165,10 @@ describe('Phase 4 card components (RED stubs — flip to it() as cards land)', (
     expect(visibleCohorts.size).toBe(4);
   });
 
-  it('CohortRetentionCard renders at most 4 series (D-11)', () => {
-    // 6 large cohorts; pickVisibleCohorts must slice to last 4.
+  it('CohortRetentionCard renders at most MAX_COHORT_LINES series (D-11)', () => {
+    // quick-260418-28j Pass 2: cap raised from 4 to 12. With 6 large cohorts,
+    // all 6 are visible (under the 12 cap). Check tests/unit/sparseFilter.test.ts
+    // for the 20-cohort → 12 assertion that exercises the cap.
     const rows = [
       ...makeRows('2024-11-04', 10),
       ...makeRows('2024-11-11', 10),
@@ -175,7 +179,7 @@ describe('Phase 4 card components (RED stubs — flip to it() as cards land)', (
     ];
     const visible = pickVisibleCohorts(rows);
     const cohortCount = new Set(visible.map(r => r.cohort_week)).size;
-    expect(cohortCount).toBe(4);
+    expect(cohortCount).toBe(6);
   });
 
   it('EmptyState renders per-card copy from emptyStates.ts (D-20)', () => {
@@ -220,8 +224,7 @@ describe('CohortRetentionCard sparse-fallback (D-14)', () => {
 
     // When rendered with all-sparse data, the component must show the hint.
     const { container } = render(CohortRetentionCard, {
-      data: allSparse,
-      grain: 'week'
+      props: { dataWeekly: allSparse, dataMonthly: [] }
     });
     // Sparse hint should be visible
     const hint = container.querySelector('[data-testid="sparse-hint"]') ??
