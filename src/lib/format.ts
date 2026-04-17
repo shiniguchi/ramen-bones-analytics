@@ -20,3 +20,30 @@ export const formatDeltaPct = (current: number, prior: number): number | null =>
   if (prior === 0) return null;
   return Math.round(((current - prior) / prior) * 100);
 };
+
+// Compact formatters for chart Y-axis ticks.
+// Inputs are ALREADY-converted: EUR for formatEURShort, integers for formatIntShort.
+// Cents-to-EUR conversion is the caller's responsibility (see CalendarRevenueCard
+// chartData map + the `*_eur` fields in CohortRevenueCard/CohortAvgLtvCard).
+//
+// Why `en` locale: de-DE's compact notation only engages at millions (emits
+// "15000" for 15k, which is unreadable on a phone Y-axis). The `en` short
+// notation gives us "K"/"M" at thousands/millions. We post-process the decimal
+// separator to "," so the output still reads as German (e.g. "1,5K", "€1,2M").
+const _enCompact = new Intl.NumberFormat('en', {
+  notation: 'compact',
+  maximumFractionDigits: 1
+});
+
+function _toDeDecimal(s: string): string {
+  return s.replace('.', ',');
+}
+
+export function formatEURShort(eur: number): string {
+  // Prefix € (de-DE currency display convention for compact labels).
+  return '€' + _toDeDecimal(_enCompact.format(eur));
+}
+
+export function formatIntShort(n: number): string {
+  return _toDeDecimal(_enCompact.format(n));
+}
