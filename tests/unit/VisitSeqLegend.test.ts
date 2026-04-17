@@ -28,8 +28,10 @@ describe('VisitSeqLegend (D-08)', () => {
     const cashSwatch = container.querySelector('[data-testid="cash-swatch"]');
     expect(cashSwatch).toBeTruthy();
     expect(container.textContent).toContain('Cash');
-    // Inline style should include CASH_COLOR
-    expect((cashSwatch as HTMLElement).getAttribute('style')).toContain(CASH_COLOR);
+    // JSDOM normalizes hex to rgb; compare computed style instead of raw attr.
+    expect((cashSwatch as HTMLElement).style.backgroundColor).toBe('rgb(161, 161, 170)');
+    // Source of truth reference (palette constant still load-bearing).
+    expect(CASH_COLOR).toBe('#a1a1aa');
   });
 
   it('hides cash swatch + "Cash" label when showCash=false', () => {
