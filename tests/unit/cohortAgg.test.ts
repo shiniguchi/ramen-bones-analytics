@@ -4,6 +4,7 @@
 // Both aggregators respect SPARSE_MIN_COHORT_SIZE=5 from $lib/sparseFilter.
 import { describe, it, expect } from 'vitest';
 import { cohortRevenueSum, cohortAvgLtv, type CustomerLtvRow } from '../../src/lib/cohortAgg';
+import { formatBucketLabel } from '../../src/lib/dashboardStore.svelte';
 
 const rows: CustomerLtvRow[] = [
   // cohort 2026-03-23: 6 customers (above SPARSE_MIN_COHORT_SIZE=5)
@@ -55,7 +56,50 @@ describe('grain=month rollup', () => {
   it('groups by cohort_month when grain=month', () => {
     const result = cohortRevenueSum(rows, 'month');
     // Both weeks fall into 2026-03-01 → 9 customers total, meets threshold
-    const m = result.find(r => r.cohort === '2026-03-01');
+    const m = result.find(r => r.cohort === '2026-03');
     expect(m?.customer_count).toBe(9);
+  });
+});
+
+// 260417-mp2: Regression tests pinning the pickCohortKey → formatBucketLabel contract.
+// Bug: pickCohortKey returned raw 'YYYY-MM-DD' from DB; formatBucketLabel appended '-01'
+// producing 'YYYY-MM-DD-01' → parseISO() → Invalid Date → format() threw RangeError,
+// crashing the reactive $derived chain and silently zeroing all KPI tiles.
+describe('month-grain contract (260417-mp2 regression)', () => {
+  // 5 customers in June 2025 cohort (meets SPARSE_MIN_COHORT_SIZE=5).
+  // Fixture uses 'YYYY-MM-DD' shape — mirrors what Postgres DATE actually returns.
+  const june2025Rows: CustomerLtvRow[] = Array.from({ length: 5 }, (_, i) => ({
+    card_hash: `j${i}`,
+    revenue_cents: 2000,
+    visit_count: 2,
+    cohort_week: '2025-06-02',
+    cohort_month: '2025-06-01'
+  }));
+
+  it('A — cohortRevenueSum returns YYYY-MM (length 7) for month grain', () => {
+    const result = cohortRevenueSum(june2025Rows, 'month');
+    expect(result).toHaveLength(1);
+    expect(result[0].cohort).toBe('2025-06');
+    expect(result[0].cohort).toHaveLength(7);
+  });
+
+  it('B — cohortAvgLtv returns YYYY-MM (length 7) for month grain', () => {
+    const result = cohortAvgLtv(june2025Rows, 'month');
+    expect(result).toHaveLength(1);
+    expect(result[0].cohort).toBe('2025-06');
+    expect(result[0].cohort).toHaveLength(7);
+  });
+
+  it('C — formatBucketLabel accepts each cohort key without throwing', () => {
+    // This is the load-bearing integration test: if pickCohortKey returns 'YYYY-MM-DD',
+    // formatBucketLabel(bucket + '-01') produces 'YYYY-MM-DD-01' → RangeError.
+    const result = cohortRevenueSum(june2025Rows, 'month');
+    for (const row of result) {
+      expect(() => formatBucketLabel(row.cohort, 'month')).not.toThrow();
+      const label = formatBucketLabel(row.cohort, 'month');
+      expect(typeof label).toBe('string');
+      expect(label.length).toBeGreaterThan(0);
+      expect(label).toBe('Jun');
+    }
   });
 });
