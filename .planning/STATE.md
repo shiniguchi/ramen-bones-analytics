@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Dashboard Simplification & Visit Attribution
-status: completed
+status: executing
 stopped_at: Phase 10 context gathered — 7 charts, hybrid data layer (extend filterable_v + 2 new MVs), linear scroll, visit_seq sequential palette + cash segment
-last_updated: "2026-04-17T01:15:34.751Z"
+last_updated: "2026-04-17T09:16:50.907Z"
 progress:
   total_phases: 10
   completed_phases: 9
-  total_plans: 49
+  total_plans: 57
   completed_plans: 49
   percent: 100
 ---
@@ -20,7 +20,7 @@ progress:
 ## Project Reference
 
 - **Core Value:** A restaurant owner opens the site on their phone and makes a real business decision from the numbers they see.
-- **Current Focus:** Phase 09 — filter-simplification-performance
+- **Current Focus:** Phase 10 — charts
 - **Timeline:** Slow and deliberate — understand data first, ship one layer at a time
 - **Granularity:** standard
 - **Tenants in v1:** 1 (architecture multi-tenant-ready)
@@ -28,10 +28,10 @@ progress:
 ## Current Position
 
 Milestone: v1.2 (Dashboard Simplification & Visit Attribution) — Phase 09 complete (5/5 plans including gap closures), Phase 10 Charts next
-Phase: 09
-Plan: Not started
+Phase: 10 (charts) — EXECUTING
+Plan: 1 of 8
 
-- **Status:** Milestone complete
+- **Status:** Executing Phase 10
 - **Progress:** [██████████] 100%
 - **v1.0 status:** Shipping to friend (97% plans complete; repo flipped PUBLIC 2026-04-15 with topics + description set; Plan 05-06 Task 2 fork walkthrough deferred out of v1 scope — forkability is explicitly not a v1 concern per user direction)
 
@@ -168,7 +168,7 @@ Plan: Not started
 
 ### Blockers
 
-- CF Pages deploy pipeline broken since a3623b9 — blocks Phase 6 visual UAT at 375px on DEV
+- (none — CF Pages unblocked 2026-04-15 by `ci: add CF Pages deploy workflow`; all deploys to `main` since have succeeded. See .planning/phases/10-charts/10-01-SUMMARY-cf-pages-decision.md for evidence.)
 
 ### Quick Tasks Completed
 
