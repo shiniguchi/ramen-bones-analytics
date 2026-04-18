@@ -5,7 +5,7 @@
   //
   // seriesLayout="group" (user's explicit call over stacked) — adjacent bars per
   // bucket make per-visit-bucket comparison easier than a stacked column.
-  import { BarChart, Bars, Spline } from 'layerchart';
+  import { BarChart } from 'layerchart';
   import EmptyState from './EmptyState.svelte';
   import {
     cohortRepeaterCountByVisitBucket,
@@ -14,7 +14,6 @@
   } from '$lib/cohortAgg';
   import { VISIT_SEQ_COLORS } from '$lib/chartPalettes';
   import { formatIntShort } from '$lib/format';
-  import { bucketTrend } from '$lib/trendline';
   import {
     getFilters,
     formatBucketLabel,
@@ -49,9 +48,6 @@
     label: k,
     color: VISIT_SEQ_COLORS[i + 1]
   }));
-
-  // Trend line over total_repeaters per cohort (sum of all 7 bucket cells).
-  const trendData = $derived(bucketTrend(chartData, 'cohort', REPEATER_BUCKET_KEYS));
 
   const yAxisFormat = (n: number) => formatIntShort(n, 'cust');
 
@@ -105,27 +101,7 @@
         padding={{ left: 40, right: 8, top: 8, bottom: 24 }}
         props={{ xAxis: { ticks: MAX_X_TICKS }, yAxis: { format: yAxisFormat } }}
         tooltipContext={{ touchEvents: 'auto' }}
-      >
-        {#snippet marks({ context })}
-          {#each context.series.visibleSeries as s, i (s.key)}
-            <Bars
-              seriesKey={s.key}
-              rounded="edge"
-              radius={4}
-              strokeWidth={1}
-            />
-          {/each}
-          {#if trendData.length >= 2}
-            <Spline
-              data={trendData}
-              x="cohort"
-              y="trend"
-              class="stroke-zinc-900 stroke-[1.5] opacity-70"
-              stroke-dasharray="3 3"
-            />
-          {/if}
-        {/snippet}
-      </BarChart>
+      />
     </div>
   {/if}
 </div>
