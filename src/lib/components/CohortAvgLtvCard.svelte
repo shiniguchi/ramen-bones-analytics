@@ -1,10 +1,12 @@
 <script lang="ts">
-  // VA-10: Cohort avg LTV per weekly/monthly acquisition cohort.
-  // Same data source as VA-09 (customer_ltv_v); client computes avg via $lib/cohortAgg.
+  // VA-10: Cohort avg LTV — GROUPED (side-by-side) by repeater class (Pass 3 — quick-260418-3ec).
+  // seriesLayout="group" not "stack" — averages don't sum meaningfully across classes.
+  // Same data source as VA-09 (customer_ltv_v); client computes per-class avg via $lib/cohortAgg.
   // Sparse filter (D-19) + last-12-cohort clamp + D-17 day→week hint — mirrors VA-09.
   import { BarChart } from 'layerchart';
   import EmptyState from './EmptyState.svelte';
-  import { cohortAvgLtv, type CustomerLtvRow } from '$lib/cohortAgg';
+  import { cohortAvgLtvByRepeater, type CustomerLtvRow } from '$lib/cohortAgg';
+  import { REPEATER_COLORS } from '$lib/chartPalettes';
   import { formatEURShort } from '$lib/format';
   import { getFilters, formatBucketLabel, computeChartWidth, MAX_X_TICKS } from '$lib/dashboardStore.svelte';
 
@@ -18,10 +20,11 @@
   const showClampHint = $derived(getFilters().grain === 'day');
 
   const chartData = $derived.by(() => {
-    const aggs = cohortAvgLtv(data, cohortGrain);
+    const aggs = cohortAvgLtvByRepeater(data, cohortGrain);
     return aggs.slice(-12).map((a) => ({
       cohort: formatBucketLabel(a.cohort, cohortGrain),
-      avg_eur: Math.round(a.avg_revenue_cents / 100)
+      new_avg_eur: Math.round(a.new_avg_cents / 100),
+      repeat_avg_eur: Math.round(a.repeat_avg_cents / 100)
     }));
   });
 
@@ -37,6 +40,18 @@
   <p class="mt-1 text-xs text-zinc-500">
     Average lifetime value per customer, by acquisition cohort.
   </p>
+
+  <!-- Inline legend (≤30 lines — LayerChart legend emission is not guaranteed). -->
+  <div class="mt-2 flex items-center gap-4 text-xs text-zinc-600">
+    <span class="inline-flex items-center gap-1">
+      <span class="inline-block h-2 w-2 rounded-full" style:background-color={REPEATER_COLORS.new}></span>
+      New
+    </span>
+    <span class="inline-flex items-center gap-1">
+      <span class="inline-block h-2 w-2 rounded-full" style:background-color={REPEATER_COLORS.repeat}></span>
+      Repeat
+    </span>
+  </div>
 
   {#if showClampHint}
     <p
@@ -54,7 +69,11 @@
       <BarChart
         data={chartData}
         x="cohort"
-        y="avg_eur"
+        series={[
+          { key: 'new_avg_eur', label: 'New', color: REPEATER_COLORS.new },
+          { key: 'repeat_avg_eur', label: 'Repeat', color: REPEATER_COLORS.repeat }
+        ]}
+        seriesLayout="group"
         orientation="vertical"
         bandPadding={0.2}
         width={chartW}
