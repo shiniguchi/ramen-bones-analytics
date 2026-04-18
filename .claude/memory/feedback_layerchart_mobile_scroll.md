@@ -14,3 +14,13 @@ When putting a LayerChart `BarChart` inside a horizontally-scrollable wrapper (e
 - If you need two-axis scroll (rare), use `'auto'` instead of `'pan-x'` so the inner defers to whatever ancestor `touch-action` says.
 - Desktop hover is unaffected either way — this only matters for coarse-pointer devices.
 - Vertical swipes continue to bubble up to the page scroll container as expected.
+
+## Update 2026-04-18
+
+Relaxed the default rule from `'pan-x'` → `'auto'` after the PC trackpad vertical-scroll regression surfaced on the full dashboard. On desktop, `'pan-x'` was blocking the browser from routing vertical trackpad gestures up to the page scroll container — charts effectively swallowed vertical intent.
+
+Updated rule-of-thumb:
+- Default to `tooltipContext={{ touchEvents: 'auto' }}` on LayerChart charts that live inside horizontally-scrollable wrappers.
+- Only fall back to `'pan-x'` if `'auto'` actively causes the tooltip-on-swipe regression on a real mobile device (symptom: horizontal swipe shows tooltip instead of scrolling).
+- Nuclear CSS fallback if neither works: `.chart-touch-safe :global(.lc-tooltip-context) { touch-action: manipulation; }` in `src/app.css` — only apply when the component-level prop fails.
+- Applied across 6 dashboard charts in quick-260418-f99.
