@@ -90,7 +90,7 @@
         orientation="vertical"
         bandPadding={0.2}
         width={chartW}
-        padding={{ left: 64, right: 8, top: 8, bottom: 24 }}
+        padding={{ left: 64, right: 8, top: 24, bottom: 24 }}
         props={{ xAxis: { ticks: MAX_X_TICKS }, yAxis: { format: yAxisFormat } }}
         tooltipContext={{ touchEvents: 'auto' }}
       >
