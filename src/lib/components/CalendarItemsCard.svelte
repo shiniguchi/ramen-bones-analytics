@@ -6,12 +6,14 @@
   // Filters respected: sales_type + is_cash (via client-side filter on the prop)
   // and grain (via bucketKey rebucket). Range is already applied upstream by the
   // SSR query in Plan 10-08.
-  import { BarChart } from 'layerchart';
+  import { LineChart } from 'layerchart';
   import EmptyState from './EmptyState.svelte';
   import { ITEM_COLORS, OTHER_COLOR } from '$lib/chartPalettes';
   import { rollupTopNWithOther } from '$lib/itemCountsRollup';
   import { formatIntShort } from '$lib/format';
   import { bucketKey, getFilters, formatBucketLabel, computeChartWidth, MAX_X_TICKS } from '$lib/dashboardStore.svelte';
+
+  const yAxisFormat = (n: number) => formatIntShort(n, 'items');
 
   type ItemCountRow = {
     business_date: string;
@@ -87,21 +89,18 @@
 
 <div data-testid="calendar-items-card" class="rounded-xl border border-zinc-200 bg-white p-4">
   <h2 class="text-base font-semibold text-zinc-900">Items sold per period — top 20 menu items</h2>
-  <p class="mt-1 text-xs text-zinc-500">Top 20 menu items per period. Rest grouped as "Other".</p>
+  <p class="mt-1 text-xs text-zinc-500">One line per item so you can spot what's trending up or down. Rest grouped as "Other".</p>
   {#if chartData.length === 0}
     <EmptyState card="calendar-items" />
   {:else}
     <div bind:clientWidth={cardW} class="mt-4 h-64 overflow-x-auto touch-auto overscroll-x-contain chart-touch-safe">
-      <BarChart
+      <LineChart
         data={chartData}
         x="bucket"
         {series}
-        seriesLayout="stack"
-        orientation="vertical"
-        bandPadding={0.2}
         width={chartW}
         padding={{ left: 40, right: 8, top: 8, bottom: 24 }}
-        props={{ xAxis: { ticks: MAX_X_TICKS }, yAxis: { format: formatIntShort } }}
+        props={{ xAxis: { ticks: MAX_X_TICKS }, yAxis: { format: yAxisFormat } }}
         tooltipContext={{ touchEvents: 'auto' }}
       />
     </div>
