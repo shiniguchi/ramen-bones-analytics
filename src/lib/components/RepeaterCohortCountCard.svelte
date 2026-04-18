@@ -88,7 +88,7 @@
   {:else}
     <div
       bind:clientWidth={cardW}
-      class="mt-4 h-64 overflow-x-auto touch-auto overscroll-x-contain chart-touch-safe"
+      class="mt-4 h-64 overflow-x-auto overscroll-x-contain chart-touch-safe"
     >
       <BarChart
         data={chartData}

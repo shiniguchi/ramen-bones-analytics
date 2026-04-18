@@ -109,7 +109,7 @@
   {#if chartData.length === 0}
     <EmptyState card="calendar-items" />
   {:else}
-    <div bind:clientWidth={cardW} class="mt-4 h-64 overflow-x-auto touch-auto overscroll-x-contain chart-touch-safe">
+    <div bind:clientWidth={cardW} class="mt-4 h-64 overflow-x-auto overscroll-x-contain chart-touch-safe">
       <LineChart
         data={chartData}
         x="bucket"
