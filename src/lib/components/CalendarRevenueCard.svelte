@@ -4,11 +4,12 @@
   // LayerChart 2.x high-level BarChart — verified props in node_modules/layerchart.
   // Self-subscribes to dashboardStore via getter calls inside $derived.by() —
   // same pattern as KpiTile. No prop-drilling of data/grain/filters.
-  import { BarChart } from 'layerchart';
+  import { BarChart, Bars, Spline } from 'layerchart';
   import EmptyState from './EmptyState.svelte';
   import VisitSeqLegend from './VisitSeqLegend.svelte';
   import { VISIT_SEQ_COLORS, CASH_COLOR } from '$lib/chartPalettes';
   import { formatEURShort } from '$lib/format';
+  import { bucketTrend } from '$lib/trendline';
   import {
     getFiltered,
     getFilters,
@@ -63,6 +64,10 @@
 
   const showCash = $derived(getFilters().is_cash !== 'card');
 
+  // Series keys currently visible (drives the trend-line sum).
+  const visibleKeys = $derived(series.map(s => s.key));
+  const trendData = $derived(bucketTrend(chartData, 'bucket', visibleKeys));
+
   // Scroll overflow: when bars don't fit at mobile width, force a wider chart
   // and let the wrapper scroll horizontally. Stays responsive for short ranges.
   let cardW = $state(0);
@@ -86,7 +91,27 @@
         padding={{ left: 40, right: 8, top: 8, bottom: 24 }}
         props={{ xAxis: { ticks: MAX_X_TICKS }, yAxis: { format: formatEURShort } }}
         tooltipContext={{ touchEvents: 'auto' }}
-      />
+      >
+        {#snippet marks({ context })}
+          {#each context.series.visibleSeries as s, i (s.key)}
+            <Bars
+              seriesKey={s.key}
+              rounded={context.series.isStacked && i !== context.series.visibleSeries.length - 1 ? 'none' : 'edge'}
+              radius={4}
+              strokeWidth={1}
+            />
+          {/each}
+          {#if trendData.length >= 2}
+            <Spline
+              data={trendData}
+              x="bucket"
+              y="trend"
+              class="stroke-zinc-900 stroke-[1.5] opacity-70"
+              stroke-dasharray="3 3"
+            />
+          {/if}
+        {/snippet}
+      </BarChart>
     </div>
     <VisitSeqLegend {showCash} />
   {/if}

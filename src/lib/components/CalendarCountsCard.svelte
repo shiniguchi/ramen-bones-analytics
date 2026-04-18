@@ -2,11 +2,12 @@
   // VA-05: Calendar customer counts — same stacked-bar shape as revenue card,
   // tx_count metric instead of revenue_cents. Title + testid differ only.
   // D-06 gradient + D-07 cash segment + D-08 shared legend.
-  import { BarChart } from 'layerchart';
+  import { BarChart, Bars, Spline } from 'layerchart';
   import EmptyState from './EmptyState.svelte';
   import VisitSeqLegend from './VisitSeqLegend.svelte';
   import { VISIT_SEQ_COLORS, CASH_COLOR } from '$lib/chartPalettes';
   import { formatIntShort } from '$lib/format';
+  import { bucketTrend } from '$lib/trendline';
   import {
     getFiltered,
     getFilters,
@@ -16,6 +17,8 @@
     computeChartWidth,
     MAX_X_TICKS
   } from '$lib/dashboardStore.svelte';
+
+  const yAxisFormat = (n: number) => formatIntShort(n, 'txn');
 
   const VISIT_KEYS = ['1st', '2nd', '3rd', '4x', '5x', '6x', '7x', '8x+'] as const;
 
@@ -43,6 +46,9 @@
 
   const showCash = $derived(getFilters().is_cash !== 'card');
 
+  const visibleKeys = $derived(series.map(s => s.key));
+  const trendData = $derived(bucketTrend(chartData, 'bucket', visibleKeys));
+
   let cardW = $state(0);
   const chartW = $derived(computeChartWidth(chartData.length, cardW));
 </script>
@@ -62,9 +68,29 @@
         bandPadding={0.2}
         width={chartW}
         padding={{ left: 40, right: 8, top: 8, bottom: 24 }}
-        props={{ xAxis: { ticks: MAX_X_TICKS }, yAxis: { format: formatIntShort } }}
+        props={{ xAxis: { ticks: MAX_X_TICKS }, yAxis: { format: yAxisFormat } }}
         tooltipContext={{ touchEvents: 'auto' }}
-      />
+      >
+        {#snippet marks({ context })}
+          {#each context.series.visibleSeries as s, i (s.key)}
+            <Bars
+              seriesKey={s.key}
+              rounded={context.series.isStacked && i !== context.series.visibleSeries.length - 1 ? 'none' : 'edge'}
+              radius={4}
+              strokeWidth={1}
+            />
+          {/each}
+          {#if trendData.length >= 2}
+            <Spline
+              data={trendData}
+              x="bucket"
+              y="trend"
+              class="stroke-zinc-900 stroke-[1.5] opacity-70"
+              stroke-dasharray="3 3"
+            />
+          {/if}
+        {/snippet}
+      </BarChart>
     </div>
     <VisitSeqLegend {showCash} />
   {/if}

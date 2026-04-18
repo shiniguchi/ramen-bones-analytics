@@ -76,7 +76,9 @@ describe('CalendarRevenueCard (VA-04) source artifacts', () => {
   );
 
   it("imports BarChart from 'layerchart'", () => {
-    expect(src).toMatch(/import\s+\{\s*BarChart\s*\}\s+from\s+['"]layerchart['"]/);
+    // Allow additional named imports (Bars, Spline) alongside BarChart — needed
+    // for the custom marks snippet that overlays the trend line (quick-260418-trn).
+    expect(src).toMatch(/import\s+\{[^}]*\bBarChart\b[^}]*\}\s+from\s+['"]layerchart['"]/);
   });
   it('imports getFiltered + getFilters from dashboardStore', () => {
     expect(src).toMatch(/getFiltered/);
@@ -101,9 +103,12 @@ describe('CalendarRevenueCard (VA-04) source artifacts', () => {
   it('renders VisitSeqLegend with showCash binding', () => {
     expect(src).toMatch(/<VisitSeqLegend\s+\{?\s*showCash/);
   });
-  it('does NOT hand-roll bars via <Rect> or <Bars> (Anti-Pattern)', () => {
+  it('does NOT hand-roll bars via <Rect> (Anti-Pattern)', () => {
     expect(src).not.toMatch(/<Rect\b/);
-    expect(src).not.toMatch(/<Bars\b/);
+  });
+  it('overlays a trend line via Spline in the marks snippet', () => {
+    expect(src).toMatch(/<Spline\b/);
+    expect(src).toMatch(/bucketTrend/);
   });
 });
 
@@ -114,7 +119,7 @@ describe('CalendarCountsCard (VA-05) source artifacts', () => {
   );
 
   it("imports BarChart from 'layerchart'", () => {
-    expect(src).toMatch(/import\s+\{\s*BarChart\s*\}\s+from\s+['"]layerchart['"]/);
+    expect(src).toMatch(/import\s+\{[^}]*\bBarChart\b[^}]*\}\s+from\s+['"]layerchart['"]/);
   });
   it("shapeForChart called with 'tx_count' metric (NOT revenue_cents)", () => {
     expect(src).toMatch(/shapeForChart\s*\(\s*[^,]+,\s*['"]tx_count['"]\s*\)/);
@@ -127,8 +132,14 @@ describe('CalendarCountsCard (VA-05) source artifacts', () => {
     expect(src).toMatch(/seriesLayout=["']stack["']/);
     expect(src).toMatch(/orientation=["']vertical["']/);
   });
-  it('does NOT hand-roll bars via <Rect> or <Bars> (Anti-Pattern)', () => {
+  it('does NOT hand-roll bars via <Rect> (Anti-Pattern)', () => {
     expect(src).not.toMatch(/<Rect\b/);
-    expect(src).not.toMatch(/<Bars\b/);
+  });
+  it('appends "txn" unit to y-axis ticks', () => {
+    expect(src).toMatch(/formatIntShort\s*\([^)]*['"]txn['"]/);
+  });
+  it('overlays a trend line via Spline in the marks snippet', () => {
+    expect(src).toMatch(/<Spline\b/);
+    expect(src).toMatch(/bucketTrend/);
   });
 });
