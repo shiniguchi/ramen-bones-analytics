@@ -14,7 +14,7 @@
   {#each options as opt}
     <button type="button" role="radio" aria-checked={selected === opt.value}
       data-state={selected === opt.value ? 'on' : 'off'}
-      class="min-h-11 min-w-0 flex-1 rounded-md px-3 py-1.5 text-sm font-medium whitespace-nowrap transition-colors
+      class="min-h-11 rounded-md px-3 py-1.5 text-sm font-medium whitespace-nowrap transition-colors
         {selected === opt.value ? 'bg-blue-50 text-blue-600 shadow-sm' : 'text-zinc-500 hover:text-zinc-700'}"
       onclick={() => onchange(opt.value)}>
       {opt.label}
