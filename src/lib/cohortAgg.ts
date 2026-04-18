@@ -1,5 +1,5 @@
-// Cohort aggregation helpers for VA-10. Client-side GROUP BY per D-01 hybrid
-// approach — no dedicated MV because ~2000 customer payload is trivial.
+// Cohort aggregation helpers for VA-07 / VA-10. Client-side GROUP BY per D-01
+// hybrid approach — no dedicated MV because ~2000 customer payload is trivial.
 import { SPARSE_MIN_COHORT_SIZE } from './sparseFilter';
 
 export type CustomerLtvRow = {
@@ -15,48 +15,62 @@ function pickCohortKey(row: CustomerLtvRow, grain: 'week' | 'month'): string {
 }
 
 // ============================================================================
-// Pass 3 (quick-260418-3ec): repeater segmentation — VA-10.
-// (Pass 4 quick-260418-4oh Task 4 deleted VA-09 CohortRevenueCard +
-//  cohortRevenueSum/cohortRevenueSumByRepeater/cohortAvgLtv; remaining
-//  repeater helpers below are superseded in Task 5 by visit-bucket variants.)
+// Pass 4 (quick-260418-4oh): 8-bucket visit_count segmentation — VA-07 + VA-10.
+// Mirrors dashboardStore.visitSeqBucket but from customer lifetime visit_count
+// (not per-transaction visit_seq). NO 'cash' bucket — customer_ltv_v rows
+// already exclude anonymous cash customers.
 // ============================================================================
 
-/** Threshold: customers with visit_count >= REPEATER_MIN_VISITS are "repeat", else "new". */
-export const REPEATER_MIN_VISITS = 2;
+export const VISIT_BUCKET_KEYS = [
+  '1st', '2nd', '3rd', '4x', '5x', '6x', '7x', '8x+'
+] as const;
+export type VisitBucket = typeof VISIT_BUCKET_KEYS[number];
 
-export type RepeaterClass = 'new' | 'repeat';
-
-/** Deterministic classifier; shared by LTV histogram + cohort *ByRepeater aggregators. */
-export function classifyRepeater(visit_count: number): RepeaterClass {
-  return visit_count >= REPEATER_MIN_VISITS ? 'repeat' : 'new';
+/** Classify a customer's lifetime visit_count into one of 8 labelled buckets. */
+export function visitCountBucket(visit_count: number): VisitBucket {
+  if (visit_count <= 1) return '1st';
+  if (visit_count === 2) return '2nd';
+  if (visit_count === 3) return '3rd';
+  if (visit_count >= 8) return '8x+';
+  return `${visit_count}x` as VisitBucket; // 4x, 5x, 6x, 7x
 }
 
 /**
- * VA-10: AVG revenue_cents per cohort, split by repeater class.
- * Averages computed independently per class — do NOT stack (averages don't sum).
- * Empty class returns 0 (never NaN) so BarChart renders a zero-height bar, not undefined.
+ * VA-07 / VA-10: per-cohort avg revenue_cents split into 8 visit-count buckets.
+ * Sparse-filters cohorts below SPARSE_MIN_COHORT_SIZE (by total_customers, not per-bucket).
+ * Empty bucket → 0 (never NaN), so BarChart renders a zero-height bar, not undefined.
  */
-export function cohortAvgLtvByRepeater(
+export function cohortAvgLtvByVisitBucket(
   rows: CustomerLtvRow[],
   grain: 'week' | 'month'
-): Array<{ cohort: string; new_avg_cents: number; repeat_avg_cents: number; new_count: number; repeat_count: number }> {
-  const agg = new Map<string, { new_cents: number; repeat_cents: number; new_count: number; repeat_count: number }>();
+): Array<{ cohort: string; total_customers: number } & Record<VisitBucket, number>> {
+  type Accum = Record<VisitBucket, { sum: number; count: number }> & { total_customers: number };
+  const empty = (): Accum => {
+    const a = { total_customers: 0 } as Accum;
+    for (const k of VISIT_BUCKET_KEYS) a[k] = { sum: 0, count: 0 };
+    return a;
+  };
+  const agg = new Map<string, Accum>();
   for (const r of rows) {
     const key = pickCohortKey(r, grain);
-    const cls = classifyRepeater(r.visit_count);
-    const e = agg.get(key) ?? { new_cents: 0, repeat_cents: 0, new_count: 0, repeat_count: 0 };
-    if (cls === 'new')    { e.new_cents    += r.revenue_cents; e.new_count    += 1; }
-    else                  { e.repeat_cents += r.revenue_cents; e.repeat_count += 1; }
+    const bucket = visitCountBucket(r.visit_count);
+    const e = agg.get(key) ?? empty();
+    e[bucket].sum += r.revenue_cents;
+    e[bucket].count += 1;
+    e.total_customers += 1;
     agg.set(key, e);
   }
   return Array.from(agg.entries())
-    .filter(([, v]) => (v.new_count + v.repeat_count) >= SPARSE_MIN_COHORT_SIZE)
-    .map(([cohort, v]) => ({
-      cohort,
-      new_avg_cents:    v.new_count    > 0 ? v.new_cents    / v.new_count    : 0,
-      repeat_avg_cents: v.repeat_count > 0 ? v.repeat_cents / v.repeat_count : 0,
-      new_count: v.new_count,
-      repeat_count: v.repeat_count
-    }))
+    .filter(([, v]) => v.total_customers >= SPARSE_MIN_COHORT_SIZE)
+    .map(([cohort, v]) => {
+      const out = { cohort, total_customers: v.total_customers } as {
+        cohort: string;
+        total_customers: number;
+      } & Record<VisitBucket, number>;
+      for (const k of VISIT_BUCKET_KEYS) {
+        out[k] = v[k].count > 0 ? v[k].sum / v[k].count : 0;
+      }
+      return out;
+    })
     .sort((a, b) => a.cohort.localeCompare(b.cohort));
 }

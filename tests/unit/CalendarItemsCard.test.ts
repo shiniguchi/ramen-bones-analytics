@@ -63,15 +63,15 @@ describe('CalendarItemsCard (VA-08)', () => {
     expect(card).toBeInTheDocument();
   });
 
-  it('rolls ≥9 items into top-8 + "Other" (VA-08 / D-14)', () => {
+  it('rolls ≥21 items into top-20 + "Other" (Pass 4 Item #1 / D-14)', () => {
     seedStore();
-    // 10 items on a single day — rollup should collapse items 9+ into "Other".
-    const data = Array.from({ length: 10 }, (_, i) => ({
+    // 22 items on a single day — rollup should collapse items 21+ into "Other".
+    const data = Array.from({ length: 22 }, (_, i) => ({
       business_date: '2026-04-13',
       item_name: `Item${i}`,
       sales_type: 'INHOUSE',
       is_cash: false,
-      item_count: 10 - i
+      item_count: 22 - i
     }));
     // Sanity render — no throw, card visible.
     const { container } = render(CalendarItemsCard, { data });

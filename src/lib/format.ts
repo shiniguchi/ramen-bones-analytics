@@ -24,7 +24,7 @@ export const formatDeltaPct = (current: number, prior: number): number | null =>
 // Compact formatters for chart Y-axis ticks.
 // Inputs are ALREADY-converted: EUR for formatEURShort, integers for formatIntShort.
 // Cents-to-EUR conversion is the caller's responsibility (see CalendarRevenueCard
-// chartData map + the `*_eur` fields in CohortRevenueCard/CohortAvgLtvCard).
+// chartData map + CohortAvgLtvCard's per-bucket `Math.round(a[k] / 100)`).
 //
 // Why `en` locale: de-DE's compact notation only engages at millions (emits
 // "15000" for 15k, which is unreadable on a phone Y-axis). The `en` short

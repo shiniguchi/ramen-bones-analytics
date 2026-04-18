@@ -31,8 +31,7 @@
     const grain = getFilters().grain as 'day' | 'week' | 'month';
     const nested = aggregateByBucketAndVisitSeq(filtered, grain);
     // shapeForChart emits integer CENTS for every series column. Convert each
-    // column to EUR integer here so the Y-axis renders euros, not raw cents
-    // (mirrors CohortRevenueCard's `Math.round(total_revenue_cents / 100)`).
+    // column to EUR integer here so the Y-axis renders euros, not raw cents.
     return shapeForChart(nested, 'revenue_cents').map((r) => {
       const row: Record<string, string | number> = {
         ...r,

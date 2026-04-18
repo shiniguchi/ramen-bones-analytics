@@ -34,15 +34,15 @@
     });
   });
 
-  // Pick top-8 items by total item_count across the filtered window.
+  // Pick top-20 items by total item_count across the filtered window (Pass 4 Item #1).
   const topItems = $derived.by(() => {
     const totals = new Map<string, number>();
     for (const r of filtered) {
       totals.set(r.item_name, (totals.get(r.item_name) ?? 0) + r.item_count);
     }
     const rows = Array.from(totals.entries()).map(([item_name, item_count]) => ({ item_name, item_count }));
-    const rolled = rollupTopNWithOther(rows, 8);
-    return rolled.map(r => r.item_name); // ordered item names (top-8 + maybe 'Other')
+    const rolled = rollupTopNWithOther(rows, 20);
+    return rolled.map(r => r.item_name); // ordered item names (top-20 + maybe 'Other')
   });
 
   // Build wide-format chart data: one row per bucket with columns for each topItem + Other.
@@ -86,8 +86,8 @@
 </script>
 
 <div data-testid="calendar-items-card" class="rounded-xl border border-zinc-200 bg-white p-4">
-  <h2 class="text-base font-semibold text-zinc-900">Items sold per period — top 8 menu items</h2>
-  <p class="mt-1 text-xs text-zinc-500">Top 8 menu items per period. Rest grouped as "Other".</p>
+  <h2 class="text-base font-semibold text-zinc-900">Items sold per period — top 20 menu items</h2>
+  <p class="mt-1 text-xs text-zinc-500">Top 20 menu items per period. Rest grouped as "Other".</p>
   {#if chartData.length === 0}
     <EmptyState card="calendar-items" />
   {:else}

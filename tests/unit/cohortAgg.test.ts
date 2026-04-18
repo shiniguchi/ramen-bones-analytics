@@ -1,55 +1,47 @@
-// cohortAgg — Pass 4 rewrite (quick-260418-4oh): VA-09 CohortRevenueCard was
-// deleted; cohortRevenueSum / cohortAvgLtv / cohortRevenueSumByRepeater removed.
-// Remaining VA-10 path still uses cohortAvgLtvByRepeater until Task 5 replaces it
-// with cohortAvgLtvByVisitBucket.
+// cohortAgg — Pass 4 (quick-260418-4oh) VA-10 / VA-07 rewrite.
+// Repeater classifier replaced by 8-bucket visit_count segmentation.
+// (Pass 4 Task 4 already deleted cohortRevenueSum / cohortAvgLtv / *ByRepeater
+//  pair; Task 5 adds visitCountBucket + VISIT_BUCKET_KEYS + cohortAvgLtvByVisitBucket.)
 import { describe, it, expect } from 'vitest';
 import {
-  classifyRepeater,
-  cohortAvgLtvByRepeater,
-  REPEATER_MIN_VISITS,
-  type CustomerLtvRow,
-  type RepeaterClass
+  visitCountBucket,
+  VISIT_BUCKET_KEYS,
+  cohortAvgLtvByVisitBucket,
+  type CustomerLtvRow
 } from '../../src/lib/cohortAgg';
+import { formatBucketLabel } from '../../src/lib/dashboardStore.svelte';
 
-// ============================================================================
-// Pass 3 (quick-260418-3ec): repeater-segmentation helpers — VA-10 only post-Pass 4.
-// ============================================================================
-
-describe('classifyRepeater (Pass 3)', () => {
-  it('REPEATER_MIN_VISITS is 2', () => {
-    expect(REPEATER_MIN_VISITS).toBe(2);
+describe('visitCountBucket (Pass 4)', () => {
+  it('1 → 1st', () => expect(visitCountBucket(1)).toBe('1st'));
+  it('2 → 2nd', () => expect(visitCountBucket(2)).toBe('2nd'));
+  it('3 → 3rd', () => expect(visitCountBucket(3)).toBe('3rd'));
+  it('4..7 → Nx', () => {
+    expect(visitCountBucket(4)).toBe('4x');
+    expect(visitCountBucket(5)).toBe('5x');
+    expect(visitCountBucket(6)).toBe('6x');
+    expect(visitCountBucket(7)).toBe('7x');
   });
-
-  it('0 visits → new', () => {
-    const cls: RepeaterClass = classifyRepeater(0);
-    expect(cls).toBe('new');
+  it('8+ → 8x+', () => {
+    expect(visitCountBucket(8)).toBe('8x+');
+    expect(visitCountBucket(100)).toBe('8x+');
   });
-
-  it('1 visit → new', () => {
-    expect(classifyRepeater(1)).toBe('new');
-  });
-
-  it('2 visits → repeat (threshold)', () => {
-    expect(classifyRepeater(2)).toBe('repeat');
-  });
-
-  it('10 visits → repeat', () => {
-    expect(classifyRepeater(10)).toBe('repeat');
+  it('VISIT_BUCKET_KEYS has exactly 8 entries in declared order', () => {
+    expect(VISIT_BUCKET_KEYS).toEqual(['1st', '2nd', '3rd', '4x', '5x', '6x', '7x', '8x+']);
   });
 });
 
-describe('cohortAvgLtvByRepeater (Pass 3 — VA-10)', () => {
-  // Same 10-customer mixed fixture.
-  const mixedRows: CustomerLtvRow[] = [
+describe('cohortAvgLtvByVisitBucket (Pass 4 — VA-07/VA-10)', () => {
+  // 10 customers in one cohort: 5 one-timers @ 1000c, 5 three-timers @ 3000c.
+  const mixed: CustomerLtvRow[] = [
     ...Array.from({ length: 5 }, (_, i) => ({
-      card_hash: `new${i}`,
+      card_hash: `a${i}`,
       revenue_cents: 1000,
       visit_count: 1,
       cohort_week: '2026-01-05',
       cohort_month: '2026-01-01'
     })),
     ...Array.from({ length: 5 }, (_, i) => ({
-      card_hash: `rep${i}`,
+      card_hash: `b${i}`,
       revenue_cents: 3000,
       visit_count: 3,
       cohort_week: '2026-01-05',
@@ -57,76 +49,48 @@ describe('cohortAvgLtvByRepeater (Pass 3 — VA-10)', () => {
     }))
   ];
 
-  it('averages revenue per class separately', () => {
-    const result = cohortAvgLtvByRepeater(mixedRows, 'week');
-    expect(result).toHaveLength(1);
-    expect(result[0]).toEqual({
-      cohort: '2026-01-05',
-      new_avg_cents: 1000,
-      repeat_avg_cents: 3000,
-      new_count: 5,
-      repeat_count: 5
-    });
+  it('splits averages by bucket; empty buckets are 0 not NaN', () => {
+    const [row] = cohortAvgLtvByVisitBucket(mixed, 'week');
+    expect(row.cohort).toBe('2026-01-05');
+    expect(row.total_customers).toBe(10);
+    expect(row['1st']).toBe(1000);
+    expect(row['3rd']).toBe(3000);
+    expect(row['2nd']).toBe(0);
+    expect(row['4x']).toBe(0);
+    expect(row['8x+']).toBe(0);
+    for (const k of VISIT_BUCKET_KEYS) {
+      expect(Number.isNaN(row[k])).toBe(false);
+    }
   });
 
-  it('all one-timers → repeat_avg_cents=0 (not NaN)', () => {
-    const allNew: CustomerLtvRow[] = Array.from({ length: 10 }, (_, i) => ({
+  it('all one-timers → 1st averaged, others 0', () => {
+    const all1: CustomerLtvRow[] = Array.from({ length: 10 }, (_, i) => ({
       card_hash: `n${i}`,
       revenue_cents: 2000,
       visit_count: 1,
       cohort_week: '2026-01-05',
       cohort_month: '2026-01-01'
     }));
-    const result = cohortAvgLtvByRepeater(allNew, 'week');
-    expect(result).toHaveLength(1);
-    expect(result[0].new_avg_cents).toBe(2000);
-    expect(result[0].repeat_avg_cents).toBe(0);
-    expect(Number.isNaN(result[0].repeat_avg_cents)).toBe(false);
-    expect(result[0].new_count).toBe(10);
-    expect(result[0].repeat_count).toBe(0);
+    const [row] = cohortAvgLtvByVisitBucket(all1, 'week');
+    expect(row['1st']).toBe(2000);
+    for (const k of VISIT_BUCKET_KEYS.filter((k) => k !== '1st')) {
+      expect(row[k]).toBe(0);
+    }
   });
 
-  it('all repeaters → new_avg_cents=0 (not NaN)', () => {
-    const allRep: CustomerLtvRow[] = Array.from({ length: 10 }, (_, i) => ({
-      card_hash: `r${i}`,
-      revenue_cents: 2000,
-      visit_count: 5,
-      cohort_week: '2026-01-05',
-      cohort_month: '2026-01-01'
+  it('sparse-filters cohorts below SPARSE_MIN_COHORT_SIZE', () => {
+    const sparse: CustomerLtvRow[] = Array.from({ length: 3 }, (_, i) => ({
+      card_hash: `s${i}`,
+      revenue_cents: 1000,
+      visit_count: 1,
+      cohort_week: '2026-02-02',
+      cohort_month: '2026-02-01'
     }));
-    const result = cohortAvgLtvByRepeater(allRep, 'week');
-    expect(result).toHaveLength(1);
-    expect(result[0].new_avg_cents).toBe(0);
-    expect(Number.isNaN(result[0].new_avg_cents)).toBe(false);
-    expect(result[0].repeat_avg_cents).toBe(2000);
-    expect(result[0].new_count).toBe(0);
-    expect(result[0].repeat_count).toBe(10);
+    expect(cohortAvgLtvByVisitBucket(sparse, 'week')).toHaveLength(0);
   });
 
-  it('sparse-filters cohorts below SPARSE_MIN_COHORT_SIZE (matches cohortRevenueSum behavior)', () => {
-    const fixture: CustomerLtvRow[] = [
-      ...Array.from({ length: 6 }, (_, i) => ({
-        card_hash: `big${i}`,
-        revenue_cents: 1000,
-        visit_count: 1,
-        cohort_week: '2026-01-05',
-        cohort_month: '2026-01-01'
-      })),
-      ...Array.from({ length: 2 }, (_, i) => ({
-        card_hash: `small${i}`,
-        revenue_cents: 1000,
-        visit_count: 1,
-        cohort_week: '2026-01-12',
-        cohort_month: '2026-01-01'
-      }))
-    ];
-    const result = cohortAvgLtvByRepeater(fixture, 'week');
-    expect(result).toHaveLength(1);
-    expect(result[0].cohort).toBe('2026-01-05');
-  });
-
-  it('month grain rolls two weekly buckets into one monthly cohort', () => {
-    const monthRows: CustomerLtvRow[] = [
+  it('month grain rolls two weekly sub-cohorts into one YYYY-MM bucket', () => {
+    const rows: CustomerLtvRow[] = [
       ...Array.from({ length: 5 }, (_, i) => ({
         card_hash: `j1${i}`,
         revenue_cents: 1000,
@@ -142,12 +106,24 @@ describe('cohortAvgLtvByRepeater (Pass 3 — VA-10)', () => {
         cohort_month: '2026-01-22'
       }))
     ];
-    const result = cohortAvgLtvByRepeater(monthRows, 'month');
-    expect(result).toHaveLength(1);
-    expect(result[0].cohort).toBe('2026-01');
-    expect(result[0].new_avg_cents).toBe(1000);
-    expect(result[0].repeat_avg_cents).toBe(2000);
-    expect(result[0].new_count).toBe(5);
-    expect(result[0].repeat_count).toBe(5);
+    const [row] = cohortAvgLtvByVisitBucket(rows, 'month');
+    expect(row.cohort).toBe('2026-01');
+    expect(row['1st']).toBe(1000);
+    expect(row['3rd']).toBe(2000);
+    expect(row.total_customers).toBe(10);
+  });
+
+  // 260417-mp2 regression: month grain cohort must be length-7 so formatBucketLabel doesn't throw.
+  it('month cohort field is YYYY-MM (length 7) and formatBucketLabel accepts it', () => {
+    const rows: CustomerLtvRow[] = Array.from({ length: 5 }, (_, i) => ({
+      card_hash: `m${i}`,
+      revenue_cents: 2000,
+      visit_count: 2,
+      cohort_week: '2025-06-02',
+      cohort_month: '2025-06-01'
+    }));
+    const [row] = cohortAvgLtvByVisitBucket(rows, 'month');
+    expect(row.cohort).toHaveLength(7);
+    expect(() => formatBucketLabel(row.cohort, 'month')).not.toThrow();
   });
 });
