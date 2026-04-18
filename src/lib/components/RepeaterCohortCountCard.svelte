@@ -69,17 +69,6 @@
     Customers who came back 2+ times, grouped by visit count — placed in their first-visit period.
   </p>
 
-  <!-- 7-bucket gradient legend (2nd..8x+). -->
-  <div class="mt-2 flex items-center gap-3 text-xs text-zinc-600">
-    <span>2nd</span>
-    <div class="flex h-2 flex-1 overflow-hidden rounded">
-      {#each VISIT_SEQ_COLORS.slice(1) as color}
-        <div class="flex-1" style:background-color={color}></div>
-      {/each}
-    </div>
-    <span>8x+</span>
-  </div>
-
   {#if showClampHint}
     <p data-testid="cohort-clamp-hint" class="mt-2 text-xs text-amber-600">
       Grouping view shows weekly — other grains not applicable.
@@ -122,6 +111,18 @@
           {/each}
         {/snippet}
       </BarChart>
+    </div>
+
+    <!-- 7-bucket gradient legend (2nd..8x+) below chart — aligned with the
+         other bar cards per feedback F7. -->
+    <div class="mt-2 flex items-center gap-3 text-xs text-zinc-600">
+      <span>2nd</span>
+      <div class="flex h-2 flex-1 overflow-hidden rounded">
+        {#each VISIT_SEQ_COLORS.slice(1) as color}
+          <div class="flex-1" style:background-color={color}></div>
+        {/each}
+      </div>
+      <span>8x+</span>
     </div>
   {/if}
 </div>

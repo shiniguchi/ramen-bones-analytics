@@ -11,8 +11,7 @@ export const emptyStates = {
   'calendar-counts':   { heading: 'No transactions yet', body: 'No transactions in this window.' },
   'calendar-items':    { heading: 'No order items', body: 'No menu items tracked yet.' },
   'cohort-revenue':    { heading: 'Not enough history', body: 'Grouping charts need at least 5 customers per group.' },
-  'cohort-avg-ltv':    { heading: 'Not enough history', body: 'Grouping charts need at least 5 customers per group.' },
-  'ltv-histogram':     { heading: 'No LTV data', body: 'Needs at least one non-cash customer with ≥1 transaction.' }
+  'cohort-avg-ltv':    { heading: 'Not enough history', body: 'Grouping charts need at least 5 customers per group.' }
 } as const;
 
 export type EmptyCard = keyof typeof emptyStates;

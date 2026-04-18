@@ -14,7 +14,6 @@
   import CalendarItemsCard from '$lib/components/CalendarItemsCard.svelte';
   import CalendarItemRevenueCard from '$lib/components/CalendarItemRevenueCard.svelte';
   import RepeaterCohortCountCard from '$lib/components/RepeaterCohortCountCard.svelte';
-  import LtvHistogramCard from '$lib/components/LtvHistogramCard.svelte';
   import {
     initStore, getKpiTotals, getFilters, getWindow,
     setRange, setRangeId, setSalesType, setCashFilter,
@@ -206,8 +205,5 @@
 
     <!-- feedback #6: repeater customer count by first-visit cohort — lifetime, no range scoping -->
     <RepeaterCohortCountCard data={data.customerLtv} />
-
-    <!-- D-10 card 12: LTV histogram (VA-07) — retrospective, placed last -->
-    <LtvHistogramCard data={data.customerLtv} />
   </div>
 </main>
