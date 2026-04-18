@@ -18,7 +18,7 @@
     setRange, setRangeId, setSalesType, setCashFilter,
     cacheCovers, type DailyRow
   } from '$lib/dashboardStore.svelte';
-  import { invalidate, replaceState } from '$app/navigation';
+  import { goto, replaceState } from '$app/navigation';
   import { mergeSearchParams } from '$lib/urlState';
   import { chipToRange, customToRange, type Range, type RangeWindow } from '$lib/dateRange';
   import type { FiltersState } from '$lib/filters';
@@ -110,10 +110,20 @@
         return;
       }
 
-      // Cache miss — force SSR refetch via the registered invalidation key.
-      // See .planning/debug/range-chip-stale-cache.md for full evidence chain.
+      // Cache miss — force SSR refetch with the URL that DatePickerPopover.applyPreset
+      // just wrote via replaceState. Known SvelteKit quirk: invalidate() re-runs load
+      // with the stale URL captured when load last ran — $app/navigation.replaceState
+      // does NOT update the URL that invalidate sees. goto() with invalidateAll:true
+      // is the canonical API that both updates SvelteKit's internal URL and forces
+      // load re-run. replaceState:true prevents a duplicate history entry.
+      // See .planning/debug/range-chip-stale-cache.md for the evidence chain.
       setRange(window);
-      await invalidate('app:dashboard');
+      await goto(globalThis.window.location.href, {
+        replaceState: true,
+        invalidateAll: true,
+        noScroll: true,
+        keepFocus: true
+      });
     });
   }
 
