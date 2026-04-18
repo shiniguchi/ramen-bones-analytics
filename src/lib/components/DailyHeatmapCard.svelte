@@ -36,6 +36,15 @@
   // Vertical space: 7 day-of-week rows × ~14px cells + month labels + padding.
   // 180px is enough for a 2-year window without clipping on mobile.
   const HEIGHT_PX = 180;
+  const CELL_PX = 14;
+
+  // Explicit chart width = (weeks + 1) × cellSize + horizontal padding. Without
+  // this <Chart> auto-fits to the scroll wrapper and no horizontal scroll
+  // activates even when history > ~25 weeks wide (G1 regression fix).
+  const chartW = $derived.by(() => {
+    const weeks = Math.ceil((end.getTime() - start.getTime()) / (7 * 86400 * 1000));
+    return (weeks + 2) * CELL_PX + 16;
+  });
 
   // Bound from <Chart bind:context> so the custom children snippet can trigger
   // tooltip show/hide manually (overriding Calendar's default rendering loses
@@ -68,11 +77,12 @@
         c="revenue_cents"
         cScale={scaleSequential(interpolateBlues)}
         cDomain={[0, maxRev]}
+        width={chartW}
         padding={{ left: 8, right: 8, top: 24, bottom: 8 }}
         tooltipContext={{ mode: 'manual', touchEvents: 'auto' }}
       >
         <Svg>
-          <Calendar {start} {end} cellSize={14} monthLabel tooltip>
+          <Calendar {start} {end} cellSize={CELL_PX} monthLabel tooltip>
             {#snippet children({ cells, cellSize })}
               {#each cells as cell}
                 {@const hasData = cell.data?.revenue_cents != null && cell.data.revenue_cents > 0}
