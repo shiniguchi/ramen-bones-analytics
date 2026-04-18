@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Dashboard Simplification & Visit Attribution
 status: "Phase 10 shipped — PR #4"
-stopped_at: Completed quick task 260418-4oh — Pass 4 dashboard feedback (6 items); migration 0028 dual-pushed to DEV+TEST; all 5 tasks committed on dashboard-feedback-overhaul branch; 198 unit tests green, svelte-check at 17-error baseline
-last_updated: "2026-04-18T03:45:00Z"
+stopped_at: Completed quick task 260418-f99 — Plan A 5 UI fixes (Y-axis padding, SegmentedToggle overflow, KpiTile responsive, touch-action pan-x → auto, retention Tooltip.Root outside Svg); 6 atomic commits merged via worktree; 198 unit tests green, svelte-check at 17-error baseline
+last_updated: "2026-04-18T09:15:00Z"
 progress:
   total_phases: 10
   completed_phases: 10
@@ -208,6 +208,7 @@ Plan: Not started
 | 260418-28j | Pass 2 dashboard feedback: retention card — new retention_curve_monthly_v (fixes monthly period-0 34%→100%), x-axis cap 52w/12m, cohort line cap 4→12, remove client-side weeklyToMonthly | 2026-04-17 | f5825ca, 6333e56, 19219c6, 073b963, d834314 | [260418-28j-pass-2-retention-card-overhaul-monthly-s](./quick/260418-28j-pass-2-retention-card-overhaul-monthly-s/) |
 | 260418-3ec | Pass 3 dashboard feedback: repeater breakdown on VA-07/09/10 (VA-07 + VA-09 stacked, VA-10 grouped), LTV histogram dynamic €5 bins, classifyRepeater + cohort*ByRepeater helpers, REPEATER_COLORS palette | 2026-04-18 | 40ca05b, 831bb5e, 481aace | [260418-3ec-pass-3-repeater-breakdown-on-va-07-09-10](./quick/260418-3ec-pass-3-repeater-breakdown-on-va-07-09-10/) |
 | 260418-4oh | Pass 4 dashboard feedback (6 items): retention current-period NULL fix (migration 0028), mobile long-press freeze (.chart-touch-safe), retention tooltip (bisect-x), delete VA-09 CohortRevenueCard + dead helpers, top-20 items (ITEM_COLORS × 20), 8-bucket visit_count grouped LTV charts (VA-07 + VA-10) | 2026-04-18 | aa86219, 1598bf4, 6432bd2, 531a72f, ab771c2 | [260418-4oh-pass-4-6-items-top20-items-long-press-fi](./quick/260418-4oh-pass-4-6-items-top20-items-long-press-fi/) |
+| 260418-f99 | Plan A — 5 UI fixes pass: BarChart Y-axis padding, SegmentedToggle "Takeaway" overflow, KpiTile responsive type + €100k+ compact fallback, chart touch-action pan-x → auto (PC trackpad vertical scroll), retention Tooltip.Root moved out of Svg | 2026-04-18 | bec629c, 73d96b7, ec905d4, 02f39f3, 60ef822, e45fc20 | [260418-f99-plan-a-5-ui-fixes-pass](./quick/260418-f99-plan-a-5-ui-fixes-pass/) |
 
 ## Session Continuity
 
@@ -217,8 +218,8 @@ Plan: Not started
 
 **Resume hint:** Milestone v1.1 Dashboard Redesign was scoped in this session. Architecture is a pragmatic star schema: `dim_customer` (lifetime attrs) + `fct_transactions` (atomic fact MV with visit_seq / days_since_prev_visit window fns + denormalized filter dims) + 4 thin day-grain rollup MVs (`mv_new_customers_daily`, `mv_repeater_daily`, `mv_retention_monthly`, `mv_inter_visit_histogram`). Two bucket columns materialized: `lifetime_bucket` (how customer ended up) and `visit_seq_bucket` (point-in-time). Six filters: date range, granularity, sales_type, payment_method, wl_issuing_country, repeater bucket — dropdowns auto-populated from DISTINCT values. All refresh stays inside existing `refresh_analytics_mvs()` cron. Start with Phase 06 (Filter Foundation) for a quick UX win before any schema change.
 
-**Last session:** 2026-04-18T03:45:00Z
-**Stopped At:** Completed quick task 260418-4oh — Pass 4 dashboard feedback (6 items). Migration 0028 dual-pushed to DEV (paafpikebsudoqxwumgm) + TEST (akyugfvsdfrwuzirmylo). 5 atomic commits on dashboard-feedback-overhaul branch: retention NULL-mask fix, .chart-touch-safe utility, retention tooltip activation, VA-09 CohortRevenueCard deletion, top-20 items + 8-bucket grouped LTV charts. 198 unit tests green, svelte-check at 17-error baseline. Branch ready for PR alongside Passes 1/2/3.
+**Last session:** 2026-04-18T09:15:00Z
+**Stopped At:** Completed quick task 260418-f99 — Plan A 5 UI fixes pass. 6 atomic commits merged via executor worktree: (T1 bec629c) SegmentedToggle remove flex-1 min-w-0 so "Takeaway" sizes to content; (T2 73d96b7) retention Tooltip.Root moved outside Svg so div subtree paints; (T3 ec905d4) 5 BarCharts get explicit padding={{ left: 40, right: 8, top: 8, bottom: 24 }} (top-level prop, not props.padding — BarChart's props map is keyed dispatch not a restProps bridge); (T4 02f39f3) 6 charts switch to tooltipContext.touchEvents: 'auto' + 5 outer wrappers touch-pan-x → touch-auto so PC trackpad vertical scroll works; (T5 60ef822) KpiTile text-2xl sm:text-[32px] + formatEURShort fallback at ≥ €100k; (T6 e45fc20) LayerChart mobile-scroll memory updated with 2026-04-18 pan-x → auto default. 198 unit tests green, svelte-check at 17-error baseline. User still owes DEV QA checklist (retention tooltip paint, Y-axis unclip, PC trackpad scroll, mobile horizontal chart swipe, KPI compact form).
 
 ---
 *State initialized: 2026-04-13*
