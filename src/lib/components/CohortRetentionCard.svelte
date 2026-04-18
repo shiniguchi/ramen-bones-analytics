@@ -174,9 +174,15 @@
             <Tooltip.Header>{xTipKey} {period}</Tooltip.Header>
             <Tooltip.List>
               {#each rowsAtPeriod as r (r.cohort)}
+                {@const pct = r.rate * 100}
+                {@const pctLabel = pct === 0
+                  ? '0%'
+                  : pct < 1
+                    ? '<1%'
+                    : `${Math.round(pct)}%`}
                 <Tooltip.Item
                   label={r.cohort}
-                  value={`${Math.round(r.rate * 100)}% · ${Math.round(r.rate * r.size)} of ${r.size} returned`}
+                  value={`${pctLabel} · ${Math.round(r.rate * r.size)} of ${r.size} returned`}
                 />
               {/each}
             </Tooltip.List>
