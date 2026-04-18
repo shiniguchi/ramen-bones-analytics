@@ -115,7 +115,7 @@
         x="bucket"
         {series}
         width={chartW}
-        padding={{ left: 40, right: 8, top: 8, bottom: 24 }}
+        padding={{ left: 64, right: 8, top: 8, bottom: 24 }}
         yDomain={[0, Math.max(1, yMax)]}
         props={{ xAxis: { ticks: MAX_X_TICKS }, yAxis: { format: yAxisFormat, ticks: yTicks } }}
         tooltipContext={{ touchEvents: 'auto' }}
