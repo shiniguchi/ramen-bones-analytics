@@ -30,3 +30,9 @@ export const COHORT_LINE_PALETTE: readonly string[] = [
   '#ea580c', '#ca8a04', '#16a34a', '#0d9488',
   '#7e22ce', '#be123c', '#4d7c0f', '#b45309'
 ];
+
+/**
+ * Pass 3 (quick-260418-3ec): repeater segment palette for VA-07/09/10.
+ * zinc-400 neutral (new / one-timer) + blue-600 strong (repeat) — high contrast on white cards.
+ */
+export const REPEATER_COLORS = { new: '#94a3b8', repeat: '#2563eb' } as const;
