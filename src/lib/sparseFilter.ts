@@ -7,8 +7,10 @@ export const SPARSE_MIN_COHORT_SIZE = 5;
 export const MAX_PERIOD_WEEKS = 52;
 export const MAX_PERIOD_MONTHS = 12;
 
-// Pass 2 (quick-260418-28j): max cohort lines rendered (was hard-coded 4 in two spots).
-export const MAX_COHORT_LINES = 12;
+// quick-260418-ret: cap removed — user wants every non-sparse cohort visible.
+// Kept as a high sentinel so existing call sites still type-check and guard
+// against pathological datasets (> 100 cohorts would blow the legend).
+export const MAX_COHORT_LINES = 100;
 
 // A single row from retention_curve_v — only fields needed for sparse filtering.
 export type RetentionRow = {

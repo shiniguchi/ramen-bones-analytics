@@ -170,7 +170,7 @@
                 return { cohort: s.cohort, color: s.color, rate: hit.retention_rate, size };
               })
               .filter((x): x is NonNullable<typeof x> => x !== null)
-              .sort((a, b) => b.rate - a.rate)}
+              .sort((a, b) => a.cohort.localeCompare(b.cohort))}
             <Tooltip.Header>{xTipKey} {period}</Tooltip.Header>
             <Tooltip.List>
               {#each rowsAtPeriod as r (r.cohort)}
