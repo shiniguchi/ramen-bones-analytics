@@ -100,7 +100,8 @@ export const load: PageServerLoad = async ({ locals, url, depends }) => {
     .select('card_hash,revenue_cents,visit_count,cohort_week,cohort_month')
   ).catch((e: unknown) => { console.error('[customer_ltv_v]', e); return [] as CustomerLtvRow[]; });
 
-  // Phase 10: item_counts_daily_v feeds VA-08 (calendar item counts).
+  // Phase 10: item_counts_daily_v feeds VA-08 (calendar item counts) and
+  // the per-item revenue card (quick-260418-irc, migration 0029 added item_revenue_cents).
   // Scoped to active window to keep payload <500kB (D-21).
   type ItemCountRow = {
     business_date: string;
@@ -108,10 +109,11 @@ export const load: PageServerLoad = async ({ locals, url, depends }) => {
     sales_type: string | null;
     is_cash: boolean;
     item_count: number;
+    item_revenue_cents: number;
   };
   const itemCountsP = fetchAll<ItemCountRow>(() => locals.supabase
     .from('item_counts_daily_v')
-    .select('business_date,item_name,sales_type,is_cash,item_count')
+    .select('business_date,item_name,sales_type,is_cash,item_count,item_revenue_cents')
     .gte('business_date', chipW.from)
     .lte('business_date', chipW.to)
   ).catch((e: unknown) => { console.error('[item_counts_daily_v]', e); return [] as ItemCountRow[]; });
