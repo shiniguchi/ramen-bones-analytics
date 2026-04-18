@@ -5,7 +5,7 @@
   //
   // seriesLayout="group" (user's explicit call over stacked) — adjacent bars per
   // bucket make per-visit-bucket comparison easier than a stacked column.
-  import { BarChart, Bars, Text } from 'layerchart';
+  import { BarChart, Bars, Text, Tooltip } from 'layerchart';
   import EmptyState from './EmptyState.svelte';
   import {
     cohortRepeaterCountByVisitBucket,
@@ -110,6 +110,19 @@
             {/if}
           {/each}
         {/snippet}
+        <Tooltip.Root>
+          {#snippet children({ data: row })}
+            <Tooltip.Header>{row.cohort}</Tooltip.Header>
+            <Tooltip.List>
+              {#each REPEATER_BUCKET_KEYS as k (k)}
+                {#if ((row[k] as number) ?? 0) > 0}
+                  <Tooltip.Item label={k} value={`${row[k]} cust`} />
+                {/if}
+              {/each}
+              <Tooltip.Item label="Total" value={`${totals[chartData.indexOf(row)] ?? 0} cust`} />
+            </Tooltip.List>
+          {/snippet}
+        </Tooltip.Root>
       </BarChart>
     </div>
 
