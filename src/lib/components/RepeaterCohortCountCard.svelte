@@ -30,10 +30,11 @@
   });
   const showClampHint = $derived(getFilters().grain === 'day');
 
-  // Last 12 cohorts keep the grouped-bars legible at 375px (7 bars × 12 = 84 max).
+  // Show every non-sparse cohort — the overflow-x-auto wrapper + computeChartWidth
+  // handle mobile scroll; previous .slice(-12) was hiding genuine early history.
   const chartData = $derived.by(() => {
     const aggs = cohortRepeaterCountByVisitBucket(data, cohortGrain);
-    return aggs.slice(-12).map((a) => {
+    return aggs.map((a) => {
       const row: Record<string, string | number> = {
         cohort: formatBucketLabel(a.cohort, cohortGrain)
       };
