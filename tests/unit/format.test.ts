@@ -45,4 +45,38 @@ describe('formatIntShort', () => {
   it('omits unit when undefined (back-compat)', () => {
     expect(formatIntShort(0)).toBe('0');
   });
+
+  it('rounds fractional tick values to integers', () => {
+    // Protects against d3 picking fractional ticks like 0.2 that would
+    // otherwise all render as "0 items" after compact formatting.
+    expect(formatIntShort(0.2, 'items')).toBe('0 items');
+    expect(formatIntShort(0.7, 'items')).toBe('1 items');
+    expect(formatIntShort(2.4, 'cust')).toBe('2 cust');
+  });
+});
+
+describe('integerTicks (trendline helper)', () => {
+  it('returns [0, 1] for zero/negative yMax', () => {
+    // imported via dynamic import to keep scope of this test file local
+    return import('../../src/lib/trendline').then(({ integerTicks }) => {
+      expect(integerTicks(0)).toEqual([0, 1]);
+      expect(integerTicks(-3)).toEqual([0, 1]);
+    });
+  });
+
+  it('returns [0..yMax] when yMax ≤ maxCount', () => {
+    return import('../../src/lib/trendline').then(({ integerTicks }) => {
+      expect(integerTicks(4)).toEqual([0, 1, 2, 3, 4]);
+      expect(integerTicks(6)).toEqual([0, 1, 2, 3, 4, 5, 6]);
+    });
+  });
+
+  it('steps evenly and always includes yMax as last tick', () => {
+    return import('../../src/lib/trendline').then(({ integerTicks }) => {
+      const ticks = integerTicks(25);
+      expect(ticks[0]).toBe(0);
+      expect(ticks[ticks.length - 1]).toBe(25);
+      expect(ticks.every(Number.isInteger)).toBe(true);
+    });
+  });
 });

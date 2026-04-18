@@ -12,6 +12,7 @@
   import { rollupTopNWithOther } from '$lib/itemCountsRollup';
   import { formatIntShort } from '$lib/format';
   import { bucketKey, getFilters, formatBucketLabel, computeChartWidth, MAX_X_TICKS } from '$lib/dashboardStore.svelte';
+  import { integerTicks } from '$lib/trendline';
 
   const yAxisFormat = (n: number) => formatIntShort(n, 'items');
 
@@ -83,6 +84,21 @@
     }))
   );
 
+  // Force integer y-axis ticks — per-item per-bucket counts can be 0..5,
+  // where d3's default fractional ticks (0, 0.2, 0.4, 0.6, 0.8, 1) all
+  // compact-format to "0 items". Explicit integer tick array prevents that.
+  const yMax = $derived.by(() => {
+    let m = 0;
+    for (const row of chartData) {
+      for (const k of topItems) {
+        const v = (row as Record<string, unknown>)[k];
+        if (typeof v === 'number' && v > m) m = v;
+      }
+    }
+    return m;
+  });
+  const yTicks = $derived(integerTicks(yMax));
+
   let cardW = $state(0);
   const chartW = $derived(computeChartWidth(chartData.length, cardW));
 </script>
@@ -100,7 +116,8 @@
         {series}
         width={chartW}
         padding={{ left: 40, right: 8, top: 8, bottom: 24 }}
-        props={{ xAxis: { ticks: MAX_X_TICKS }, yAxis: { format: yAxisFormat } }}
+        yDomain={[0, Math.max(1, yMax)]}
+        props={{ xAxis: { ticks: MAX_X_TICKS }, yAxis: { format: yAxisFormat, ticks: yTicks } }}
         tooltipContext={{ touchEvents: 'auto' }}
       />
     </div>

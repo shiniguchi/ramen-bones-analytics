@@ -45,6 +45,9 @@ export function formatEURShort(eur: number): string {
 }
 
 export function formatIntShort(n: number, unit?: string): string {
-  const base = _toDeDecimal(_enCompact.format(n));
+  // Round before compacting: all callers here pass integer-count metrics
+  // (txn, items, cust). This protects against d3 picking fractional ticks
+  // like 0.2 / 0.4 that would otherwise compact to the same literal "0".
+  const base = _toDeDecimal(_enCompact.format(Math.round(n)));
   return unit ? `${base} ${unit}` : base;
 }

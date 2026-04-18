@@ -1,6 +1,24 @@
 // Simple OLS linear fit + bucket-trend helper for chart overlays.
-// Used by CalendarRevenueCard, CalendarCountsCard, CalendarItemRevenueCard,
-// RepeaterCohortCountCard to render a dashed Spline on top of bar data.
+// Used by CalendarRevenueCard, CalendarCountsCard, CalendarItemRevenueCard
+// to render a dashed Spline on top of bar data. Also exposes integerTicks
+// for forcing whole-number y-axis labels on integer-count charts.
+
+/**
+ * Build an array of whole-number tick values 0..yMax, capping tick count to
+ * maxCount so a yMax of 0..maxCount yields one tick per integer and a larger
+ * yMax falls back to rounded steps. Avoids fractional d3 ticks that would
+ * collapse under compact integer formatting (0.2 → "0 items").
+ */
+export function integerTicks(yMax: number, maxCount = 6): number[] {
+  if (!Number.isFinite(yMax) || yMax <= 0) return [0, 1];
+  const top = Math.max(1, Math.ceil(yMax));
+  if (top <= maxCount) return Array.from({ length: top + 1 }, (_, i) => i);
+  const step = Math.ceil(top / maxCount);
+  const ticks: number[] = [];
+  for (let v = 0; v <= top; v += step) ticks.push(v);
+  if (ticks[ticks.length - 1] !== top) ticks.push(top);
+  return ticks;
+}
 
 export function linearFit(
   ys: readonly number[]
