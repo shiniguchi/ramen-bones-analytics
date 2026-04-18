@@ -12,7 +12,7 @@
   import CalendarCountsCard from '$lib/components/CalendarCountsCard.svelte';
   import CalendarItemsCard from '$lib/components/CalendarItemsCard.svelte';
   import CalendarItemRevenueCard from '$lib/components/CalendarItemRevenueCard.svelte';
-  import CohortAvgLtvCard from '$lib/components/CohortAvgLtvCard.svelte';
+  import RepeaterCohortCountCard from '$lib/components/RepeaterCohortCountCard.svelte';
   import LtvHistogramCard from '$lib/components/LtvHistogramCard.svelte';
   import {
     initStore, getKpiTotals, getFilters, getWindow,
@@ -200,8 +200,8 @@
          instead of re-bucketing weekly rows client-side. -->
     <CohortRetentionCard dataWeekly={data.retention} dataMonthly={data.retentionMonthly} />
 
-    <!-- D-10 card 11: Cohort avg LTV (VA-10) — lifetime, no range scoping -->
-    <CohortAvgLtvCard data={data.customerLtv} />
+    <!-- feedback #6: repeater customer count by first-visit cohort — lifetime, no range scoping -->
+    <RepeaterCohortCountCard data={data.customerLtv} />
 
     <!-- D-10 card 12: LTV histogram (VA-07) — retrospective, placed last -->
     <LtvHistogramCard data={data.customerLtv} />
