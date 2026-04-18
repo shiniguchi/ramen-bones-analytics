@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Dashboard Simplification & Visit Attribution
 status: "Phase 10 shipped — PR #4"
-stopped_at: Completed quick task 260418-28j — Pass 2 retention card overhaul (monthly SQL view fixes period-0 bug, 52w/12m x-axis cap, 12-line cohort cap)
-last_updated: "2026-04-17T23:55:00Z"
+stopped_at: Completed quick task 260418-3ec — Pass 3 repeater breakdown on VA-07/09/10 (all 3 passes verified on DEV; branch dashboard-feedback-overhaul ready for PR)
+last_updated: "2026-04-18T00:45:00Z"
 progress:
   total_phases: 10
   completed_phases: 10
@@ -206,6 +206,7 @@ Plan: Not started
 | 260418-0td | Clean up unstaged MCP config — restored Context7 + claude-in-chrome, promoted .mcp.json to tracked, documented mcp-servers/ | 2026-04-17 | f8970f2, b20cad6 | [260418-0td-clean-up-unstaged-mcp-config-changes-res](./quick/260418-0td-clean-up-unstaged-mcp-config-changes-res/) |
 | 260418-1ja | Pass 1 dashboard feedback: swap Counts/Revenue order, rename 7 chart titles, add compact €/int Y-axis formatters, fix revenue-chart cents→EUR bug | 2026-04-17 | f569933, af8f546, 00a0325 | [260418-1ja-pass-1-card-titles-order-swap-y-axis-rea](./quick/260418-1ja-pass-1-card-titles-order-swap-y-axis-rea/) |
 | 260418-28j | Pass 2 dashboard feedback: retention card — new retention_curve_monthly_v (fixes monthly period-0 34%→100%), x-axis cap 52w/12m, cohort line cap 4→12, remove client-side weeklyToMonthly | 2026-04-17 | f5825ca, 6333e56, 19219c6, 073b963, d834314 | [260418-28j-pass-2-retention-card-overhaul-monthly-s](./quick/260418-28j-pass-2-retention-card-overhaul-monthly-s/) |
+| 260418-3ec | Pass 3 dashboard feedback: repeater breakdown on VA-07/09/10 (VA-07 + VA-09 stacked, VA-10 grouped), LTV histogram dynamic €5 bins, classifyRepeater + cohort*ByRepeater helpers, REPEATER_COLORS palette | 2026-04-18 | 40ca05b, 831bb5e, 481aace | [260418-3ec-pass-3-repeater-breakdown-on-va-07-09-10](./quick/260418-3ec-pass-3-repeater-breakdown-on-va-07-09-10/) |
 
 ## Session Continuity
 
