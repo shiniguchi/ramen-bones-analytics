@@ -11,6 +11,7 @@
   import CalendarRevenueCard from '$lib/components/CalendarRevenueCard.svelte';
   import CalendarCountsCard from '$lib/components/CalendarCountsCard.svelte';
   import CalendarItemsCard from '$lib/components/CalendarItemsCard.svelte';
+  import CalendarItemRevenueCard from '$lib/components/CalendarItemRevenueCard.svelte';
   import CohortAvgLtvCard from '$lib/components/CohortAvgLtvCard.svelte';
   import LtvHistogramCard from '$lib/components/LtvHistogramCard.svelte';
   import {
@@ -190,6 +191,9 @@
 
     <!-- D-10 card 9: Calendar items (VA-08) — receives window-scoped rows from SSR -->
     <CalendarItemsCard data={data.itemCounts} />
+
+    <!-- feedback #4: per-item revenue stacked bars — same payload, revenue metric -->
+    <CalendarItemRevenueCard data={data.itemCounts} />
 
     <!-- D-10 card 10: Cohort retention (VA-06)
          quick-260418-28j: monthly grain now reads from retention_curve_monthly_v
