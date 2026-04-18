@@ -18,7 +18,7 @@
     setRange, setRangeId, setSalesType, setCashFilter,
     cacheCovers, type DailyRow
   } from '$lib/dashboardStore.svelte';
-  import { replaceState } from '$app/navigation';
+  import { invalidate, replaceState } from '$app/navigation';
   import { mergeSearchParams } from '$lib/urlState';
   import { chipToRange, customToRange, type Range, type RangeWindow } from '$lib/dateRange';
   import type { FiltersState } from '$lib/filters';
@@ -48,13 +48,19 @@
   // Fixes UAT Test 7: data.window is frozen at SSR; getWindow() tracks setRange().
   const storeWindow = $derived(getWindow());
 
-  // Filter-change loading indicator — flashes a spinner in FilterBar for ~300ms
-  // so the UI doesn't look frozen while store + URL updates propagate.
+  // Filter-change loading indicator — tracks the actual duration of the inner
+  // work (client-only store update OR async SSR invalidate round-trip).
+  // quick-260418-g6s: switched from fixed 300ms setTimeout to try/finally around
+  // await fn() so cache-miss chip clicks keep the spinner visible for the full
+  // SSR round-trip (300-1000ms). Cache-hit clicks still resolve instantly.
   let isUpdating = $state(false);
-  function withUpdate(fn: () => void) {
+  async function withUpdate(fn: () => void | Promise<void>) {
     isUpdating = true;
-    fn();
-    setTimeout(() => { isUpdating = false; }, 300);
+    try {
+      await fn();
+    } finally {
+      isUpdating = false;
+    }
   }
 
   // Range label for tile titles
@@ -77,8 +83,8 @@
   // Handle range change from DatePickerPopover.
   // Preset ids come through directly; 'custom' means the popover has already
   // written from/to to the URL via replaceState — we read them off the live URL.
-  function handleRangeChange(rangeValue: string) {
-    withUpdate(() => {
+  async function handleRangeChange(rangeValue: string) {
+    await withUpdate(async () => {
       let window: RangeWindow;
       if (rangeValue === 'custom') {
         // Read custom from/to from live browser URL — DatePickerPopover.applyCustom
@@ -104,8 +110,10 @@
         return;
       }
 
-      // Cache doesn't cover — update store with what we have, SSR refetches on next load.
+      // Cache miss — force SSR refetch via the registered invalidation key.
+      // See .planning/debug/range-chip-stale-cache.md for full evidence chain.
       setRange(window);
+      await invalidate('app:dashboard');
     });
   }
 

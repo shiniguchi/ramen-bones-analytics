@@ -11,7 +11,8 @@ import { differenceInMonths, parseISO } from 'date-fns';
 import type { DailyRow } from '$lib/dashboardStore.svelte';
 import { fetchAll } from '$lib/supabasePagination';
 
-export const load: PageServerLoad = async ({ locals, url }) => {
+export const load: PageServerLoad = async ({ locals, url, depends }) => {
+  depends('app:dashboard');
   // Phase 6 FLT-07: parseFilters is the ONLY place filter params are read.
   const filters = parseFilters(url);
   const range = filters.range as Range | 'custom';
