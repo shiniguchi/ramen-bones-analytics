@@ -176,7 +176,7 @@
               {#each rowsAtPeriod as r (r.cohort)}
                 <Tooltip.Item
                   label={r.cohort}
-                  value={`${Math.round(r.rate * 100)}% · ${r.size} cust`}
+                  value={`${Math.round(r.rate * 100)}% · ${Math.round(r.rate * r.size)} of ${r.size} returned`}
                 />
               {/each}
             </Tooltip.List>
