@@ -10,6 +10,7 @@
   // Phase 9: GrainToggle moved to FilterBar (D-14).
   import { Chart, Svg, Axis, Spline, Highlight, Tooltip } from 'layerchart';
   import { scaleLinear } from 'd3-scale';
+  import { curveStepAfter } from 'd3-shape';
   import EmptyState from './EmptyState.svelte';
   import {
     pickVisibleCohorts,
@@ -151,6 +152,7 @@
               data={s.rows}
               x={xKey}
               y="retention_rate"
+              curve={curveStepAfter}
               class="stroke-2"
               stroke={palette[i % palette.length]}
             />
