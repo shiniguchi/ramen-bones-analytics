@@ -61,8 +61,12 @@ where restaurant_id::text = (auth.jwt()->>'restaurant_id');
 
 grant select on public.item_counts_daily_v to authenticated;
 
--- Update test helper signature + body to include item_revenue_cents.
-create or replace function public.test_item_counts_daily(rid uuid)
+-- Postgres won't let CREATE OR REPLACE change an existing function's return
+-- type — must drop the old signature first before recreating with the extra
+-- item_revenue_cents bigint column.
+drop function if exists public.test_item_counts_daily(uuid);
+
+create function public.test_item_counts_daily(rid uuid)
 returns table (
   restaurant_id      uuid,
   business_date      date,
