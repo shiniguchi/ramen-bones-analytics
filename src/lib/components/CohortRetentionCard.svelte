@@ -156,16 +156,16 @@
             />
           {/each}
           <Highlight points lines />
-          <Tooltip.Root let:data>
-            <Tooltip.Header>
-              {data?.cohort_month ?? data?.cohort_week} · {xTipKey} {data?.[xKey]}
-            </Tooltip.Header>
-            <Tooltip.List>
-              <Tooltip.Item label="Retention" value={`${Math.round((data?.retention_rate ?? 0) * 100)}%`} />
-              <Tooltip.Item label="Cohort size" value={`${data?.cohort_size_month ?? data?.cohort_size_week ?? 0} customers`} />
-            </Tooltip.List>
-          </Tooltip.Root>
         </Svg>
+        <Tooltip.Root let:data>
+          <Tooltip.Header>
+            {data?.cohort_month ?? data?.cohort_week} · {xTipKey} {data?.[xKey]}
+          </Tooltip.Header>
+          <Tooltip.List>
+            <Tooltip.Item label="Retention" value={`${Math.round((data?.retention_rate ?? 0) * 100)}%`} />
+            <Tooltip.Item label="Cohort size" value={`${data?.cohort_size_month ?? data?.cohort_size_week ?? 0} customers`} />
+          </Tooltip.List>
+        </Tooltip.Root>
       </Chart>
     </div>
   {/if}
