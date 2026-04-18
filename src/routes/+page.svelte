@@ -164,9 +164,6 @@
       <InsightCard insight={data.latestInsight} />
     {/if}
 
-    <!-- feedback #4: GitHub-style daily heatmap — full history, unfiltered -->
-    <DailyHeatmapCard data={data.dailyKpi} />
-
     <!-- D-10 cards 4-5: Revenue + Transactions KPI tiles -->
     <div class="grid grid-cols-2 gap-4">
       <KpiTile
@@ -186,6 +183,9 @@
         emptyCard="revenueChip"
       />
     </div>
+
+    <!-- feedback #4 (moved per feedback round F): heatmap sits right below the KPI tiles -->
+    <DailyHeatmapCard data={data.dailyKpi} />
 
     <!-- D-10 card 7: Calendar counts (VA-05) — self-subscribes to dashboardStore -->
     <CalendarCountsCard />
