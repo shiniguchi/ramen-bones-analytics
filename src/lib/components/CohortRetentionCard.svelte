@@ -128,7 +128,7 @@
   {#if series.length === 0}
     <EmptyState card="cohort" />
   {:else}
-    <div class="mt-4 h-64">
+    <div class="mt-4 h-64 chart-touch-safe">
       <!-- layerchart 2.x: explicit D3 scales (string presets removed in 2.x).
            xDomain capped at MAX_PERIOD_* so the chart doesn't trail off past
            the readable window on a 375px phone. -->

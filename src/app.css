@@ -60,5 +60,12 @@
     background-color: var(--background);
     color: var(--foreground);
   }
+
+  /* Pass 4 Item #2: suppress mobile long-press selection + callout on chart wrappers. */
+  .chart-touch-safe {
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+  }
 }
 
