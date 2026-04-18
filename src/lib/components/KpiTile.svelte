@@ -3,7 +3,7 @@
   // Renders a title, big formatted number, and a delta vs prior window.
   // When value is null (query failed), shows EmptyState fallback.
   import EmptyState from './EmptyState.svelte';
-  import { formatEUR } from '$lib/format';
+  import { formatEUR, formatEURShort } from '$lib/format';
 
   type Props = {
     title: string;
@@ -30,7 +30,12 @@
   // Formatted display value.
   const display = $derived.by(() => {
     if (value === null) return null;
-    if (format === 'eur-int') return formatEUR(value);
+    if (format === 'eur-int') {
+      // Compact form (€100k+) to prevent big-number overflow on narrow tiles.
+      // formatEURShort takes EUR, not cents — divide here.
+      if (value / 100 >= 100000) return formatEURShort(value / 100);
+      return formatEUR(value);
+    }
     if (format === 'eur-dec') return formatEUR(value, true);
     return value.toLocaleString('de-DE');
   });
@@ -61,7 +66,7 @@
     <EmptyState card={emptyCard} />
   {:else}
     <!-- Big number: 32px tabular-nums for clean alignment across tiles -->
-    <p class="mt-1 text-[32px] leading-[1.1] font-semibold tabular-nums text-zinc-900">{display}</p>
+    <p class="mt-1 text-2xl sm:text-[32px] leading-[1.1] font-semibold tabular-nums text-zinc-900">{display}</p>
     {#if delta}
       <p class="mt-1 text-xs {delta.color}">{delta.text}</p>
     {/if}

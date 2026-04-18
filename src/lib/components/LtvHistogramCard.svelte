@@ -70,7 +70,7 @@
   {:else}
     <div
       bind:clientWidth={cardW}
-      class="mt-4 h-64 overflow-x-auto touch-pan-x overscroll-x-contain chart-touch-safe"
+      class="mt-4 h-64 overflow-x-auto touch-auto overscroll-x-contain chart-touch-safe"
     >
       <BarChart
         data={chartData}
@@ -80,8 +80,9 @@
         orientation="vertical"
         bandPadding={0.2}
         width={chartW}
+        padding={{ left: 40, right: 8, top: 8, bottom: 24 }}
         props={{ xAxis: { ticks: MAX_X_TICKS }, yAxis: { format: formatIntShort } }}
-        tooltipContext={{ touchEvents: 'pan-x' }}
+        tooltipContext={{ touchEvents: 'auto' }}
       />
     </div>
   {/if}
