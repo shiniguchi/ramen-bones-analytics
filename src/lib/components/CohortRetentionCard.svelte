@@ -171,22 +171,22 @@
                   : (hit as RetentionRow).cohort_size_week;
                 return { cohort: s.cohort, color: s.color, rate: hit.retention_rate, size };
               })
-              .filter((x): x is NonNullable<typeof x> => x !== null)
+              .filter((x): x is NonNullable<typeof x> => x !== null && x.rate > 0)
               .sort((a, b) => a.cohort.localeCompare(b.cohort))}
             <Tooltip.Header>{xTipKey} {period}</Tooltip.Header>
             <Tooltip.List>
-              {#each rowsAtPeriod as r (r.cohort)}
-                {@const pct = r.rate * 100}
-                {@const pctLabel = pct === 0
-                  ? '0%'
-                  : pct < 1
-                    ? '<1%'
-                    : `${Math.round(pct)}%`}
-                <Tooltip.Item
-                  label={r.cohort}
-                  value={`${pctLabel} · ${Math.round(r.rate * r.size)} of ${r.size} returned`}
-                />
-              {/each}
+              {#if rowsAtPeriod.length === 0}
+                <Tooltip.Item label="No returns" value="" />
+              {:else}
+                {#each rowsAtPeriod as r (r.cohort)}
+                  {@const pct = r.rate * 100}
+                  {@const pctLabel = pct < 1 ? '<1%' : `${Math.round(pct)}%`}
+                  <Tooltip.Item
+                    label={r.cohort}
+                    value={`${pctLabel} · ${Math.round(r.rate * r.size)} of ${r.size} returned`}
+                  />
+                {/each}
+              {/if}
             </Tooltip.List>
           {/snippet}
         </Tooltip.Root>
