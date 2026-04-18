@@ -60,7 +60,7 @@
   class="rounded-xl border border-zinc-200 bg-white p-4"
 >
   <h2 class="text-base font-semibold text-zinc-900">
-    Repeaters acquired by first-visit cohort
+    Repeaters acquired by first-visit grouping
   </h2>
   <p class="mt-1 text-xs text-zinc-500">
     Customers who came back 2+ times, grouped by visit count — placed in their first-visit period.
@@ -79,7 +79,7 @@
 
   {#if showClampHint}
     <p data-testid="cohort-clamp-hint" class="mt-2 text-xs text-amber-600">
-      Cohort view shows weekly — other grains not applicable.
+      Grouping view shows weekly — other grains not applicable.
     </p>
   {/if}
 

@@ -102,7 +102,7 @@
 <div data-testid="cohort-card" class="rounded-xl border border-zinc-200 bg-white p-4">
   <!-- Card header -->
   <div class="flex items-center justify-between gap-2">
-    <h2 class="text-base font-semibold text-zinc-900">Retention rate by acquisition cohort</h2>
+    <h2 class="text-base font-semibold text-zinc-900">Retention rate by acquisition grouping</h2>
   </div>
 
   {#if showClampHint}
@@ -111,7 +111,7 @@
       data-testid="cohort-clamp-hint"
       class="mt-2 text-xs text-amber-600"
     >
-      Cohort view shows weekly — other grains not applicable.
+      Grouping view shows weekly — other grains not applicable.
     </p>
   {/if}
 
@@ -121,7 +121,7 @@
       data-testid="sparse-hint"
       class="mt-2 text-xs text-amber-600"
     >
-      Cohort sizes are small — retention lines may swing a lot. Give it a few more weeks of data.
+      Group sizes are small — retention lines may swing a lot. Give it a few more weeks of data.
     </p>
   {/if}
 
