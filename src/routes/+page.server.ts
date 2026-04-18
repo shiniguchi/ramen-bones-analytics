@@ -43,7 +43,12 @@ export const load: PageServerLoad = async ({ locals, url, depends }) => {
       monthsOfHistory: 2,
       latestInsight: null,
       customerLtv: E2E_CUSTOMER_LTV_ROWS,
-      itemCounts: E2E_ITEM_COUNTS_ROWS
+      itemCounts: E2E_ITEM_COUNTS_ROWS,
+      dailyKpi: [
+        { business_date: '2026-04-14', revenue_cents: 6500, tx_count: 2 },
+        { business_date: '2026-04-15', revenue_cents: 7300, tx_count: 2 },
+        { business_date: '2026-04-16', revenue_cents: 3200, tx_count: 1 }
+      ]
     };
   }
 
@@ -85,6 +90,16 @@ export const load: PageServerLoad = async ({ locals, url, depends }) => {
         .lte('business_date', chipW.priorTo!)
       ).catch((e: unknown) => { console.error('[transactions_filterable_v prior]', e); return [] as DailyRow[]; })
     : Promise.resolve([] as DailyRow[]);
+
+  // quick-260418-map (feedback #4): daily KPI heatmap needs full history,
+  // NOT filtered by the range/sales_type/is_cash filters. Sourced from
+  // kpi_daily_v (migration 0011).
+  type DailyKpiRow = { business_date: string; revenue_cents: number | string; tx_count: number };
+  const dailyKpiP = fetchAll<DailyKpiRow>(() => locals.supabase
+    .from('kpi_daily_v')
+    .select('business_date,revenue_cents,tx_count')
+    .order('business_date', { ascending: true })
+  ).catch((e: unknown) => { console.error('[kpi_daily_v]', e); return [] as DailyKpiRow[]; });
 
   // Phase 10: customer_ltv_v feeds VA-07 (LTV histogram), VA-09 (cohort revenue),
   // VA-10 (cohort avg LTV). LTV is lifetime — NOT filtered by range/sales_type/is_cash.
@@ -166,7 +181,8 @@ export const load: PageServerLoad = async ({ locals, url, depends }) => {
     retentionMonthlyData,
     latestInsightRow,
     customerLtv,
-    itemCounts
+    itemCounts,
+    dailyKpi
   ] = await Promise.all([
     dailyRowsP,
     priorDailyRowsP,
@@ -174,7 +190,8 @@ export const load: PageServerLoad = async ({ locals, url, depends }) => {
     retentionMonthlyP,
     insightP,
     customerLtvP,
-    itemCountsP
+    itemCountsP,
+    dailyKpiP
   ]);
 
   // Berlin timezone for is_yesterday flag.
@@ -212,7 +229,8 @@ export const load: PageServerLoad = async ({ locals, url, depends }) => {
     monthsOfHistory,
     latestInsight,
     customerLtv,
-    itemCounts
+    itemCounts,
+    dailyKpi
   };
 };
 

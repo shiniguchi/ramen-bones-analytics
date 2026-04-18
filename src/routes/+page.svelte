@@ -8,6 +8,7 @@
   import CohortRetentionCard from '$lib/components/CohortRetentionCard.svelte';
   import InsightCard from '$lib/components/InsightCard.svelte';
   // Phase 10: 6 new chart cards (VA-04..VA-10) inserted in D-10 order below.
+  import DailyHeatmapCard from '$lib/components/DailyHeatmapCard.svelte';
   import CalendarRevenueCard from '$lib/components/CalendarRevenueCard.svelte';
   import CalendarCountsCard from '$lib/components/CalendarCountsCard.svelte';
   import CalendarItemsCard from '$lib/components/CalendarItemsCard.svelte';
@@ -162,6 +163,9 @@
     {#if data.latestInsight}
       <InsightCard insight={data.latestInsight} />
     {/if}
+
+    <!-- feedback #4: GitHub-style daily heatmap — full history, unfiltered -->
+    <DailyHeatmapCard data={data.dailyKpi} />
 
     <!-- D-10 cards 4-5: Revenue + Transactions KPI tiles -->
     <div class="grid grid-cols-2 gap-4">
