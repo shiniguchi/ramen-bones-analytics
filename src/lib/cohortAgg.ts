@@ -1,4 +1,4 @@
-// Cohort aggregation helpers for VA-09 / VA-10. Client-side GROUP BY per D-01 hybrid
+// Cohort aggregation helpers for VA-10. Client-side GROUP BY per D-01 hybrid
 // approach — no dedicated MV because ~2000 customer payload is trivial.
 import { SPARSE_MIN_COHORT_SIZE } from './sparseFilter';
 
@@ -14,39 +14,11 @@ function pickCohortKey(row: CustomerLtvRow, grain: 'week' | 'month'): string {
   return grain === 'week' ? row.cohort_week : row.cohort_month.slice(0, 7);
 }
 
-/** VA-09: SUM revenue_cents per cohort. Drops cohorts below SPARSE_MIN_COHORT_SIZE. */
-export function cohortRevenueSum(
-  rows: CustomerLtvRow[],
-  grain: 'week' | 'month'
-): Array<{ cohort: string; total_revenue_cents: number; customer_count: number }> {
-  const agg = new Map<string, { total_revenue_cents: number; customer_count: number }>();
-  for (const r of rows) {
-    const key = pickCohortKey(r, grain);
-    const e = agg.get(key);
-    if (e) { e.total_revenue_cents += r.revenue_cents; e.customer_count += 1; }
-    else   { agg.set(key, { total_revenue_cents: r.revenue_cents, customer_count: 1 }); }
-  }
-  return Array.from(agg.entries())
-    .filter(([, v]) => v.customer_count >= SPARSE_MIN_COHORT_SIZE)
-    .map(([cohort, v]) => ({ cohort, ...v }))
-    .sort((a, b) => a.cohort.localeCompare(b.cohort));
-}
-
-/** VA-10: AVG revenue_cents per cohort. Drops cohorts below SPARSE_MIN_COHORT_SIZE. */
-export function cohortAvgLtv(
-  rows: CustomerLtvRow[],
-  grain: 'week' | 'month'
-): Array<{ cohort: string; avg_revenue_cents: number; customer_count: number }> {
-  const sums = cohortRevenueSum(rows, grain);
-  return sums.map(s => ({
-    cohort: s.cohort,
-    avg_revenue_cents: s.total_revenue_cents / s.customer_count,
-    customer_count: s.customer_count
-  }));
-}
-
 // ============================================================================
-// Pass 3 (quick-260418-3ec): repeater segmentation — VA-07/09/10.
+// Pass 3 (quick-260418-3ec): repeater segmentation — VA-10.
+// (Pass 4 quick-260418-4oh Task 4 deleted VA-09 CohortRevenueCard +
+//  cohortRevenueSum/cohortRevenueSumByRepeater/cohortAvgLtv; remaining
+//  repeater helpers below are superseded in Task 5 by visit-bucket variants.)
 // ============================================================================
 
 /** Threshold: customers with visit_count >= REPEATER_MIN_VISITS are "repeat", else "new". */
@@ -57,37 +29,6 @@ export type RepeaterClass = 'new' | 'repeat';
 /** Deterministic classifier; shared by LTV histogram + cohort *ByRepeater aggregators. */
 export function classifyRepeater(visit_count: number): RepeaterClass {
   return visit_count >= REPEATER_MIN_VISITS ? 'repeat' : 'new';
-}
-
-/**
- * VA-09: SUM revenue_cents per cohort, split by repeater class.
- * Same sparse filter + same key bucketing (pickCohortKey) as cohortRevenueSum.
- */
-export function cohortRevenueSumByRepeater(
-  rows: CustomerLtvRow[],
-  grain: 'week' | 'month'
-): Array<{ cohort: string; new_cents: number; repeat_cents: number; customer_count: number }> {
-  const agg = new Map<string, { new_cents: number; repeat_cents: number; customer_count: number }>();
-  for (const r of rows) {
-    const key = pickCohortKey(r, grain);
-    const cls = classifyRepeater(r.visit_count);
-    const e = agg.get(key);
-    if (e) {
-      if (cls === 'new') e.new_cents += r.revenue_cents;
-      else e.repeat_cents += r.revenue_cents;
-      e.customer_count += 1;
-    } else {
-      agg.set(key, {
-        new_cents: cls === 'new' ? r.revenue_cents : 0,
-        repeat_cents: cls === 'repeat' ? r.revenue_cents : 0,
-        customer_count: 1
-      });
-    }
-  }
-  return Array.from(agg.entries())
-    .filter(([, v]) => v.customer_count >= SPARSE_MIN_COHORT_SIZE)
-    .map(([cohort, v]) => ({ cohort, ...v }))
-    .sort((a, b) => a.cohort.localeCompare(b.cohort));
 }
 
 /**
