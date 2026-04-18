@@ -159,12 +159,26 @@
         </Svg>
         <Tooltip.Root>
           {#snippet children({ data })}
-            <Tooltip.Header>
-              {data?.cohort_month ?? data?.cohort_week} · {xTipKey} {data?.[xKey]}
-            </Tooltip.Header>
+            {@const period = data?.[xKey] as number | undefined}
+            {@const rowsAtPeriod = period == null ? [] : series
+              .map((s) => {
+                const hit = s.rows.find((r) => r[xKey as keyof typeof r] === period);
+                if (!hit) return null;
+                const size = grain === 'month'
+                  ? (hit as RetentionMonthlyRow).cohort_size_month
+                  : (hit as RetentionRow).cohort_size_week;
+                return { cohort: s.cohort, color: s.color, rate: hit.retention_rate, size };
+              })
+              .filter((x): x is NonNullable<typeof x> => x !== null)
+              .sort((a, b) => b.rate - a.rate)}
+            <Tooltip.Header>{xTipKey} {period}</Tooltip.Header>
             <Tooltip.List>
-              <Tooltip.Item label="Retention" value={`${Math.round((data?.retention_rate ?? 0) * 100)}%`} />
-              <Tooltip.Item label="Cohort size" value={`${data?.cohort_size_month ?? data?.cohort_size_week ?? 0} customers`} />
+              {#each rowsAtPeriod as r (r.cohort)}
+                <Tooltip.Item
+                  label={r.cohort}
+                  value={`${Math.round(r.rate * 100)}% · ${r.size} cust`}
+                />
+              {/each}
             </Tooltip.List>
           {/snippet}
         </Tooltip.Root>
