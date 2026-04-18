@@ -2,7 +2,7 @@
   // VA-05: Calendar customer counts — same stacked-bar shape as revenue card,
   // tx_count metric instead of revenue_cents. Title + testid differ only.
   // D-06 gradient + D-07 cash segment + D-08 shared legend.
-  import { BarChart, Bars, Spline, Text } from 'layerchart';
+  import { Chart, Svg, Axis, Bars, Spline, Text, Tooltip } from 'layerchart';
   import EmptyState from './EmptyState.svelte';
   import VisitSeqLegend from './VisitSeqLegend.svelte';
   import { VISIT_SEQ_COLORS, CASH_COLOR } from '$lib/chartPalettes';
@@ -52,6 +52,8 @@
 
   let cardW = $state(0);
   const chartW = $derived(computeChartWidth(chartData.length, cardW));
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let chartCtx = $state<any>();
 </script>
 
 <div data-testid="calendar-counts-card" class="rounded-xl border border-zinc-200 bg-white p-4">
@@ -60,23 +62,25 @@
     <EmptyState card="calendar-counts" />
   {:else}
     <div bind:clientWidth={cardW} class="mt-4 h-64 overflow-x-auto overscroll-x-contain chart-touch-safe">
-      <BarChart
+      <Chart
+        bind:context={chartCtx}
         data={chartData}
         x="bucket"
         {series}
         seriesLayout="stack"
-        orientation="vertical"
         bandPadding={0.2}
+        valueAxis="y"
         width={chartW}
         padding={{ left: 64, right: 8, top: 24, bottom: 24 }}
-        props={{ xAxis: { ticks: MAX_X_TICKS }, yAxis: { format: yAxisFormat } }}
-        tooltipContext={{ touchEvents: 'auto' }}
+        tooltipContext={{ mode: 'band', touchEvents: 'auto' }}
       >
-        {#snippet marks({ context })}
-          {#each context.series.visibleSeries as s, i (s.key)}
+        <Svg>
+          <Axis placement="left" format={yAxisFormat} grid rule />
+          <Axis placement="bottom" ticks={MAX_X_TICKS} rule />
+          {#each series as s, i (s.key)}
             <Bars
               seriesKey={s.key}
-              rounded={context.series.isStacked && i !== context.series.visibleSeries.length - 1 ? 'none' : 'edge'}
+              rounded={i !== series.length - 1 ? 'none' : 'edge'}
               radius={4}
               strokeWidth={1}
             />
@@ -91,18 +95,33 @@
             />
           {/if}
           {#each chartData as row, i (row.bucket)}
-            {#if totals[i] > 0}
+            {#if totals[i] > 0 && chartCtx}
               <Text
-                x={bandCenterX(context.xScale, row.bucket)}
-                y={(context.yScale(totals[i]) ?? 0) - 6}
+                x={bandCenterX(chartCtx.xScale, row.bucket)}
+                y={(chartCtx.yScale(totals[i]) ?? 0) - 6}
                 value={formatIntShort(totals[i])}
                 textAnchor="middle"
                 class="pointer-events-none fill-zinc-700 text-[10px] font-medium"
               />
             {/if}
           {/each}
-        {/snippet}
-      </BarChart>
+        </Svg>
+        <Tooltip.Root>
+          {#snippet children({ data: row })}
+            {@const bucketIdx = chartData.findIndex((r) => r.bucket === row?.bucket)}
+            {@const fullRow = bucketIdx >= 0 ? chartData[bucketIdx] : row}
+            <Tooltip.Header>{fullRow?.bucket}</Tooltip.Header>
+            <Tooltip.List>
+              {#each series as s (s.key)}
+                {#if ((fullRow?.[s.key] as number) ?? 0) > 0}
+                  <Tooltip.Item label={s.label} value={`${fullRow[s.key]} txn`} />
+                {/if}
+              {/each}
+              <Tooltip.Item label="Total" value={`${bucketIdx >= 0 ? totals[bucketIdx] : 0} txn`} />
+            </Tooltip.List>
+          {/snippet}
+        </Tooltip.Root>
+      </Chart>
     </div>
     <VisitSeqLegend {showCash} />
   {/if}

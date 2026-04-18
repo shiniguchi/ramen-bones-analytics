@@ -5,7 +5,7 @@
   //
   // seriesLayout="group" (user's explicit call over stacked) — adjacent bars per
   // bucket make per-visit-bucket comparison easier than a stacked column.
-  import { BarChart, Bars, Text } from 'layerchart';
+  import { Chart, Svg, Axis, Bars, Text, Tooltip } from 'layerchart';
   import EmptyState from './EmptyState.svelte';
   import {
     cohortRepeaterCountByVisitBucket,
@@ -70,6 +70,8 @@
 
   let cardW = $state(0);
   const chartW = $derived(computeChartWidth(chartData.length, cardW));
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let chartCtx = $state<any>();
 </script>
 
 <div
@@ -96,35 +98,52 @@
       bind:clientWidth={cardW}
       class="mt-4 h-64 overflow-x-auto overscroll-x-contain chart-touch-safe"
     >
-      <BarChart
+      <Chart
+        bind:context={chartCtx}
         data={chartData}
         x="cohort"
         {series}
         seriesLayout="group"
-        orientation="vertical"
         bandPadding={0.2}
+        valueAxis="y"
         width={chartW}
         padding={{ left: 64, right: 8, top: 24, bottom: 24 }}
-        props={{ xAxis: { ticks: MAX_X_TICKS }, yAxis: { format: yAxisFormat } }}
-        tooltipContext={{ touchEvents: 'auto' }}
+        tooltipContext={{ mode: 'band', touchEvents: 'auto' }}
       >
-        {#snippet marks({ context })}
-          {#each context.series.visibleSeries as s, i (s.key)}
+        <Svg>
+          <Axis placement="left" format={yAxisFormat} grid rule />
+          <Axis placement="bottom" ticks={MAX_X_TICKS} rule />
+          {#each series as s, i (s.key)}
             <Bars seriesKey={s.key} rounded="edge" radius={4} strokeWidth={1} />
           {/each}
           {#each chartData as row, i (row.cohort)}
-            {#if totals[i] > 0}
+            {#if totals[i] > 0 && chartCtx}
               <Text
-                x={bandCenterX(context.xScale, row.cohort)}
-                y={(context.yScale(maxPerCohort[i]) ?? 0) - 6}
+                x={bandCenterX(chartCtx.xScale, row.cohort)}
+                y={(chartCtx.yScale(maxPerCohort[i]) ?? 0) - 6}
                 value={formatIntShort(totals[i])}
                 textAnchor="middle"
                 class="pointer-events-none fill-zinc-700 text-[10px] font-medium"
               />
             {/if}
           {/each}
-        {/snippet}
-      </BarChart>
+        </Svg>
+        <Tooltip.Root>
+          {#snippet children({ data: row })}
+            {@const bucketIdx = chartData.findIndex((r) => r.cohort === row?.cohort)}
+            {@const fullRow = bucketIdx >= 0 ? chartData[bucketIdx] : row}
+            <Tooltip.Header>{fullRow?.cohort}</Tooltip.Header>
+            <Tooltip.List>
+              {#each REPEATER_BUCKET_KEYS as k (k)}
+                {#if ((fullRow?.[k] as number) ?? 0) > 0}
+                  <Tooltip.Item label={k} value={`${fullRow[k]} cust`} />
+                {/if}
+              {/each}
+              <Tooltip.Item label="Total" value={`${bucketIdx >= 0 ? totals[bucketIdx] : 0} cust`} />
+            </Tooltip.List>
+          {/snippet}
+        </Tooltip.Root>
+      </Chart>
     </div>
 
     <!-- 7-bucket gradient legend (2nd..8x+) below chart — aligned with the
