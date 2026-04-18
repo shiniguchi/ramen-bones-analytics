@@ -141,6 +141,7 @@
         xDomain={[0, xDomainMax]}
         yDomain={[0, 1]}
         padding={{ left: 32, bottom: 24, top: 8, right: 8 }}
+        tooltipContext={{ mode: 'bisect-x', touchEvents: 'pan-x' }}
       >
         <Svg>
           <Axis placement="left" format={(v: number) => `${Math.round(v * 100)}%`} grid />
