@@ -159,9 +159,13 @@
             {@const fullRow = bucketIdx >= 0 ? chartData[bucketIdx] : row}
             <Tooltip.Header>{fullRow?.bucket}</Tooltip.Header>
             <Tooltip.List>
-              {#each topItems as name (name)}
+              {#each topItems as name, i (name)}
                 {#if ((fullRow?.[name] as number) ?? 0) > 0}
-                  <Tooltip.Item label={name} value={formatEUR((fullRow[name] as number) * 100)} />
+                  <Tooltip.Item
+                    label={name}
+                    color={name === 'Other' ? OTHER_COLOR : ITEM_COLORS[i % ITEM_COLORS.length]}
+                    value={formatEUR((fullRow[name] as number) * 100)}
+                  />
                 {/if}
               {/each}
               <Tooltip.Item label="Total" value={formatEUR((bucketIdx >= 0 ? totals[bucketIdx] : 0) * 100)} />

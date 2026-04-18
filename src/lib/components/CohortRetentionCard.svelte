@@ -183,6 +183,7 @@
                   {@const pctLabel = pct < 1 ? '<1%' : `${Math.round(pct)}%`}
                   <Tooltip.Item
                     label={r.cohort}
+                    color={r.color}
                     value={`${pctLabel} · ${Math.round(r.rate * r.size)} of ${r.size} returned`}
                   />
                 {/each}

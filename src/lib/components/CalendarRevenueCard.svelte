@@ -136,7 +136,7 @@
             <Tooltip.List>
               {#each series as s (s.key)}
                 {#if ((fullRow?.[s.key] as number) ?? 0) > 0}
-                  <Tooltip.Item label={s.label} value={formatEUR((fullRow[s.key] as number) * 100)} />
+                  <Tooltip.Item label={s.label} color={s.color} value={formatEUR((fullRow[s.key] as number) * 100)} />
                 {/if}
               {/each}
               <Tooltip.Item label="Total" value={formatEUR((bucketIdx >= 0 ? totals[bucketIdx] : 0) * 100)} />

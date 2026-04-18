@@ -134,9 +134,9 @@
             {@const fullRow = bucketIdx >= 0 ? chartData[bucketIdx] : row}
             <Tooltip.Header>{fullRow?.cohort}</Tooltip.Header>
             <Tooltip.List>
-              {#each REPEATER_BUCKET_KEYS as k (k)}
+              {#each REPEATER_BUCKET_KEYS as k, i (k)}
                 {#if ((fullRow?.[k] as number) ?? 0) > 0}
-                  <Tooltip.Item label={k} value={`${fullRow[k]} cust`} />
+                  <Tooltip.Item label={k} color={VISIT_SEQ_COLORS[i + 1]} value={`${fullRow[k]} cust`} />
                 {/if}
               {/each}
               <Tooltip.Item label="Total" value={`${bucketIdx >= 0 ? totals[bucketIdx] : 0} cust`} />

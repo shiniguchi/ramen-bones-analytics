@@ -114,7 +114,7 @@
             <Tooltip.List>
               {#each series as s (s.key)}
                 {#if ((fullRow?.[s.key] as number) ?? 0) > 0}
-                  <Tooltip.Item label={s.label} value={`${fullRow[s.key]} txn`} />
+                  <Tooltip.Item label={s.label} color={s.color} value={`${fullRow[s.key]} txn`} />
                 {/if}
               {/each}
               <Tooltip.Item label="Total" value={`${bucketIdx >= 0 ? totals[bucketIdx] : 0} txn`} />
