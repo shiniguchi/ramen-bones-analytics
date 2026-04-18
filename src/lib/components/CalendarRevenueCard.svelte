@@ -4,8 +4,7 @@
   // LayerChart 2.x high-level BarChart — verified props in node_modules/layerchart.
   // Self-subscribes to dashboardStore via getter calls inside $derived.by() —
   // same pattern as KpiTile. No prop-drilling of data/grain/filters.
-  import { BarChart, Bars, Spline, Text, Tooltip } from 'layerchart';
-  import { formatEUR } from '$lib/format';
+  import { BarChart, Bars, Spline, Text } from 'layerchart';
   import EmptyState from './EmptyState.svelte';
   import VisitSeqLegend from './VisitSeqLegend.svelte';
   import { VISIT_SEQ_COLORS, CASH_COLOR } from '$lib/chartPalettes';
@@ -124,19 +123,6 @@
             {/if}
           {/each}
         {/snippet}
-        <Tooltip.Root>
-          {#snippet children({ data: row })}
-            <Tooltip.Header>{row.bucket}</Tooltip.Header>
-            <Tooltip.List>
-              {#each series as s (s.key)}
-                {#if (row[s.key] ?? 0) > 0}
-                  <Tooltip.Item label={s.label} value={formatEUR((row[s.key] as number) * 100)} />
-                {/if}
-              {/each}
-              <Tooltip.Item label="Total" value={formatEUR((totals[chartData.indexOf(row)] ?? 0) * 100)} />
-            </Tooltip.List>
-          {/snippet}
-        </Tooltip.Root>
       </BarChart>
     </div>
     <VisitSeqLegend {showCash} />

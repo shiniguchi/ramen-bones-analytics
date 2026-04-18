@@ -2,7 +2,7 @@
   // VA-05: Calendar customer counts — same stacked-bar shape as revenue card,
   // tx_count metric instead of revenue_cents. Title + testid differ only.
   // D-06 gradient + D-07 cash segment + D-08 shared legend.
-  import { BarChart, Bars, Spline, Text, Tooltip } from 'layerchart';
+  import { BarChart, Bars, Spline, Text } from 'layerchart';
   import EmptyState from './EmptyState.svelte';
   import VisitSeqLegend from './VisitSeqLegend.svelte';
   import { VISIT_SEQ_COLORS, CASH_COLOR } from '$lib/chartPalettes';
@@ -102,19 +102,6 @@
             {/if}
           {/each}
         {/snippet}
-        <Tooltip.Root>
-          {#snippet children({ data: row })}
-            <Tooltip.Header>{row.bucket}</Tooltip.Header>
-            <Tooltip.List>
-              {#each series as s (s.key)}
-                {#if ((row[s.key] as number) ?? 0) > 0}
-                  <Tooltip.Item label={s.label} value={`${row[s.key]} txn`} />
-                {/if}
-              {/each}
-              <Tooltip.Item label="Total" value={`${totals[chartData.indexOf(row)] ?? 0} txn`} />
-            </Tooltip.List>
-          {/snippet}
-        </Tooltip.Root>
       </BarChart>
     </div>
     <VisitSeqLegend {showCash} />

@@ -5,7 +5,7 @@
   //
   // seriesLayout="group" (user's explicit call over stacked) — adjacent bars per
   // bucket make per-visit-bucket comparison easier than a stacked column.
-  import { BarChart, Bars, Text, Tooltip } from 'layerchart';
+  import { BarChart, Bars, Text } from 'layerchart';
   import EmptyState from './EmptyState.svelte';
   import {
     cohortRepeaterCountByVisitBucket,
@@ -53,6 +53,20 @@
 
   const yAxisFormat = (n: number) => formatIntShort(n, 'cust');
   const totals = $derived(bucketTotals(chartData, REPEATER_BUCKET_KEYS));
+
+  // Grouped bars: position label above the tallest sub-bar (not yScale(total),
+  // which sits far above the chart when buckets are small). Keeps the label
+  // visually attached to the bar cluster it summarises.
+  const maxPerCohort = $derived(
+    chartData.map((row) => {
+      let m = 0;
+      for (const k of REPEATER_BUCKET_KEYS) {
+        const v = row[k];
+        if (typeof v === 'number' && v > m) m = v;
+      }
+      return m;
+    })
+  );
 
   let cardW = $state(0);
   const chartW = $derived(computeChartWidth(chartData.length, cardW));
@@ -102,7 +116,7 @@
             {#if totals[i] > 0}
               <Text
                 x={bandCenterX(context.xScale, row.cohort)}
-                y={(context.yScale(totals[i]) ?? 0) - 6}
+                y={(context.yScale(maxPerCohort[i]) ?? 0) - 6}
                 value={formatIntShort(totals[i])}
                 textAnchor="middle"
                 class="pointer-events-none fill-zinc-700 text-[10px] font-medium"
@@ -110,19 +124,6 @@
             {/if}
           {/each}
         {/snippet}
-        <Tooltip.Root>
-          {#snippet children({ data: row })}
-            <Tooltip.Header>{row.cohort}</Tooltip.Header>
-            <Tooltip.List>
-              {#each REPEATER_BUCKET_KEYS as k (k)}
-                {#if ((row[k] as number) ?? 0) > 0}
-                  <Tooltip.Item label={k} value={`${row[k]} cust`} />
-                {/if}
-              {/each}
-              <Tooltip.Item label="Total" value={`${totals[chartData.indexOf(row)] ?? 0} cust`} />
-            </Tooltip.List>
-          {/snippet}
-        </Tooltip.Root>
       </BarChart>
     </div>
 

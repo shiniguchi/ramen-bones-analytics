@@ -3,8 +3,7 @@
   // structure but uses item_revenue_cents (migration 0029) instead of item_count.
   // Stacked bars = ratio view. Top-20 ranked by REVENUE (not count), rest → "Other".
   // Dashed trend line overlays total revenue per bucket via bucketTrend.
-  import { BarChart, Bars, Spline, Text, Tooltip } from 'layerchart';
-  import { formatEUR } from '$lib/format';
+  import { BarChart, Bars, Spline, Text } from 'layerchart';
   import EmptyState from './EmptyState.svelte';
   import { ITEM_COLORS, OTHER_COLOR } from '$lib/chartPalettes';
   import { rollupTopNWithOther } from '$lib/itemCountsRollup';
@@ -151,19 +150,6 @@
             {/if}
           {/each}
         {/snippet}
-        <Tooltip.Root>
-          {#snippet children({ data: row })}
-            <Tooltip.Header>{row.bucket}</Tooltip.Header>
-            <Tooltip.List>
-              {#each topItems as name (name)}
-                {#if ((row[name] as number) ?? 0) > 0}
-                  <Tooltip.Item label={name} value={formatEUR((row[name] as number) * 100)} />
-                {/if}
-              {/each}
-              <Tooltip.Item label="Total" value={formatEUR((totals[chartData.indexOf(row)] ?? 0) * 100)} />
-            </Tooltip.List>
-          {/snippet}
-        </Tooltip.Root>
       </BarChart>
     </div>
   {/if}
