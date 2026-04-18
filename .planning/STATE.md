@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Dashboard Simplification & Visit Attribution
 status: "Phase 10 shipped — PR #4"
-stopped_at: Completed quick task 260418-3ec — Pass 3 repeater breakdown on VA-07/09/10 (all 3 passes verified on DEV; branch dashboard-feedback-overhaul ready for PR)
-last_updated: "2026-04-18T00:45:00Z"
+stopped_at: Completed quick task 260418-4oh — Pass 4 dashboard feedback (6 items); migration 0028 dual-pushed to DEV+TEST; all 5 tasks committed on dashboard-feedback-overhaul branch; 198 unit tests green, svelte-check at 17-error baseline
+last_updated: "2026-04-18T03:45:00Z"
 progress:
   total_phases: 10
   completed_phases: 10
@@ -207,6 +207,7 @@ Plan: Not started
 | 260418-1ja | Pass 1 dashboard feedback: swap Counts/Revenue order, rename 7 chart titles, add compact €/int Y-axis formatters, fix revenue-chart cents→EUR bug | 2026-04-17 | f569933, af8f546, 00a0325 | [260418-1ja-pass-1-card-titles-order-swap-y-axis-rea](./quick/260418-1ja-pass-1-card-titles-order-swap-y-axis-rea/) |
 | 260418-28j | Pass 2 dashboard feedback: retention card — new retention_curve_monthly_v (fixes monthly period-0 34%→100%), x-axis cap 52w/12m, cohort line cap 4→12, remove client-side weeklyToMonthly | 2026-04-17 | f5825ca, 6333e56, 19219c6, 073b963, d834314 | [260418-28j-pass-2-retention-card-overhaul-monthly-s](./quick/260418-28j-pass-2-retention-card-overhaul-monthly-s/) |
 | 260418-3ec | Pass 3 dashboard feedback: repeater breakdown on VA-07/09/10 (VA-07 + VA-09 stacked, VA-10 grouped), LTV histogram dynamic €5 bins, classifyRepeater + cohort*ByRepeater helpers, REPEATER_COLORS palette | 2026-04-18 | 40ca05b, 831bb5e, 481aace | [260418-3ec-pass-3-repeater-breakdown-on-va-07-09-10](./quick/260418-3ec-pass-3-repeater-breakdown-on-va-07-09-10/) |
+| 260418-4oh | Pass 4 dashboard feedback (6 items): retention current-period NULL fix (migration 0028), mobile long-press freeze (.chart-touch-safe), retention tooltip (bisect-x), delete VA-09 CohortRevenueCard + dead helpers, top-20 items (ITEM_COLORS × 20), 8-bucket visit_count grouped LTV charts (VA-07 + VA-10) | 2026-04-18 | aa86219, 1598bf4, 6432bd2, 531a72f, ab771c2 | [260418-4oh-pass-4-6-items-top20-items-long-press-fi](./quick/260418-4oh-pass-4-6-items-top20-items-long-press-fi/) |
 
 ## Session Continuity
 
@@ -216,8 +217,8 @@ Plan: Not started
 
 **Resume hint:** Milestone v1.1 Dashboard Redesign was scoped in this session. Architecture is a pragmatic star schema: `dim_customer` (lifetime attrs) + `fct_transactions` (atomic fact MV with visit_seq / days_since_prev_visit window fns + denormalized filter dims) + 4 thin day-grain rollup MVs (`mv_new_customers_daily`, `mv_repeater_daily`, `mv_retention_monthly`, `mv_inter_visit_histogram`). Two bucket columns materialized: `lifetime_bucket` (how customer ended up) and `visit_seq_bucket` (point-in-time). Six filters: date range, granularity, sales_type, payment_method, wl_issuing_country, repeater bucket — dropdowns auto-populated from DISTINCT values. All refresh stays inside existing `refresh_analytics_mvs()` cron. Start with Phase 06 (Filter Foundation) for a quick UX win before any schema change.
 
-**Last session:** 2026-04-17T14:26:30Z
-**Stopped At:** Completed quick task 260417-mp2 — 1-line fix in pickCohortKey (slice cohort_month to YYYY-MM); unblocks live dashboard month-grain crash; 160/160 unit tests pass
+**Last session:** 2026-04-18T03:45:00Z
+**Stopped At:** Completed quick task 260418-4oh — Pass 4 dashboard feedback (6 items). Migration 0028 dual-pushed to DEV (paafpikebsudoqxwumgm) + TEST (akyugfvsdfrwuzirmylo). 5 atomic commits on dashboard-feedback-overhaul branch: retention NULL-mask fix, .chart-touch-safe utility, retention tooltip activation, VA-09 CohortRevenueCard deletion, top-20 items + 8-bucket grouped LTV charts. 198 unit tests green, svelte-check at 17-error baseline. Branch ready for PR alongside Passes 1/2/3.
 
 ---
 *State initialized: 2026-04-13*
