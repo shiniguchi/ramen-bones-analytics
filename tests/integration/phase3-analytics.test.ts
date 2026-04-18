@@ -148,6 +148,34 @@ describe('Phase 3 — Analytics SQL', () => {
       );
       expect(within).toBeTruthy();
     });
+
+    // quick-260418-4oh Pass 4 Item #4: the in-progress current period must NULL-mask,
+    // not return a misleading 0% (the tx count is still accumulating).
+    it('NULL-masks the current-period row where period_weeks == cohort_age_weeks', async () => {
+      const { data, error } = await admin.rpc('test_retention_curve', {
+        rid: restaurantId
+      });
+      if (error) throw error;
+      const rows = data as Array<{
+        cohort_week: string;
+        period_weeks: number;
+        retention_rate: number | null;
+        cohort_age_weeks: number;
+      }>;
+      // At least one cohort must exist where period_weeks == cohort_age_weeks.
+      const currentPeriodRow = rows.find(
+        (r) => r.period_weeks === r.cohort_age_weeks
+      );
+      expect(currentPeriodRow).toBeTruthy();
+      expect(currentPeriodRow!.retention_rate).toBeNull();
+      // Every row at period == age must be NULL (not just one).
+      const allCurrentPeriodRows = rows.filter(
+        (r) => r.period_weeks === r.cohort_age_weeks
+      );
+      for (const r of allCurrentPeriodRows) {
+        expect(r.retention_rate).toBeNull();
+      }
+    });
   });
 
   // ANL-03 — LTV (cumulative avg per acquired customer, NULL past horizon)
@@ -501,6 +529,32 @@ describe('Phase 3 — Analytics SQL', () => {
       const rows = data as Array<{ cohort_age_months: number }>;
       for (const r of rows) {
         expect(Number(r.cohort_age_months)).toBeGreaterThanOrEqual(0);
+      }
+    });
+
+    // quick-260418-4oh Pass 4 Item #4 (monthly twin): in-progress current month masks to NULL.
+    it('NULL-masks the current-period row where period_months == cohort_age_months', async () => {
+      const { data, error } = await admin.rpc('test_retention_curve_monthly', {
+        rid: restaurantId
+      });
+      if (error) throw error;
+      const rows = data as Array<{
+        cohort_month: string;
+        period_months: number;
+        retention_rate: number | null;
+        cohort_age_months: number;
+      }>;
+      const currentPeriodRow = rows.find(
+        (r) => r.period_months === r.cohort_age_months
+      );
+      expect(currentPeriodRow).toBeTruthy();
+      expect(currentPeriodRow!.retention_rate).toBeNull();
+      // Every row at period == age must be NULL.
+      const allCurrentPeriodRows = rows.filter(
+        (r) => r.period_months === r.cohort_age_months
+      );
+      for (const r of allCurrentPeriodRows) {
+        expect(r.retention_rate).toBeNull();
       }
     });
   });
