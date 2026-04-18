@@ -4,12 +4,12 @@
   // LayerChart 2.x high-level BarChart — verified props in node_modules/layerchart.
   // Self-subscribes to dashboardStore via getter calls inside $derived.by() —
   // same pattern as KpiTile. No prop-drilling of data/grain/filters.
-  import { BarChart, Bars, Spline } from 'layerchart';
+  import { BarChart, Bars, Spline, Text } from 'layerchart';
   import EmptyState from './EmptyState.svelte';
   import VisitSeqLegend from './VisitSeqLegend.svelte';
   import { VISIT_SEQ_COLORS, CASH_COLOR } from '$lib/chartPalettes';
   import { formatEURShort } from '$lib/format';
-  import { bucketTrend } from '$lib/trendline';
+  import { bandCenterX, bucketTotals, bucketTrend } from '$lib/trendline';
   import {
     getFiltered,
     getFilters,
@@ -67,6 +67,7 @@
   // Series keys currently visible (drives the trend-line sum).
   const visibleKeys = $derived(series.map(s => s.key));
   const trendData = $derived(bucketTrend(chartData, 'bucket', visibleKeys));
+  const totals = $derived(bucketTotals(chartData, visibleKeys));
 
   // Scroll overflow: when bars don't fit at mobile width, force a wider chart
   // and let the wrapper scroll horizontally. Stays responsive for short ranges.
@@ -110,6 +111,17 @@
               stroke-dasharray="3 3"
             />
           {/if}
+          {#each chartData as row, i (row.bucket)}
+            {#if totals[i] > 0}
+              <Text
+                x={bandCenterX(context.xScale, row.bucket)}
+                y={(context.yScale(totals[i]) ?? 0) - 6}
+                value={formatEURShort(totals[i])}
+                textAnchor="middle"
+                class="pointer-events-none fill-zinc-700 text-[10px] font-medium"
+              />
+            {/if}
+          {/each}
         {/snippet}
       </BarChart>
     </div>

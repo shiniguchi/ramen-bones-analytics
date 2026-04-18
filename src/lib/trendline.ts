@@ -20,6 +20,36 @@ export function integerTicks(yMax: number, maxCount = 6): number[] {
   return ticks;
 }
 
+/**
+ * Center-of-band x pixel position. scaleBand's scale(value) returns the band's
+ * left edge; adding bandwidth()/2 centers the label above the bar(s). Defensive
+ * against non-band scales (returns the raw scaled x).
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function bandCenterX(xScale: any, value: unknown): number {
+  const base = xScale?.(value) ?? 0;
+  const bw = typeof xScale?.bandwidth === 'function' ? xScale.bandwidth() : 0;
+  return base + bw / 2;
+}
+
+/**
+ * Sum the numeric values of `seriesKeys` for each row. Used to power both
+ * bucketTrend (for OLS over totals) and bar-chart total labels (quick-260418-num).
+ */
+export function bucketTotals<TRow extends Record<string, unknown>>(
+  rows: readonly TRow[],
+  seriesKeys: readonly string[]
+): number[] {
+  return rows.map((r) => {
+    let s = 0;
+    for (const k of seriesKeys) {
+      const v = r[k];
+      if (typeof v === 'number') s += v;
+    }
+    return s;
+  });
+}
+
 export function linearFit(
   ys: readonly number[]
 ): { slope: number; intercept: number } | null {

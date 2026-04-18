@@ -5,7 +5,7 @@
   //
   // seriesLayout="group" (user's explicit call over stacked) — adjacent bars per
   // bucket make per-visit-bucket comparison easier than a stacked column.
-  import { BarChart } from 'layerchart';
+  import { BarChart, Bars, Text } from 'layerchart';
   import EmptyState from './EmptyState.svelte';
   import {
     cohortRepeaterCountByVisitBucket,
@@ -14,6 +14,7 @@
   } from '$lib/cohortAgg';
   import { VISIT_SEQ_COLORS } from '$lib/chartPalettes';
   import { formatIntShort } from '$lib/format';
+  import { bandCenterX, bucketTotals } from '$lib/trendline';
   import {
     getFilters,
     formatBucketLabel,
@@ -51,6 +52,7 @@
   }));
 
   const yAxisFormat = (n: number) => formatIntShort(n, 'cust');
+  const totals = $derived(bucketTotals(chartData, REPEATER_BUCKET_KEYS));
 
   let cardW = $state(0);
   const chartW = $derived(computeChartWidth(chartData.length, cardW));
@@ -102,7 +104,24 @@
         padding={{ left: 64, right: 8, top: 8, bottom: 24 }}
         props={{ xAxis: { ticks: MAX_X_TICKS }, yAxis: { format: yAxisFormat } }}
         tooltipContext={{ touchEvents: 'auto' }}
-      />
+      >
+        {#snippet marks({ context })}
+          {#each context.series.visibleSeries as s, i (s.key)}
+            <Bars seriesKey={s.key} rounded="edge" radius={4} strokeWidth={1} />
+          {/each}
+          {#each chartData as row, i (row.cohort)}
+            {#if totals[i] > 0}
+              <Text
+                x={bandCenterX(context.xScale, row.cohort)}
+                y={(context.yScale(totals[i]) ?? 0) - 6}
+                value={formatIntShort(totals[i])}
+                textAnchor="middle"
+                class="pointer-events-none fill-zinc-700 text-[10px] font-medium"
+              />
+            {/if}
+          {/each}
+        {/snippet}
+      </BarChart>
     </div>
   {/if}
 </div>

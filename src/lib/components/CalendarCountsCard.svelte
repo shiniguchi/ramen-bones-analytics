@@ -2,12 +2,12 @@
   // VA-05: Calendar customer counts — same stacked-bar shape as revenue card,
   // tx_count metric instead of revenue_cents. Title + testid differ only.
   // D-06 gradient + D-07 cash segment + D-08 shared legend.
-  import { BarChart, Bars, Spline } from 'layerchart';
+  import { BarChart, Bars, Spline, Text } from 'layerchart';
   import EmptyState from './EmptyState.svelte';
   import VisitSeqLegend from './VisitSeqLegend.svelte';
   import { VISIT_SEQ_COLORS, CASH_COLOR } from '$lib/chartPalettes';
   import { formatIntShort } from '$lib/format';
-  import { bucketTrend } from '$lib/trendline';
+  import { bandCenterX, bucketTotals, bucketTrend } from '$lib/trendline';
   import {
     getFiltered,
     getFilters,
@@ -48,6 +48,7 @@
 
   const visibleKeys = $derived(series.map(s => s.key));
   const trendData = $derived(bucketTrend(chartData, 'bucket', visibleKeys));
+  const totals = $derived(bucketTotals(chartData, visibleKeys));
 
   let cardW = $state(0);
   const chartW = $derived(computeChartWidth(chartData.length, cardW));
@@ -89,6 +90,17 @@
               stroke-dasharray="3 3"
             />
           {/if}
+          {#each chartData as row, i (row.bucket)}
+            {#if totals[i] > 0}
+              <Text
+                x={bandCenterX(context.xScale, row.bucket)}
+                y={(context.yScale(totals[i]) ?? 0) - 6}
+                value={formatIntShort(totals[i])}
+                textAnchor="middle"
+                class="pointer-events-none fill-zinc-700 text-[10px] font-medium"
+              />
+            {/if}
+          {/each}
         {/snippet}
       </BarChart>
     </div>

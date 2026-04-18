@@ -3,12 +3,12 @@
   // structure but uses item_revenue_cents (migration 0029) instead of item_count.
   // Stacked bars = ratio view. Top-20 ranked by REVENUE (not count), rest → "Other".
   // Dashed trend line overlays total revenue per bucket via bucketTrend.
-  import { BarChart, Bars, Spline } from 'layerchart';
+  import { BarChart, Bars, Spline, Text } from 'layerchart';
   import EmptyState from './EmptyState.svelte';
   import { ITEM_COLORS, OTHER_COLOR } from '$lib/chartPalettes';
   import { rollupTopNWithOther } from '$lib/itemCountsRollup';
   import { formatEURShort } from '$lib/format';
-  import { bucketTrend } from '$lib/trendline';
+  import { bandCenterX, bucketTotals, bucketTrend } from '$lib/trendline';
   import {
     bucketKey,
     getFilters,
@@ -87,6 +87,7 @@
   );
 
   const trendData = $derived(bucketTrend(chartData, 'bucket', topItems));
+  const totals = $derived(bucketTotals(chartData, topItems));
 
   let cardW = $state(0);
   const chartW = $derived(computeChartWidth(chartData.length, cardW));
@@ -137,6 +138,17 @@
               stroke-dasharray="3 3"
             />
           {/if}
+          {#each chartData as row, i (row.bucket)}
+            {#if totals[i] > 0}
+              <Text
+                x={bandCenterX(context.xScale, row.bucket)}
+                y={(context.yScale(totals[i]) ?? 0) - 6}
+                value={formatEURShort(totals[i])}
+                textAnchor="middle"
+                class="pointer-events-none fill-zinc-700 text-[10px] font-medium"
+              />
+            {/if}
+          {/each}
         {/snippet}
       </BarChart>
     </div>
