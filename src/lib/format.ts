@@ -44,6 +44,7 @@ export function formatEURShort(eur: number): string {
   return '€' + _toDeDecimal(_enCompact.format(eur));
 }
 
-export function formatIntShort(n: number): string {
-  return _toDeDecimal(_enCompact.format(n));
+export function formatIntShort(n: number, unit?: string): string {
+  const base = _toDeDecimal(_enCompact.format(n));
+  return unit ? `${base} ${unit}` : base;
 }

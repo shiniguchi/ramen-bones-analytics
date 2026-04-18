@@ -36,4 +36,13 @@ describe('formatIntShort', () => {
   it('renders zero as a bare "0"', () => {
     expect(formatIntShort(0)).toMatch(/^0$/);
   });
+
+  it('appends unit suffix when provided', () => {
+    expect(formatIntShort(1500, 'txn')).toMatch(/1[.,]5\s?K txn$/i);
+    expect(formatIntShort(0, 'cust')).toBe('0 cust');
+  });
+
+  it('omits unit when undefined (back-compat)', () => {
+    expect(formatIntShort(0)).toBe('0');
+  });
 });
