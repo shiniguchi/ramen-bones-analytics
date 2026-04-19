@@ -35,41 +35,45 @@ export function visitCountBucket(visit_count: number): VisitBucket {
   return `${visit_count}x` as VisitBucket; // 4x, 5x, 6x, 7x
 }
 
+// Repeater-only bucket keys (drops '1st' — first-timers are excluded from the
+// repeater cohort chart per feedback #6).
+export const REPEATER_BUCKET_KEYS = VISIT_BUCKET_KEYS.slice(1) as readonly VisitBucket[];
+
 /**
- * VA-07 / VA-10: per-cohort avg revenue_cents split into 8 visit-count buckets.
- * Sparse-filters cohorts below SPARSE_MIN_COHORT_SIZE (by total_customers, not per-bucket).
- * Empty bucket → 0 (never NaN), so BarChart renders a zero-height bar, not undefined.
+ * Feedback #6: per first-visit cohort, count of REPEAT customers
+ * (visit_count >= 2), split by 7 visit buckets 2nd..8x+.
+ * Answers "when did the restaurant acquire the customers who came back?".
+ * Sparse-filters cohorts whose total_repeaters < SPARSE_MIN_COHORT_SIZE so tiny
+ * all-first-timer cohorts don't clutter the chart.
  */
-export function cohortAvgLtvByVisitBucket(
+export function cohortRepeaterCountByVisitBucket(
   rows: CustomerLtvRow[],
   grain: 'week' | 'month'
-): Array<{ cohort: string; total_customers: number } & Record<VisitBucket, number>> {
-  type Accum = Record<VisitBucket, { sum: number; count: number }> & { total_customers: number };
+): Array<{ cohort: string; total_repeaters: number } & Record<VisitBucket, number>> {
+  type Accum = Record<VisitBucket, number> & { total_repeaters: number };
   const empty = (): Accum => {
-    const a = { total_customers: 0 } as Accum;
-    for (const k of VISIT_BUCKET_KEYS) a[k] = { sum: 0, count: 0 };
+    const a = { total_repeaters: 0 } as Accum;
+    for (const k of VISIT_BUCKET_KEYS) a[k] = 0;
     return a;
   };
   const agg = new Map<string, Accum>();
   for (const r of rows) {
+    if (r.visit_count <= 1) continue; // skip first-timers
     const key = pickCohortKey(r, grain);
     const bucket = visitCountBucket(r.visit_count);
     const e = agg.get(key) ?? empty();
-    e[bucket].sum += r.revenue_cents;
-    e[bucket].count += 1;
-    e.total_customers += 1;
+    e[bucket] += 1;
+    e.total_repeaters += 1;
     agg.set(key, e);
   }
   return Array.from(agg.entries())
-    .filter(([, v]) => v.total_customers >= SPARSE_MIN_COHORT_SIZE)
+    .filter(([, v]) => v.total_repeaters >= SPARSE_MIN_COHORT_SIZE)
     .map(([cohort, v]) => {
-      const out = { cohort, total_customers: v.total_customers } as {
+      const out = { cohort, total_repeaters: v.total_repeaters } as {
         cohort: string;
-        total_customers: number;
+        total_repeaters: number;
       } & Record<VisitBucket, number>;
-      for (const k of VISIT_BUCKET_KEYS) {
-        out[k] = v[k].count > 0 ? v[k].sum / v[k].count : 0;
-      }
+      for (const k of VISIT_BUCKET_KEYS) out[k] = v[k];
       return out;
     })
     .sort((a, b) => a.cohort.localeCompare(b.cohort));

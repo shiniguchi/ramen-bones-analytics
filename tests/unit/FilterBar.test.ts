@@ -17,6 +17,7 @@ const baseFilters: FiltersState = {
   grain: 'week',
   sales_type: 'all',
   is_cash: 'all',
+  interp: 'log-linear',
   from: undefined,
   to: undefined
 };

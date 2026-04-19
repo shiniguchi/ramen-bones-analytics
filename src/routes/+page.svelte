@@ -8,11 +8,12 @@
   import CohortRetentionCard from '$lib/components/CohortRetentionCard.svelte';
   import InsightCard from '$lib/components/InsightCard.svelte';
   // Phase 10: 6 new chart cards (VA-04..VA-10) inserted in D-10 order below.
+  import DailyHeatmapCard from '$lib/components/DailyHeatmapCard.svelte';
   import CalendarRevenueCard from '$lib/components/CalendarRevenueCard.svelte';
   import CalendarCountsCard from '$lib/components/CalendarCountsCard.svelte';
   import CalendarItemsCard from '$lib/components/CalendarItemsCard.svelte';
-  import CohortAvgLtvCard from '$lib/components/CohortAvgLtvCard.svelte';
-  import LtvHistogramCard from '$lib/components/LtvHistogramCard.svelte';
+  import CalendarItemRevenueCard from '$lib/components/CalendarItemRevenueCard.svelte';
+  import RepeaterCohortCountCard from '$lib/components/RepeaterCohortCountCard.svelte';
   import {
     initStore, getKpiTotals, getFilters, getWindow,
     setRange, setRangeId, setSalesType, setCashFilter,
@@ -182,6 +183,9 @@
       />
     </div>
 
+    <!-- feedback #4 (moved per feedback round F): heatmap sits right below the KPI tiles -->
+    <DailyHeatmapCard data={data.dailyKpi} />
+
     <!-- D-10 card 7: Calendar counts (VA-05) — self-subscribes to dashboardStore -->
     <CalendarCountsCard />
 
@@ -191,15 +195,20 @@
     <!-- D-10 card 9: Calendar items (VA-08) — receives window-scoped rows from SSR -->
     <CalendarItemsCard data={data.itemCounts} />
 
+    <!-- feedback #4: per-item revenue stacked bars — same payload, revenue metric -->
+    <CalendarItemRevenueCard data={data.itemCounts} />
+
     <!-- D-10 card 10: Cohort retention (VA-06)
          quick-260418-28j: monthly grain now reads from retention_curve_monthly_v
          instead of re-bucketing weekly rows client-side. -->
-    <CohortRetentionCard dataWeekly={data.retention} dataMonthly={data.retentionMonthly} />
+    <CohortRetentionCard
+      dataWeekly={data.retention}
+      dataMonthly={data.retentionMonthly}
+      benchmarkAnchors={data.benchmarkAnchors}
+      benchmarkSources={data.benchmarkSources}
+    />
 
-    <!-- D-10 card 11: Cohort avg LTV (VA-10) — lifetime, no range scoping -->
-    <CohortAvgLtvCard data={data.customerLtv} />
-
-    <!-- D-10 card 12: LTV histogram (VA-07) — retrospective, placed last -->
-    <LtvHistogramCard data={data.customerLtv} />
+    <!-- feedback #6: repeater customer count by first-visit cohort — lifetime, no range scoping -->
+    <RepeaterCohortCountCard data={data.customerLtv} />
   </div>
 </main>

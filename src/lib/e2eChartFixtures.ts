@@ -44,14 +44,14 @@ export const E2E_CUSTOMER_LTV_ROWS = [
 // Mix of INHOUSE/TAKEAWAY + cash/card to exercise filter branches.
 // 10 distinct item_name values across 2 days — drives top-8 + Other rollup.
 export const E2E_ITEM_COUNTS_ROWS = [
-  { business_date: '2026-04-13', item_name: 'Tonkotsu Ramen', sales_type: 'INHOUSE',  is_cash: false, item_count: 18 },
-  { business_date: '2026-04-13', item_name: 'Miso Ramen',     sales_type: 'INHOUSE',  is_cash: false, item_count: 12 },
-  { business_date: '2026-04-13', item_name: 'Shoyu Ramen',    sales_type: 'INHOUSE',  is_cash: false, item_count: 9 },
-  { business_date: '2026-04-13', item_name: 'Gyoza',          sales_type: 'INHOUSE',  is_cash: false, item_count: 22 },
-  { business_date: '2026-04-13', item_name: 'Edamame',        sales_type: 'INHOUSE',  is_cash: false, item_count: 14 },
-  { business_date: '2026-04-13', item_name: 'Matcha Ice',     sales_type: 'INHOUSE',  is_cash: false, item_count: 7 },
-  { business_date: '2026-04-13', item_name: 'Beer',           sales_type: 'INHOUSE',  is_cash: true,  item_count: 11 },
-  { business_date: '2026-04-13', item_name: 'Sake',           sales_type: 'INHOUSE',  is_cash: false, item_count: 5 },
-  { business_date: '2026-04-14', item_name: 'Tonkotsu Ramen', sales_type: 'TAKEAWAY', is_cash: false, item_count: 10 },
-  { business_date: '2026-04-14', item_name: 'Gyoza',          sales_type: 'TAKEAWAY', is_cash: false, item_count: 8 }
+  { business_date: '2026-04-13', item_name: 'Tonkotsu Ramen', sales_type: 'INHOUSE',  is_cash: false, item_count: 18, item_revenue_cents: 2880000 },
+  { business_date: '2026-04-13', item_name: 'Miso Ramen',     sales_type: 'INHOUSE',  is_cash: false, item_count: 12, item_revenue_cents: 1740000 },
+  { business_date: '2026-04-13', item_name: 'Shoyu Ramen',    sales_type: 'INHOUSE',  is_cash: false, item_count: 9,  item_revenue_cents: 1305000 },
+  { business_date: '2026-04-13', item_name: 'Gyoza',          sales_type: 'INHOUSE',  is_cash: false, item_count: 22, item_revenue_cents:  880000 },
+  { business_date: '2026-04-13', item_name: 'Edamame',        sales_type: 'INHOUSE',  is_cash: false, item_count: 14, item_revenue_cents:  420000 },
+  { business_date: '2026-04-13', item_name: 'Matcha Ice',     sales_type: 'INHOUSE',  is_cash: false, item_count: 7,  item_revenue_cents:  210000 },
+  { business_date: '2026-04-13', item_name: 'Beer',           sales_type: 'INHOUSE',  is_cash: true,  item_count: 11, item_revenue_cents:  495000 },
+  { business_date: '2026-04-13', item_name: 'Sake',           sales_type: 'INHOUSE',  is_cash: false, item_count: 5,  item_revenue_cents:  350000 },
+  { business_date: '2026-04-14', item_name: 'Tonkotsu Ramen', sales_type: 'TAKEAWAY', is_cash: false, item_count: 10, item_revenue_cents: 1600000 },
+  { business_date: '2026-04-14', item_name: 'Gyoza',          sales_type: 'TAKEAWAY', is_cash: false, item_count: 8,  item_revenue_cents:  320000 }
 ];

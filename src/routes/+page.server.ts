@@ -43,7 +43,14 @@ export const load: PageServerLoad = async ({ locals, url, depends }) => {
       monthsOfHistory: 2,
       latestInsight: null,
       customerLtv: E2E_CUSTOMER_LTV_ROWS,
-      itemCounts: E2E_ITEM_COUNTS_ROWS
+      itemCounts: E2E_ITEM_COUNTS_ROWS,
+      dailyKpi: [
+        { business_date: '2026-04-14', revenue_cents: 6500, tx_count: 2 },
+        { business_date: '2026-04-15', revenue_cents: 7300, tx_count: 2 },
+        { business_date: '2026-04-16', revenue_cents: 3200, tx_count: 1 }
+      ],
+      benchmarkAnchors: [],
+      benchmarkSources: []
     };
   }
 
@@ -86,6 +93,16 @@ export const load: PageServerLoad = async ({ locals, url, depends }) => {
       ).catch((e: unknown) => { console.error('[transactions_filterable_v prior]', e); return [] as DailyRow[]; })
     : Promise.resolve([] as DailyRow[]);
 
+  // quick-260418-map (feedback #4): daily KPI heatmap needs full history,
+  // NOT filtered by the range/sales_type/is_cash filters. Sourced from
+  // kpi_daily_v (migration 0011).
+  type DailyKpiRow = { business_date: string; revenue_cents: number | string; tx_count: number };
+  const dailyKpiP = fetchAll<DailyKpiRow>(() => locals.supabase
+    .from('kpi_daily_v')
+    .select('business_date,revenue_cents,tx_count')
+    .order('business_date', { ascending: true })
+  ).catch((e: unknown) => { console.error('[kpi_daily_v]', e); return [] as DailyKpiRow[]; });
+
   // Phase 10: customer_ltv_v feeds VA-07 (LTV histogram), VA-09 (cohort revenue),
   // VA-10 (cohort avg LTV). LTV is lifetime — NOT filtered by range/sales_type/is_cash.
   type CustomerLtvRow = {
@@ -100,7 +117,8 @@ export const load: PageServerLoad = async ({ locals, url, depends }) => {
     .select('card_hash,revenue_cents,visit_count,cohort_week,cohort_month')
   ).catch((e: unknown) => { console.error('[customer_ltv_v]', e); return [] as CustomerLtvRow[]; });
 
-  // Phase 10: item_counts_daily_v feeds VA-08 (calendar item counts).
+  // Phase 10: item_counts_daily_v feeds VA-08 (calendar item counts) and
+  // the per-item revenue card (quick-260418-irc, migration 0029 added item_revenue_cents).
   // Scoped to active window to keep payload <500kB (D-21).
   type ItemCountRow = {
     business_date: string;
@@ -108,10 +126,11 @@ export const load: PageServerLoad = async ({ locals, url, depends }) => {
     sales_type: string | null;
     is_cash: boolean;
     item_count: number;
+    item_revenue_cents: number;
   };
   const itemCountsP = fetchAll<ItemCountRow>(() => locals.supabase
     .from('item_counts_daily_v')
-    .select('business_date,item_name,sales_type,is_cash,item_count')
+    .select('business_date,item_name,sales_type,is_cash,item_count,item_revenue_cents')
     .gte('business_date', chipW.from)
     .lte('business_date', chipW.to)
   ).catch((e: unknown) => { console.error('[item_counts_daily_v]', e); return [] as ItemCountRow[]; });
@@ -132,6 +151,43 @@ export const load: PageServerLoad = async ({ locals, url, depends }) => {
     .from('retention_curve_monthly_v')
     .select('cohort_month,period_months,retention_rate,cohort_size_month,cohort_age_months')
   ).catch((e: unknown) => { console.error('[retention_curve_monthly_v]', e); return [] as RetentionMonthlyRow[]; });
+
+  // North-star benchmark anchors — weighted-quantile P20/P50/P80 curve for
+  // this tenant's curated sources (migrations 0030/0031, quick-260418-bm1/bm2).
+  // Empty array on error/no-data so the chart renders cohorts alone.
+  type BenchmarkAnchorRow = {
+    period_weeks: number;
+    lower_p20: number;
+    mid_p50: number;
+    upper_p80: number;
+    source_count: number;
+  };
+  const benchmarkAnchorsP = fetchAll<BenchmarkAnchorRow>(() => locals.supabase
+    .from('benchmark_curve_v')
+    .select('period_weeks,lower_p20,mid_p50,upper_p80,source_count')
+  ).catch((e: unknown) => { console.error('[benchmark_curve_v]', e); return [] as BenchmarkAnchorRow[]; });
+
+  // Benchmark source attribution — one row per (source, period) for the popover.
+  type BenchmarkSourceRow = {
+    period_weeks: number;
+    id: number;
+    label: string;
+    country: string;
+    segment: string;
+    credibility: 'HIGH' | 'MEDIUM' | 'LOW';
+    cuisine_match: number;
+    metric_type: string;
+    conversion_note: string | null;
+    sample_size: string | null;
+    year: number;
+    url: string | null;
+    raw_value: number;
+    normalized_value: number;
+  };
+  const benchmarkSourcesP = fetchAll<BenchmarkSourceRow>(() => locals.supabase
+    .from('benchmark_sources_v')
+    .select('period_weeks,id,label,country,segment,credibility,cuisine_match,metric_type,conversion_note,sample_size,year,url,raw_value,normalized_value')
+  ).catch((e: unknown) => { console.error('[benchmark_sources_v]', e); return [] as BenchmarkSourceRow[]; });
 
   // Insights — latest row only (05-01).
   type InsightRow = {
@@ -155,8 +211,8 @@ export const load: PageServerLoad = async ({ locals, url, depends }) => {
       return r.data;
     });
 
-  // Parallel fan-out: daily rows + prior + retention weekly/monthly + insight + customer_ltv + item_counts.
-  // Phase 10 + quick-260418-28j: 7-query SSR fan-out with per-card error isolation (Phase 4 D-22).
+  // Parallel fan-out: daily rows + prior + retention weekly/monthly + insight + customer_ltv + item_counts + benchmark anchors/sources.
+  // Phase 10 + quick-260418-28j/bm3: 10-query SSR fan-out with per-card error isolation (Phase 4 D-22).
   const [
     dailyRows,
     priorDailyRows,
@@ -164,7 +220,10 @@ export const load: PageServerLoad = async ({ locals, url, depends }) => {
     retentionMonthlyData,
     latestInsightRow,
     customerLtv,
-    itemCounts
+    itemCounts,
+    dailyKpi,
+    benchmarkAnchors,
+    benchmarkSources
   ] = await Promise.all([
     dailyRowsP,
     priorDailyRowsP,
@@ -172,7 +231,10 @@ export const load: PageServerLoad = async ({ locals, url, depends }) => {
     retentionMonthlyP,
     insightP,
     customerLtvP,
-    itemCountsP
+    itemCountsP,
+    dailyKpiP,
+    benchmarkAnchorsP,
+    benchmarkSourcesP
   ]);
 
   // Berlin timezone for is_yesterday flag.
@@ -210,7 +272,10 @@ export const load: PageServerLoad = async ({ locals, url, depends }) => {
     monthsOfHistory,
     latestInsight,
     customerLtv,
-    itemCounts
+    itemCounts,
+    dailyKpi,
+    benchmarkAnchors,
+    benchmarkSources
   };
 };
 

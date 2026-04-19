@@ -1,0 +1,178 @@
+<script lang="ts">
+  // Feedback #4: revenue share per item per period — mirrors CalendarItemsCard
+  // structure but uses item_revenue_cents (migration 0029) instead of item_count.
+  // Stacked bars = ratio view. Top-20 ranked by REVENUE (not count), rest → "Other".
+  // Dashed trend line overlays total revenue per bucket via bucketTrend.
+  import { Chart, Svg, Axis, Bars, Spline, Text, Tooltip } from 'layerchart';
+  import { formatEUR } from '$lib/format';
+  import EmptyState from './EmptyState.svelte';
+  import { ITEM_COLORS, OTHER_COLOR } from '$lib/chartPalettes';
+  import { rollupTopNWithOther } from '$lib/itemCountsRollup';
+  import { formatEURShort } from '$lib/format';
+  import { bandCenterX, bucketTotals, bucketTrend } from '$lib/trendline';
+  import {
+    bucketKey,
+    getFilters,
+    formatBucketLabel,
+    computeChartWidth,
+    MAX_X_TICKS
+  } from '$lib/dashboardStore.svelte';
+
+  type ItemCountRow = {
+    business_date: string;
+    item_name: string;
+    sales_type: string | null;
+    is_cash: boolean;
+    item_count: number;
+    item_revenue_cents: number;
+  };
+
+  let { data }: { data: ItemCountRow[] } = $props();
+
+  const filtered = $derived.by(() => {
+    const f = getFilters();
+    return data.filter((r) => {
+      if (f.sales_type !== 'all' && r.sales_type !== f.sales_type) return false;
+      if (f.is_cash === 'cash' && !r.is_cash) return false;
+      if (f.is_cash === 'card' && r.is_cash) return false;
+      return true;
+    });
+  });
+
+  // Rank items by total REVENUE across the filtered window. rollupTopNWithOther
+  // is generic on the numeric field name — pass item_revenue_cents as item_count.
+  const topItems = $derived.by(() => {
+    const totals = new Map<string, number>();
+    for (const r of filtered) {
+      totals.set(r.item_name, (totals.get(r.item_name) ?? 0) + r.item_revenue_cents);
+    }
+    const rows = Array.from(totals.entries()).map(([item_name, item_count]) => ({
+      item_name,
+      item_count
+    }));
+    return rollupTopNWithOther(rows, 20).map((r) => r.item_name);
+  });
+
+  const chartData = $derived.by(() => {
+    const grain = getFilters().grain as 'day' | 'week' | 'month';
+    const topSet = new Set(topItems.filter((n) => n !== 'Other'));
+    const bucketMap = new Map<string, Record<string, number | string>>();
+    for (const r of filtered) {
+      const bucket = bucketKey(r.business_date, grain);
+      let row = bucketMap.get(bucket);
+      if (!row) {
+        row = { bucket };
+        bucketMap.set(bucket, row);
+      }
+      const col = topSet.has(r.item_name) ? r.item_name : 'Other';
+      // Convert cents → EUR integers up front so Y-axis is euros.
+      row[col] = ((row[col] as number) ?? 0) + Math.round(r.item_revenue_cents / 100);
+    }
+    return Array.from(bucketMap.values())
+      .map((row) => {
+        for (const name of topItems) {
+          if (!(name in row)) row[name] = 0;
+        }
+        return row;
+      })
+      .sort((a, b) => String(a.bucket).localeCompare(String(b.bucket)))
+      .map((row) => ({ ...row, bucket: formatBucketLabel(row.bucket as string, grain) }));
+  });
+
+  const series = $derived.by(() =>
+    topItems.map((name, i) => ({
+      key: name,
+      label: name,
+      color: name === 'Other' ? OTHER_COLOR : ITEM_COLORS[i % ITEM_COLORS.length]
+    }))
+  );
+
+  const trendData = $derived(bucketTrend(chartData, 'bucket', topItems));
+  const totals = $derived(bucketTotals(chartData, topItems));
+
+  let cardW = $state(0);
+  const chartW = $derived(computeChartWidth(chartData.length, cardW));
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let chartCtx = $state<any>();
+</script>
+
+<div
+  data-testid="calendar-item-revenue-card"
+  class="rounded-xl border border-zinc-200 bg-white p-4"
+>
+  <h2 class="text-base font-semibold text-zinc-900">Revenue per period — top 20 menu items</h2>
+  <p class="mt-1 text-xs text-zinc-500">Share of revenue per period. Rest grouped as "Other".</p>
+  {#if chartData.length === 0}
+    <EmptyState card="calendar-items" />
+  {:else}
+    <div
+      bind:clientWidth={cardW}
+      class="mt-4 h-64 overflow-x-auto overscroll-x-contain chart-touch-safe"
+    >
+      <Chart
+        bind:context={chartCtx}
+        data={chartData}
+        x="bucket"
+        {series}
+        seriesLayout="stack"
+        bandPadding={0.2}
+        valueAxis="y"
+        width={chartW}
+        padding={{ left: 40, right: 8, top: 24, bottom: 24 }}
+        tooltipContext={{ mode: 'band', touchEvents: 'auto' }}
+      >
+        <Svg>
+          <Axis placement="left" format={formatEURShort} grid rule />
+          <Axis placement="bottom" ticks={MAX_X_TICKS} rule />
+          {#each series as s, i (s.key)}
+            <Bars
+              seriesKey={s.key}
+              rounded={i !== series.length - 1 ? 'none' : 'edge'}
+              radius={4}
+              strokeWidth={1}
+            />
+          {/each}
+          {#if trendData.length >= 2}
+            <Spline
+              data={trendData}
+              x="bucket"
+              y="trend"
+              class="stroke-zinc-900 stroke-[1.5] opacity-70"
+              stroke-dasharray="3 3"
+            />
+          {/if}
+          {#each chartData as row, i (row.bucket)}
+            {#if totals[i] > 0 && chartCtx}
+              <Text
+                x={bandCenterX(chartCtx.xScale, row.bucket)}
+                y={(chartCtx.yScale(totals[i]) ?? 0) - 6}
+                value={formatEURShort(totals[i])}
+                textAnchor="middle"
+                class="pointer-events-none fill-zinc-700 text-[10px] font-medium"
+              />
+            {/if}
+          {/each}
+        </Svg>
+        <Tooltip.Root>
+          {#snippet children({ data: row })}
+            {@const bucketIdx = chartData.findIndex((r) => r.bucket === row?.bucket)}
+            {@const fullRow = bucketIdx >= 0 ? chartData[bucketIdx] : row}
+            <Tooltip.Header>{fullRow?.bucket}</Tooltip.Header>
+            <Tooltip.List>
+              {#each topItems as name, i (name)}
+                {#if ((fullRow?.[name] as number) ?? 0) > 0}
+                  <Tooltip.Item
+                    label={name}
+                    color={name === 'Other' ? OTHER_COLOR : ITEM_COLORS[i % ITEM_COLORS.length]}
+                    value={formatEUR((fullRow[name] as number) * 100)}
+                  />
+                {/if}
+              {/each}
+              <Tooltip.Item label="Total" value={formatEUR((bucketIdx >= 0 ? totals[bucketIdx] : 0) * 100)} />
+            </Tooltip.List>
+          {/snippet}
+        </Tooltip.Root>
+      </Chart>
+    </div>
+  {/if}
+</div>
