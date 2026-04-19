@@ -37,6 +37,14 @@
   // 180px is enough for a 2-year window without clipping on mobile.
   const HEIGHT_PX = 180;
   const CELL_PX = 14;
+  const MONTH_LABEL_PAD_PX = 24; // must match Chart padding.top below
+
+  // Day-of-week row labels aligned to Monday-first order.
+  const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+  // CSS gradient string sampled from interpolateBlues at 10 stops — used as the
+  // colorbar legend fill. Matches the sequential scale used for cell color.
+  const BLUE_GRADIENT = Array.from({ length: 10 }, (_, i) => interpolateBlues(i / 9)).join(', ');
 
   // Explicit chart width = (weeks + 1) × cellSize + horizontal padding. Without
   // this <Chart> auto-fits to the scroll wrapper and no horizontal scroll
@@ -64,12 +72,28 @@
     unfiltered.
   </p>
 
+  {#if dated.length === 0}
+    <p class="mt-4 pt-6 text-center text-sm text-zinc-500">No daily data yet.</p>
+  {:else}
   <!-- Horizontal-scroll wrapper: Calendar lays out weeks left-to-right and can
-       exceed viewport width when history extends beyond ~52 weeks. -->
-  <div class="mt-4 overflow-x-auto chart-touch-safe" style:height="{HEIGHT_PX}px">
-    {#if dated.length === 0}
-      <p class="pt-6 text-center text-sm text-zinc-500">No daily data yet.</p>
-    {:else}
+       exceed viewport width when history extends beyond ~52 weeks. Day labels
+       sit in a fixed left column OUTSIDE the scroll so they stay visible. -->
+  <div class="mt-4 flex gap-2" style:height="{HEIGHT_PX}px">
+    <!-- Fixed day-of-week label column. padding-top matches Chart padding.top
+         so label row 0 aligns with cell row 0. -->
+    <div
+      data-testid="daily-heatmap-daylabels"
+      class="flex flex-col"
+      style:padding-top="{MONTH_LABEL_PAD_PX}px"
+    >
+      {#each DAY_LABELS as label}
+        <span
+          class="flex items-center text-[10px] leading-none text-zinc-500"
+          style:height="{CELL_PX}px"
+        >{label}</span>
+      {/each}
+    </div>
+    <div class="flex-1 overflow-x-auto chart-touch-safe" style:height="{HEIGHT_PX}px">
       <Chart
         bind:context={chartCtx}
         data={dated}
@@ -114,6 +138,19 @@
           {/snippet}
         </Tooltip.Root>
       </Chart>
-    {/if}
+    </div>
   </div>
+
+  <!-- Blue-scale colorbar legend: €0 → max revenue. Gradient sampled from
+       interpolateBlues at 10 stops to match the sequential cell fill. -->
+  <div class="mt-3 flex items-center gap-3 text-xs text-zinc-600">
+    <span>€0</span>
+    <div
+      class="h-2 flex-1 rounded"
+      data-testid="daily-heatmap-gradient"
+      style:background="linear-gradient(to right, {BLUE_GRADIENT})"
+    ></div>
+    <span>{formatEUR(maxRev)}</span>
+  </div>
+  {/if}
 </div>
