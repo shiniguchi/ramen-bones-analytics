@@ -201,7 +201,12 @@
     <!-- D-10 card 10: Cohort retention (VA-06)
          quick-260418-28j: monthly grain now reads from retention_curve_monthly_v
          instead of re-bucketing weekly rows client-side. -->
-    <CohortRetentionCard dataWeekly={data.retention} dataMonthly={data.retentionMonthly} />
+    <CohortRetentionCard
+      dataWeekly={data.retention}
+      dataMonthly={data.retentionMonthly}
+      benchmarkAnchors={data.benchmarkAnchors}
+      benchmarkSources={data.benchmarkSources}
+    />
 
     <!-- feedback #6: repeater customer count by first-visit cohort — lifetime, no range scoping -->
     <RepeaterCohortCountCard data={data.customerLtv} />

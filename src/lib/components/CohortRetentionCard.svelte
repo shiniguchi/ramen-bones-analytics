@@ -1,17 +1,21 @@
 <script lang="ts">
-  // CohortRetentionCard — cohort retention curves via LayerChart Spline (D-11..D-15).
-  // quick-260418-28j Pass 2: monthly grain now reads pre-computed monthly cohorts
-  // from retention_curve_monthly_v (migration 0027) instead of re-bucketing
-  // weekly rows client-side. X-axis domain capped at 52 weeks / 12 months.
-  // Up to 12 cohort lines render using COHORT_LINE_PALETTE.
+  // CohortRetentionCard — cohort retention curves + north-star benchmark overlay.
   //
-  // Props: dataWeekly (from retention_curve_v), dataMonthly (from retention_curve_monthly_v).
-  // No range prop — this card is chip-independent (D-04 / Pitfall 6).
-  // Phase 9: GrainToggle moved to FilterBar (D-14).
-  import { Chart, Svg, Axis, Spline, Highlight, Tooltip } from 'layerchart';
+  // Layers (back→front):
+  //   1. Benchmark band (Area): lower_p20..upper_p80 shaded amber
+  //   2. Benchmark mid (Spline): weighted P50, dashed amber
+  //   3. Benchmark anchors (Points): tappable dots at W1/W4/W12/W26/W52 (or monthly equivalents)
+  //   4. Cohort splines: the restaurant's actual data (front layer)
+  //   5. Highlight: LayerChart's hover guide
+  //
+  // quick-260418-28j Pass 2 established monthly SQL-side cohorts.
+  // quick-260418-bm4 layers the curated north-star benchmark on top.
+  import { Chart, Svg, Axis, Spline, Highlight, Tooltip, Area, Points } from 'layerchart';
   import { scaleLinear } from 'd3-scale';
-  import { curveStepAfter } from 'd3-shape';
+  import { curveStepAfter, curveMonotoneX } from 'd3-shape';
   import EmptyState from './EmptyState.svelte';
+  import InterpolationToggle from './InterpolationToggle.svelte';
+  import NorthStarSourcePopover, { type BenchmarkSourceRow } from './NorthStarSourcePopover.svelte';
   import {
     pickVisibleCohorts,
     SPARSE_MIN_COHORT_SIZE,
@@ -23,29 +27,30 @@
   } from '$lib/sparseFilter';
   import { COHORT_LINE_PALETTE } from '$lib/chartPalettes';
   import { getFilters } from '$lib/dashboardStore.svelte';
+  import { interpolateBenchmark, type BenchmarkAnchor } from '$lib/benchmarkInterp';
 
   let {
     dataWeekly,
-    dataMonthly
-  }: { dataWeekly: RetentionRow[]; dataMonthly: RetentionMonthlyRow[] } = $props();
+    dataMonthly,
+    benchmarkAnchors = [],
+    benchmarkSources = []
+  }: {
+    dataWeekly: RetentionRow[];
+    dataMonthly: RetentionMonthlyRow[];
+    benchmarkAnchors?: BenchmarkAnchor[];
+    benchmarkSources?: BenchmarkSourceRow[];
+  } = $props();
 
-  // 12-color categorical palette for cohort lines (D-11). Sourced from chartPalettes
-  // so the legacy inline 4-color literal is gone — single source of truth.
   const palette = COHORT_LINE_PALETTE;
 
-  // Reactive grain — drives all branching below.
+  // Reactive grain + interp — both drive the chart rendering.
   const grain = $derived(getFilters().grain);
+  const interp = $derived(getFilters().interp);
 
-  // D-17: day-grain clamp hint. Copy is byte-identical to VA-09/VA-10 per the
-  // Phase 10-07 contract so the three cohort-semantic cards stay visually in sync.
   const showClampHint = $derived(grain === 'day');
 
-  // Weekly path: existing sparse-filter + MAX_COHORT_LINES slice.
   const visibleRows = $derived(pickVisibleCohorts(dataWeekly));
 
-  // Sparse hint only meaningful on weekly paths — month branch runs against
-  // SQL-computed monthly cohorts (cohort_size_month already materialized), so
-  // "all sparse" isn't computed there.
   const allSparse = $derived.by(() => {
     if (dataWeekly.length === 0 || grain === 'month') return false;
     const sizes = new Map<string, number>();
@@ -56,12 +61,10 @@
     return Array.from(sizes.values()).every(s => s < SPARSE_MIN_COHORT_SIZE);
   });
 
-  // Unified series — branches on grain. Monthly path is SQL-backed.
+  // Cohort series (unchanged from prior versions).
   const series = $derived.by(() => {
     if (grain === 'month') {
       if (dataMonthly.length === 0) return [];
-      // Group cohort_size_month per cohort_month (all rows for the same cohort
-      // share the same size, but take max defensively for future view changes).
       const cohortSizes = new Map<string, number>();
       for (const r of dataMonthly) {
         const cur = cohortSizes.get(r.cohort_month) ?? 0;
@@ -80,7 +83,6 @@
         .sort(([a], [b]) => a.localeCompare(b))
         .map(([cohort, rows], i) => ({ cohort, rows, color: palette[i % palette.length] }));
     }
-    // Weekly (day or week grain).
     const byCohort = new Map<string, RetentionRow[]>();
     for (const r of visibleRows) {
       if (!byCohort.has(r.cohort_week)) byCohort.set(r.cohort_week, []);
@@ -91,23 +93,66 @@
       .map(([cohort, rows], i) => ({ cohort, rows, color: palette[i % palette.length] }));
   });
 
-  // Chart x-axis key, label, tooltip key depend on grain.
+  // Benchmark series — interpolated for the current grain + interp mode.
+  const benchmarkSeries = $derived.by(() => {
+    if (grain === 'day') return [];
+    return interpolateBenchmark(
+      benchmarkAnchors,
+      interp,
+      grain as 'week' | 'month'
+    );
+  });
+  const benchmarkAnchorsOnly = $derived(benchmarkSeries.filter(p => p.isAnchor && p.period > 0));
+  const hasBenchmark = $derived(benchmarkSeries.length > 0);
+
   const xKey    = $derived(grain === 'month' ? 'period_months' : 'period_weeks');
   const xLabel  = $derived(grain === 'month' ? 'Months since first visit' : 'Weeks since first visit');
   const xTipKey = $derived(grain === 'month' ? 'Month' : 'Week');
-
-  // X-axis domain cap — 12 months or 52 weeks. Points past the cap don't render.
   const xDomainMax = $derived(grain === 'month' ? MAX_PERIOD_MONTHS : MAX_PERIOD_WEEKS);
+
+  // Popover state.
+  let popoverOpen = $state(false);
+  let popoverPeriod = $state(0);
+  const popoverAnchor = $derived.by(() => {
+    if (!popoverOpen) return null;
+    // Find the DB anchor whose unit matches popoverPeriod under current grain.
+    // For monthly grain, map period_months back to period_weeks via canonical mapping.
+    const periodWeeks = grain === 'month'
+      ? ({ 1: 4, 3: 12, 6: 26, 12: 52 } as Record<number, number>)[popoverPeriod]
+      : popoverPeriod;
+    if (periodWeeks === undefined) return null;
+    return benchmarkAnchors.find(a => a.period_weeks === periodWeeks) ?? null;
+  });
+  const popoverSources = $derived.by(() => {
+    if (!popoverOpen) return [];
+    const periodWeeks = grain === 'month'
+      ? ({ 1: 4, 3: 12, 6: 26, 12: 52 } as Record<number, number>)[popoverPeriod]
+      : popoverPeriod;
+    if (periodWeeks === undefined) return [];
+    return benchmarkSources.filter(s => s.period_weeks === periodWeeks);
+  });
+  const popoverLabel = $derived(
+    grain === 'month'
+      ? `Month ${popoverPeriod}`
+      : `Week ${popoverPeriod}`
+  );
+
+  function onAnchorClick(period: number) {
+    popoverPeriod = period;
+    popoverOpen = true;
+  }
 </script>
 
 <div data-testid="cohort-card" class="rounded-xl border border-zinc-200 bg-white p-4">
   <!-- Card header -->
   <div class="flex items-center justify-between gap-2">
     <h2 class="text-base font-semibold text-zinc-900">Retention rate by acquisition grouping</h2>
+    {#if hasBenchmark}
+      <InterpolationToggle interp={interp === 'linear' ? 'linear' : 'log-linear'} />
+    {/if}
   </div>
 
   {#if showClampHint}
-    <!-- D-17: cohort weekly-clamp hint — byte-identical copy across VA-06/09/10. -->
     <p
       data-testid="cohort-clamp-hint"
       class="mt-2 text-xs text-amber-600"
@@ -117,7 +162,6 @@
   {/if}
 
   {#if allSparse && series.length > 0}
-    <!-- Sparse hint: shown when all visible cohorts are below SPARSE_MIN_COHORT_SIZE (D-14) -->
     <p
       data-testid="sparse-hint"
       class="mt-2 text-xs text-amber-600"
@@ -126,13 +170,10 @@
     </p>
   {/if}
 
-  {#if series.length === 0}
+  {#if series.length === 0 && !hasBenchmark}
     <EmptyState card="cohort" />
   {:else}
     <div class="mt-4 h-64 chart-touch-safe">
-      <!-- layerchart 2.x: explicit D3 scales (string presets removed in 2.x).
-           xDomain capped at MAX_PERIOD_* so the chart doesn't trail off past
-           the readable window on a 375px phone. -->
       <Chart
         data={series.flatMap((s, i) => s.rows.map(r => ({ ...r, cohortLabel: s.cohort, color: palette[i % palette.length] })))}
         x={xKey}
@@ -145,6 +186,50 @@
         tooltipContext={{ mode: 'bisect-x', touchEvents: 'auto' }}
       >
         <Svg>
+          <!-- Benchmark layers (back) -->
+          {#if hasBenchmark}
+            <Area
+              data={benchmarkSeries}
+              x={(d: { period: number }) => d.period}
+              y0={(d: { lower: number }) => d.lower}
+              y1={(d: { upper: number }) => d.upper}
+              curve={curveMonotoneX}
+              fill="#fbbf24"
+              fillOpacity={0.18}
+            />
+            <Spline
+              data={benchmarkSeries}
+              x={(d: { period: number }) => d.period}
+              y={(d: { mid: number }) => d.mid}
+              curve={curveMonotoneX}
+              stroke="#d97706"
+              stroke-width={2}
+              stroke-dasharray="6 3"
+            />
+            <Points
+              data={benchmarkAnchorsOnly}
+              x={(d: { period: number }) => d.period}
+              y={(d: { mid: number }) => d.mid}
+              r={5}
+            >
+              {#snippet children({ points })}
+                {#each points as p}
+                  <circle
+                    cx={p.x} cy={p.y} r={6}
+                    fill="#d97706" stroke="white" stroke-width={2}
+                    class="cursor-pointer"
+                    role="button"
+                    tabindex="0"
+                    aria-label="View benchmark sources"
+                    onclick={() => onAnchorClick(p.xValue)}
+                    onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') onAnchorClick(p.xValue); }}
+                  />
+                {/each}
+              {/snippet}
+            </Points>
+          {/if}
+
+          <!-- Axes + cohort lines (front) -->
           <Axis placement="left" format={(v: number) => `${Math.round(v * 100)}%`} grid />
           <Axis placement="bottom" label={xLabel} />
           {#each series as s, i}
@@ -173,10 +258,11 @@
               })
               .filter((x): x is NonNullable<typeof x> => x !== null && x.rate > 0)
               .sort((a, b) => a.cohort.localeCompare(b.cohort))}
+            {@const bmPt = period == null ? null : benchmarkSeries.find(p => p.period === period)}
             <Tooltip.Header>{xTipKey} {period}</Tooltip.Header>
             <Tooltip.List>
-              {#if rowsAtPeriod.length === 0}
-                <Tooltip.Item label="No returns" value="" />
+              {#if rowsAtPeriod.length === 0 && !bmPt}
+                <Tooltip.Item label="No data" value="" />
               {:else}
                 {#each rowsAtPeriod as r (r.cohort)}
                   {@const pct = r.rate * 100}
@@ -187,6 +273,13 @@
                     value={`${pctLabel} · ${Math.round(r.rate * r.size)} of ${r.size} returned`}
                   />
                 {/each}
+                {#if bmPt}
+                  <Tooltip.Item
+                    label={bmPt.isAnchor ? 'North-star (anchor)' : 'North-star'}
+                    color="#d97706"
+                    value={`${Math.round(bmPt.mid * 100)}% · range ${Math.round(bmPt.lower * 100)}–${Math.round(bmPt.upper * 100)}%`}
+                  />
+                {/if}
               {/if}
             </Tooltip.List>
           {/snippet}
@@ -194,4 +287,27 @@
       </Chart>
     </div>
   {/if}
+
+  <!-- Disclaimer — small grey, below chart -->
+  {#if hasBenchmark}
+    <p
+      data-testid="benchmark-disclaimer"
+      class="mt-3 text-[10px] leading-snug text-zinc-400"
+    >
+      North-star band: curated for your restaurant using weighted P20/P80 bounds.
+      Member-program data adjusted −15pp for cold-cohort comparison.
+      Weekly points between W1/W4/W12/W26/W52 anchors are interpolated ({interp}) — no direct weekly benchmark exists.
+      Tap any amber dot for full source attribution.
+    </p>
+  {/if}
 </div>
+
+<NorthStarSourcePopover
+  bind:open={popoverOpen}
+  period={popoverPeriod}
+  grainLabel={popoverLabel}
+  anchor={popoverAnchor
+    ? { lower_p20: popoverAnchor.lower_p20, mid_p50: popoverAnchor.mid_p50, upper_p80: popoverAnchor.upper_p80, source_count: popoverSources.length }
+    : null}
+  sources={popoverSources}
+/>
