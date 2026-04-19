@@ -48,7 +48,9 @@ export const load: PageServerLoad = async ({ locals, url, depends }) => {
         { business_date: '2026-04-14', revenue_cents: 6500, tx_count: 2 },
         { business_date: '2026-04-15', revenue_cents: 7300, tx_count: 2 },
         { business_date: '2026-04-16', revenue_cents: 3200, tx_count: 1 }
-      ]
+      ],
+      benchmarkAnchors: [],
+      benchmarkSources: []
     };
   }
 
@@ -150,6 +152,43 @@ export const load: PageServerLoad = async ({ locals, url, depends }) => {
     .select('cohort_month,period_months,retention_rate,cohort_size_month,cohort_age_months')
   ).catch((e: unknown) => { console.error('[retention_curve_monthly_v]', e); return [] as RetentionMonthlyRow[]; });
 
+  // North-star benchmark anchors — weighted-quantile P20/P50/P80 curve for
+  // this tenant's curated sources (migrations 0030/0031, quick-260418-bm1/bm2).
+  // Empty array on error/no-data so the chart renders cohorts alone.
+  type BenchmarkAnchorRow = {
+    period_weeks: number;
+    lower_p20: number;
+    mid_p50: number;
+    upper_p80: number;
+    source_count: number;
+  };
+  const benchmarkAnchorsP = fetchAll<BenchmarkAnchorRow>(() => locals.supabase
+    .from('benchmark_curve_v')
+    .select('period_weeks,lower_p20,mid_p50,upper_p80,source_count')
+  ).catch((e: unknown) => { console.error('[benchmark_curve_v]', e); return [] as BenchmarkAnchorRow[]; });
+
+  // Benchmark source attribution — one row per (source, period) for the popover.
+  type BenchmarkSourceRow = {
+    period_weeks: number;
+    id: number;
+    label: string;
+    country: string;
+    segment: string;
+    credibility: 'HIGH' | 'MEDIUM' | 'LOW';
+    cuisine_match: number;
+    metric_type: string;
+    conversion_note: string | null;
+    sample_size: string | null;
+    year: number;
+    url: string | null;
+    raw_value: number;
+    normalized_value: number;
+  };
+  const benchmarkSourcesP = fetchAll<BenchmarkSourceRow>(() => locals.supabase
+    .from('benchmark_sources_v')
+    .select('period_weeks,id,label,country,segment,credibility,cuisine_match,metric_type,conversion_note,sample_size,year,url,raw_value,normalized_value')
+  ).catch((e: unknown) => { console.error('[benchmark_sources_v]', e); return [] as BenchmarkSourceRow[]; });
+
   // Insights — latest row only (05-01).
   type InsightRow = {
     id: string;
@@ -172,8 +211,8 @@ export const load: PageServerLoad = async ({ locals, url, depends }) => {
       return r.data;
     });
 
-  // Parallel fan-out: daily rows + prior + retention weekly/monthly + insight + customer_ltv + item_counts.
-  // Phase 10 + quick-260418-28j: 7-query SSR fan-out with per-card error isolation (Phase 4 D-22).
+  // Parallel fan-out: daily rows + prior + retention weekly/monthly + insight + customer_ltv + item_counts + benchmark anchors/sources.
+  // Phase 10 + quick-260418-28j/bm3: 10-query SSR fan-out with per-card error isolation (Phase 4 D-22).
   const [
     dailyRows,
     priorDailyRows,
@@ -182,7 +221,9 @@ export const load: PageServerLoad = async ({ locals, url, depends }) => {
     latestInsightRow,
     customerLtv,
     itemCounts,
-    dailyKpi
+    dailyKpi,
+    benchmarkAnchors,
+    benchmarkSources
   ] = await Promise.all([
     dailyRowsP,
     priorDailyRowsP,
@@ -191,7 +232,9 @@ export const load: PageServerLoad = async ({ locals, url, depends }) => {
     insightP,
     customerLtvP,
     itemCountsP,
-    dailyKpiP
+    dailyKpiP,
+    benchmarkAnchorsP,
+    benchmarkSourcesP
   ]);
 
   // Berlin timezone for is_yesterday flag.
@@ -230,7 +273,9 @@ export const load: PageServerLoad = async ({ locals, url, depends }) => {
     latestInsight,
     customerLtv,
     itemCounts,
-    dailyKpi
+    dailyKpi,
+    benchmarkAnchors,
+    benchmarkSources
   };
 };
 

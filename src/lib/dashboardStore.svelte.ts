@@ -289,6 +289,10 @@ export function setCashFilter(v: 'all' | 'cash' | 'card') {
   _filters = { ..._filters, is_cash: v };
 }
 
+export function setInterp(v: 'linear' | 'log-linear') {
+  _filters = { ..._filters, interp: v };
+}
+
 export function setRange(window: RangeWindow) {
   dateFrom = window.from;
   dateTo = window.to;

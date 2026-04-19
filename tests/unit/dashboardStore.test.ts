@@ -141,7 +141,8 @@ describe('reactive filters state', () => {
     range: '7d',
     grain: 'week',
     sales_type: 'all',
-    is_cash: 'all'
+    is_cash: 'all',
+    interp: 'log-linear'
   };
 
   it('Test A: getFilters() returns seeded object after initStore', () => {
@@ -229,7 +230,7 @@ describe('getWindow', () => {
       grain: 'week',
       salesType: 'all',
       cashFilter: 'all',
-      filters: { range: '7d', grain: 'week', sales_type: 'all', is_cash: 'all' }
+      filters: { range: '7d', grain: 'week', sales_type: 'all', is_cash: 'all', interp: 'log-linear' }
     });
     const w = getWindow();
     expect(w.from).toBe('2026-04-10');
@@ -245,7 +246,7 @@ describe('getWindow', () => {
       grain: 'week',
       salesType: 'all',
       cashFilter: 'all',
-      filters: { range: '7d', grain: 'week', sales_type: 'all', is_cash: 'all' }
+      filters: { range: '7d', grain: 'week', sales_type: 'all', is_cash: 'all', interp: 'log-linear' }
     });
     setRange({ from: '2026-01-01', to: '2026-01-31', priorFrom: '2025-12-01', priorTo: '2025-12-31' });
     const w = getWindow();
@@ -265,7 +266,7 @@ describe('getWindow', () => {
       grain: 'week',
       salesType: 'all',
       cashFilter: 'all',
-      filters: { range: '7d', grain: 'week', sales_type: 'all', is_cash: 'all' }
+      filters: { range: '7d', grain: 'week', sales_type: 'all', is_cash: 'all', interp: 'log-linear' }
     });
     expect(getWindow()).not.toBe(getWindow());
   });

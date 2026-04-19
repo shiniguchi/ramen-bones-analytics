@@ -11,12 +11,14 @@ export const RANGE_VALUES = ['today', '7d', '30d', '90d', 'all', 'custom'] as co
 export const GRAIN_VALUES = ['day', 'week', 'month'] as const;
 export const SALES_TYPE_FILTER_VALUES = ['all', 'INHOUSE', 'TAKEAWAY'] as const;
 export const IS_CASH_VALUES = ['all', 'cash', 'card'] as const;
+export const INTERP_VALUES = ['linear', 'log-linear'] as const;
 
 export const FILTER_DEFAULTS = Object.freeze({
   range: '7d' as const,
   grain: 'week' as const,
   sales_type: 'all' as const,
-  is_cash: 'all' as const
+  is_cash: 'all' as const,
+  interp: 'log-linear' as const
 });
 
 const isoDate = z
@@ -30,6 +32,7 @@ export const filtersSchema = z.object({
   grain: z.enum(GRAIN_VALUES).catch(FILTER_DEFAULTS.grain),
   sales_type: z.enum(SALES_TYPE_FILTER_VALUES).catch(FILTER_DEFAULTS.sales_type),
   is_cash: z.enum(IS_CASH_VALUES).catch(FILTER_DEFAULTS.is_cash),
+  interp: z.enum(INTERP_VALUES).catch(FILTER_DEFAULTS.interp),
   from: isoDate,
   to: isoDate
 });
