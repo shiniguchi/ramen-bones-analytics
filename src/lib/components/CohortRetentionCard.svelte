@@ -328,7 +328,7 @@
     >
       North-star band: curated for your restaurant using weighted P20/P80 bounds.
       Member-program data adjusted −15pp for cold-cohort comparison.
-      Weekly points between W1/W4/W12/W26/W52 anchors are interpolated ({interp}) — no direct weekly benchmark exists.
+      Points between M1/M3/M6/M12 anchors are interpolated ({interp}) — no public source reports restaurant retention at weekly resolution.
     </p>
   {/if}
 </div>
