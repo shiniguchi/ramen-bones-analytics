@@ -12,7 +12,7 @@
   // quick-260418-bm4 layers the curated north-star benchmark on top.
   import { Chart, Svg, Axis, Spline, Highlight, Tooltip, Area, Points } from 'layerchart';
   import { scaleLinear } from 'd3-scale';
-  import { curveStepAfter, curveMonotoneX } from 'd3-shape';
+  import { curveStepAfter } from 'd3-shape';
   import EmptyState from './EmptyState.svelte';
   import InterpolationToggle from './InterpolationToggle.svelte';
   import NorthStarSourcePopover, { type BenchmarkSourceRow } from './NorthStarSourcePopover.svelte';
@@ -186,14 +186,14 @@
         tooltipContext={{ mode: 'bisect-x', touchEvents: 'auto' }}
       >
         <Svg>
-          <!-- Benchmark layers (back) -->
+          <!-- Benchmark band + mid (back layers — drawn first) -->
           {#if hasBenchmark}
             <Area
               data={benchmarkSeries}
               x={(d: { period: number }) => d.period}
               y0={(d: { lower: number }) => d.lower}
               y1={(d: { upper: number }) => d.upper}
-              curve={curveMonotoneX}
+              curve={curveStepAfter}
               fill="#fbbf24"
               fillOpacity={0.18}
             />
@@ -201,35 +201,14 @@
               data={benchmarkSeries}
               x={(d: { period: number }) => d.period}
               y={(d: { mid: number }) => d.mid}
-              curve={curveMonotoneX}
+              curve={curveStepAfter}
               stroke="#d97706"
               stroke-width={2}
               stroke-dasharray="6 3"
             />
-            <Points
-              data={benchmarkAnchorsOnly}
-              x={(d: { period: number }) => d.period}
-              y={(d: { mid: number }) => d.mid}
-              r={5}
-            >
-              {#snippet children({ points })}
-                {#each points as p}
-                  <circle
-                    cx={p.x} cy={p.y} r={6}
-                    fill="#d97706" stroke="white" stroke-width={2}
-                    class="cursor-pointer"
-                    role="button"
-                    tabindex="0"
-                    aria-label="View benchmark sources"
-                    onclick={() => onAnchorClick(p.xValue)}
-                    onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') onAnchorClick(p.xValue); }}
-                  />
-                {/each}
-              {/snippet}
-            </Points>
           {/if}
 
-          <!-- Axes + cohort lines (front) -->
+          <!-- Axes + cohort lines -->
           <Axis placement="left" format={(v: number) => `${Math.round(v * 100)}%`} grid />
           <Axis placement="bottom" label={xLabel} />
           {#each series as s, i}
@@ -243,6 +222,39 @@
             />
           {/each}
           <Highlight points lines />
+
+          <!-- Benchmark anchor dots — rendered LAST so they sit on top of
+               cohort splines and are tappable. Each visible dot has an
+               invisible r=18 hit circle so mobile taps land reliably. -->
+          {#if hasBenchmark}
+            <Points
+              data={benchmarkAnchorsOnly}
+              x={(d: { period: number }) => d.period}
+              y={(d: { mid: number }) => d.mid}
+              r={5}
+            >
+              {#snippet children({ points })}
+                {#each points as p}
+                  <circle
+                    cx={p.x} cy={p.y} r={6}
+                    fill="#d97706" stroke="white" stroke-width={2}
+                    pointer-events="none"
+                  />
+                  <!-- Invisible tap target (18px radius = ~36px diameter) -->
+                  <circle
+                    cx={p.x} cy={p.y} r={18}
+                    fill="transparent"
+                    class="cursor-pointer"
+                    role="button"
+                    tabindex="0"
+                    aria-label={`View benchmark sources for ${grain === 'month' ? 'month' : 'week'} ${p.xValue}`}
+                    onclick={() => onAnchorClick(p.xValue)}
+                    onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') onAnchorClick(p.xValue); }}
+                  />
+                {/each}
+              {/snippet}
+            </Points>
+          {/if}
         </Svg>
         <Tooltip.Root contained="window" class="max-w-[92vw]">
           {#snippet children({ data })}
@@ -288,6 +300,26 @@
     </div>
   {/if}
 
+  <!-- Source-chip affordance — tappable fallback for mobile where chart
+       dots can be fiddly. Each chip opens the same popover. -->
+  {#if hasBenchmark && benchmarkAnchorsOnly.length > 0}
+    <div
+      data-testid="benchmark-source-chips"
+      class="mt-3 flex flex-wrap items-center gap-1.5 text-xs"
+    >
+      <span class="text-zinc-500">See sources for:</span>
+      {#each benchmarkAnchorsOnly as p (p.period)}
+        <button
+          type="button"
+          onclick={() => onAnchorClick(p.period)}
+          class="min-h-9 rounded-md bg-amber-50 px-2.5 py-1 font-medium text-amber-700 ring-1 ring-inset ring-amber-200 hover:bg-amber-100 active:bg-amber-200 transition-colors"
+        >
+          {grain === 'month' ? 'M' : 'W'}{p.period}
+        </button>
+      {/each}
+    </div>
+  {/if}
+
   <!-- Disclaimer — small grey, below chart -->
   {#if hasBenchmark}
     <p
@@ -297,7 +329,6 @@
       North-star band: curated for your restaurant using weighted P20/P80 bounds.
       Member-program data adjusted −15pp for cold-cohort comparison.
       Weekly points between W1/W4/W12/W26/W52 anchors are interpolated ({interp}) — no direct weekly benchmark exists.
-      Tap any amber dot for full source attribution.
     </p>
   {/if}
 </div>
