@@ -94,13 +94,13 @@
   });
 
   // Benchmark series — interpolated for the current grain + interp mode.
+  // Restricted to MONTHLY grain: no public source reports cold-cohort
+  // restaurant retention at weekly resolution, so interpolating W0=100%
+  // down to M1 across 4 weeks invents values that don't exist (e.g. 78%
+  // "active in week 1" when the true cold-cohort rate is 5-10%).
   const benchmarkSeries = $derived.by(() => {
-    if (grain === 'day') return [];
-    return interpolateBenchmark(
-      benchmarkAnchors,
-      interp,
-      grain as 'week' | 'month'
-    );
+    if (grain !== 'month') return [];
+    return interpolateBenchmark(benchmarkAnchors, interp, 'month');
   });
   const benchmarkAnchorsOnly = $derived(benchmarkSeries.filter(p => p.isAnchor && p.period > 0));
   const hasBenchmark = $derived(benchmarkSeries.length > 0);
@@ -326,9 +326,9 @@
       data-testid="benchmark-disclaimer"
       class="mt-3 text-[10px] leading-snug text-zinc-400"
     >
-      North-star band: curated for your restaurant using weighted P20/P80 bounds.
-      Member-program data adjusted −15pp for cold-cohort comparison.
-      Points between M1/M3/M6/M12 anchors are interpolated ({interp}) — no public source reports restaurant retention at weekly resolution.
+      North-star band (monthly grain only): curated for your restaurant using weighted P20/P80 bounds.
+      Member-program data divided by 2.5 for cold-cohort parity; cumulative-window sources multiplied by 0.5 for active-in-period semantic.
+      Points between M1/M3/M6/M12 anchors are interpolated ({interp}) — no public source reports restaurant retention at weekly resolution, so weekly tab shows your cohorts alone.
     </p>
   {/if}
 </div>
