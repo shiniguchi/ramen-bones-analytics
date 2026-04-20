@@ -10,18 +10,19 @@ import type { FiltersState } from '../../src/lib/filters';
 // Phase 9 Plan 01 — dashboard store pure function tests.
 // These test filter/bucket/aggregate logic independent of Svelte reactivity.
 
-// Fixture: 10 rows across 3 weeks with mixed sales_type and is_cash
+// Fixture: 10 rows across 3 weeks with mixed sales_type and is_cash.
+// visit_seq/card_hash fields present since Phase 10 (type requires them).
 const ROWS: DailyRow[] = [
-  { business_date: '2026-04-06', gross_cents: 1000, sales_type: 'INHOUSE',  is_cash: false },
-  { business_date: '2026-04-07', gross_cents: 2000, sales_type: 'TAKEAWAY', is_cash: true },
-  { business_date: '2026-04-08', gross_cents: 1500, sales_type: 'INHOUSE',  is_cash: false },
-  { business_date: '2026-04-09', gross_cents: 3000, sales_type: 'INHOUSE',  is_cash: true },
-  { business_date: '2026-04-10', gross_cents: 500,  sales_type: 'TAKEAWAY', is_cash: false },
-  { business_date: '2026-04-13', gross_cents: 2500, sales_type: 'INHOUSE',  is_cash: false },
-  { business_date: '2026-04-14', gross_cents: 1200, sales_type: 'TAKEAWAY', is_cash: true },
-  { business_date: '2026-04-15', gross_cents: 800,  sales_type: 'INHOUSE',  is_cash: false },
-  { business_date: '2026-04-16', gross_cents: 4000, sales_type: 'INHOUSE',  is_cash: true },
-  { business_date: '2026-04-16', gross_cents: 600,  sales_type: 'TAKEAWAY', is_cash: false },
+  { business_date: '2026-04-06', gross_cents: 1000, sales_type: 'INHOUSE',  is_cash: false, visit_seq: 1, card_hash: 'h1' },
+  { business_date: '2026-04-07', gross_cents: 2000, sales_type: 'TAKEAWAY', is_cash: true,  visit_seq: null, card_hash: null },
+  { business_date: '2026-04-08', gross_cents: 1500, sales_type: 'INHOUSE',  is_cash: false, visit_seq: 2, card_hash: 'h1' },
+  { business_date: '2026-04-09', gross_cents: 3000, sales_type: 'INHOUSE',  is_cash: true,  visit_seq: null, card_hash: null },
+  { business_date: '2026-04-10', gross_cents: 500,  sales_type: 'TAKEAWAY', is_cash: false, visit_seq: 1, card_hash: 'h2' },
+  { business_date: '2026-04-13', gross_cents: 2500, sales_type: 'INHOUSE',  is_cash: false, visit_seq: 3, card_hash: 'h1' },
+  { business_date: '2026-04-14', gross_cents: 1200, sales_type: 'TAKEAWAY', is_cash: true,  visit_seq: null, card_hash: null },
+  { business_date: '2026-04-15', gross_cents: 800,  sales_type: 'INHOUSE',  is_cash: false, visit_seq: 1, card_hash: 'h3' },
+  { business_date: '2026-04-16', gross_cents: 4000, sales_type: 'INHOUSE',  is_cash: true,  visit_seq: null, card_hash: null },
+  { business_date: '2026-04-16', gross_cents: 600,  sales_type: 'TAKEAWAY', is_cash: false, visit_seq: 2, card_hash: 'h2' },
 ];
 
 describe('bucketKey', () => {
@@ -67,6 +68,42 @@ describe('filterRows', () => {
   it('date window filters rows outside range', () => {
     const result = filterRows(ROWS, 'all', 'all', '2026-04-13', '2026-04-16');
     expect(result).toHaveLength(5); // 4/13, 4/14, 4/15, 4/16 (x2)
+  });
+});
+
+// quick-260420-wdf: day-of-week filter tests. days: 1=Mon..7=Sun.
+describe('filterRows — day-of-week filter', () => {
+  // 2026-04-13 = Mon, 2026-04-14 = Tue, 2026-04-15 = Wed,
+  // 2026-04-18 = Sat, 2026-04-19 = Sun.
+  const DOW_ROWS: DailyRow[] = [
+    { business_date: '2026-04-13', gross_cents: 100, sales_type: 'INHOUSE', is_cash: false, visit_seq: 1, card_hash: 'h1' },
+    { business_date: '2026-04-14', gross_cents: 200, sales_type: 'INHOUSE', is_cash: false, visit_seq: 1, card_hash: 'h2' },
+    { business_date: '2026-04-15', gross_cents: 300, sales_type: 'INHOUSE', is_cash: false, visit_seq: 1, card_hash: 'h3' },
+    { business_date: '2026-04-18', gross_cents: 400, sales_type: 'INHOUSE', is_cash: false, visit_seq: 1, card_hash: 'h4' },
+    { business_date: '2026-04-19', gross_cents: 500, sales_type: 'INHOUSE', is_cash: false, visit_seq: 1, card_hash: 'h5' }
+  ];
+
+  it('excludeMon: days=[2..7] drops Monday rows', () => {
+    const week = DOW_ROWS.slice(0, 3); // Mon, Tue, Wed
+    const result = filterRows(week, 'all', 'all', '2026-04-13', '2026-04-15', [2, 3, 4, 5, 6, 7]);
+    expect(result.map((r) => r.business_date)).toEqual(['2026-04-14', '2026-04-15']);
+  });
+
+  it('weekendOnly: days=[6,7] keeps only Sat+Sun', () => {
+    const result = filterRows(DOW_ROWS, 'all', 'all', '2026-04-13', '2026-04-19', [6, 7]);
+    expect(result.map((r) => r.business_date)).toEqual(['2026-04-18', '2026-04-19']);
+  });
+
+  it('emptyDays: days=[] filters everything out', () => {
+    const result = filterRows(DOW_ROWS, 'all', 'all', '2026-04-13', '2026-04-19', []);
+    expect(result).toHaveLength(0);
+  });
+
+  it('allDays: days=[1..7] equals legacy no-filter behavior', () => {
+    const withAll = filterRows(DOW_ROWS, 'all', 'all', '2026-04-13', '2026-04-19', [1, 2, 3, 4, 5, 6, 7]);
+    const withoutArg = filterRows(DOW_ROWS, 'all', 'all', '2026-04-13', '2026-04-19');
+    expect(withAll).toEqual(withoutArg);
+    expect(withAll).toHaveLength(DOW_ROWS.length);
   });
 });
 
@@ -142,7 +179,7 @@ describe('reactive filters state', () => {
     grain: 'week',
     sales_type: 'all',
     is_cash: 'all',
-    interp: 'log-linear'
+    days: [1, 2, 3, 4, 5, 6, 7]
   };
 
   it('Test A: getFilters() returns seeded object after initStore', () => {
@@ -230,7 +267,7 @@ describe('getWindow', () => {
       grain: 'week',
       salesType: 'all',
       cashFilter: 'all',
-      filters: { range: '7d', grain: 'week', sales_type: 'all', is_cash: 'all', interp: 'log-linear' }
+      filters: { range: '7d', grain: 'week', sales_type: 'all', is_cash: 'all', days: [1, 2, 3, 4, 5, 6, 7] }
     });
     const w = getWindow();
     expect(w.from).toBe('2026-04-10');
@@ -246,7 +283,7 @@ describe('getWindow', () => {
       grain: 'week',
       salesType: 'all',
       cashFilter: 'all',
-      filters: { range: '7d', grain: 'week', sales_type: 'all', is_cash: 'all', interp: 'log-linear' }
+      filters: { range: '7d', grain: 'week', sales_type: 'all', is_cash: 'all', days: [1, 2, 3, 4, 5, 6, 7] }
     });
     setRange({ from: '2026-01-01', to: '2026-01-31', priorFrom: '2025-12-01', priorTo: '2025-12-31' });
     const w = getWindow();
@@ -266,7 +303,7 @@ describe('getWindow', () => {
       grain: 'week',
       salesType: 'all',
       cashFilter: 'all',
-      filters: { range: '7d', grain: 'week', sales_type: 'all', is_cash: 'all', interp: 'log-linear' }
+      filters: { range: '7d', grain: 'week', sales_type: 'all', is_cash: 'all', days: [1, 2, 3, 4, 5, 6, 7] }
     });
     expect(getWindow()).not.toBe(getWindow());
   });
