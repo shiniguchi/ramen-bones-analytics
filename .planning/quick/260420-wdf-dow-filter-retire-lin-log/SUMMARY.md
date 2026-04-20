@@ -6,6 +6,7 @@ completed: 2026-04-20
 commits:
   - 03db100
   - 1c9cf3a
+  - 7027b4b
 ---
 
 # 260420-wdf — Day-of-week filter + retire Lin/Log toggle
@@ -55,9 +56,35 @@ Result: 4 files, 59 / 59 passed.
 
 `grep -rn "InterpolationToggle\|setInterp\|INTERP_VALUES\|filters\.interp" src/ tests/` → no matches.
 
-### Deferred — Chrome MCP QA on DEV
+### Chrome MCP QA on localhost — PASS (incl. SQL cross-check)
 
-Per orchestrator instructions, Chrome MCP verification (Days popover interaction, heatmap dim, caveat toggling, Lin/Log toggle absence) is deferred to the orchestrator after merge. Unit + type-check gates are green.
+Orchestrator ran Chrome MCP QA at `http://localhost:5173` against DEV DB. Cross-checked chart values per month against direct SQL aggregates from `transactions_filterable_v` (row-level tx) and `item_counts_daily_mv` (per-item) for both `Mon-Fri` and `Sat-Sun` filter states.
+
+| Scope | Filter | UI value | SQL ground truth | Match |
+|---|---|---|---|---|
+| Revenue KPI tile | All days | €203.3K | €203,293.00 | exact |
+| Revenue KPI tile | Mon-Fri | €102.7K | €102,721.50 | exact |
+| Revenue KPI tile | Sat-Sun | €100.6K | €100,571.50 | exact |
+| Tx KPI tile | All days | 6,896 | 6,896 | exact |
+| Tx KPI tile | Mon-Fri | 3,571 | 3,571 | exact |
+| Tx KPI tile | Sat-Sun | 3,325 | 3,325 | exact |
+| Calendar Counts — 11 monthly bars | Sat-Sun | 224/241/458/214/368/430/223/384/301/349/133 | same | exact |
+| Calendar Revenue — 11 monthly bars | Sat-Sun | €6.6K/7.1K/13.4K/6.7K/11.1K/13.3K/6.8K/12.3K/9.1K/10.2K/3.8K | €6,629 / 7,146.50 / 13,422.50 / 6,690 / 11,118.50 / 13,306.50 / 6,805.50 / 12,318.50 / 9,086 / 10,211.50 / 3,837 | exact (0.1K rounding) |
+| Items Sold Y-axis peak | Sat-Sun | 515 (Aug 2025) | Jiro-Kei Ramen = 515 | exact |
+| Items Sold Y-axis peak | Mon-Fri | 428 (Oct 2025) | Jiro-Kei Ramen = 428 | exact |
+| Per-item Revenue chart | Sat-Sun | €6.6K/7.1K/13.4K/... | item_counts_daily_mv Sat-Sun sum | exact |
+
+### Bug caught + fixed mid-QA — follow-up commit 7027b4b
+
+`CalendarItemsCard.svelte` and `CalendarItemRevenueCard.svelte` do their own client-side filter (sales_type + is_cash) and were NOT checking `days`. Chrome MCP QA caught the per-item Revenue chart showing all-days values (€13.5K for Jun 2025 = Mon-Fri €6.9K + Sat-Sun €6.6K combined) when Sat-Sun filter was active.
+
+Fix: added Mon-first DOW predicate to both cards' `filtered` derivation, matching `dashboardStore.filterRows`. Re-verified in Chrome MCP post-fix — all per-item chart values match SQL per filter.
+
+Commit: `7027b4b` — `fix(quick-260420-wdf): apply day-of-week filter to item cards`.
+
+### Deferred — `npm run build`
+
+Build fails on pre-existing missing `PUBLIC_SUPABASE_URL` / `PUBLIC_SUPABASE_PUBLISHABLE_KEY` (worktree has no `.env`). Out of scope; passes after merge where CF Pages deploy secrets are present.
 
 ### Deferred — `npm run build`
 
