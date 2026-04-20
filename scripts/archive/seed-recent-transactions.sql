@@ -1,4 +1,17 @@
--- scripts/seed-recent-transactions.sql
+-- scripts/archive/seed-recent-transactions.sql
+--
+-- DEPRECATED 2026-04-20 — DO NOT RE-RUN.
+-- This synthetic seed existed only to paper over the April 2026 Worldline
+-- blackout. That blackout is now resolved (real April data ingested in quick-
+-- 260420 + lifted from cohort_mv in migration 0034). Re-running this file
+-- would insert `demo-recent-*` rows that overlap real ingested data and
+-- pollute KPI/cohort/retention numbers.
+--
+-- Kept for historical reference only. If you need insight-test data on a
+-- blank DEV, prefer `scripts/seed-demo-data.sql` (distinct namespace) or
+-- run the CSV ingest instead.
+--
+-- ORIGINAL PURPOSE (for context):
 -- Phase 05-09 / Gap 3 closure: seed DEV with ≥50 synthetic transactions across the
 -- last 14 business_days so the generate-insight Edge Function has non-zero numbers
 -- to feed Haiku (April 2026 Worldline blackout leaves DEV empty — see 02-04-REAL-RUN.md).
