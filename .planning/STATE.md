@@ -211,6 +211,7 @@ Plan: Not started
 | 260418-f99 | Plan A — 5 UI fixes pass: BarChart Y-axis padding, SegmentedToggle "Takeaway" overflow, KpiTile responsive type + €100k+ compact fallback, chart touch-action pan-x → auto (PC trackpad vertical scroll), retention Tooltip.Root moved out of Svg | 2026-04-18 | bec629c, 73d96b7, ec905d4, 02f39f3, 60ef822, e45fc20 | [260418-f99-plan-a-5-ui-fixes-pass](./quick/260418-f99-plan-a-5-ui-fixes-pass/) |
 | 260418-g6s | Range-chip cache-miss triggers SSR refetch via goto({invalidateAll:true}) — first-login users clicking "All" chip now actually re-fetches full-window data. Two commits: initial fix used depends+invalidate, Chrome MCP QA caught stale-URL trap (replaceState doesn't feed SvelteKit invalidate), followed up with goto() | 2026-04-18 | 982b010, 92c585a | [260418-g6s-range-chip-ssr-refetch-fix-depends-inval](./quick/260418-g6s-range-chip-ssr-refetch-fix-depends-inval/) |
 | 260419-dhm | DailyHeatmapCard — Mon-Sun row labels fixed left of scroll, blue-scale colorbar (€0 → max) below chart sampling interpolateBlues at 10 stops | 2026-04-19 | e98f074, 4345700 | [260419-dhm-labels-colorbar](./quick/260419-dhm-labels-colorbar/) |
+| 260420-wdf | Day-of-week filter (7 checkboxes, Mon..Sun) applied client-side to KPI tiles + calendar cards + heatmap dim; retired Lin/Log interpolation toggle (locked to log-linear); cohort/LTV cards show caveat banner when days != all-7 | 2026-04-20 | 03db100, 1c9cf3a | [260420-wdf-dow-filter-retire-lin-log](./quick/260420-wdf-dow-filter-retire-lin-log/) |
 
 ## Session Continuity
 
