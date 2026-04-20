@@ -8,9 +8,17 @@
   import { interpolateBlues } from 'd3-scale-chromatic';
   import { format, parseISO } from 'date-fns';
   import { formatEUR } from '$lib/format';
+  import { getFilters } from '$lib/dashboardStore.svelte';
 
   // Shift JS getDay() (0=Sun..6=Sat) to Mon-first (0=Mon..6=Sun) for the y-axis row.
   const mondayFirstRow = (d: Date) => (d.getDay() + 6) % 7;
+
+  // quick-260420-wdf: dim cells for days NOT in the active day-of-week filter.
+  // Store DOW convention is 1=Mon..7=Sun (see filters.ts), so map (row+1).
+  const activeDays = $derived(getFilters().days);
+  const excluded = $derived(
+    new Set([1, 2, 3, 4, 5, 6, 7].filter((d) => !activeDays.includes(d)))
+  );
 
   type DailyKpiRow = { business_date: string; revenue_cents: number | string; tx_count: number };
   let { data }: { data: DailyKpiRow[] } = $props();
@@ -110,12 +118,15 @@
             {#snippet children({ cells, cellSize })}
               {#each cells as cell}
                 {@const hasData = cell.data?.revenue_cents != null && cell.data.revenue_cents > 0}
+                {@const dow = mondayFirstRow(cell.data.date) + 1}
+                {@const isExcluded = excluded.has(dow)}
                 <Rect
                   x={cell.x}
                   y={mondayFirstRow(cell.data.date) * cellSize[1]}
                   width={cellSize[0]}
                   height={cellSize[1]}
                   fill={hasData ? cell.color : '#ffffff'}
+                  opacity={isExcluded ? 0.2 : 1}
                   stroke="#f1f5f9"
                   strokeWidth={1}
                   class="lc-calendar-cell"

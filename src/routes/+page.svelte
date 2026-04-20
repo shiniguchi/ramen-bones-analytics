@@ -16,7 +16,7 @@
   import RepeaterCohortCountCard from '$lib/components/RepeaterCohortCountCard.svelte';
   import {
     initStore, getKpiTotals, getFilters, getWindow,
-    setRange, setRangeId, setSalesType, setCashFilter,
+    setRange, setRangeId, setSalesType, setCashFilter, setDaysFilter,
     cacheCovers, type DailyRow
   } from '$lib/dashboardStore.svelte';
   import { goto, replaceState } from '$app/navigation';
@@ -34,6 +34,7 @@
       grain: data.grain as 'day' | 'week' | 'month',
       salesType: (data.filters.sales_type ?? 'all') as 'all' | 'INHOUSE' | 'TAKEAWAY',
       cashFilter: (data.filters.is_cash ?? 'all') as 'all' | 'cash' | 'card',
+      daysFilter: data.filters.days,
       filters: data.filters
     });
   });
@@ -143,6 +144,15 @@
       setCashFilter(v as 'all' | 'cash' | 'card');
     });
   }
+
+  // Handle day-of-week filter change. All 7 days selected → strip param; else CSV.
+  function handleDaysChange(v: number[]) {
+    withUpdate(() => {
+      setDaysFilter(v);
+      const allDays = v.length === 7;
+      replaceState(mergeSearchParams({ days: allDays ? null : v.join(',') }), {});
+    });
+  }
 </script>
 
 <DashboardHeader />
@@ -150,9 +160,11 @@
   filters={storeFilters}
   window={storeWindow}
   isLoading={isUpdating}
+  days={storeFilters.days}
   onrangechange={handleRangeChange}
   onsalestypechange={handleSalesType}
   oncashfilterchange={handleCashFilter}
+  onDaysChange={handleDaysChange}
 />
 <div class="px-4 py-2">
   <FreshnessLabel lastIngestedAt={data.freshness} />
@@ -209,6 +221,6 @@
     />
 
     <!-- feedback #6: repeater customer count by first-visit cohort — lifetime, no range scoping -->
-    <RepeaterCohortCountCard data={data.customerLtv} />
+    <RepeaterCohortCountCard data={data.customerLtv} repeaterTx={data.repeaterTx} />
   </div>
 </main>

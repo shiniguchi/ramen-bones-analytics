@@ -7,7 +7,9 @@ import {
   VISIT_BUCKET_KEYS,
   REPEATER_BUCKET_KEYS,
   cohortRepeaterCountByVisitBucket,
-  type CustomerLtvRow
+  recomputeCustomerLtvFromTx,
+  type CustomerLtvRow,
+  type RepeaterTxRow
 } from '../../src/lib/cohortAgg';
 import { formatBucketLabel } from '../../src/lib/dashboardStore.svelte';
 
@@ -130,5 +132,79 @@ describe('cohortRepeaterCountByVisitBucket (feedback #6)', () => {
     const [row] = cohortRepeaterCountByVisitBucket(rows, 'month');
     expect(row.cohort).toHaveLength(7);
     expect(() => formatBucketLabel(row.cohort, 'month')).not.toThrow();
+  });
+});
+
+describe('recomputeCustomerLtvFromTx', () => {
+  const ALL_DAYS = [1, 2, 3, 4, 5, 6, 7];
+
+  it('empty input → empty output', () => {
+    expect(recomputeCustomerLtvFromTx([], ALL_DAYS)).toEqual([]);
+  });
+
+  it('groups by card_hash and counts visits', () => {
+    // 2025-07-14 is a Monday (DOW 1), 2025-07-16 Wed (3), 2025-07-19 Sat (6)
+    const tx: RepeaterTxRow[] = [
+      { card_hash: 'a', business_date: '2025-07-14', gross_cents: 1000 },
+      { card_hash: 'a', business_date: '2025-07-16', gross_cents: 2000 },
+      { card_hash: 'a', business_date: '2025-07-19', gross_cents: 3000 },
+      { card_hash: 'b', business_date: '2025-07-14', gross_cents: 500 }
+    ];
+    const out = recomputeCustomerLtvFromTx(tx, ALL_DAYS);
+    const a = out.find((r) => r.card_hash === 'a')!;
+    expect(a.visit_count).toBe(3);
+    expect(a.revenue_cents).toBe(6000);
+    expect(a.cohort_month).toBe('2025-07-01');
+    expect(a.cohort_week).toBe('2025-07-14'); // Mon of that week
+    const b = out.find((r) => r.card_hash === 'b')!;
+    expect(b.visit_count).toBe(1);
+  });
+
+  it('shifts cohort_month + visit_count when Mon/Tue excluded', () => {
+    // Customer first visits on Monday, returns Thursday. Under days = Wed-Sun,
+    // the Monday visit is excluded, so:
+    //   - visit_count drops from 2 → 1
+    //   - cohort shifts from the Monday's month to the Thursday's month
+    //   - could also land them in a later month entirely
+    const tx: RepeaterTxRow[] = [
+      { card_hash: 'shift', business_date: '2025-06-30', gross_cents: 1000 }, // Mon
+      { card_hash: 'shift', business_date: '2025-07-03', gross_cents: 1000 } // Thu
+    ];
+    const all = recomputeCustomerLtvFromTx(tx, ALL_DAYS);
+    expect(all[0].visit_count).toBe(2);
+    expect(all[0].cohort_month).toBe('2025-06-01');
+
+    const wedSun = recomputeCustomerLtvFromTx(tx, [3, 4, 5, 6, 7]); // no Mon/Tue
+    expect(wedSun[0].visit_count).toBe(1);
+    expect(wedSun[0].cohort_month).toBe('2025-07-01'); // shifts to July
+  });
+
+  it('drops customers whose visits all fall on excluded days', () => {
+    const tx: RepeaterTxRow[] = [
+      { card_hash: 'monOnly', business_date: '2025-06-30', gross_cents: 1000 }, // Mon
+      { card_hash: 'monOnly', business_date: '2025-07-07', gross_cents: 1000 } // Mon
+    ];
+    const out = recomputeCustomerLtvFromTx(tx, [3, 4, 5, 6, 7]); // no Mon/Tue
+    expect(out).toEqual([]);
+  });
+
+  it('excludes April 2026 Worldline blackout window (2026-04-01..04-11)', () => {
+    const tx: RepeaterTxRow[] = [
+      { card_hash: 'x', business_date: '2026-03-30', gross_cents: 1000 }, // kept
+      { card_hash: 'x', business_date: '2026-04-05', gross_cents: 1000 }, // blackout — dropped
+      { card_hash: 'x', business_date: '2026-04-12', gross_cents: 1000 } // kept
+    ];
+    const out = recomputeCustomerLtvFromTx(tx, ALL_DAYS);
+    expect(out[0].visit_count).toBe(2);
+    expect(out[0].revenue_cents).toBe(2000);
+  });
+
+  it('DOW transform: Sunday encoded as 7 (Mon-first), not 0', () => {
+    // 2025-06-29 is a Sunday (JS getDay() === 0)
+    const tx: RepeaterTxRow[] = [
+      { card_hash: 's', business_date: '2025-06-29', gross_cents: 500 }
+    ];
+    expect(recomputeCustomerLtvFromTx(tx, [7])).toHaveLength(1); // Sun included
+    expect(recomputeCustomerLtvFromTx(tx, [1, 2, 3, 4, 5, 6])).toEqual([]); // Sun excluded
   });
 });

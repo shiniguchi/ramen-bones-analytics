@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import { describe, it, expect } from 'vitest';
-import { render } from '@testing-library/svelte';
+import { render, fireEvent } from '@testing-library/svelte';
 import DatePickerPopover from '$lib/components/DatePickerPopover.svelte';
+import FilterBar from '$lib/components/FilterBar.svelte';
 import type { FiltersState } from '$lib/filters';
 import type { RangeWindow } from '$lib/dateRange';
 
@@ -17,7 +18,7 @@ const baseFilters: FiltersState = {
   grain: 'week',
   sales_type: 'all',
   is_cash: 'all',
-  interp: 'log-linear',
+  days: [1, 2, 3, 4, 5, 6, 7],
   from: undefined,
   to: undefined
 };
@@ -52,5 +53,45 @@ describe('DatePickerPopover trigger', () => {
     const text = btn?.textContent ?? '';
     expect(text).toMatch(/7d/);
     expect(text).toMatch(/Apr\s*9\s*–\s*Apr\s*15/);
+  });
+});
+
+// quick-260420-wdf: Days popover smoke test.
+describe('FilterBar Days popover', () => {
+  it('renders 7 day checkboxes (Mon..Sun) + Weekdays preset when opened', async () => {
+    // Popover portals into #popover-root; add it to document for the test.
+    if (!document.getElementById('popover-root')) {
+      const root = document.createElement('div');
+      root.id = 'popover-root';
+      document.body.appendChild(root);
+    }
+
+    const { getByTestId } = render(FilterBar, {
+      filters: baseFilters,
+      window: baseWindow,
+      days: baseFilters.days,
+      onrangechange: () => {},
+      onsalestypechange: () => {},
+      oncashfilterchange: () => {},
+      onDaysChange: () => {}
+    });
+
+    // Trigger renders inline — click it to open the popover.
+    const trigger = getByTestId('days-popover-trigger');
+    await fireEvent.click(trigger);
+
+    // Popover content is portaled into document — query body for content.
+    const content = document.body.querySelector('[data-testid="days-popover-content"]');
+    expect(content).toBeTruthy();
+
+    // All 7 day labels present (Mon..Sun).
+    const text = content?.textContent ?? '';
+    for (const label of ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']) {
+      expect(text).toContain(label);
+    }
+
+    // Weekdays preset button is rendered.
+    const weekdaysBtn = document.body.querySelector('[data-testid="days-preset-weekdays"]');
+    expect(weekdaysBtn).toBeTruthy();
   });
 });

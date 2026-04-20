@@ -1,6 +1,7 @@
 // Cohort aggregation helpers for VA-07 / VA-10. Client-side GROUP BY per D-01
 // hybrid approach — no dedicated MV because ~2000 customer payload is trivial.
 import { SPARSE_MIN_COHORT_SIZE } from './sparseFilter';
+import { startOfMonth, startOfWeek, parseISO, format } from 'date-fns';
 
 export type CustomerLtvRow = {
   card_hash: string;
@@ -46,6 +47,63 @@ export const REPEATER_BUCKET_KEYS = VISIT_BUCKET_KEYS.slice(1) as readonly Visit
  * Sparse-filters cohorts whose total_repeaters < SPARSE_MIN_COHORT_SIZE so tiny
  * all-first-timer cohorts don't clutter the chart.
  */
+// ============================================================================
+// quick-260420-wdf: day-of-week-aware repeater recomputation.
+// When the user picks a subset of weekdays, we recompute customer lifetime
+// stats from scratch — "what if we'd never opened on these days?".
+// Visit count, cohort_month and cohort_week all shift accordingly.
+// ============================================================================
+
+/** Minimal lifetime-scoped transaction row — card_hash not null, any date.
+ *  Fed from a separate +page.server.ts fetch that skips the chip window. */
+export type RepeaterTxRow = {
+  card_hash: string;
+  business_date: string; // YYYY-MM-DD
+  gross_cents: number;
+};
+
+// Worldline blackout window — matches cohort_mv (0010) + customer_ltv_mv (0024).
+// Dates in the client's business_date space (Europe/Berlin) since the MV builds
+// cohort via the same tz cast.
+const BLACKOUT_START = '2026-04-01';
+const BLACKOUT_END = '2026-04-12'; // exclusive
+
+/** Recompute per-customer lifetime stats from raw transactions, honoring the
+ *  day-of-week filter. Matches customer_ltv_mv semantics (exclude blackout,
+ *  exclude cash — enforced at fetch time via card_hash NOT NULL).
+ *  Mirrors `cohort_mv` cohort_week math: date_trunc('week', first_visit).
+ */
+export function recomputeCustomerLtvFromTx(
+  rows: RepeaterTxRow[],
+  days: number[],
+): CustomerLtvRow[] {
+  const daysSet = new Set(days);
+  const byCard = new Map<string, RepeaterTxRow[]>();
+  for (const r of rows) {
+    if (r.business_date >= BLACKOUT_START && r.business_date < BLACKOUT_END) continue;
+    const dow = ((parseISO(r.business_date).getDay() + 6) % 7) + 1;
+    if (!daysSet.has(dow)) continue;
+    const arr = byCard.get(r.card_hash);
+    if (arr) arr.push(r);
+    else byCard.set(r.card_hash, [r]);
+  }
+  const out: CustomerLtvRow[] = [];
+  for (const [card_hash, txs] of byCard) {
+    txs.sort((a, b) => a.business_date.localeCompare(b.business_date));
+    const firstDate = parseISO(txs[0].business_date);
+    let revenue_cents = 0;
+    for (const t of txs) revenue_cents += t.gross_cents;
+    out.push({
+      card_hash,
+      revenue_cents,
+      visit_count: txs.length,
+      cohort_week: format(startOfWeek(firstDate, { weekStartsOn: 1 }), 'yyyy-MM-dd'),
+      cohort_month: format(startOfMonth(firstDate), 'yyyy-MM-dd'),
+    });
+  }
+  return out;
+}
+
 export function cohortRepeaterCountByVisitBucket(
   rows: CustomerLtvRow[],
   grain: 'week' | 'month'

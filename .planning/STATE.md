@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Dashboard Simplification & Visit Attribution
 status: "Phase 10 shipped — PR #4"
-stopped_at: Completed quick task 260418-g6s — range-chip cache-miss now triggers SSR refetch via goto({replaceState,invalidateAll}); Chrome MCP QA caught replaceState+invalidate stale-URL trap and landed follow-up fix 92c585a; all 3 scenarios PASS on DEV
-last_updated: "2026-04-18T10:00:00Z"
+stopped_at: Completed quick task 260420-wdf — day-of-week filter + retire Lin/Log toggle + Repeater full recomputation + sticky filter header fix (d2f536d). Feature branch feature/dashboard-chart-improvements-260418 merged to main (54 commits). Chrome MCP QA on DEV PASS across all scroll depths at 390×844; filter bar now pinned on scroll after swapping outer-wrapper overflow-x-hidden → overflow-x-clip.
+last_updated: "2026-04-20T00:00:00Z"
 progress:
   total_phases: 10
   completed_phases: 10
@@ -211,6 +211,7 @@ Plan: Not started
 | 260418-f99 | Plan A — 5 UI fixes pass: BarChart Y-axis padding, SegmentedToggle "Takeaway" overflow, KpiTile responsive type + €100k+ compact fallback, chart touch-action pan-x → auto (PC trackpad vertical scroll), retention Tooltip.Root moved out of Svg | 2026-04-18 | bec629c, 73d96b7, ec905d4, 02f39f3, 60ef822, e45fc20 | [260418-f99-plan-a-5-ui-fixes-pass](./quick/260418-f99-plan-a-5-ui-fixes-pass/) |
 | 260418-g6s | Range-chip cache-miss triggers SSR refetch via goto({invalidateAll:true}) — first-login users clicking "All" chip now actually re-fetches full-window data. Two commits: initial fix used depends+invalidate, Chrome MCP QA caught stale-URL trap (replaceState doesn't feed SvelteKit invalidate), followed up with goto() | 2026-04-18 | 982b010, 92c585a | [260418-g6s-range-chip-ssr-refetch-fix-depends-inval](./quick/260418-g6s-range-chip-ssr-refetch-fix-depends-inval/) |
 | 260419-dhm | DailyHeatmapCard — Mon-Sun row labels fixed left of scroll, blue-scale colorbar (€0 → max) below chart sampling interpolateBlues at 10 stops | 2026-04-19 | e98f074, 4345700 | [260419-dhm-labels-colorbar](./quick/260419-dhm-labels-colorbar/) |
+| 260420-wdf | Day-of-week filter (7 checkboxes, Mon..Sun) applied client-side to KPI tiles + calendar + heatmap + per-item cards; retired Lin/Log toggle (locked to log-linear). Repeater card scope-expanded to full Option-A recomputation (visit_count + cohort_month shift under the "what if" lens) via new lifetime-tx SSR fetch. Retention card keeps caveat (deferred). Sticky filter header fix: swapped layout wrapper overflow-x-hidden → overflow-x-clip so filter bar's existing `sticky top-0` binds to viewport instead of the implicit scroll container. Cloud-verified SQL-exact across all affected charts + mobile sticky-scroll PASS. | 2026-04-20 | 03db100, 1c9cf3a, 7027b4b, 545273c, d2f536d | [260420-wdf-dow-filter-retire-lin-log](./quick/260420-wdf-dow-filter-retire-lin-log/) |
 
 ## Session Continuity
 

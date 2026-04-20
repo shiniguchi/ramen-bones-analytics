@@ -56,4 +56,14 @@ describe('mergeSearchParams', () => {
     expect(url.searchParams.get('range')).toBe('30d');
     expect(url.searchParams.get('sales_type')).toBe('INHOUSE');
   });
+
+  // quick-260420-wdf: days param round-trip (CSV set / null delete).
+  it('U7: days=1,2,3 set + days:null delete round-trip', () => {
+    const setUrl = mergeSearchParams({ days: '1,2,3' });
+    expect(setUrl.searchParams.get('days')).toBe('1,2,3');
+
+    window.history.replaceState({}, '', setUrl.toString());
+    const clearedUrl = mergeSearchParams({ days: null });
+    expect(clearedUrl.searchParams.has('days')).toBe(false);
+  });
 });

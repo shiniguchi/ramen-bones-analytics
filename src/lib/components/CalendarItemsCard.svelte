@@ -13,6 +13,7 @@
   import { formatIntShort } from '$lib/format';
   import { bucketKey, getFilters, formatBucketLabel, computeChartWidth, MAX_X_TICKS } from '$lib/dashboardStore.svelte';
   import { integerTicks } from '$lib/trendline';
+  import { parseISO } from 'date-fns';
 
   const yAxisFormat = (n: number) => formatIntShort(n, 'items');
 
@@ -29,10 +30,13 @@
   // Apply client-side filters — mirrors dashboardStore.filterRows but for ItemCountRow shape.
   const filtered = $derived.by(() => {
     const f = getFilters();
+    const daysSet = new Set(f.days);
     return data.filter(r => {
       if (f.sales_type !== 'all' && r.sales_type !== f.sales_type) return false;
       if (f.is_cash === 'cash' && !r.is_cash) return false;
       if (f.is_cash === 'card' && r.is_cash) return false;
+      const dow = ((parseISO(r.business_date).getDay() + 6) % 7) + 1;
+      if (!daysSet.has(dow)) return false;
       return true;
     });
   });

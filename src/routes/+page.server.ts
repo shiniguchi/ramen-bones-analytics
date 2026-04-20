@@ -50,7 +50,8 @@ export const load: PageServerLoad = async ({ locals, url, depends }) => {
         { business_date: '2026-04-16', revenue_cents: 3200, tx_count: 1 }
       ],
       benchmarkAnchors: [],
-      benchmarkSources: []
+      benchmarkSources: [],
+      repeaterTx: []
     };
   }
 
@@ -116,6 +117,16 @@ export const load: PageServerLoad = async ({ locals, url, depends }) => {
     .from('customer_ltv_v')
     .select('card_hash,revenue_cents,visit_count,cohort_week,cohort_month')
   ).catch((e: unknown) => { console.error('[customer_ltv_v]', e); return [] as CustomerLtvRow[]; });
+
+  // quick-260420-wdf: lifetime card-hash transactions for Repeater card
+  // recomputation when day-of-week filter is active. Unfiltered by chip
+  // window — we need every card visit ever to redraw cohorts.
+  type RepeaterTxRow = { card_hash: string; business_date: string; gross_cents: number };
+  const repeaterTxP = fetchAll<RepeaterTxRow>(() => locals.supabase
+    .from('transactions_filterable_v')
+    .select('card_hash,business_date,gross_cents')
+    .not('card_hash', 'is', null)
+  ).catch((e: unknown) => { console.error('[repeater tx lifetime]', e); return [] as RepeaterTxRow[]; });
 
   // Phase 10: item_counts_daily_v feeds VA-08 (calendar item counts) and
   // the per-item revenue card (quick-260418-irc, migration 0029 added item_revenue_cents).
@@ -223,7 +234,8 @@ export const load: PageServerLoad = async ({ locals, url, depends }) => {
     itemCounts,
     dailyKpi,
     benchmarkAnchors,
-    benchmarkSources
+    benchmarkSources,
+    repeaterTx
   ] = await Promise.all([
     dailyRowsP,
     priorDailyRowsP,
@@ -234,7 +246,8 @@ export const load: PageServerLoad = async ({ locals, url, depends }) => {
     itemCountsP,
     dailyKpiP,
     benchmarkAnchorsP,
-    benchmarkSourcesP
+    benchmarkSourcesP,
+    repeaterTxP
   ]);
 
   // Berlin timezone for is_yesterday flag.
@@ -275,7 +288,8 @@ export const load: PageServerLoad = async ({ locals, url, depends }) => {
     itemCounts,
     dailyKpi,
     benchmarkAnchors,
-    benchmarkSources
+    benchmarkSources,
+    repeaterTx
   };
 };
 
