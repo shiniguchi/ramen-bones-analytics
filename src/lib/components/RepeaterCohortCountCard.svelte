@@ -9,8 +9,10 @@
   import EmptyState from './EmptyState.svelte';
   import {
     cohortRepeaterCountByVisitBucket,
+    recomputeCustomerLtvFromTx,
     REPEATER_BUCKET_KEYS,
-    type CustomerLtvRow
+    type CustomerLtvRow,
+    type RepeaterTxRow
   } from '$lib/cohortAgg';
   import { VISIT_SEQ_COLORS } from '$lib/chartPalettes';
   import { formatIntShort } from '$lib/format';
@@ -22,7 +24,7 @@
     MAX_X_TICKS
   } from '$lib/dashboardStore.svelte';
 
-  let { data }: { data: CustomerLtvRow[] } = $props();
+  let { data, repeaterTx }: { data: CustomerLtvRow[]; repeaterTx: RepeaterTxRow[] } = $props();
 
   // D-17: day clamps to week for cohort-semantic charts (shared with VA-06/VA-07).
   const cohortGrain = $derived.by<'week' | 'month'>(() => {
@@ -30,15 +32,21 @@
     return g === 'month' ? 'month' : 'week';
   });
   const showClampHint = $derived(getFilters().grain === 'day');
-  // quick-260420-wdf: day-of-week filter does not apply to repeater cohorts —
-  // grouping is by first-visit period, and day-of-week slicing would distort
-  // cohort semantics. Surface an amber caveat when the filter is active.
-  const dayFilterActive = $derived(getFilters().days.length !== 7);
+  // quick-260420-wdf (round 2): day-of-week filter recomputes lifetime stats
+  // from raw transactions. All-7 days → use SSR customer_ltv_v as the fast
+  // path (pre-aggregated in the DB). Subset → recompute client-side from
+  // repeaterTx so visit_count + cohort_month shift under the "what if we
+  // only operated these days?" hypothetical.
+  const effectiveData = $derived.by(() => {
+    const days = getFilters().days;
+    if (days.length === 7) return data;
+    return recomputeCustomerLtvFromTx(repeaterTx, days);
+  });
 
   // Show every non-sparse cohort — the overflow-x-auto wrapper + computeChartWidth
   // handle mobile scroll; previous .slice(-12) was hiding genuine early history.
   const chartData = $derived.by(() => {
-    const aggs = cohortRepeaterCountByVisitBucket(data, cohortGrain);
+    const aggs = cohortRepeaterCountByVisitBucket(effectiveData, cohortGrain);
     return aggs.map((a) => {
       const row: Record<string, string | number> = {
         cohort: formatBucketLabel(a.cohort, cohortGrain)
@@ -92,15 +100,6 @@
   {#if showClampHint}
     <p data-testid="cohort-clamp-hint" class="mt-2 text-xs text-amber-600">
       Grouping view shows weekly — other grains not applicable.
-    </p>
-  {/if}
-
-  {#if dayFilterActive}
-    <p
-      data-testid="repeater-day-filter-caveat"
-      class="mt-1 text-[11px] text-amber-600"
-    >
-      Day filter does not apply to cohort retention — cohorts use all days.
     </p>
   {/if}
 

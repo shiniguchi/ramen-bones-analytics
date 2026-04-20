@@ -221,6 +221,6 @@
     />
 
     <!-- feedback #6: repeater customer count by first-visit cohort — lifetime, no range scoping -->
-    <RepeaterCohortCountCard data={data.customerLtv} />
+    <RepeaterCohortCountCard data={data.customerLtv} repeaterTx={data.repeaterTx} />
   </div>
 </main>
