@@ -8,6 +8,7 @@ commits:
   - 1c9cf3a
   - 7027b4b
   - 545273c
+  - d2f536d
 ---
 
 # 260420-wdf — Day-of-week filter + retire Lin/Log toggle
@@ -155,3 +156,17 @@ None of substance. Three minor, benign choices:
 ## Self-Check: PASSED
 
 All created/modified files present on disk. Both commits (03db100, 1c9cf3a) visible in `git log`. InterpolationToggle.svelte correctly removed.
+
+### UX polish — sticky filter header (commit d2f536d)
+
+User asked for the filter bar to stay visible on scroll. `FilterBar.svelte` already had `sticky top-0 z-30` applied (line 88, added as part of Phase 9) but the bar wasn't pinning.
+
+Root cause: `src/routes/+layout.svelte:6` had `overflow-x-hidden` on the outer wrapper. `overflow-x: hidden` creates an implicit scroll container (browser computes `overflow-y: auto` too), and `position: sticky` binds to the nearest scroll container rather than the viewport. The sticky element stuck to the top of the wrapper (which grows with content) instead of the visible viewport edge.
+
+Fix: swap `overflow-x-hidden` → `overflow-x-clip`. `overflow: clip` blocks horizontal overflow without creating a scroll container, so sticky descendants now bind to the viewport. Browser support: Chrome 90+ / Safari 15.4+ / Firefox 81+.
+
+Diff: one line in `src/routes/+layout.svelte`.
+
+Chrome MCP QA on DEV (ramen-bones-analytics.pages.dev) at 390×844 mobile viewport — scrolled past heatmap + cohort charts + repeater charts, filter bar stayed pinned across all scroll depths. Zero regressions to chart tooltips or horizontal-scroll chart wrappers (confirmed sibling `overflow-x-auto` still works; clip is on ancestor, not an ancestor scroll container).
+
+Memory note: ties to an older lesson about being careful with layout-wrapper overflow rules — sticky behavior is easy to break invisibly.
