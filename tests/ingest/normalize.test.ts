@@ -4,7 +4,7 @@ import { resolve } from 'node:path';
 // Plan 03 will create scripts/ingest/parse.ts and scripts/ingest/normalize.ts.
 // Until then, these imports fail with "Cannot find module" — the RED signal.
 import { parseCsv } from '../../scripts/ingest/parse';
-import { toStagingRows, toTransactions } from '../../scripts/ingest/normalize';
+import { toStagingRows, toTransactions, countryNameToIso2 } from '../../scripts/ingest/normalize';
 
 const RID = '00000000-0000-0000-0000-000000000001';
 const SOURCE = 'sample.csv';
@@ -205,5 +205,49 @@ describe('toStagingRows + toTransactions (ING-01, ING-03)', () => {
     const t6 = tx.find((t: any) => t.invoice_number === 'T-6');
     expect(t6).toBeDefined();
     expect(t6!.card_hash).toBeNull();
+  });
+});
+
+// Mirror of public.country_name_to_iso2 from migration 0019. The TS helper
+// is what the loader uses; the SQL version is used by the 0019 backfill.
+// Both must agree — see migration 0034 / quick-260420 fix for the bug where
+// the loader skipped this mapping and blew up on CHAR(2).
+describe('countryNameToIso2', () => {
+  it('maps canonical European + Asian names to ISO-2', () => {
+    expect(countryNameToIso2('Germany')).toBe('DE');
+    expect(countryNameToIso2('Austria')).toBe('AT');
+    expect(countryNameToIso2('United Kingdom')).toBe('GB');
+    expect(countryNameToIso2('Japan')).toBe('JP');
+    expect(countryNameToIso2('Taiwan')).toBe('TW');
+  });
+
+  it('accepts both common aliases for the same country', () => {
+    expect(countryNameToIso2('Czechia')).toBe('CZ');
+    expect(countryNameToIso2('Czech Republic')).toBe('CZ');
+    expect(countryNameToIso2('South Korea')).toBe('KR');
+    expect(countryNameToIso2('Korea, Republic of')).toBe('KR');
+  });
+
+  it('returns null for blank, null, undefined, and unknown names', () => {
+    expect(countryNameToIso2('')).toBeNull();
+    expect(countryNameToIso2(null)).toBeNull();
+    expect(countryNameToIso2(undefined)).toBeNull();
+    expect(countryNameToIso2('Atlantis')).toBeNull();
+  });
+
+  it('trims surrounding whitespace before lookup', () => {
+    expect(countryNameToIso2('  Germany  ')).toBe('DE');
+  });
+
+  it('every mapped value is exactly 2 characters (CHAR(2) safety)', () => {
+    const samples = [
+      'Germany','France','Italy','Japan','Brazil','United States',
+      'Korea, Republic of','Bosnia and Herzegovina','Taiwan, Province of China'
+    ];
+    for (const name of samples) {
+      const iso = countryNameToIso2(name);
+      expect(iso).not.toBeNull();
+      expect(iso!.length).toBe(2);
+    }
   });
 });

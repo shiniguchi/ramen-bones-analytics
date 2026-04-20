@@ -76,6 +76,35 @@ export function canonicalizeCardType(raw: string | null | undefined): string {
   return 'other';
 }
 
+// Phase 07 / migration 0019: map a Worldline country NAME ("Germany") to
+// ISO-3166-1 alpha-2 ("DE"). Must stay byte-identical to
+// public.country_name_to_iso2 in supabase/migrations/0019_transactions_country_cardtype.sql.
+// Unknown/empty names return null (first-class NULL per D-06).
+export function countryNameToIso2(name: string | null | undefined): string | null {
+  const k = (name ?? '').trim();
+  if (k === '') return null;
+  const M: Record<string, string> = {
+    'Germany': 'DE', 'Austria': 'AT', 'Switzerland': 'CH', 'France': 'FR', 'Italy': 'IT',
+    'Spain': 'ES', 'Portugal': 'PT', 'Netherlands': 'NL', 'Belgium': 'BE', 'Luxembourg': 'LU',
+    'Ireland': 'IE', 'United Kingdom': 'GB', 'Denmark': 'DK', 'Sweden': 'SE', 'Norway': 'NO',
+    'Finland': 'FI', 'Iceland': 'IS', 'Poland': 'PL', 'Czechia': 'CZ', 'Czech Republic': 'CZ',
+    'Slovakia': 'SK', 'Slovenia': 'SI', 'Hungary': 'HU', 'Romania': 'RO', 'Bulgaria': 'BG',
+    'Croatia': 'HR', 'Serbia': 'RS', 'Bosnia and Herzegovina': 'BA', 'North Macedonia': 'MK',
+    'Greece': 'GR', 'Turkey': 'TR', 'Cyprus': 'CY', 'Malta': 'MT', 'Estonia': 'EE',
+    'Latvia': 'LV', 'Lithuania': 'LT', 'Ukraine': 'UA', 'Belarus': 'BY',
+    'Russia': 'RU', 'Russian Federation': 'RU', 'Moldova': 'MD', 'Georgia': 'GE',
+    'Armenia': 'AM', 'Azerbaijan': 'AZ', 'Kazakhstan': 'KZ', 'Kyrgyzstan': 'KG',
+    'United States': 'US', 'Canada': 'CA', 'Mexico': 'MX', 'Brazil': 'BR', 'Argentina': 'AR',
+    'Colombia': 'CO', 'Paraguay': 'PY', 'Japan': 'JP', 'China': 'CN', 'Hong Kong': 'HK',
+    'Taiwan, Province of China': 'TW', 'Taiwan': 'TW',
+    'Korea, Republic of': 'KR', 'South Korea': 'KR', 'Singapore': 'SG', 'Malaysia': 'MY',
+    'Thailand': 'TH', 'Philippines': 'PH', 'India': 'IN', 'Nepal': 'NP',
+    'Australia': 'AU', 'New Zealand': 'NZ', 'Israel': 'IL', 'United Arab Emirates': 'AE',
+    'South Africa': 'ZA',
+  };
+  return M[k] ?? null;
+}
+
 // D-01/D-03: shape raw CSV rows into staging rows.
 // Preserves file order. row_index is assigned 1..N within each invoice group.
 // All 29 CSV columns are stored verbatim; type coercion is deferred to the
@@ -194,7 +223,7 @@ export function toTransactions(
       // from the first row of the invoice group (matches the tip/payment_method
       // first-row-wins convention above). Precedence for card_type mirrors the
       // SQL backfill in 0019: wl_payment_type → wl_card_type → POS card_type.
-      wl_issuing_country: (first.wl_issuing_country || '').trim() || null,
+      wl_issuing_country: countryNameToIso2(first.wl_issuing_country),
       card_type: canonicalizeCardType(
         (first.wl_payment_type || '').trim() ||
           (first.wl_card_type || '').trim() ||
