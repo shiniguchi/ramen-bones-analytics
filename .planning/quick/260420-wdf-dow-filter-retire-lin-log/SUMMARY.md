@@ -7,6 +7,7 @@ commits:
   - 03db100
   - 1c9cf3a
   - 7027b4b
+  - 545273c
 ---
 
 # 260420-wdf — Day-of-week filter + retire Lin/Log toggle
@@ -81,6 +82,36 @@ Orchestrator ran Chrome MCP QA at `http://localhost:5173` against DEV DB. Cross-
 Fix: added Mon-first DOW predicate to both cards' `filtered` derivation, matching `dashboardStore.filterRows`. Re-verified in Chrome MCP post-fix — all per-item chart values match SQL per filter.
 
 Commit: `7027b4b` — `fix(quick-260420-wdf): apply day-of-week filter to item cards`.
+
+### Scope expansion: Repeater card now honors day filter — commit 545273c
+
+User pushback: "I actually want the day filter to apply to the Repeaters card". Original plan explicitly excluded cohort cards with the amber caveat banner.
+
+Chose Option A (full recomputation, not membership filter): when the user picks a subset of weekdays, we treat it as "what if we'd never opened on excluded days?" — `visit_count` drops, `cohort_month` shifts to first visit on a selected day, customers whose visits all land on excluded days are dropped entirely.
+
+Implementation:
+- New SSR fetch `repeaterTxP` in `+page.server.ts`: lifetime transactions (`card_hash`, `business_date`, `gross_cents`), unfiltered by chip window. Payload ~200 KB (6.9 K rows × 3 fields).
+- `cohortAgg.ts`: new `recomputeCustomerLtvFromTx(rows, days)` helper. Excludes Apr 2026 Worldline blackout (2026-04-01..04-11, matching `customer_ltv_mv`) + filters DOW via Mon-first predicate + groups by card_hash. Client-side rebuild of what `customer_ltv_mv` would look like under the filter hypothesis.
+- `RepeaterCohortCountCard.svelte`: new `repeaterTx` prop. When `days.length === 7`, use SSR `customerLtv` directly (fast path, no recomputation). When filter active, call `recomputeCustomerLtvFromTx` → feed to existing `cohortRepeaterCountByVisitBucket`. Caveat banner removed.
+- `CohortRetentionCard.svelte` caveat kept — retention requires period-by-period recomputation against a moving horizon, deferred out of 260420-wdf scope.
+
+Tests: 6 new unit tests in `cohortAgg.test.ts` covering DOW transform edge cases (Sunday=7 not 0), cohort shift under exclusion, blackout window, empty-input and all-excluded cases. `cohortAgg.test.ts` 13 → 19 passing.
+
+### Cloud QA (ramen-bones-analytics.pages.dev) — all values exact-match SQL
+
+Full cross-check via `document.querySelectorAll('text.fill-zinc-700')` + `/mcp__supabase-dev__query` ground-truth SQL aggregates:
+
+| State | Verified charts | Match |
+|---|---|---|
+| No filter | KPI tiles + Repeater 11 cohorts | ✓ |
+| days=1,2,3,4,5 (Mon-Fri) | KPI + Cal Counts 11 + Cal Revenue 11 + Item Revenue 11 + Repeater 10 (Feb=4 sparse-filtered) + per-bucket Jun 2025 (6 non-zero buckets) + per-bucket Mar 2026 | ✓ |
+| days=6,7 (Sat-Sun) | KPI + Cal Counts 11 + Cal Revenue 11 + Item Revenue 11 + Repeater 10 + per-bucket Jun 2025 (6 non-zero buckets) + per-bucket Aug 2025 (5 non-zero buckets) | ✓ |
+| Retention caveat still shown | | ✓ kept |
+| Repeater caveat removed | | ✓ |
+| Lin/Log toggle absent | | ✓ |
+| Console errors across all states | zero | ✓ |
+
+Deploy: CF Pages run [24671097691](https://github.com/shiniguchi/ramen-bones-analytics/actions/runs/24671097691) (success).
 
 ### Deferred — `npm run build`
 
