@@ -83,14 +83,19 @@ export function computeChartWidth(
   return requiredPlotPx + axisPad;
 }
 
-/** Filter rows by sales_type, cash/card, and date window. */
+/** Filter rows by sales_type, cash/card, date window, and day-of-week.
+ *  days: 1=Mon..7=Sun. Empty array filters out everything; [1..7] is a no-op.
+ *  quick-260420-wdf. */
 export function filterRows(
   rows: DailyRow[],
   salesType: 'all' | 'INHOUSE' | 'TAKEAWAY',
   cashFilter: 'all' | 'cash' | 'card',
   dateFrom: string,
-  dateTo: string
+  dateTo: string,
+  days: number[] = [1, 2, 3, 4, 5, 6, 7]
 ): DailyRow[] {
+  const allDays = days.length === 7;
+  const daySet = allDays ? null : new Set(days);
   return rows.filter((r) => {
     // Date window (inclusive)
     if (r.business_date < dateFrom || r.business_date > dateTo) return false;
@@ -99,6 +104,11 @@ export function filterRows(
     // Cash/card filter
     if (cashFilter === 'cash' && !r.is_cash) return false;
     if (cashFilter === 'card' && r.is_cash) return false;
+    // Day-of-week filter (Mon=1..Sun=7). Skip parseISO when not filtering.
+    if (daySet) {
+      const dow = ((parseISO(r.business_date).getDay() + 6) % 7) + 1;
+      if (!daySet.has(dow)) return false;
+    }
     return true;
   });
 }
@@ -202,6 +212,7 @@ let dateTo = $state('');
 let grain = $state<'day' | 'week' | 'month'>('week');
 let salesTypeFilter = $state<'all' | 'INHOUSE' | 'TAKEAWAY'>('all');
 let cashFilter = $state<'all' | 'cash' | 'card'>('all');
+let daysFilter = $state<number[]>([1, 2, 3, 4, 5, 6, 7]);
 let priorFrom = $state<string | null>(null);
 let priorTo = $state<string | null>(null);
 
@@ -215,12 +226,12 @@ let _filters = $state<FiltersState>({ ...FILTER_DEFAULTS });
 // Svelte 5 forbids exporting $derived from modules. Use getter functions instead.
 
 const _filtered = $derived.by(() =>
-  filterRows(rawRows, salesTypeFilter, cashFilter, dateFrom, dateTo)
+  filterRows(rawRows, salesTypeFilter, cashFilter, dateFrom, dateTo, daysFilter)
 );
 
 const _priorFiltered = $derived.by(() => {
   if (!priorFrom || !priorTo) return [];
-  return filterRows(rawRows, salesTypeFilter, cashFilter, priorFrom, priorTo);
+  return filterRows(rawRows, salesTypeFilter, cashFilter, priorFrom, priorTo, daysFilter);
 });
 
 const _bucketed = $derived.by(() => aggregateByBucket(_filtered, grain));
@@ -258,6 +269,7 @@ export function initStore(data: {
   grain: 'day' | 'week' | 'month';
   salesType: 'all' | 'INHOUSE' | 'TAKEAWAY';
   cashFilter: 'all' | 'cash' | 'card';
+  daysFilter?: number[];
   filters: FiltersState;
 }) {
   rawRows = data.dailyRows;
@@ -270,6 +282,7 @@ export function initStore(data: {
   grain = data.grain;
   salesTypeFilter = data.salesType;
   cashFilter = data.cashFilter;
+  daysFilter = data.daysFilter ?? data.filters.days ?? [1, 2, 3, 4, 5, 6, 7];
   // Seed the reactive filters snapshot — replaces `data.filters` reads in UI paths.
   _filters = { ...data.filters };
 }
@@ -289,8 +302,9 @@ export function setCashFilter(v: 'all' | 'cash' | 'card') {
   _filters = { ..._filters, is_cash: v };
 }
 
-export function setInterp(v: 'linear' | 'log-linear') {
-  _filters = { ..._filters, interp: v };
+export function setDaysFilter(v: number[]) {
+  daysFilter = v;
+  _filters = { ..._filters, days: v };
 }
 
 export function setRange(window: RangeWindow) {

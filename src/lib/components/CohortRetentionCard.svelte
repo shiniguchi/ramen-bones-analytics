@@ -14,7 +14,6 @@
   import { scaleLinear } from 'd3-scale';
   import { curveStepAfter } from 'd3-shape';
   import EmptyState from './EmptyState.svelte';
-  import InterpolationToggle from './InterpolationToggle.svelte';
   import NorthStarSourcePopover, { type BenchmarkSourceRow } from './NorthStarSourcePopover.svelte';
   import {
     pickVisibleCohorts,
@@ -43,9 +42,11 @@
 
   const palette = COHORT_LINE_PALETTE;
 
-  // Reactive grain + interp — both drive the chart rendering.
+  // Reactive grain drives the chart rendering. quick-260420-wdf: interp toggle
+  // retired — benchmark curve is hardcoded to log-linear (matches cold-cohort
+  // decay shape better than linear between public-source anchors).
   const grain = $derived(getFilters().grain);
-  const interp = $derived(getFilters().interp);
+  const dayFilterActive = $derived(getFilters().days.length !== 7);
 
   const showClampHint = $derived(grain === 'day');
 
@@ -100,7 +101,7 @@
   // "active in week 1" when the true cold-cohort rate is 5-10%).
   const benchmarkSeries = $derived.by(() => {
     if (grain !== 'month') return [];
-    return interpolateBenchmark(benchmarkAnchors, interp, 'month');
+    return interpolateBenchmark(benchmarkAnchors, 'log-linear', 'month');
   });
   const benchmarkAnchorsOnly = $derived(benchmarkSeries.filter(p => p.isAnchor && p.period > 0));
   const hasBenchmark = $derived(benchmarkSeries.length > 0);
@@ -147,10 +148,16 @@
   <!-- Card header -->
   <div class="flex items-center justify-between gap-2">
     <h2 class="text-base font-semibold text-zinc-900">Retention rate by acquisition grouping</h2>
-    {#if hasBenchmark}
-      <InterpolationToggle interp={interp === 'linear' ? 'linear' : 'log-linear'} />
-    {/if}
   </div>
+
+  {#if dayFilterActive}
+    <p
+      data-testid="cohort-day-filter-caveat"
+      class="mt-1 text-[11px] text-amber-600"
+    >
+      Day filter does not apply to cohort retention — cohorts use all days.
+    </p>
+  {/if}
 
   {#if showClampHint}
     <p
@@ -328,7 +335,7 @@
     >
       North-star band (monthly grain only): curated for your restaurant using weighted P20/P80 bounds.
       Member-program data divided by 2.5 for cold-cohort parity; cumulative-window sources multiplied by 0.5 for active-in-period semantic.
-      Points between M1/M3/M6/M12 anchors are interpolated ({interp}) — no public source reports restaurant retention at weekly resolution, so weekly tab shows your cohorts alone.
+      Points between M1/M3/M6/M12 anchors are interpolated (log-linear) — no public source reports restaurant retention at weekly resolution, so weekly tab shows your cohorts alone.
     </p>
   {/if}
 </div>
