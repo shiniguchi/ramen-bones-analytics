@@ -17,6 +17,7 @@
     computeChartWidth,
     MAX_X_TICKS
   } from '$lib/dashboardStore.svelte';
+  import { parseISO } from 'date-fns';
 
   type ItemCountRow = {
     business_date: string;
@@ -31,10 +32,13 @@
 
   const filtered = $derived.by(() => {
     const f = getFilters();
+    const daysSet = new Set(f.days);
     return data.filter((r) => {
       if (f.sales_type !== 'all' && r.sales_type !== f.sales_type) return false;
       if (f.is_cash === 'cash' && !r.is_cash) return false;
       if (f.is_cash === 'card' && r.is_cash) return false;
+      const dow = ((parseISO(r.business_date).getDay() + 6) % 7) + 1;
+      if (!daysSet.has(dow)) return false;
       return true;
     });
   });
