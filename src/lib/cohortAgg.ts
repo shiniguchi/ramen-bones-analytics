@@ -62,16 +62,16 @@ export type RepeaterTxRow = {
   gross_cents: number;
 };
 
-// Worldline blackout window — matches cohort_mv (0010) + customer_ltv_mv (0024).
-// Dates in the client's business_date space (Europe/Berlin) since the MV builds
-// cohort via the same tz cast.
+// Worldline blackout window — matches cohort_v (migration 0010) + customer_ltv_v (0024).
+// Dates in the client's business_date space (Europe/Berlin) since the underlying
+// materialization builds cohort via the same tz cast.
 const BLACKOUT_START = '2026-04-01';
 const BLACKOUT_END = '2026-04-12'; // exclusive
 
 /** Recompute per-customer lifetime stats from raw transactions, honoring the
- *  day-of-week filter. Matches customer_ltv_mv semantics (exclude blackout,
+ *  day-of-week filter. Matches customer_ltv_v semantics (exclude blackout,
  *  exclude cash — enforced at fetch time via card_hash NOT NULL).
- *  Mirrors `cohort_mv` cohort_week math: date_trunc('week', first_visit).
+ *  Mirrors cohort_v's cohort_week math: date_trunc('week', first_visit).
  */
 export function recomputeCustomerLtvFromTx(
   rows: RepeaterTxRow[],

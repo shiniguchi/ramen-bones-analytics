@@ -1,9 +1,13 @@
 ---
 slug: cf-pages-ssr-cpu-1102
-status: root_cause_found
+status: resolved
 created: 2026-04-21T15:57:57Z
-updated: 2026-04-21T16:45:00Z
+updated: 2026-04-22T00:00:00Z
+resolved: 2026-04-21T20:05:00Z
 trigger: "Deployed CF Pages SSR routes return HTTP 404 with literal 9-byte body 'Not found' after Worker hits Error 1102 (CPU limit) when 'All' date range resolves to from=1970-01-01&to=<today>. Static /robots.txt still returns 200. Redeploying via `gh workflow run deploy.yml --ref main` temporarily re-pins the Worker but the same URL re-triggers 1102 and unpins it again."
+resolution: "Phase 11 (SSR Performance & Recovery) — 3 plans shipped 2026-04-21. 11-01: parseFilters soft-clamps from<FROM_FLOOR + chipToRange('all') injects earliestBusinessDate + fetchAll DEFAULT_MAX_PAGES=50. 11-02: 4 lifetime-unbounded queries (dailyKpiP, customerLtvP, repeaterTxP, retentionP/retentionMonthlyP) moved off SSR to /api/* endpoints with LazyMount + clientFetch (IntersectionObserver-gated). 11-03: dev-only SSR timing log + CF Pages Free tripwire comment. SSR fan-out 11→6 queries. Verified: /, /login, /?range=all, /?from=1970-01-01 all return 303/200 never 404. Follow-up: FROM_FLOOR tightened 2024-01-01→2025-06-01 matching real data floor; client chipToRange('all') now uses data.earliestBusinessDate from SSR payload."
+commits: "e71155b, fde52fc, 11a158a, 9c889c0, 7b93a76, f5845ef, a377103, 0660649"
+phase_dir: ".planning/phases/11-ssr-perf-recovery/"
 ---
 
 # Debug Session: cf-pages-ssr-cpu-1102
