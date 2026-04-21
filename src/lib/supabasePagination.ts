@@ -12,7 +12,9 @@
 //
 // Stops when: a page returns fewer rows than pageSize OR an empty page.
 // Throws: on any PostgREST error (caller handles via .catch for empty-fallback).
-// Safety: caps at MAX_PAGES (1000 pages = 1M rows) to prevent runaway loops.
+// Safety: caps at DEFAULT_MAX_PAGES (50 pages — matches Cloudflare Pages Free
+//   per-request subrequest ceiling). Callers can raise via { maxPages: N } up
+//   to HARD_MAX_PAGES (1000) for migration/seed scripts.
 
 // Minimal structural type for the builder parameter.
 // .range() returns a PromiseLike (Thenable) — the real PostgrestFilterBuilder
@@ -22,17 +24,32 @@ interface RangeBuilder<T> {
   range(from: number, to: number): PromiseLike<{ data: T[] | null; error: { message: string } | null }>;
 }
 
-const MAX_PAGES = 1000; // safety cap: 1M rows at default pageSize
+// Phase 11-01 D-05: Cloudflare Pages Free caps each SSR request at 50
+// subrequests. A single fetchAll() call needing more than 50 pages is an
+// architectural problem that belongs in SQL (MV aggregation), not a
+// pagination loop — so DEFAULT_MAX_PAGES is 50, not 1000.
+// HARD_MAX_PAGES is retained as an upper bound for migration/seed scripts
+// that legitimately iterate large datasets server-side.
+export const DEFAULT_MAX_PAGES = 50;
+export const HARD_MAX_PAGES = 1000;
+
+export interface FetchAllOptions {
+  pageSize?: number;
+  maxPages?: number;
+}
 
 export async function fetchAll<T>(
   buildQuery: () => RangeBuilder<T>,
-  pageSize = 1000
+  options: FetchAllOptions = {}
 ): Promise<T[]> {
+  const pageSize = options.pageSize ?? 1000;
+  const maxPages = options.maxPages ?? DEFAULT_MAX_PAGES;
+
   const all: T[] = [];
   let offset = 0;
   let pageCount = 0;
 
-  while (pageCount < MAX_PAGES) {
+  while (pageCount < maxPages) {
     const { data, error } = await buildQuery().range(offset, offset + pageSize - 1);
 
     if (error) {
@@ -57,11 +74,11 @@ export async function fetchAll<T>(
     pageCount += 1;
   }
 
-  if (pageCount >= MAX_PAGES) {
+  if (pageCount >= maxPages) {
     throw new Error(
-      `fetchAll: exceeded ${MAX_PAGES} pages (${MAX_PAGES * pageSize} rows) — ` +
+      `fetchAll: exceeded ${maxPages} pages (${maxPages * pageSize} rows) — ` +
       'possible infinite loop from a builder that always returns full pages. ' +
-      'Check the query or raise MAX_PAGES if the result set is legitimately large.'
+      'Check the query or raise maxPages if the result set is legitimately large.'
     );
   }
 

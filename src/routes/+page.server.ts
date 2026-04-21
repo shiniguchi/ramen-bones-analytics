@@ -6,7 +6,7 @@
 import { redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { chipToRange, customToRange, type Range, type Grain } from '$lib/dateRange';
-import { parseFilters } from '$lib/filters';
+import { parseFilters, FROM_FLOOR } from '$lib/filters';
 import { differenceInMonths, parseISO } from 'date-fns';
 import type { DailyRow } from '$lib/dashboardStore.svelte';
 import { fetchAll } from '$lib/supabasePagination';
@@ -67,11 +67,34 @@ export const load: PageServerLoad = async ({ locals, url, depends }) => {
     console.error('[+page.server] data_freshness_v query failed', err);
   }
 
+  // Phase 11-01 D-01: Query tenant's earliest business_date once per SSR.
+  // Passed into chipToRange as `allStart` so range=all does not default to
+  // 1970-01-01. Fallback to FROM_FLOOR ('2024-01-01') on error or empty tenant.
+  // Single indexed .order().limit(1).maybeSingle() aggregate via the existing
+  // transactions_filterable_v wrapper — RLS-scoped, negligible cost (<10ms).
+  let earliestBusinessDate: string | null = null;
+  try {
+    const { data } = await locals.supabase
+      .from('transactions_filterable_v')
+      .select('business_date')
+      .order('business_date', { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    earliestBusinessDate = (data?.business_date as string | null) ?? null;
+  } catch (err) {
+    console.error('[+page.server] earliest business_date query failed', err);
+  }
+
   // Chip window honors filter.range; custom ranges use literal user dates.
+  // Phase 11-01 D-01: inject earliestBusinessDate so range=all resolves to the
+  // tenant's real data floor (never 1970). FROM_FLOOR fallback guards against
+  // empty-tenant / query-error cases — see chipToRange signature default too.
   const chipW =
     range === 'custom' && filters.from && filters.to
       ? customToRange({ from: filters.from, to: filters.to })
-      : chipToRange(range as Range);
+      : chipToRange(range as Range, new Date(), {
+          allStart: earliestBusinessDate ?? FROM_FLOOR
+        });
 
   // Single query: all daily-grain rows for the chip window.
   // Client-side handles filtering + rebucketing (D-05, D-08).

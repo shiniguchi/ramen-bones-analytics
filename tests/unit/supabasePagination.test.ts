@@ -8,7 +8,11 @@
 // requested (or empty). Errors propagate so the caller's .catch can still
 // isolate per-card failures.
 import { describe, it, expect } from 'vitest';
-import { fetchAll } from '../../src/lib/supabasePagination';
+import {
+  fetchAll,
+  DEFAULT_MAX_PAGES,
+  HARD_MAX_PAGES
+} from '../../src/lib/supabasePagination';
 
 // -- Builder factory mock --
 // Each call to buildQuery() must return a fresh chain — the helper re-invokes
@@ -111,7 +115,7 @@ describe('fetchAll — paginates until exhausted', () => {
     ).rejects.toThrow(/boom/);
   });
 
-  it('Test 6: respects custom pageSize — first range uses (0, 99) when pageSize=100', async () => {
+  it('Test 6: respects custom pageSize via options bag — first range uses (0, 99) when pageSize=100', async () => {
     const page1 = Array.from({ length: 100 }, (_, i) => ({ i }));
     const page2 = Array.from({ length: 50 }, (_, i) => ({ i: i + 100 }));
     const { buildQuery, rangeCalls } = mockBuilder([
@@ -120,7 +124,7 @@ describe('fetchAll — paginates until exhausted', () => {
     ]);
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const rows = await fetchAll<{ i: number }>(buildQuery as any, 100);
+    const rows = await fetchAll<{ i: number }>(buildQuery as any, { pageSize: 100 });
 
     expect(rows).toHaveLength(150);
     expect(rangeCalls[0]).toEqual([0, 99]);
@@ -144,5 +148,62 @@ describe('fetchAll — paginates until exhausted', () => {
     expect(rangeCalls[0]).toEqual([0, 999]);
     expect(rangeCalls[1]).toEqual([1000, 1999]);
     expect(rangeCalls[2]).toEqual([2000, 2999]);
+  });
+});
+
+// Phase 11-01 D-05: Cloudflare Pages Free caps each SSR request at 50 subrequests.
+// fetchAll must default to 50 pages max (not 1000) so a single regression cannot
+// blow the subrequest budget silently and trigger Error 1102.
+describe('fetchAll — D-05 subrequest cap', () => {
+  // A mock that always returns a full page — lets us probe the max-pages cap
+  // without synthesizing millions of rows.
+  function alwaysFullPage(pageSize = 1000) {
+    const rangeCalls: Array<[number, number]> = [];
+    const buildQuery = () => ({
+      range: (from: number, to: number) => {
+        rangeCalls.push([from, to]);
+        const data = Array.from({ length: pageSize }, (_, i) => ({ i: from + i }));
+        return Promise.resolve({ data, error: null });
+      }
+    });
+    return { buildQuery, rangeCalls };
+  }
+
+  it('exports DEFAULT_MAX_PAGES=50 and HARD_MAX_PAGES=1000', () => {
+    expect(DEFAULT_MAX_PAGES).toBe(50);
+    expect(HARD_MAX_PAGES).toBe(1000);
+  });
+
+  it('defaults to 50 pages max — throws after the 50th .range() call', async () => {
+    const { buildQuery, rangeCalls } = alwaysFullPage();
+    await expect(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      fetchAll<{ i: number }>(buildQuery as any)
+    ).rejects.toThrow(/50 pages/);
+    // Loop exits once pageCount === maxPages (50), then the post-loop guard
+    // throws. Exactly 50 .range() calls were made.
+    expect(rangeCalls.length).toBe(50);
+  });
+
+  it('respects caller-supplied maxPages', async () => {
+    const { buildQuery, rangeCalls } = alwaysFullPage();
+    await expect(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      fetchAll<{ i: number }>(buildQuery as any, { maxPages: 3 })
+    ).rejects.toThrow(/3 pages/);
+    expect(rangeCalls.length).toBe(3);
+  });
+
+  it('accepts pageSize via options object (back-compat migration target)', async () => {
+    const { buildQuery, rangeCalls } = alwaysFullPage(500);
+    // With pageSize=500 and maxPages=2 we make exactly 2 range() calls before
+    // the cap fires — pinning (0,499)/(500,999) bounds.
+    await expect(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      fetchAll<{ i: number }>(buildQuery as any, { pageSize: 500, maxPages: 2 })
+    ).rejects.toThrow(/2 pages/);
+    expect(rangeCalls.length).toBe(2);
+    expect(rangeCalls[0]).toEqual([0, 499]);
+    expect(rangeCalls[1]).toEqual([500, 999]);
   });
 });

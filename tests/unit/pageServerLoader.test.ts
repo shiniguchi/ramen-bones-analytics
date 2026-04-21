@@ -153,10 +153,16 @@ describe('+page.server load — Phase 9 simplified loader', () => {
 
     const filterable = callsFor(state, 'transactions_filterable_v');
     expect(filterable.length).toBeGreaterThanOrEqual(1);
-    // Check select includes is_cash
-    const selectCall = filterable[0].calls.find(c => c.method === 'select');
-    expect(selectCall).toBeDefined();
-    expect(String(selectCall!.args[0])).toContain('is_cash');
+    // Phase 11-01 D-01 added an earliestBusinessDate query against
+    // transactions_filterable_v (SELECT business_date .order().limit(1)) BEFORE
+    // the dailyRows query. Find the query whose select includes is_cash — that
+    // is the one feeding the dashboard render.
+    const hasIsCashSelect = filterable.some((q) =>
+      q.calls.some(
+        (c) => c.method === 'select' && String(c.args[0]).includes('is_cash')
+      )
+    );
+    expect(hasIsCashSelect).toBe(true);
   });
 
   it('does NOT apply sales_type or is_cash server-side WHERE clauses', async () => {
