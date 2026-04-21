@@ -16,6 +16,15 @@ export const IS_CASH_VALUES = ['all', 'cash', 'card'] as const;
 export const DAY_VALUES = [1, 2, 3, 4, 5, 6, 7] as const;
 export const DAYS_DEFAULT: number[] = [1, 2, 3, 4, 5, 6, 7];
 
+// Phase 11-01 D-02: single source of truth for the 'earliest acceptable date'
+// invariant. parseFilters clamps URL params against this floor, and dateRange.ts
+// uses it as the signature-default for chipToRange('all') so any future caller
+// that forgets to inject the tenant's true earliest business_date still gets a
+// bounded window — never the pathological 1970-01-01 that blew the SSR CPU
+// budget on Cloudflare Pages Free tier (Error 1102).
+export const FROM_FLOOR = '2024-01-01';
+export const TO_CEILING_DAYS_AHEAD = 365;
+
 export const FILTER_DEFAULTS = Object.freeze({
   range: '7d' as const,
   grain: 'week' as const,
@@ -59,5 +68,22 @@ export function parseFilters(url: URL): FiltersState {
   for (const [k, v] of url.searchParams) {
     if (v !== '') raw[k] = v;
   }
-  return filtersSchema.parse(raw);
+  const parsed = filtersSchema.parse(raw);
+
+  // Phase 11-01 D-02: soft-clamp pathological ISO dates. Never reject — bookmarks
+  // stay usable, console.warn surfaces anomalies in `wrangler pages deployment tail`.
+  // Only triggers on well-formed ISO strings (non-ISO already coerced to undefined
+  // by zod .catch above, so `parsed.from`/`parsed.to` here are either valid or null).
+  if (parsed.from && parsed.from < FROM_FLOOR) {
+    console.warn(`[parseFilters] from=${parsed.from} clamped to ${FROM_FLOOR}`);
+    parsed.from = FROM_FLOOR;
+  }
+  const ceiling = new Date(Date.now() + TO_CEILING_DAYS_AHEAD * 86400000)
+    .toISOString()
+    .slice(0, 10);
+  if (parsed.to && parsed.to > ceiling) {
+    console.warn(`[parseFilters] to=${parsed.to} clamped to ${ceiling}`);
+    parsed.to = ceiling;
+  }
+  return parsed;
 }

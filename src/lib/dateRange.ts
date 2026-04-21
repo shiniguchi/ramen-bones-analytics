@@ -3,6 +3,7 @@
 // Prior window mirrors the current window immediately preceding it (D-08).
 import { subDays, format } from 'date-fns';
 import { toZonedTime } from 'date-fns-tz';
+import { FROM_FLOOR } from './filters';
 
 export type Range = 'today' | '7d' | '30d' | '90d' | 'all';
 export type Grain = 'day' | 'week' | 'month';
@@ -17,13 +18,23 @@ export interface RangeWindow {
   priorTo: string | null;
 }
 
-export function chipToRange(range: Range, now: Date = new Date()): RangeWindow {
+export function chipToRange(
+  range: Range,
+  now: Date = new Date(),
+  options?: { allStart?: string }
+): RangeWindow {
   // Compute "today" in Berlin by projecting `now` into Berlin wall-clock.
   const today = toZonedTime(now, TZ);
   const todayStr = iso(today);
 
   if (range === 'all') {
-    return { from: '1970-01-01', to: todayStr, priorFrom: null, priorTo: null };
+    // Phase 11-01 D-01: default to FROM_FLOOR (2024-01-01) so any caller that
+    // forgets to pass allStart still gets a bounded window — never the
+    // pathological 1970-01-01 that blew the SSR CPU budget (Error 1102).
+    // Callers that know the tenant's true earliest business_date (currently
+    // only +page.server.ts) pass it via options.allStart.
+    const from = options?.allStart ?? FROM_FLOOR;
+    return { from, to: todayStr, priorFrom: null, priorTo: null };
   }
 
   const days = range === 'today' ? 1 : range === '7d' ? 7 : range === '30d' ? 30 : 90;
