@@ -16,6 +16,16 @@ import { fetchAll } from '$lib/supabasePagination';
 
 export const load: PageServerLoad = async ({ locals, url, depends }) => {
   depends('app:dashboard');
+  // ---------------------------------------------------------------------
+  // CF Pages Free-tier per-request budget:
+  //   • 50 subrequests (each fetchAll page = 1 subrequest)
+  //   • 50 ms CPU time on the Worker thread
+  // If you add a new query here, count the pages it adds (for fetchAll:
+  // ceil(row_count / 1000)). If total might exceed ~40 in a hot window,
+  // move the new query to /api/* and fetch it client-side via LazyMount
+  // (see Plan 11-02 for the established pattern).
+  // Phase 11 root cause: `.planning/debug/cf-pages-ssr-cpu-1102.md`
+  // ---------------------------------------------------------------------
   // Phase 6 FLT-07: parseFilters is the ONLY place filter params are read.
   const filters = parseFilters(url);
   const range = filters.range as Range | 'custom';
@@ -205,6 +215,10 @@ export const load: PageServerLoad = async ({ locals, url, depends }) => {
   // weekly+monthly = 5 total fetchAlls) off SSR into deferred /api/* endpoints.
   // SSR subrequest count: 6 here + freshness + earliest-business-date = 8
   // total, well under CF Pages Free 50-request ceiling.
+  // D-06: dev-only SSR timing log. Tree-shaken out of production builds
+  // (import.meta.env.DEV === false). Surfaces in `npm run dev` console
+  // and in `wrangler pages dev` preview; never runs on deployed CF Pages.
+  const __ssrT0 = import.meta.env.DEV ? Date.now() : 0;
   const [
     dailyRows,
     priorDailyRows,
@@ -220,6 +234,18 @@ export const load: PageServerLoad = async ({ locals, url, depends }) => {
     benchmarkAnchorsP,
     benchmarkSourcesP
   ]);
+  if (import.meta.env.DEV) {
+    // LITERAL_COUNT is hard-coded rather than `promises.length` because
+    // the array is already destructured above; re-referencing the source
+    // array would require a second Promise.all declaration that can drift.
+    // If Plan 11-02 ever changes this shape, update this number in the
+    // same diff. Current state: 6 promises post-Plan 11-02.
+    const promises = 6;
+    // eslint-disable-next-line no-console
+    console.info(
+      `[ssr-perf] Promise.all: ${promises} queries, ${Date.now() - __ssrT0}ms`
+    );
+  }
 
   // Berlin timezone for is_yesterday flag.
   const todayBerlin = new Intl.DateTimeFormat('en-CA', {
