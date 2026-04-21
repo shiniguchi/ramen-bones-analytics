@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Dashboard Simplification & Visit Attribution
-status: "Phase 10 shipped — PR #4"
-stopped_at: Completed quick task 260420-wdf — day-of-week filter + retire Lin/Log toggle + Repeater full recomputation + sticky filter header fix (d2f536d). Feature branch feature/dashboard-chart-improvements-260418 merged to main (54 commits). Chrome MCP QA on DEV PASS across all scroll depths at 390×844; filter bar now pinned on scroll after swapping outer-wrapper overflow-x-hidden → overflow-x-clip.
-last_updated: "2026-04-20T00:00:00Z"
+status: "Phase 11 shipped — CF Pages outage fixed"
+stopped_at: Phase 11 (SSR Performance & Recovery) complete — 3 plans + 9 commits on main. Deployed site restored from Worker Error 1102 storm that unpinned production deployment. chipToRange('all') now clamps to FROM_FLOOR=2024-01-01; parseFilters soft-clamps pathological from/to; SSR fan-out cut from 11 to 6 queries (4 lifetime-unbounded queries moved to /api/* with LazyMount); fetchAll DEFAULT_MAX_PAGES dropped 1000→50. Production smoke curls pass — /, /login, /?range=all, /?from=1970-01-01 all return 303/200 with x-sveltekit-page header. 6 user-uncommitted Calendar*Card/dashboardStore changes preserved untouched throughout.
+last_updated: "2026-04-21T20:05:00Z"
 progress:
-  total_phases: 10
-  completed_phases: 10
-  total_plans: 57
-  completed_plans: 57
+  total_phases: 11
+  completed_phases: 11
+  total_plans: 60
+  completed_plans: 60
   percent: 100
 ---
 
@@ -27,11 +27,11 @@ progress:
 
 ## Current Position
 
-Milestone: v1.2 (Dashboard Simplification & Visit Attribution) — Phase 09 complete (5/5 plans including gap closures), Phase 10 Charts next
-Phase: 10
-Plan: Not started
+Milestone: v1.2 (Dashboard Simplification & Visit Attribution) — Phase 11 complete (3/3 plans); urgent SSR performance fix closed 2026-04-21 production outage
+Phase: 11
+Plan: Complete
 
-- **Status:** Phase 10 shipped — PR #4
+- **Status:** Phase 11 shipped — CF Pages outage fixed
 - **Progress:** [██████████] 100%
 - **v1.0 status:** Shipping to friend (97% plans complete; repo flipped PUBLIC 2026-04-15 with topics + description set; Plan 05-06 Task 2 fork walkthrough deferred out of v1 scope — forkability is explicitly not a v1 concern per user direction)
 

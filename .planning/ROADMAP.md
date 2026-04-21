@@ -35,6 +35,7 @@ A restaurant owner opens the site on their phone and makes a real business decis
 - [ ] **Phase 8: Visit Attribution Data Model** — visit_seq MV, is_cash flag, drop unused views/MVs
 - [x] **Phase 9: Filter Simplification & Performance** — Simplify to cash/card + inhouse/takeaway, client-side granularity toggle, drop 2 revenue cards
 - [ ] **Phase 10: Charts** — 7 charts (calendar revenue, calendar counts, retention curve, LTV per customer, order item counts, cohort total revenue, cohort avg LTV)
+- [x] **Phase 11: SSR Performance & Recovery** — Clamp `'all'` range at SSR boundary, defer 4 lifetime-unbounded queries to `/api/*` + LazyMount, cap `fetchAll` pages — restores deployed CF Pages site after Worker Error 1102 took it offline
 
 ## Phase Details
 
@@ -194,6 +195,22 @@ Plans:
   - [x] 10-08-PLAN.md — SSR fan-out + +page.svelte composition in D-10 order + LazyMount measurement checkpoint
 **UI hint**: yes
 
+### Phase 11: SSR Performance & Recovery
+**Goal**: The deployed Cloudflare Pages site stays serviceable under all date-range inputs — no CF Error 1102 "Worker exceeded resource limits" from SSR overfetch
+**Depends on**: Phase 10
+**Requirements**: (none — urgent bug-fix phase inserted after production outage 2026-04-21; root cause in `.planning/debug/cf-pages-ssr-cpu-1102.md`)
+**Success Criteria** (what must be TRUE):
+  1. `chipToRange('all')` resolves `from` to the tenant's earliest `business_date` (or `FROM_FLOOR='2024-01-01'`), never `'1970-01-01'`
+  2. `parseFilters` soft-clamps `from < '2024-01-01'` and `to > today + 365d` so bookmarked URLs with pathological dates cannot trigger CF Workers CPU blowup
+  3. SSR `+page.server.ts` runs at most 6 Supabase queries per load (down from 11); the 4 lifetime-unbounded queries (kpi-daily, customer-ltv, repeater-lifetime, retention) serve from deferred `/api/*` endpoints behind `LazyMount` + `clientFetch`
+  4. `fetchAll` defaults to `DEFAULT_MAX_PAGES=50` (matching CF Pages Free's 50-subrequest cap); `HARD_MAX_PAGES=1000` preserved as last-resort guard
+  5. Every new `/api/*` endpoint uses canonical `locals.safeGetSession()` (not `getClaims()` direct) and sets `Cache-Control: private, no-store`
+  6. Production curls: `/?range=all` returns 303 (never 404 size=9); `/login` returns 200 with `x-sveltekit-page: true` header
+**Plans**: 3 plans
+  - [x] 11-01-PLAN.md — Range clamp at SSR boundary + `fetchAll DEFAULT_MAX_PAGES=50`
+  - [x] 11-02-PLAN.md — Defer 4 lifetime queries to `/api/*` + LazyMount/clientFetch primitives (atomic SSR cleanup + client wiring)
+  - [x] 11-03-PLAN.md — Dev-only SSR timing log + CF Pages Free tripwire comment
+
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
@@ -208,6 +225,7 @@ Plans:
 | 8. Visit Attribution Data Model | v1.2 | 2/2 | Complete | 2026-04-16 |
 | 9. Filter Simplification & Performance | v1.2 | 5/5 | Complete   | 2026-04-17 |
 | 10. Charts | v1.2 | 7/8 | Complete    | 2026-04-17 |
+| 11. SSR Performance & Recovery | v1.2 | 3/3 | Complete | 2026-04-21 |
 
 ## Coverage Summary
 
