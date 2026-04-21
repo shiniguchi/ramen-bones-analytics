@@ -162,7 +162,13 @@
         window = customToRange({ from, to });
         setRangeId('custom', { from, to });
       } else {
-        window = chipToRange(rangeValue as Range);
+        // Phase 11-01 D-01: pass the tenant's true earliest business_date so
+        // clicking "All" resolves to the real data floor (e.g. 2025-06-10),
+        // not the FROM_FLOOR fallback (2025-06-01). undefined (no data yet)
+        // lets chipToRange fall back to FROM_FLOOR.
+        window = chipToRange(rangeValue as Range, new Date(), {
+          allStart: data.earliestBusinessDate ?? undefined
+        });
         setRangeId(rangeValue as FiltersState['range']);
       }
 

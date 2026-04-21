@@ -274,7 +274,11 @@ export const load: PageServerLoad = async ({ locals, url, depends }) => {
     latestInsight,
     itemCounts,
     benchmarkAnchors,
-    benchmarkSources
+    benchmarkSources,
+    // Phase 11-01 D-01: surface the tenant's true earliest business_date so
+    // client-side chipToRange('all') can resolve to the real data floor
+    // (not FROM_FLOOR). Keeps the chip subtitle + cache window honest.
+    earliestBusinessDate
   };
 };
 
