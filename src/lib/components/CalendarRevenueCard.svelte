@@ -14,9 +14,11 @@
   import {
     getFiltered,
     getFilters,
+    getWindow,
     aggregateByBucketAndVisitSeq,
     shapeForChart,
     formatBucketLabel,
+    bucketRange,
     computeChartWidth,
     MAX_X_TICKS
   } from '$lib/dashboardStore.svelte';
@@ -31,10 +33,11 @@
   const chartData = $derived.by(() => {
     const filtered = getFiltered();
     const grain = getFilters().grain as 'day' | 'week' | 'month';
+    const w = getWindow();
     const nested = aggregateByBucketAndVisitSeq(filtered, grain);
-    // shapeForChart emits integer CENTS for every series column. Convert each
-    // column to EUR integer here so the Y-axis renders euros, not raw cents.
-    return shapeForChart(nested, 'revenue_cents').map((r) => {
+    // expectedBuckets zero-fills periods with no filtered data so they render as
+    // visible zero bars (e.g. Mon/Tue when days filter = Wed-Sun).
+    return shapeForChart(nested, 'revenue_cents', bucketRange(w.from, w.to, grain)).map((r) => {
       const row: Record<string, string | number> = {
         ...r,
         bucket: formatBucketLabel(r.bucket as string, grain)
@@ -80,7 +83,7 @@
 
 <div data-testid="calendar-revenue-card" class="rounded-xl border border-zinc-200 bg-white p-4">
   <h2 class="text-base font-semibold text-zinc-900">Revenue per period — by visit number</h2>
-  {#if chartData.length === 0}
+  {#if getFiltered().length === 0}
     <EmptyState card="calendar-revenue" />
   {:else}
     <div bind:clientWidth={cardW} class="mt-4 h-64 overflow-x-auto overscroll-x-contain chart-touch-safe">

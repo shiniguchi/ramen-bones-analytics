@@ -75,10 +75,13 @@ describe('CalendarRevenueCard (VA-04) source artifacts', () => {
     'utf8'
   );
 
-  it("imports BarChart from 'layerchart'", () => {
-    // Allow additional named imports (Bars, Spline) alongside BarChart — needed
-    // for the custom marks snippet that overlays the trend line (quick-260418-trn).
-    expect(src).toMatch(/import\s+\{[^}]*\bBarChart\b[^}]*\}\s+from\s+['"]layerchart['"]/);
+  it("imports Chart + Svg + Bars primitives from 'layerchart'", () => {
+    // Post-refactor: switched from high-level BarChart to low-level primitives
+    // (Chart + Svg + Axis + Bars + Spline + Text + Tooltip) to enable per-series
+    // stacking control + custom trend-line overlay via Spline.
+    expect(src).toMatch(/import\s+\{[^}]*\bChart\b[^}]*\}\s+from\s+['"]layerchart['"]/);
+    expect(src).toMatch(/\bBars\b/);
+    expect(src).toMatch(/\bSvg\b/);
   });
   it('imports getFiltered + getFilters from dashboardStore', () => {
     expect(src).toMatch(/getFiltered/);
@@ -90,12 +93,16 @@ describe('CalendarRevenueCard (VA-04) source artifacts', () => {
     expect(src).toMatch(/CASH_COLOR/);
     expect(src).toMatch(/from\s+['"]\$lib\/chartPalettes['"]/);
   });
-  it('uses seriesLayout="stack" + orientation="vertical"', () => {
-    expect(src).toMatch(/seriesLayout=["']stack["']/);
-    expect(src).toMatch(/orientation=["']vertical["']/);
+  it('stacks bars via {#each series} emitting one <Bars seriesKey=...> per visit bucket', () => {
+    // Post-refactor: low-level Bars has no seriesLayout prop; stacking is
+    // expressed by iterating `series` (derived from visit_seq buckets) and
+    // emitting one Bars element per key. Vertical orientation is LayerChart's
+    // implicit default inside <Svg>, so the explicit `orientation` prop is gone.
+    expect(src).toMatch(/\{#each\s+series\s+as\s+s[^}]*\}[\s\S]*?<Bars\s+[^>]*seriesKey=\{s\.key\}/);
   });
   it("shapeForChart called with 'revenue_cents' metric", () => {
-    expect(src).toMatch(/shapeForChart\s*\(\s*[^,]+,\s*['"]revenue_cents['"]\s*\)/);
+    // Accepts an optional 3rd arg (expectedBuckets for zero-fill).
+    expect(src).toMatch(/shapeForChart\s*\(\s*[^,]+,\s*['"]revenue_cents['"][\s,][^)]*\)/);
   });
   it('contains data-testid="calendar-revenue-card"', () => {
     expect(src).toMatch(/data-testid=["']calendar-revenue-card["']/);
@@ -118,19 +125,25 @@ describe('CalendarCountsCard (VA-05) source artifacts', () => {
     'utf8'
   );
 
-  it("imports BarChart from 'layerchart'", () => {
-    expect(src).toMatch(/import\s+\{[^}]*\bBarChart\b[^}]*\}\s+from\s+['"]layerchart['"]/);
+  it("imports Chart + Svg + Bars primitives from 'layerchart'", () => {
+    // Post-refactor: same low-level primitive migration as CalendarRevenueCard.
+    expect(src).toMatch(/import\s+\{[^}]*\bChart\b[^}]*\}\s+from\s+['"]layerchart['"]/);
+    expect(src).toMatch(/\bBars\b/);
+    expect(src).toMatch(/\bSvg\b/);
   });
   it("shapeForChart called with 'tx_count' metric (NOT revenue_cents)", () => {
-    expect(src).toMatch(/shapeForChart\s*\(\s*[^,]+,\s*['"]tx_count['"]\s*\)/);
-    expect(src).not.toMatch(/shapeForChart\s*\(\s*[^,]+,\s*['"]revenue_cents['"]\s*\)/);
+    // Accepts an optional 3rd arg (expectedBuckets for zero-fill).
+    expect(src).toMatch(/shapeForChart\s*\(\s*[^,]+,\s*['"]tx_count['"][\s,][^)]*\)/);
+    expect(src).not.toMatch(/shapeForChart\s*\(\s*[^,]+,\s*['"]revenue_cents['"][\s,][^)]*\)/);
   });
   it('contains data-testid="calendar-counts-card"', () => {
     expect(src).toMatch(/data-testid=["']calendar-counts-card["']/);
   });
-  it('uses seriesLayout="stack" + orientation="vertical"', () => {
-    expect(src).toMatch(/seriesLayout=["']stack["']/);
-    expect(src).toMatch(/orientation=["']vertical["']/);
+  it('stacks bars via {#each series} emitting one <Bars seriesKey=...> per visit bucket', () => {
+    // Post-refactor: orientation + seriesLayout props gone with the BarChart
+    // migration. Vertical stacking is expressed by iterating `series` and
+    // emitting one Bars per key.
+    expect(src).toMatch(/\{#each\s+series\s+as\s+s[^}]*\}[\s\S]*?<Bars\s+[^>]*seriesKey=\{s\.key\}/);
   });
   it('does NOT hand-roll bars via <Rect> (Anti-Pattern)', () => {
     expect(src).not.toMatch(/<Rect\b/);

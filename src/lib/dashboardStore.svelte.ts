@@ -3,7 +3,7 @@
 // re-slice data client-side without network round-trips.
 // .svelte.ts extension required for $state/$derived runes outside .svelte files.
 
-import { startOfWeek, startOfMonth, format, parseISO } from 'date-fns';
+import { startOfWeek, startOfMonth, format, parseISO, addDays, addWeeks, addMonths } from 'date-fns';
 import type { RangeWindow } from '$lib/dateRange';
 import type { FiltersState } from '$lib/filters';
 import { FILTER_DEFAULTS } from '$lib/filters';
@@ -44,6 +44,28 @@ export function bucketKey(date: string, grain: 'day' | 'week' | 'month'): string
   }
   // month
   return format(startOfMonth(d), 'yyyy-MM');
+}
+
+/** Every bucket key expected in [from, to] at the given grain, in ascending order.
+ *  Used to zero-fill missing buckets so filtered-out / no-data periods still render
+ *  as a visible 0 bar instead of silently disappearing from the x-axis. */
+export function bucketRange(from: string, to: string, grain: 'day' | 'week' | 'month'): string[] {
+  const keys: string[] = [];
+  const fromD = parseISO(from);
+  const toD = parseISO(to);
+  if (fromD > toD) return keys;
+  if (grain === 'day') {
+    for (let d = fromD; d <= toD; d = addDays(d, 1)) keys.push(format(d, 'yyyy-MM-dd'));
+  } else if (grain === 'week') {
+    const end = startOfWeek(toD, { weekStartsOn: 1 });
+    for (let d = startOfWeek(fromD, { weekStartsOn: 1 }); d <= end; d = addWeeks(d, 1)) {
+      keys.push(format(d, 'yyyy-MM-dd'));
+    }
+  } else {
+    const end = startOfMonth(toD);
+    for (let d = startOfMonth(fromD); d <= end; d = addMonths(d, 1)) keys.push(format(d, 'yyyy-MM'));
+  }
+  return keys;
 }
 
 /** Short display label for a bucket key — drops year so labels fit on 375px viewports.
@@ -166,19 +188,36 @@ export function aggregateByBucketAndVisitSeq(
 }
 
 /** Shape nested aggregation map into wide-format rows for LayerChart BarChart.
- *  Missing series keys filled with 0. Output sorted by bucket key ascending. */
+ *  Missing series keys filled with 0. Output sorted by bucket key ascending.
+ *  When `expectedBuckets` is provided, buckets in that list but absent from `nested`
+ *  are emitted as all-zero rows — so filtered-out / no-data periods render as visible
+ *  zero bars instead of silently disappearing. */
 export function shapeForChart(
   nested: Map<string, Map<string, { revenue_cents: number; tx_count: number }>>,
-  metric: 'revenue_cents' | 'tx_count'
+  metric: 'revenue_cents' | 'tx_count',
+  expectedBuckets?: string[]
 ): Array<Record<string, string | number>> {
   const VISIT_KEYS = ['1st', '2nd', '3rd', '4x', '5x', '6x', '7x', '8x+', 'cash'] as const;
   const out: Array<Record<string, string | number>> = [];
-  for (const [bucket, inner] of nested) {
+  const buckets = expectedBuckets ?? Array.from(nested.keys());
+  const seen = new Set<string>();
+  for (const bucket of buckets) {
+    seen.add(bucket);
+    const inner = nested.get(bucket);
     const row: Record<string, string | number> = { bucket };
     for (const key of VISIT_KEYS) {
-      row[key] = inner.get(key)?.[metric] ?? 0;
+      row[key] = inner?.get(key)?.[metric] ?? 0;
     }
     out.push(row);
+  }
+  if (expectedBuckets) {
+    // Include any unexpected bucket keys present in data but not listed (defensive).
+    for (const [bucket, inner] of nested) {
+      if (seen.has(bucket)) continue;
+      const row: Record<string, string | number> = { bucket };
+      for (const key of VISIT_KEYS) row[key] = inner.get(key)?.[metric] ?? 0;
+      out.push(row);
+    }
   }
   return out.sort((a, b) => String(a.bucket).localeCompare(String(b.bucket)));
 }

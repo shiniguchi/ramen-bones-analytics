@@ -11,7 +11,7 @@
   import { ITEM_COLORS, OTHER_COLOR } from '$lib/chartPalettes';
   import { rollupTopNWithOther } from '$lib/itemCountsRollup';
   import { formatIntShort } from '$lib/format';
-  import { bucketKey, getFilters, formatBucketLabel, computeChartWidth, MAX_X_TICKS } from '$lib/dashboardStore.svelte';
+  import { bucketKey, bucketRange, getFilters, getWindow, formatBucketLabel, computeChartWidth, MAX_X_TICKS } from '$lib/dashboardStore.svelte';
   import { integerTicks } from '$lib/trendline';
   import { parseISO } from 'date-fns';
 
@@ -55,8 +55,14 @@
   // Build wide-format chart data: one row per bucket with columns for each topItem + Other.
   const chartData = $derived.by(() => {
     const grain = getFilters().grain as 'day' | 'week' | 'month';
+    const w = getWindow();
     const topSet = new Set(topItems.filter(n => n !== 'Other'));
     const bucketMap = new Map<string, Record<string, number | string>>();
+    // Zero-fill: pre-seed every expected bucket so periods with no filtered data
+    // still render as visible 0 bars (e.g. Mon/Tue when days filter = Wed-Sun).
+    for (const bucket of bucketRange(w.from, w.to, grain)) {
+      bucketMap.set(bucket, { bucket });
+    }
     for (const r of filtered) {
       const bucket = bucketKey(r.business_date, grain);
       let row = bucketMap.get(bucket);
@@ -110,7 +116,7 @@
 <div data-testid="calendar-items-card" class="rounded-xl border border-zinc-200 bg-white p-4">
   <h2 class="text-base font-semibold text-zinc-900">Items sold per period — top 20 menu items</h2>
   <p class="mt-1 text-xs text-zinc-500">One line per item so you can spot what's trending up or down. Rest grouped as "Other".</p>
-  {#if chartData.length === 0}
+  {#if filtered.length === 0}
     <EmptyState card="calendar-items" />
   {:else}
     <div bind:clientWidth={cardW} class="mt-4 h-64 overflow-x-auto overscroll-x-contain chart-touch-safe">
