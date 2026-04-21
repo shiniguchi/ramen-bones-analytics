@@ -3,8 +3,12 @@
   // by visit number" — reveals *when* the restaurant acquired the customers who
   // actually came back. Replaces the old VA-10 avg-LTV card.
   //
-  // seriesLayout="group" (user's explicit call over stacked) — adjacent bars per
-  // bucket make per-visit-bucket comparison easier than a stacked column.
+  // seriesLayout="stack" — LayerChart's low-level <Bars> primitive does not honor
+  // `seriesLayout="group"` on the parent <Chart> (each <Bars> lands at the same
+  // band x-position regardless), so all 7 series overlapped and the tallest
+  // ("2nd" bucket) occluded the shorter ones visually. Switching to stack shows
+  // total cohort size at a glance AND the per-bucket breakdown as segments —
+  // same visual grammar as the sibling Calendar{Revenue,Counts} cards.
   import { Chart, Svg, Axis, Bars, Text, Tooltip } from 'layerchart';
   import EmptyState from './EmptyState.svelte';
   import {
@@ -66,20 +70,6 @@
   const yAxisFormat = (n: number) => formatIntShort(n, 'cust');
   const totals = $derived(bucketTotals(chartData, REPEATER_BUCKET_KEYS));
 
-  // Grouped bars: position label above the tallest sub-bar (not yScale(total),
-  // which sits far above the chart when buckets are small). Keeps the label
-  // visually attached to the bar cluster it summarises.
-  const maxPerCohort = $derived(
-    chartData.map((row) => {
-      let m = 0;
-      for (const k of REPEATER_BUCKET_KEYS) {
-        const v = row[k];
-        if (typeof v === 'number' && v > m) m = v;
-      }
-      return m;
-    })
-  );
-
   let cardW = $state(0);
   const chartW = $derived(computeChartWidth(chartData.length, cardW));
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -115,7 +105,7 @@
         data={chartData}
         x="cohort"
         {series}
-        seriesLayout="group"
+        seriesLayout="stack"
         bandPadding={0.2}
         valueAxis="y"
         width={chartW}
@@ -126,13 +116,18 @@
           <Axis placement="left" format={yAxisFormat} grid rule />
           <Axis placement="bottom" ticks={MAX_X_TICKS} rule />
           {#each series as s, i (s.key)}
-            <Bars seriesKey={s.key} rounded="edge" radius={4} strokeWidth={1} />
+            <Bars
+              seriesKey={s.key}
+              rounded={i !== series.length - 1 ? 'none' : 'edge'}
+              radius={4}
+              strokeWidth={1}
+            />
           {/each}
           {#each chartData as row, i (row.cohort)}
             {#if totals[i] > 0 && chartCtx}
               <Text
                 x={bandCenterX(chartCtx.xScale, row.cohort)}
-                y={(chartCtx.yScale(maxPerCohort[i]) ?? 0) - 6}
+                y={(chartCtx.yScale(totals[i]) ?? 0) - 6}
                 value={formatIntShort(totals[i])}
                 textAnchor="middle"
                 class="pointer-events-none fill-zinc-700 text-[10px] font-medium"
