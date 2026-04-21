@@ -141,8 +141,8 @@ describe('exported constants', () => {
     expect(SALES_TYPE_FILTER_VALUES).toEqual(['all', 'INHOUSE', 'TAKEAWAY']);
   });
 
-  it('FROM_FLOOR exported as "2024-01-01"', () => {
-    expect(FROM_FLOOR).toBe('2024-01-01');
+  it('FROM_FLOOR exported as "2025-06-01"', () => {
+    expect(FROM_FLOOR).toBe('2025-06-01');
   });
 
   it('TO_CEILING_DAYS_AHEAD exported as 365', () => {
@@ -165,9 +165,9 @@ describe('parseFilters — D-02 soft-clamp', () => {
     vi.restoreAllMocks();
   });
 
-  it('soft-clamps from<2024-01-01 to 2024-01-01', () => {
+  it('soft-clamps from<FROM_FLOOR to FROM_FLOOR', () => {
     const f = parseFilters(new URL('http://x/?range=custom&from=1970-01-01&to=2026-04-21'));
-    expect(f.from).toBe('2024-01-01');
+    expect(f.from).toBe(FROM_FLOOR);
     expect(f.to).toBe('2026-04-21');
     expect(f.range).toBe('custom');
   });
@@ -187,9 +187,9 @@ describe('parseFilters — D-02 soft-clamp', () => {
 
   it('from and to both in-range pass through unchanged without warn', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    const f = parseFilters(new URL('http://x/?range=custom&from=2024-06-01&to=2024-09-01'));
-    expect(f.from).toBe('2024-06-01');
-    expect(f.to).toBe('2024-09-01');
+    const f = parseFilters(new URL('http://x/?range=custom&from=2025-08-01&to=2025-12-01'));
+    expect(f.from).toBe('2025-08-01');
+    expect(f.to).toBe('2025-12-01');
     expect(warn).not.toHaveBeenCalled();
   });
 

@@ -75,7 +75,7 @@ export const load: PageServerLoad = async ({ locals, url, depends }) => {
 
   // Phase 11-01 D-01: Query tenant's earliest business_date once per SSR.
   // Passed into chipToRange as `allStart` so range=all does not default to
-  // 1970-01-01. Fallback to FROM_FLOOR ('2024-01-01') on error or empty tenant.
+  // 1970-01-01. Fallback to FROM_FLOOR ('2025-06-01') on error or empty tenant.
   // Single indexed .order().limit(1).maybeSingle() aggregate via the existing
   // transactions_filterable_v wrapper — RLS-scoped, negligible cost (<10ms).
   let earliestBusinessDate: string | null = null;

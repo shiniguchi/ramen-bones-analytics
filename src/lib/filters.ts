@@ -22,7 +22,13 @@ export const DAYS_DEFAULT: number[] = [1, 2, 3, 4, 5, 6, 7];
 // that forgets to inject the tenant's true earliest business_date still gets a
 // bounded window — never the pathological 1970-01-01 that blew the SSR CPU
 // budget on Cloudflare Pages Free tier (Error 1102).
-export const FROM_FLOOR = '2024-01-01';
+//
+// Value chosen to match the tenant's real data: MIN(occurred_at) on `transactions`
+// at 2026-04-21 is 2025-06-10. Floor is first-of-month of that date. If historical
+// data is ever backloaded, the SSR injection of the tenant's true earliest will
+// still override this floor per-request — this constant is only the fallback when
+// the MIN query errors or the tenant table is empty.
+export const FROM_FLOOR = '2025-06-01';
 export const TO_CEILING_DAYS_AHEAD = 365;
 
 export const FILTER_DEFAULTS = Object.freeze({

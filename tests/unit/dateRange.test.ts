@@ -41,9 +41,9 @@ describe('chipToRange', () => {
 
   // Phase 11-01 D-01: signature default must be FROM_FLOOR so any future caller
   // that forgets to pass allStart still gets a bounded window — never 1970.
-  it('all: defaults to FROM_FLOOR (2024-01-01) when allStart omitted', () => {
+  it('all: defaults to FROM_FLOOR (2025-06-01) when allStart omitted', () => {
     const r = chipToRange('all', NOW);
-    expect(r.from).toBe('2024-01-01');
+    expect(r.from).toBe('2025-06-01');
     expect(r.to).toBe('2026-04-14');
     expect(r.priorFrom).toBeNull();
     expect(r.priorTo).toBeNull();

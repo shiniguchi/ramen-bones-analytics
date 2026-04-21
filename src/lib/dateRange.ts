@@ -28,7 +28,7 @@ export function chipToRange(
   const todayStr = iso(today);
 
   if (range === 'all') {
-    // Phase 11-01 D-01: default to FROM_FLOOR (2024-01-01) so any caller that
+    // Phase 11-01 D-01: default to FROM_FLOOR (2025-06-01) so any caller that
     // forgets to pass allStart still gets a bounded window — never the
     // pathological 1970-01-01 that blew the SSR CPU budget (Error 1102).
     // Callers that know the tenant's true earliest business_date (currently
