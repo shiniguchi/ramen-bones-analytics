@@ -32,12 +32,18 @@
     dataWeekly,
     dataMonthly,
     benchmarkAnchors = [],
-    benchmarkSources = []
+    benchmarkSources = [],
+    monthsOfHistory = 0
   }: {
     dataWeekly: RetentionRow[];
     dataMonthly: RetentionMonthlyRow[];
     benchmarkAnchors?: BenchmarkAnchor[];
     benchmarkSources?: BenchmarkSourceRow[];
+    // Phase 11-02 D-04 no-regression: derived client-side from the /api/retention
+    // weekly payload in +page.svelte, then fed here as a reactive prop so the
+    // clamp/caveat copy continues to render with the correct N once the deferred
+    // fetch resolves. Defaults to 0 so existing callers that don't pass it work.
+    monthsOfHistory?: number;
   } = $props();
 
   const palette = COHORT_LINE_PALETTE;
@@ -165,6 +171,15 @@
       class="mt-2 text-xs text-amber-600"
     >
       Grouping view shows weekly — other grains not applicable.
+    </p>
+  {/if}
+
+  {#if monthsOfHistory > 0 && monthsOfHistory < 3}
+    <p
+      data-testid="cohort-months-of-history"
+      class="mt-2 text-xs text-zinc-500"
+    >
+      Only {monthsOfHistory} {monthsOfHistory === 1 ? 'month' : 'months'} of history — cohort curves will stabilize with more data.
     </p>
   {/if}
 

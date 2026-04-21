@@ -2,12 +2,15 @@
 //
 // Phase 9 (09-02): SSR returns raw daily rows for client-side rebucketing.
 // All KPI computation + grain bucketing happens in dashboardStore (D-05, D-08).
-// Server still handles: freshness, retention, insights, monthsOfHistory.
+// Phase 11-02 (D-03/D-04): 4 lifetime-unbounded queries MOVED off SSR into
+// deferred /api/* endpoints (kpi-daily, customer-ltv, repeater-lifetime,
+// retention). SSR now owns only range-bounded queries + freshness + insights +
+// benchmarks. CF Pages Free caps each request at 50 subrequests / 50ms CPU —
+// if this SSR adds a new query, consider deferring it the same way.
 import { redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { chipToRange, customToRange, type Range, type Grain } from '$lib/dateRange';
 import { parseFilters, FROM_FLOOR } from '$lib/filters';
-import { differenceInMonths, parseISO } from 'date-fns';
 import type { DailyRow } from '$lib/dashboardStore.svelte';
 import { fetchAll } from '$lib/supabasePagination';
 
@@ -19,8 +22,11 @@ export const load: PageServerLoad = async ({ locals, url, depends }) => {
   const grain = filters.grain as Grain;
 
   // E2E chart-fixture bypass — dead code in prod.
+  // Phase 11-02: retention / customerLtv / repeaterTx / dailyKpi / monthsOfHistory
+  // fields dropped — those payloads now come from /api/* endpoints that the
+  // browser fetches client-side when the card scrolls into view.
   if (process.env.E2E_FIXTURES === '1' && url.searchParams.get('__e2e') === 'charts') {
-    const { E2E_RETENTION_ROWS, E2E_CUSTOMER_LTV_ROWS, E2E_ITEM_COUNTS_ROWS } = await import('$lib/e2eChartFixtures');
+    const { E2E_ITEM_COUNTS_ROWS } = await import('$lib/e2eChartFixtures');
     return {
       range,
       grain,
@@ -38,20 +44,10 @@ export const load: PageServerLoad = async ({ locals, url, depends }) => {
         { business_date: '2026-04-07', gross_cents: 3800, sales_type: 'INHOUSE', is_cash: false, visit_seq: 1, card_hash: 'h3' },
         { business_date: '2026-04-08', gross_cents: 4200, sales_type: 'INHOUSE', is_cash: false, visit_seq: 2, card_hash: 'h3' },
       ] as DailyRow[],
-      retention: E2E_RETENTION_ROWS,
-      retentionMonthly: [],
-      monthsOfHistory: 2,
       latestInsight: null,
-      customerLtv: E2E_CUSTOMER_LTV_ROWS,
       itemCounts: E2E_ITEM_COUNTS_ROWS,
-      dailyKpi: [
-        { business_date: '2026-04-14', revenue_cents: 6500, tx_count: 2 },
-        { business_date: '2026-04-15', revenue_cents: 7300, tx_count: 2 },
-        { business_date: '2026-04-16', revenue_cents: 3200, tx_count: 1 }
-      ],
       benchmarkAnchors: [],
-      benchmarkSources: [],
-      repeaterTx: []
+      benchmarkSources: []
     };
   }
 
@@ -117,39 +113,10 @@ export const load: PageServerLoad = async ({ locals, url, depends }) => {
       ).catch((e: unknown) => { console.error('[transactions_filterable_v prior]', e); return [] as DailyRow[]; })
     : Promise.resolve([] as DailyRow[]);
 
-  // quick-260418-map (feedback #4): daily KPI heatmap needs full history,
-  // NOT filtered by the range/sales_type/is_cash filters. Sourced from
-  // kpi_daily_v (migration 0011).
-  type DailyKpiRow = { business_date: string; revenue_cents: number | string; tx_count: number };
-  const dailyKpiP = fetchAll<DailyKpiRow>(() => locals.supabase
-    .from('kpi_daily_v')
-    .select('business_date,revenue_cents,tx_count')
-    .order('business_date', { ascending: true })
-  ).catch((e: unknown) => { console.error('[kpi_daily_v]', e); return [] as DailyKpiRow[]; });
-
-  // Phase 10: customer_ltv_v feeds VA-07 (LTV histogram), VA-09 (cohort revenue),
-  // VA-10 (cohort avg LTV). LTV is lifetime — NOT filtered by range/sales_type/is_cash.
-  type CustomerLtvRow = {
-    card_hash: string;
-    revenue_cents: number;
-    visit_count: number;
-    cohort_week: string;
-    cohort_month: string;
-  };
-  const customerLtvP = fetchAll<CustomerLtvRow>(() => locals.supabase
-    .from('customer_ltv_v')
-    .select('card_hash,revenue_cents,visit_count,cohort_week,cohort_month')
-  ).catch((e: unknown) => { console.error('[customer_ltv_v]', e); return [] as CustomerLtvRow[]; });
-
-  // quick-260420-wdf: lifetime card-hash transactions for Repeater card
-  // recomputation when day-of-week filter is active. Unfiltered by chip
-  // window — we need every card visit ever to redraw cohorts.
-  type RepeaterTxRow = { card_hash: string; business_date: string; gross_cents: number };
-  const repeaterTxP = fetchAll<RepeaterTxRow>(() => locals.supabase
-    .from('transactions_filterable_v')
-    .select('card_hash,business_date,gross_cents')
-    .not('card_hash', 'is', null)
-  ).catch((e: unknown) => { console.error('[repeater tx lifetime]', e); return [] as RepeaterTxRow[]; });
+  // Phase 11-02 D-03: kpi_daily_v, customer_ltv_v and the lifetime card-hash
+  // tx query against transactions_filterable_v are DEFERRED to
+  // /api/kpi-daily, /api/customer-ltv, /api/repeater-lifetime — fetched
+  // client-side via LazyMount when their cards scroll into view.
 
   // Phase 10: item_counts_daily_v feeds VA-08 (calendar item counts) and
   // the per-item revenue card (quick-260418-irc, migration 0029 added item_revenue_cents).
@@ -169,22 +136,10 @@ export const load: PageServerLoad = async ({ locals, url, depends }) => {
     .lte('business_date', chipW.to)
   ).catch((e: unknown) => { console.error('[item_counts_daily_v]', e); return [] as ItemCountRow[]; });
 
-  // Retention (weekly) — per-card error isolation.
-  // quick-260418-28j: switched to fetchAll pattern (matches customer_ltv_v / transactions_filterable_v)
-  // to bypass PostgREST max_rows=1000 cap. Previously .then/.catch silently truncated.
-  type RetentionRow = { cohort_week: string; period_weeks: number; retention_rate: number; cohort_size_week: number; cohort_age_weeks: number };
-  const retentionP = fetchAll<RetentionRow>(() => locals.supabase
-    .from('retention_curve_v')
-    .select('cohort_week,period_weeks,retention_rate,cohort_size_week,cohort_age_weeks')
-  ).catch((e: unknown) => { console.error('[retention_curve_v]', e); return [] as RetentionRow[]; });
-
-  // Retention (monthly) — SQL-computed monthly cohorts (migration 0027).
-  // Replaces the client-side week→month re-bucket that dropped period 0 to ~34%.
-  type RetentionMonthlyRow = { cohort_month: string; period_months: number; retention_rate: number; cohort_size_month: number; cohort_age_months: number };
-  const retentionMonthlyP = fetchAll<RetentionMonthlyRow>(() => locals.supabase
-    .from('retention_curve_monthly_v')
-    .select('cohort_month,period_months,retention_rate,cohort_size_month,cohort_age_months')
-  ).catch((e: unknown) => { console.error('[retention_curve_monthly_v]', e); return [] as RetentionMonthlyRow[]; });
+  // Phase 11-02 D-03: retention_curve_v + retention_curve_monthly_v DEFERRED
+  // to /api/retention. monthsOfHistory (previously computed from the first
+  // cohort_week) is now derived client-side in +page.svelte once the deferred
+  // fetch resolves.
 
   // North-star benchmark anchors — weighted-quantile P20/P50/P80 curve for
   // this tenant's curated sources (migrations 0030/0031, quick-260418-bm1/bm2).
@@ -245,32 +200,25 @@ export const load: PageServerLoad = async ({ locals, url, depends }) => {
       return r.data;
     });
 
-  // Parallel fan-out: daily rows + prior + retention weekly/monthly + insight + customer_ltv + item_counts + benchmark anchors/sources.
-  // Phase 10 + quick-260418-28j/bm3: 10-query SSR fan-out with per-card error isolation (Phase 4 D-22).
+  // Parallel fan-out: 6 promises. Phase 11-02 D-03 moved the 4 lifetime
+  // unbounded queries (kpi-daily, customer-ltv, repeater-lifetime, retention
+  // weekly+monthly = 5 total fetchAlls) off SSR into deferred /api/* endpoints.
+  // SSR subrequest count: 6 here + freshness + earliest-business-date = 8
+  // total, well under CF Pages Free 50-request ceiling.
   const [
     dailyRows,
     priorDailyRows,
-    retentionData,
-    retentionMonthlyData,
     latestInsightRow,
-    customerLtv,
     itemCounts,
-    dailyKpi,
     benchmarkAnchors,
-    benchmarkSources,
-    repeaterTx
+    benchmarkSources
   ] = await Promise.all([
     dailyRowsP,
     priorDailyRowsP,
-    retentionP,
-    retentionMonthlyP,
     insightP,
-    customerLtvP,
     itemCountsP,
-    dailyKpiP,
     benchmarkAnchorsP,
-    benchmarkSourcesP,
-    repeaterTxP
+    benchmarkSourcesP
   ]);
 
   // Berlin timezone for is_yesterday flag.
@@ -289,12 +237,6 @@ export const load: PageServerLoad = async ({ locals, url, depends }) => {
       }
     : null;
 
-  // monthsOfHistory for retention caveat.
-  const firstCohortDate = retentionData[0]?.cohort_week ?? null;
-  const monthsOfHistory = firstCohortDate
-    ? differenceInMonths(new Date(), parseISO(firstCohortDate))
-    : 0;
-
   return {
     range,
     grain,
@@ -303,16 +245,10 @@ export const load: PageServerLoad = async ({ locals, url, depends }) => {
     window: chipW,
     dailyRows,
     priorDailyRows,
-    retention: retentionData,
-    retentionMonthly: retentionMonthlyData,
-    monthsOfHistory,
     latestInsight,
-    customerLtv,
     itemCounts,
-    dailyKpi,
     benchmarkAnchors,
-    benchmarkSources,
-    repeaterTx
+    benchmarkSources
   };
 };
 

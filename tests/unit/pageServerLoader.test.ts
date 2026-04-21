@@ -197,15 +197,48 @@ describe('+page.server load — Phase 9 simplified loader', () => {
     expect(lte.args).toEqual(['business_date', '2026-04-15']);
   });
 
-  it('still queries retention_curve_v and insights_v', async () => {
+  it('still queries insights_v (retention_curve_v moved to /api/retention in 11-02)', async () => {
+    // Phase 11-02 D-03: retention_curve_v + retention_curve_monthly_v are now
+    // fetched client-side via /api/retention when CohortRetentionCard scrolls
+    // into view. The SSR-side invariant now is just: insights_v still queried.
     await load({
       url: new URL('http://x/'),
       locals: mkLocals(state),
       depends: () => {}
     } as any);
 
-    expect(callsFor(state, 'retention_curve_v').length).toBe(1);
+    expect(callsFor(state, 'retention_curve_v').length).toBe(0);
+    expect(callsFor(state, 'retention_curve_monthly_v').length).toBe(0);
     expect(callsFor(state, 'insights_v').length).toBe(1);
+  });
+
+  it('does NOT query the 5 deferred views (kpi_daily_v, customer_ltv_v, retention_curve_v/monthly_v, repeater lifetime)', async () => {
+    // Phase 11-02 D-03: these 5 queries moved to /api/* endpoints.
+    // The repeater-lifetime query was the .not('card_hash', 'is', null) query
+    // against transactions_filterable_v; verify by scanning for a .not() call
+    // on that table (present only in the lifetime repeater query, not in the
+    // range-bounded dailyRows/priorDailyRows queries).
+    await load({
+      url: new URL('http://x/'),
+      locals: mkLocals(state),
+      depends: () => {}
+    } as any);
+
+    expect(callsFor(state, 'kpi_daily_v').length).toBe(0);
+    expect(callsFor(state, 'customer_ltv_v').length).toBe(0);
+    expect(callsFor(state, 'retention_curve_v').length).toBe(0);
+    expect(callsFor(state, 'retention_curve_monthly_v').length).toBe(0);
+
+    const filterableCalls = callsFor(state, 'transactions_filterable_v');
+    const hasNotCardHash = filterableCalls.some((q) =>
+      q.calls.some(
+        (c) =>
+          c.method === 'not' &&
+          String(c.args[0]) === 'card_hash' &&
+          String(c.args[1]) === 'is'
+      )
+    );
+    expect(hasNotCardHash).toBe(false);
   });
 });
 
@@ -255,12 +288,12 @@ describe('+page.server load — PostgREST 1000-row cap regression (260417-o8a)',
     expect(allRangeCalls).toContainEqual([2000, 2999]);
   });
 
-  it('Regression B: paginates every large-result query (range called for all 4 tables)', async () => {
+  it('Regression B: paginates every large-result SSR query (transactions_filterable_v + item_counts_daily_v)', async () => {
+    // Phase 11-02 D-03: customer_ltv_v moved to /api/customer-ltv so the
+    // "every large-result query paginates" invariant now covers only the SSR
+    // queries that remain — transactions_filterable_v (dailyRows) + item_counts_daily_v.
     // 2-row fixtures trigger 1 range call (short page = stop), confirming pagination is wired.
     // The key check: .range() IS called — not .then() on a raw chain.
-    state.canned.set('customer_ltv_v', [
-      { card_hash: 'h1', revenue_cents: 5000, visit_count: 3, cohort_week: '2025-06-09', cohort_month: '2025-06' }
-    ]);
     state.canned.set('item_counts_daily_v', [
       { business_date: '2026-04-10', item_name: 'Ramen', sales_type: 'INHOUSE', is_cash: false, item_count: 5 }
     ]);
@@ -277,26 +310,22 @@ describe('+page.server load — PostgREST 1000-row cap regression (260417-o8a)',
     );
     expect(filterableRangeCalls.length, 'transactions_filterable_v must use .range() (pagination wired)').toBeGreaterThanOrEqual(1);
 
-    // customer_ltv_v
-    const ltvRangeCalls = callsFor(state, 'customer_ltv_v').flatMap(q =>
-      q.calls.filter(c => c.method === 'range')
-    );
-    expect(ltvRangeCalls.length, 'customer_ltv_v must use .range() (pagination wired)').toBeGreaterThanOrEqual(1);
-
     // item_counts_daily_v
     const itemRangeCalls = callsFor(state, 'item_counts_daily_v').flatMap(q =>
       q.calls.filter(c => c.method === 'range')
     );
     expect(itemRangeCalls.length, 'item_counts_daily_v must use .range() (pagination wired)').toBeGreaterThanOrEqual(1);
+
+    // customer_ltv_v moved to /api/customer-ltv — verify it is NOT queried from SSR.
+    expect(callsFor(state, 'customer_ltv_v').length).toBe(0);
   });
 
-  it('Regression C: per-card error isolation preserved when customer_ltv_v throws', async () => {
-    // customer_ltv_v returns a PostgREST error — other cards must still populate.
+  it('Regression C: per-card error isolation preserved when item_counts_daily_v throws', async () => {
+    // Phase 11-02 D-03: customer_ltv_v no longer queried from SSR; the
+    // per-card isolation invariant now applies to the remaining SSR queries.
+    // item_counts_daily_v returns a PostgREST error — dailyRows must still populate.
     // fetchAll throws on error; loader's .catch converts to [] (D-22 pattern).
-    state.errors.set('customer_ltv_v', { message: 'boom' });
-    state.canned.set('item_counts_daily_v', [
-      { business_date: '2026-04-10', item_name: 'Ramen', sales_type: 'INHOUSE', is_cash: false, item_count: 5 }
-    ]);
+    state.errors.set('item_counts_daily_v', { message: 'boom' });
 
     // load() must resolve (not throw) — per-card .catch swallows the error
     const data: any = await load({
@@ -305,12 +334,10 @@ describe('+page.server load — PostgREST 1000-row cap regression (260417-o8a)',
       depends: () => {}
     } as any);
 
-    // customer_ltv_v error → fallback to []
-    expect(data.customerLtv).toEqual([]);
+    // item_counts_daily_v error → fallback to []
+    expect(data.itemCounts).toEqual([]);
     // dailyRows survive (transactions_filterable_v has no error)
     expect(Array.isArray(data.dailyRows)).toBe(true);
     expect(data.dailyRows.length).toBeGreaterThan(0);
-    // itemCounts survive
-    expect(Array.isArray(data.itemCounts)).toBe(true);
   });
 });

@@ -1,6 +1,9 @@
 <script lang="ts">
   // Phase 9: simplified dashboard with 2 KPI tiles + cohort retention.
   // All KPI computation happens client-side via dashboardStore (D-05, D-08).
+  // Phase 11-02 D-03/D-04: 4 below-fold cards now fetch their data client-side
+  // via LazyMount + clientFetch when the card scrolls into view. SSR payload
+  // shrinks from 11 queries to 6, keeping above-fold paint fast and bounded.
   import DashboardHeader from '$lib/components/DashboardHeader.svelte';
   import FilterBar from '$lib/components/FilterBar.svelte';
   import FreshnessLabel from '$lib/components/FreshnessLabel.svelte';
@@ -14,6 +17,8 @@
   import CalendarItemsCard from '$lib/components/CalendarItemsCard.svelte';
   import CalendarItemRevenueCard from '$lib/components/CalendarItemRevenueCard.svelte';
   import RepeaterCohortCountCard from '$lib/components/RepeaterCohortCountCard.svelte';
+  import LazyMount from '$lib/components/LazyMount.svelte';
+  import { clientFetch } from '$lib/clientFetch';
   import {
     initStore, getKpiTotals, getFilters, getWindow,
     setRange, setRangeId, setSalesType, setCashFilter, setDaysFilter,
@@ -22,9 +27,67 @@
   import { goto, replaceState } from '$app/navigation';
   import { mergeSearchParams } from '$lib/urlState';
   import { chipToRange, customToRange, type Range, type RangeWindow } from '$lib/dateRange';
-  import type { FiltersState } from '$lib/filters';
+  import { DAYS_DEFAULT, type FiltersState } from '$lib/filters';
+  import { differenceInMonths, parseISO } from 'date-fns';
 
   let { data } = $props();
+
+  // Phase 11 D-03/D-04: deferred client-side fetches. Each runs once when the
+  // LazyMount wrapping its card first scrolls into view (IntersectionObserver
+  // onvisible callback — the single mandated trigger API).
+  type DailyKpiRow       = { business_date: string; revenue_cents: number | string; tx_count: number };
+  type CustomerLtvRow    = { card_hash: string; revenue_cents: number; visit_count: number; cohort_week: string; cohort_month: string };
+  type RepeaterTxRow     = { card_hash: string; business_date: string; gross_cents: number };
+  type RetentionRow      = { cohort_week: string; period_weeks: number; retention_rate: number; cohort_size_week: number; cohort_age_weeks: number };
+  type RetentionMonthlyRow = { cohort_month: string; period_months: number; retention_rate: number; cohort_size_month: number; cohort_age_months: number };
+
+  let dailyKpi        = $state<DailyKpiRow[]>([]);
+  let customerLtv     = $state<CustomerLtvRow[]>([]);
+  let repeaterTx      = $state<RepeaterTxRow[]>([]);
+  let retention         = $state<RetentionRow[]>([]);
+  let retentionMonthly  = $state<RetentionMonthlyRow[]>([]);
+
+  // D-04 no-regression: monthsOfHistory drives the caveat copy in
+  // CohortRetentionCard. Derive from the earliest cohort_week in the
+  // /api/retention weekly payload as soon as it resolves.
+  let monthsOfHistory = $state<number>(0);
+
+  async function loadDailyKpi() {
+    try { dailyKpi = await clientFetch<DailyKpiRow[]>('/api/kpi-daily'); }
+    catch (e) { console.error('[LazyMount /api/kpi-daily]', e); }
+  }
+  async function loadCustomerLtv() {
+    try { customerLtv = await clientFetch<CustomerLtvRow[]>('/api/customer-ltv'); }
+    catch (e) { console.error('[LazyMount /api/customer-ltv]', e); }
+  }
+
+  // D-03 ?days= contract: skip the fetch entirely when filters.days is the
+  // default (all 7 days) — server payload would be unchanged anyway, so
+  // avoid the round-trip.
+  async function loadRepeaterTx() {
+    const days = data.filters.days ?? DAYS_DEFAULT;
+    const isDefault =
+      days.length === DAYS_DEFAULT.length &&
+      DAYS_DEFAULT.every((d) => days.includes(d));
+    if (isDefault) return;
+    try {
+      const qs = `?days=${days.join(',')}`;
+      repeaterTx = await clientFetch<RepeaterTxRow[]>(`/api/repeater-lifetime${qs}`);
+    } catch (e) { console.error('[LazyMount /api/repeater-lifetime]', e); }
+  }
+
+  async function loadRetention() {
+    try {
+      const r = await clientFetch<{ weekly: RetentionRow[]; monthly: RetentionMonthlyRow[] }>('/api/retention');
+      retention = r.weekly;
+      retentionMonthly = r.monthly;
+      // D-04 no-regression: compute monthsOfHistory from the earliest cohort_week.
+      if (r.weekly.length > 0) {
+        const earliest = [...r.weekly].sort((a, b) => a.cohort_week.localeCompare(b.cohort_week))[0];
+        monthsOfHistory = Math.max(0, differenceInMonths(new Date(), parseISO(earliest.cohort_week)));
+      }
+    } catch (e) { console.error('[LazyMount /api/retention]', e); }
+  }
 
   // Initialize store from SSR data on mount and when SSR data changes.
   $effect(() => {
@@ -195,8 +258,13 @@
       />
     </div>
 
-    <!-- feedback #4 (moved per feedback round F): heatmap sits right below the KPI tiles -->
-    <DailyHeatmapCard data={data.dailyKpi} />
+    <!-- feedback #4 (moved per feedback round F): heatmap sits right below the KPI tiles.
+         Phase 11-02 D-03: deferred to /api/kpi-daily via LazyMount. -->
+    <LazyMount minHeight="280px" onvisible={loadDailyKpi}>
+      {#snippet children()}
+        <DailyHeatmapCard data={dailyKpi} />
+      {/snippet}
+    </LazyMount>
 
     <!-- D-10 card 7: Calendar counts (VA-05) — self-subscribes to dashboardStore -->
     <CalendarCountsCard />
@@ -212,15 +280,29 @@
 
     <!-- D-10 card 10: Cohort retention (VA-06)
          quick-260418-28j: monthly grain now reads from retention_curve_monthly_v
-         instead of re-bucketing weekly rows client-side. -->
-    <CohortRetentionCard
-      dataWeekly={data.retention}
-      dataMonthly={data.retentionMonthly}
-      benchmarkAnchors={data.benchmarkAnchors}
-      benchmarkSources={data.benchmarkSources}
-    />
+         instead of re-bucketing weekly rows client-side.
+         Phase 11-02 D-03/D-04: deferred to /api/retention via LazyMount;
+         monthsOfHistory computed from the weekly payload on client. -->
+    <LazyMount minHeight="320px" onvisible={loadRetention}>
+      {#snippet children()}
+        <CohortRetentionCard
+          dataWeekly={retention}
+          dataMonthly={retentionMonthly}
+          benchmarkAnchors={data.benchmarkAnchors}
+          benchmarkSources={data.benchmarkSources}
+          monthsOfHistory={monthsOfHistory}
+        />
+      {/snippet}
+    </LazyMount>
 
-    <!-- feedback #6: repeater customer count by first-visit cohort — lifetime, no range scoping -->
-    <RepeaterCohortCountCard data={data.customerLtv} repeaterTx={data.repeaterTx} />
+    <!-- feedback #6: repeater customer count by first-visit cohort — lifetime, no range scoping.
+         Phase 11-02 D-03: customerLtv deferred to /api/customer-ltv;
+         repeaterTx deferred to /api/repeater-lifetime?days=… (skipped when
+         filters.days is the default [1..7]). -->
+    <LazyMount minHeight="320px" onvisible={() => { loadCustomerLtv(); loadRepeaterTx(); }}>
+      {#snippet children()}
+        <RepeaterCohortCountCard data={customerLtv} repeaterTx={repeaterTx} />
+      {/snippet}
+    </LazyMount>
   </div>
 </main>
