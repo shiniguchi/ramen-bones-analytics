@@ -32,7 +32,7 @@ export const FROM_FLOOR = '2025-06-01';
 export const TO_CEILING_DAYS_AHEAD = 365;
 
 export const FILTER_DEFAULTS = Object.freeze({
-  range: '7d' as const,
+  range: 'all' as const,
   grain: 'week' as const,
   sales_type: 'all' as const,
   is_cash: 'all' as const,

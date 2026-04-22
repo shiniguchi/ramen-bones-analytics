@@ -9,7 +9,6 @@
 // LLM-generated insight copy lives in the `insights.i18n` jsonb column
 // (migration 0037), NOT here. This file is only for compile-time-known text.
 import type { Locale } from './locales';
-import { DEFAULT_LOCALE } from './locales';
 
 const en = {
   // --- Header / switcher --------------------------------------------------
@@ -658,8 +657,15 @@ function interpolate(template: string, vars?: Record<string, string | number>): 
 }
 
 /**
- * Look up a UI string by key. Falls back to the default locale's string if the
- * key is missing in the target locale, then to the raw key as a last resort.
+ * Look up a UI string by key. Falls back to the EN dictionary (the SoT — see
+ * file comment) if the key is missing in the target locale, then to the raw
+ * key as a last resort. Note: the fallback is hardwired to `en`, not to
+ * DEFAULT_LOCALE — they are different concerns. DEFAULT_LOCALE is the
+ * user-facing default rendered when no cookie is set; `en` is the always-
+ * authoritative dictionary that every other locale extends from. If the
+ * fallback used DEFAULT_LOCALE, then changing the default to e.g. 'ja'
+ * would silently route locales-with-missing-keys to Japanese instead of
+ * English, and tests with no `page.data.locale` set would render Japanese.
  * Placeholders like `{n}` are interpolated from `vars`.
  */
 export function t(
@@ -667,7 +673,6 @@ export function t(
   key: MessageKey,
   vars?: Record<string, string | number>
 ): string {
-  const raw =
-    messages[locale]?.[key] ?? messages[DEFAULT_LOCALE][key] ?? key;
+  const raw = messages[locale]?.[key] ?? messages.en[key] ?? key;
   return interpolate(raw, vars);
 }

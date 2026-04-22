@@ -40,6 +40,9 @@ describe('DatePickerPopover trigger', () => {
       onrangechange: () => {}
     });
     const btn = container.querySelector('button');
+    // t() falls back to messages.en when page.data.locale is undefined
+    // (which it is in this jsdom test — no SvelteKit data flow). So
+    // assertions stay in English regardless of DEFAULT_LOCALE.
     expect(btn?.textContent).toMatch(/Custom/);
   });
 
@@ -84,7 +87,8 @@ describe('FilterBar Days popover', () => {
     const content = document.body.querySelector('[data-testid="days-popover-content"]');
     expect(content).toBeTruthy();
 
-    // All 7 day labels present (Mon..Sun).
+    // All 7 day labels present (Mon..Sun) — t() falls back to messages.en
+    // when page.data.locale is undefined in jsdom, so labels are EN.
     const text = content?.textContent ?? '';
     for (const label of ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']) {
       expect(text).toContain(label);

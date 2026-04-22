@@ -17,9 +17,9 @@ import {
 const mk = (qs = '') => new URL('http://x/' + qs);
 
 describe('parseFilters — defaults + round-trip', () => {
-  it('empty URL → defaults (range=7d, grain=week, sales_type=all, is_cash=all)', () => {
+  it('empty URL → defaults (range=all, grain=week, sales_type=all, is_cash=all)', () => {
     const f = parseFilters(mk(''));
-    expect(f.range).toBe('7d');
+    expect(f.range).toBe('all');
     expect(f.grain).toBe('week');
     expect(f.sales_type).toBe('all');
     expect(f.is_cash).toBe('all');
@@ -87,9 +87,9 @@ describe('parseFilters — payment_method removed', () => {
 });
 
 describe('parseFilters — D-17 coercion (malformed → default)', () => {
-  it('range=bogus coerces to default 7d — never throws', () => {
+  it('range=bogus coerces to default all — never throws', () => {
     const f = parseFilters(mk('?range=bogus'));
-    expect(f.range).toBe('7d');
+    expect(f.range).toBe('all');
   });
 
   it('grain=lightyear coerces to default week', () => {
@@ -105,7 +105,7 @@ describe('parseFilters — D-17 coercion (malformed → default)', () => {
   it('unknown param foo=bar is ignored, no throw', () => {
     expect(() => parseFilters(mk('?foo=bar'))).not.toThrow();
     const f = parseFilters(mk('?foo=bar'));
-    expect(f.range).toBe('7d');
+    expect(f.range).toBe('all');
   });
 
   it('SQL-injection attempt in sales_type coerces to "all"', () => {
@@ -115,8 +115,8 @@ describe('parseFilters — D-17 coercion (malformed → default)', () => {
 });
 
 describe('FILTER_DEFAULTS', () => {
-  it('is frozen and exposes { range: 7d, grain: week, sales_type: all, is_cash: all }', () => {
-    expect(FILTER_DEFAULTS.range).toBe('7d');
+  it('is frozen and exposes { range: all, grain: week, sales_type: all, is_cash: all }', () => {
+    expect(FILTER_DEFAULTS.range).toBe('all');
     expect(FILTER_DEFAULTS.grain).toBe('week');
     expect(FILTER_DEFAULTS.sales_type).toBe('all');
     expect(FILTER_DEFAULTS.is_cash).toBe('all');
@@ -125,7 +125,7 @@ describe('FILTER_DEFAULTS', () => {
 
   it('filtersSchema is exported and parses empty object to defaults', () => {
     const f = filtersSchema.parse({});
-    expect(f.range).toBe('7d');
+    expect(f.range).toBe('all');
     expect(f.grain).toBe('week');
     expect(f.sales_type).toBe('all');
     expect(f.is_cash).toBe('all');
