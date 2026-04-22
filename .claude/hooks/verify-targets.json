@@ -1,5 +1,5 @@
 {
-  "_comment": "ramen-bones-analytics is a SvelteKit + Cloudflare Pages app. Project convention (.claude/CLAUDE.md): 'Always work against DEV unless the user says local or prod.' Default rule points at the DEV Pages deployment. For a local-Vite check, navigate to http://localhost:5173 manually.",
+  "_comment": "ramen-bones-analytics is a SvelteKit + Cloudflare Pages app. The PostToolUse hook is for FAST per-edit verification against the local Vite dev server (bun run dev → http://localhost:5173). Do NOT point it at DEV — that requires a push + ~60s CF Pages deploy on every Svelte save, which destroys the feedback loop. The project rule in .claude/CLAUDE.md ('Always work against DEV unless the user says local or prod') applies to FINAL QA before reporting work complete, not the per-save hook nudge.",
   "extensions": [".svelte", ".tsx", ".jsx", ".vue", ".astro", ".html", ".css", ".scss", ".sass", ".less"],
   "excludePaths": [
     "node_modules/",
@@ -14,8 +14,8 @@
     "test-results/"
   ],
   "rules": [
-    { "pathContains": "src/routes",         "url": "https://ramen-bones-analytics.pages.dev", "name": "ramen-bones routes (DEV)" },
-    { "pathContains": "src/lib/components", "url": "https://ramen-bones-analytics.pages.dev", "name": "ramen-bones components (DEV)" }
+    { "pathContains": "src/routes",         "url": "http://localhost:5173", "name": "ramen-bones routes (local Vite)" },
+    { "pathContains": "src/lib/components", "url": "http://localhost:5173", "name": "ramen-bones components (local Vite)" }
   ],
-  "defaultUrl": "https://ramen-bones-analytics.pages.dev"
+  "defaultUrl": "http://localhost:5173"
 }
