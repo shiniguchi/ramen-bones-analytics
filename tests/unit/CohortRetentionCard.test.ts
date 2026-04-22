@@ -78,14 +78,14 @@ function initMonthGrain() {
 }
 
 describe('CohortRetentionCard weekly-clamp hint (D-17)', () => {
-  it('shows "Cohort view shows weekly" hint when global grain=day', () => {
+  it('shows "Weekly view" badge when global grain=day', () => {
     initDayGrain();
     const { getByTestId } = render(CohortRetentionCard, {
       props: { dataWeekly: weeklyMock, dataMonthly: [] }
     });
     const hint = getByTestId('cohort-clamp-hint');
     expect(hint).toBeTruthy();
-    expect(hint.textContent).toContain('Cohort view shows weekly');
+    expect(hint.textContent).toContain('Weekly view');
   });
 
   it('omits hint when grain=week (clamp is no-op)', () => {

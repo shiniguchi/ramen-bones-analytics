@@ -153,7 +153,16 @@
 <div data-testid="cohort-card" class="rounded-xl border border-zinc-200 bg-white p-4">
   <!-- Card header -->
   <div class="flex items-center justify-between gap-2">
-    <h2 class="text-base font-semibold text-zinc-900">Retention rate by acquisition grouping</h2>
+    <div class="flex items-baseline gap-2">
+      <h2 class="text-base font-semibold text-zinc-900">Retention rate by acquisition grouping</h2>
+      {#if showClampHint}
+        <span
+          data-testid="cohort-clamp-hint"
+          class="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700"
+          title={`Daily cohorts have too few repeat customers to chart (min ${SPARSE_MIN_COHORT_SIZE}). Showing weekly cohorts instead.`}
+        >Weekly view</span>
+      {/if}
+    </div>
   </div>
 
   {#if dayFilterActive}
@@ -162,15 +171,6 @@
       class="mt-1 text-[11px] text-amber-600"
     >
       Day filter does not apply to cohort retention — cohorts use all days.
-    </p>
-  {/if}
-
-  {#if showClampHint}
-    <p
-      data-testid="cohort-clamp-hint"
-      class="mt-2 text-xs text-amber-600"
-    >
-      Grouping view shows weekly — other grains not applicable.
     </p>
   {/if}
 
