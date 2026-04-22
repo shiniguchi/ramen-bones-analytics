@@ -9,6 +9,10 @@ ALTER TABLE public.insights
 
 -- Refresh the tenant-facing wrapper view to expose the new column.
 -- security_invoker pattern unchanged; input_payload still omitted (audit-only).
+-- Column order preserves the existing suffix (model, fallback_used) and appends
+-- action_points at the end — CREATE OR REPLACE VIEW in Postgres cannot insert
+-- a new column in the middle of the SELECT list (SQLSTATE 42P16), it can only
+-- append. Column order in a view is cosmetic; consumers select by name.
 CREATE OR REPLACE VIEW public.insights_v
   WITH (security_invoker = true) AS
 SELECT
@@ -18,8 +22,8 @@ SELECT
   generated_at,
   headline,
   body,
-  action_points,
   model,
-  fallback_used
+  fallback_used,
+  action_points
 FROM public.insights
 WHERE restaurant_id::text = (auth.jwt()->>'restaurant_id');
