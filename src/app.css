@@ -4,6 +4,12 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
+  /* Force native form controls (select popovers, date inputs, scrollbars) to
+     render in light mode regardless of the OS theme. Without this the locale
+     switcher <option> list inherits the OS dark-menu colors and appears as
+     low-contrast text-on-dark, making the language names unreadable on
+     macOS+Chrome dark mode. The site is light-only everywhere else. */
+  color-scheme: light;
   --background: oklch(1 0 0);
   --foreground: oklch(0.141 0.005 285.823);
   --card: oklch(1 0 0);
