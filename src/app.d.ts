@@ -1,4 +1,5 @@
 import type { SupabaseClient, Session, User } from '@supabase/supabase-js';
+import type { Locale } from '$lib/i18n/locales';
 
 declare global {
   namespace App {
@@ -9,9 +10,11 @@ declare global {
         user: User | null;
         claims: Record<string, unknown> | null;
       }>;
+      locale: Locale;
     }
     interface PageData {
-      restaurantId?: string;
+      restaurantId?: string | null;
+      locale: Locale;
     }
     // interface PageState {}
     // interface Platform {}

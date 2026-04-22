@@ -5,8 +5,15 @@
 import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_PUBLISHABLE_KEY } from '$env/static/public';
 import { createServerClient } from '@supabase/ssr';
 import type { Handle } from '@sveltejs/kit';
+import { DEFAULT_LOCALE, LOCALE_COOKIE, isLocale } from '$lib/i18n/locales';
 
 export const handle: Handle = async ({ event, resolve }) => {
+  // i18n: resolve active locale from the rb_locale cookie. Accept-Language
+  // negotiation is intentionally skipped — the explicit cookie is the single
+  // source of truth and keeps SSR output deterministic for cache behavior.
+  const cookieLocale = event.cookies.get(LOCALE_COOKIE);
+  event.locals.locale = isLocale(cookieLocale) ? cookieLocale : DEFAULT_LOCALE;
+
   event.locals.supabase = createServerClient(
     PUBLIC_SUPABASE_URL,
     PUBLIC_SUPABASE_PUBLISHABLE_KEY,

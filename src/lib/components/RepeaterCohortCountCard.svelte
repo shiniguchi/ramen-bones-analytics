@@ -10,6 +10,8 @@
   // total cohort size at a glance AND the per-bucket breakdown as segments —
   // same visual grammar as the sibling Calendar{Revenue,Counts} cards.
   import { Chart, Svg, Axis, Bars, Text, Tooltip } from 'layerchart';
+  import { page } from '$app/state';
+  import { t } from '$lib/i18n/messages';
   import EmptyState from './EmptyState.svelte';
   import {
     cohortRepeaterCountByVisitBucket,
@@ -83,18 +85,18 @@
 >
   <div class="flex items-baseline gap-2">
     <h2 class="text-base font-semibold text-zinc-900">
-      Repeaters acquired by first-visit grouping
+      {t(page.data.locale, 'repeater_cohort_title')}
     </h2>
     {#if showClampHint}
       <span
         data-testid="cohort-clamp-hint"
         class="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700"
-        title={`Daily cohorts have too few repeat customers to chart (min ${SPARSE_MIN_COHORT_SIZE}). Showing weekly cohorts instead.`}
-      >Weekly view</span>
+        title={t(page.data.locale, 'clamp_badge_tooltip', { n: SPARSE_MIN_COHORT_SIZE })}
+      >{t(page.data.locale, 'clamp_badge_label')}</span>
     {/if}
   </div>
   <p class="mt-1 text-xs text-zinc-500">
-    Customers who came back 2+ times, grouped by visit count — placed in their first-visit period.
+    {t(page.data.locale, 'repeater_cohort_subtitle')}
   </p>
 
   {#if chartData.length === 0}

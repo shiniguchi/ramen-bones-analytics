@@ -13,6 +13,8 @@
   import { Chart, Svg, Axis, Spline, Highlight, Tooltip, Area, Points } from 'layerchart';
   import { scaleLinear } from 'd3-scale';
   import { curveStepAfter } from 'd3-shape';
+  import { page } from '$app/state';
+  import { t } from '$lib/i18n/messages';
   import EmptyState from './EmptyState.svelte';
   import NorthStarSourcePopover, { type BenchmarkSourceRow } from './NorthStarSourcePopover.svelte';
   import {
@@ -154,13 +156,13 @@
   <!-- Card header -->
   <div class="flex items-center justify-between gap-2">
     <div class="flex items-baseline gap-2">
-      <h2 class="text-base font-semibold text-zinc-900">Retention rate by acquisition grouping</h2>
+      <h2 class="text-base font-semibold text-zinc-900">{t(page.data.locale, 'cohort_retention_title')}</h2>
       {#if showClampHint}
         <span
           data-testid="cohort-clamp-hint"
           class="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700"
-          title={`Daily cohorts have too few repeat customers to chart (min ${SPARSE_MIN_COHORT_SIZE}). Showing weekly cohorts instead.`}
-        >Weekly view</span>
+          title={t(page.data.locale, 'clamp_badge_tooltip', { n: SPARSE_MIN_COHORT_SIZE })}
+        >{t(page.data.locale, 'clamp_badge_label')}</span>
       {/if}
     </div>
   </div>
