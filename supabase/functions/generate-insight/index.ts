@@ -36,35 +36,40 @@ const supabase = createClient(
 );
 const anthropic = new Anthropic({ apiKey: Deno.env.get("ANTHROPIC_API_KEY")! });
 
-// Tool-use schema — forces Haiku to emit structured JSON instead of freeform text.
-// Top-level shape: { <locale>: { headline, body, action_points }, ... }.
-// Numbers stay verbatim across locales — digit-guard enforces this per-locale.
-const LOCALE_ENTRY_SCHEMA = {
-  type: "object",
-  required: ["headline", "body", "action_points"],
-  properties: {
-    headline: { type: "string", description: "One sentence, max 80 chars, no trailing period." },
-    body: { type: "string", description: "2-3 sentences, max 280 chars total." },
-    action_points: {
-      type: "array",
-      minItems: 2,
-      maxItems: 3,
-      items: { type: "string", description: "Bullet, max 60 chars, no trailing period." },
-      description: "2-3 observational bullets on the most notable movements.",
+// Tool-use schema — single locale per call. The earlier single-call,
+// multi-locale schema proved unreliable in practice (Haiku 4.5 emitted only
+// the first required key). Calling the tool once per locale keeps each
+// request small, gives the model one job at a time, and isolates digit-guard
+// failures to the one locale that produced them. Cost stays cheap — ~$0.005
+// per tenant per weekly run across 5 locales.
+const TOOL = {
+  name: "emit_insight",
+  description:
+    "Emit the headline, body, and action-point bullets for today's dashboard insight card in the requested locale.",
+  input_schema: {
+    type: "object",
+    required: ["headline", "body", "action_points"],
+    properties: {
+      headline: { type: "string", description: "One sentence, max 80 chars, no trailing period." },
+      body: { type: "string", description: "2-3 sentences, max 280 chars total." },
+      action_points: {
+        type: "array",
+        minItems: 2,
+        maxItems: 3,
+        items: { type: "string", description: "Bullet, max 60 chars, no trailing period." },
+        description: "2-3 observational bullets on the most notable movements.",
+      },
     },
   },
 } as const;
 
-const TOOL = {
-  name: "emit_insight",
-  description:
-    "Emit the headline, body, and action-point bullets for today's dashboard insight card in every supported locale.",
-  input_schema: {
-    type: "object",
-    required: Array.from(LOCALES),
-    properties: Object.fromEntries(LOCALES.map((l) => [l, LOCALE_ENTRY_SCHEMA])),
-  },
-} as const;
+const LOCALE_NAMES: Record<Locale, string> = {
+  en: "English",
+  de: "German (Deutsch)",
+  ja: "Japanese (日本語)",
+  es: "Spanish (Español)",
+  fr: "French (Français)",
+};
 
 type LocaleEntry = { headline: string; body: string; action_points: string[] };
 
@@ -135,67 +140,63 @@ async function generateForTenant(restaurantId: string, tz: string) {
   ) as Record<Locale, LocaleEntry>;
 
   let fallbackUsed = false;
-  let fallbackReason: string | undefined;
+  const localeFailures: string[] = [];
 
-  try {
-    const msg = await anthropic.messages.create({
-      model: MODEL,
-      // ~2000 tokens covers headline+body+bullets * 5 locales in one tool call.
-      // Haiku 4.5 at $0.80/M output → ~$0.002 per insight (nightly, 1 tenant).
-      max_tokens: 2000,
-      temperature: 0.2,
-      system: SYSTEM_PROMPT,
-      tools: [TOOL],
-      tool_choice: { type: "tool", name: "emit_insight" },
-      messages: [
-        { role: "user", content: `INPUT DATA JSON:\n${JSON.stringify(payload)}` },
-      ],
-    });
-
-    // Tool-use responses arrive as a content block with type "tool_use".
-    // deno-lint-ignore no-explicit-any
-    const toolBlock = msg.content.find((c: any) => c.type === "tool_use");
-    if (!toolBlock || typeof (toolBlock as { input: unknown }).input !== "object") {
-      throw new Error("tool_use block missing");
-    }
-    const raw = (toolBlock as { input: Record<string, unknown> }).input;
-
-    // Per-locale validation + digit-guard. Locale-level failures don't trip
-    // the whole insight — only that locale's entry reverts to the English
-    // fallback, and fallback_used flips on.
-    const localeFailures: string[] = [];
-    for (const loc of LOCALES) {
-      const entry = raw[loc];
-      if (!validateEntry(entry)) {
-        localeFailures.push(`${loc}:shape`);
-        // localeEntries[loc] already seeded with englishFallback above.
-        continue;
+  // One Haiku call per locale. Each request has a simple single-locale tool
+  // schema — far more reliable than one call with 5 required nested objects
+  // (which in testing produced only the first locale). Per-locale try/catch
+  // isolates failures: any one locale that fails shape, digit-guard, or the
+  // network keeps the pre-seeded English fallback for just that locale.
+  for (const loc of LOCALES) {
+    try {
+      const msg = await anthropic.messages.create({
+        model: MODEL,
+        // 800 tokens per locale — fits headline + body + 3 bullets with
+        // generous margin for Japanese (higher tokens-per-char).
+        max_tokens: 800,
+        temperature: 0.2,
+        system: SYSTEM_PROMPT,
+        tools: [TOOL],
+        tool_choice: { type: "tool", name: "emit_insight" },
+        messages: [
+          {
+            role: "user",
+            content:
+              `INPUT DATA JSON:\n${JSON.stringify(payload)}\n\n` +
+              `RESPOND IN ${LOCALE_NAMES[loc]}. Every number, currency symbol (€), ` +
+              `percent sign (%), and arrow glyph (▲ ▼ —) must appear verbatim as in ` +
+              `the INPUT DATA — only translate prose.`,
+          },
+        ],
+      });
+      // deno-lint-ignore no-explicit-any
+      const toolBlock = msg.content.find((c: any) => c.type === "tool_use");
+      if (!toolBlock || typeof (toolBlock as { input: unknown }).input !== "object") {
+        throw new Error("tool_use block missing");
       }
+      const entry = (toolBlock as { input: unknown }).input;
+      if (!validateEntry(entry)) throw new Error("invalid shape");
+
       const digitOk =
         digitGuardOk(entry.headline, allowed) &&
         digitGuardOk(entry.body, allowed) &&
         entry.action_points.every((b) => digitGuardOk(b, allowed));
-      if (!digitOk) {
-        localeFailures.push(`${loc}:digit-guard`);
-        continue;
-      }
-      localeEntries[loc] = entry;
-    }
+      if (!digitOk) throw new Error("digit-guard rejected");
 
-    if (localeFailures.length > 0) {
+      localeEntries[loc] = entry;
+    } catch (err) {
+      const reason = (err as Error).message ?? "unknown";
+      localeFailures.push(`${loc}:${reason}`);
       fallbackUsed = true;
-      fallbackReason = `locale-level failures: ${localeFailures.join(",")}`;
-      console.error(
-        `[generate-insight] tenant=${restaurantId} ${fallbackReason}`,
-      );
+      // localeEntries[loc] already seeded with englishFallback above.
     }
-  } catch (err) {
-    // Whole-LLM failure — every locale keeps the English fallback that was
-    // seeded into localeEntries above.
-    fallbackReason = (err as Error).message;
-    fallbackUsed = true;
+  }
+
+  let fallbackReason: string | undefined;
+  if (localeFailures.length > 0) {
+    fallbackReason = `locale-level failures: ${localeFailures.join(",")}`;
     console.error(
-      `[generate-insight] tenant=${restaurantId} fallback reason=${fallbackReason}`,
+      `[generate-insight] tenant=${restaurantId} ${fallbackReason}`,
     );
   }
 
@@ -246,14 +247,18 @@ function deriveFallbackInput(p: InsightPayload) {
   const nvr = p.new_vs_returning;
   const total = nvr.new_revenue + nvr.returning_revenue + nvr.cash_revenue;
   const returningPct = total > 0 ? Math.round((nvr.returning_revenue / total) * 100) : 0;
+  // Read euros from p.display.*_eur — NOT p.kpi.*_revenue (those are cents).
+  // The LLM path uses the same euro fields (per prompt.ts CURRENCY SOURCE
+  // rules); the fallback must match to keep numbers consistent whether the
+  // row came from Haiku or the deterministic path.
   return {
-    today_revenue_int: Math.round(p.kpi.today_revenue),
+    today_revenue_int: p.display.today_revenue_eur,
     today_delta_pct: Math.abs(Math.round(p.kpi.today_delta_pct)),
     today_delta_sign: sign(p.kpi.today_delta_pct),
-    last_week_revenue_int: Math.round(p.kpi.last_week_revenue),
+    last_week_revenue_int: p.display.last_week_revenue_eur,
     last_week_delta_pct: Math.abs(Math.round(p.kpi.last_week_delta_pct)),
     last_week_delta_sign: sign(p.kpi.last_week_delta_pct),
-    last_four_weeks_revenue_int: Math.round(p.kpi.last_four_weeks_revenue),
+    last_four_weeks_revenue_int: p.display.last_four_weeks_revenue_eur,
     last_four_weeks_delta_pct: Math.abs(Math.round(p.kpi.last_four_weeks_delta_pct)),
     last_four_weeks_delta_sign: sign(p.kpi.last_four_weeks_delta_pct),
     returning_pct: returningPct,
