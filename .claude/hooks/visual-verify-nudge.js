@@ -13,7 +13,16 @@
  * back to extension-only detection and tells Claude to figure out the URL
  * from CLAUDE.md / repo context.
  *
- * Failure mode: any error → exit 0 silently. The hook never breaks Claude.
+ * Failure mode: any error → exit 0 (the hook never breaks Claude) PLUS a
+ * one-line stderr log so the failure is visible in claude-code harness
+ * output instead of vanishing. This was added after a silent ESM-mode
+ * require() crash hid a broken hook for an unknown duration in a
+ * downstream repo.
+ *
+ * CommonJS is required: this file uses require() so it works in repos
+ * whose root package.json declares "type": "module" only when a sibling
+ * .claude/hooks/package.json scopes this directory back to CommonJS.
+ * That sibling file is part of the sync set — do not delete it.
  *
  * Universal across repos. Single source of truth lives in
  * AiLine/shared-docs and is propagated via .github/sync-config.yml (AiLine)
@@ -24,6 +33,15 @@
 
 const fs = require('fs')
 const path = require('path')
+
+function logErr(where, err) {
+  // Stderr does not break Claude (PostToolUse hook only treats non-zero exit
+  // codes as blocking). Surfaces in `claude --debug` and harness logs.
+  try {
+    const msg = err && (err.stack || err.message || String(err))
+    process.stderr.write(`[visual-verify-nudge] ${where}: ${msg}\n`)
+  } catch { /* never throw from the logger itself */ }
+}
 
 const CONFIG_PATH = path.join(__dirname, 'verify-targets.json')
 
@@ -42,7 +60,8 @@ function loadConfig() {
       defaultUrl: typeof cfg.defaultUrl === 'string' ? cfg.defaultUrl : null,
       excludePaths: Array.isArray(cfg.excludePaths) ? cfg.excludePaths : [],
     }
-  } catch {
+  } catch (err) {
+    logErr('loadConfig', err)
     return { extensions: DEFAULT_EXTENSIONS, rules: [], defaultUrl: null, excludePaths: [] }
   }
 }
@@ -98,7 +117,7 @@ function buildReminder(filePath, target) {
     '2. Call `mcp__claude-in-chrome__tabs_context_mcp` to inspect existing tabs',
     `3. Navigate to: ${target.url}`,
     '4. Interact with the SPECIFIC feature you changed (click, type, scroll — not just load the page)',
-    '5. Read `mcp__claude-in-chrome__read_console_messages` for runtime errors',
+    '5. Read `mcp__claude-in-chrome__read_console_messages` for runtime errors. NOTE: console tracking starts when this tool is FIRST called — to capture page-load errors you must call it once, then `location.reload()`, then call it again.',
     '6. State in your final message: `Visual verification: <what you saw>` with verdict PASS / FAIL / PARTIAL',
     '',
     '## Recognise your own rationalisations',
@@ -131,7 +150,7 @@ async function main() {
   if (!raw.trim()) process.exit(0)
 
   let payload
-  try { payload = JSON.parse(raw) } catch { process.exit(0) }
+  try { payload = JSON.parse(raw) } catch (err) { logErr('JSON.parse', err); process.exit(0) }
 
   const filePath = payload?.tool_input?.file_path || payload?.tool_input?.path || ''
   if (!filePath) process.exit(0)
@@ -151,4 +170,4 @@ async function main() {
   process.exit(0)
 }
 
-main().catch(() => process.exit(0))
+main().catch(err => { logErr('main', err); process.exit(0) })
