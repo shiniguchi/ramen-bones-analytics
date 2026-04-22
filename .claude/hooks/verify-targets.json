@@ -1,0 +1,21 @@
+{
+  "_comment": "ramen-bones-analytics is a SvelteKit + Cloudflare Pages app. Default rule points at the local Vite dev server (port 5173). Update defaultUrl to the deployed Pages URL once available.",
+  "extensions": [".svelte", ".tsx", ".jsx", ".vue", ".astro", ".html", ".css", ".scss", ".sass", ".less"],
+  "excludePaths": [
+    "node_modules/",
+    ".svelte-kit/",
+    "dist/",
+    "build/",
+    ".storybook/",
+    "stories.svelte",
+    ".test.",
+    ".spec.",
+    "tests/",
+    "test-results/"
+  ],
+  "rules": [
+    { "pathContains": "src/routes",     "url": "http://localhost:5173",            "name": "ramen-bones routes (local Vite)" },
+    { "pathContains": "src/lib/components", "url": "http://localhost:5173",        "name": "ramen-bones components (local Vite)" }
+  ],
+  "defaultUrl": "http://localhost:5173"
+}
