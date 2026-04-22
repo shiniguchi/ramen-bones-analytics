@@ -6,6 +6,7 @@
   type Insight = {
     headline: string;
     body: string;
+    action_points: string[];
     business_date: string;
     fallback_used: boolean;
     is_yesterday: boolean;
@@ -31,6 +32,16 @@
   <p class="mt-2 text-sm leading-normal text-zinc-700">
     {insight.body}
   </p>
+
+  {#if insight.action_points.length > 0}
+    <ul class="mt-3 space-y-1 text-sm leading-normal text-zinc-700">
+      {#each insight.action_points as bullet}
+        <li class="flex gap-2 before:text-zinc-400 before:content-['·']">
+          <span>{bullet}</span>
+        </li>
+      {/each}
+    </ul>
+  {/if}
 
   {#if insight.fallback_used}
     <span class="block text-xs leading-[1.4] font-normal text-zinc-500 mt-3">

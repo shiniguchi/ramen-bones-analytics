@@ -24,7 +24,8 @@ const anthropic = new Anthropic({ apiKey: Deno.env.get("ANTHROPIC_API_KEY")! });
 // Tool-use schema — forces Haiku to emit structured JSON instead of freeform text.
 const TOOL = {
   name: "emit_insight",
-  description: "Emit the headline and body for today's dashboard insight card.",
+  description:
+    "Emit the headline, body, and action-point bullets for today's dashboard insight card.",
   input_schema: {
     type: "object",
     properties: {
@@ -36,8 +37,18 @@ const TOOL = {
         type: "string",
         description: "2-3 sentences, max 280 chars total.",
       },
+      action_points: {
+        type: "array",
+        minItems: 2,
+        maxItems: 3,
+        items: {
+          type: "string",
+          description: "Bullet, max 60 chars, no trailing period.",
+        },
+        description: "2-3 observational bullets on the most notable movements.",
+      },
     },
-    required: ["headline", "body"],
+    required: ["headline", "body", "action_points"],
   },
 } as const;
 
@@ -73,13 +84,15 @@ async function generateForTenant(restaurantId: string, tz: string) {
 
   let headline: string | null = null;
   let body: string | null = null;
+  let actionPoints: string[] = [];
   let fallbackUsed = false;
   let fallbackReason: string | undefined;
 
   try {
     const msg = await anthropic.messages.create({
       model: MODEL,
-      max_tokens: 400,
+      // 600 (up from 400) to fit headline + body + 2-3 bullets within one tool call.
+      max_tokens: 600,
       temperature: 0.2,
       system: SYSTEM_PROMPT,
       tools: [TOOL],
@@ -95,7 +108,9 @@ async function generateForTenant(restaurantId: string, tz: string) {
     if (!toolBlock || typeof (toolBlock as { input: unknown }).input !== "object") {
       throw new Error("tool_use block missing");
     }
-    const input = (toolBlock as { input: { headline?: unknown; body?: unknown } }).input;
+    const input = (toolBlock as {
+      input: { headline?: unknown; body?: unknown; action_points?: unknown };
+    }).input;
     if (
       typeof input.headline !== "string" ||
       typeof input.body !== "string" ||
@@ -104,14 +119,33 @@ async function generateForTenant(restaurantId: string, tz: string) {
     ) {
       throw new Error("invalid shape");
     }
+    // action_points: must be an array of 2-3 non-empty strings. minItems/maxItems
+    // in the tool schema is advisory; Anthropic does not strictly enforce it, so
+    // we re-check here and route any shape drift to the deterministic fallback.
+    const ap = input.action_points;
+    if (
+      !Array.isArray(ap) ||
+      ap.length < 2 ||
+      ap.length > 3 ||
+      ap.some((b) => typeof b !== "string" || (b as string).length === 0)
+    ) {
+      throw new Error("invalid action_points shape");
+    }
+    const bullets = ap as string[];
 
     // Digit-guard: every numeric token in LLM output must trace back to the payload.
-    if (!digitGuardOk(input.headline, allowed) || !digitGuardOk(input.body, allowed)) {
+    // Same `allowed` set covers all three fields — no new payload traversal.
+    if (
+      !digitGuardOk(input.headline, allowed) ||
+      !digitGuardOk(input.body, allowed) ||
+      bullets.some((b) => !digitGuardOk(b, allowed))
+    ) {
       throw new Error("digit-guard rejected");
     }
 
     headline = input.headline;
     body = input.body;
+    actionPoints = bullets;
   } catch (err) {
     // Any failure in the LLM path — network, shape, digit-guard — routes to fallback.
     // Logging the reason keeps "why did we fall back" observable in function logs.
@@ -122,6 +156,7 @@ async function generateForTenant(restaurantId: string, tz: string) {
     const fb = buildFallback(deriveFallbackInput(payload));
     headline = fb.headline;
     body = fb.body;
+    actionPoints = fb.action_points;
     fallbackUsed = true;
   }
 
@@ -134,6 +169,7 @@ async function generateForTenant(restaurantId: string, tz: string) {
         business_date: businessDate,
         headline,
         body,
+        action_points: actionPoints,
         input_payload: payload,
         model: MODEL,
         fallback_used: fallbackUsed,

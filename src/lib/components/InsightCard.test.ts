@@ -7,6 +7,10 @@ describe("InsightCard", () => {
   const baseInsight = {
     headline: "Weekend traffic slipped 18%",
     body: "Saturday and Sunday transactions were the lowest in 4 weeks. Weekday revenue held steady at €2840.",
+    action_points: [
+      "Weekend revenue 18% below 4-week average",
+      "Weekday €2840 steady",
+    ],
     business_date: "2026-04-14",
     fallback_used: false,
     is_yesterday: false,
@@ -53,5 +57,20 @@ describe("InsightCard", () => {
   it("has role='article' on outer section (UI-SPEC accessibility)", () => {
     const { container } = render(InsightCard, { insight: baseInsight });
     expect(container.querySelector("[role='article']")).not.toBeNull();
+  });
+
+  it("renders action_points bullets in a list", () => {
+    const { container } = render(InsightCard, { insight: baseInsight });
+    const items = container.querySelectorAll("ul li");
+    expect(items.length).toBe(2);
+    expect(items[0].textContent).toContain("Weekend revenue 18%");
+    expect(items[1].textContent).toContain("Weekday €2840 steady");
+  });
+
+  it("omits the bullet list when action_points is empty", () => {
+    const { container } = render(InsightCard, {
+      insight: { ...baseInsight, action_points: [] },
+    });
+    expect(container.querySelector("ul")).toBeNull();
   });
 });

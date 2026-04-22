@@ -188,17 +188,18 @@ export const load: PageServerLoad = async ({ locals, url, depends }) => {
     .select('period_weeks,id,label,country,segment,credibility,cuisine_match,metric_type,conversion_note,sample_size,year,url,raw_value,normalized_value')
   ).catch((e: unknown) => { console.error('[benchmark_sources_v]', e); return [] as BenchmarkSourceRow[]; });
 
-  // Insights — latest row only (05-01).
+  // Insights — latest row only (05-01). action_points added in 260422-fz1.
   type InsightRow = {
     id: string;
     business_date: string;
     headline: string;
     body: string;
+    action_points: string[] | null;
     fallback_used: boolean;
   };
   const insightP = locals.supabase
     .from('insights_v')
-    .select('id, business_date, headline, body, fallback_used')
+    .select('id, business_date, headline, body, action_points, fallback_used')
     .order('business_date', { ascending: false })
     .limit(1)
     .maybeSingle()
@@ -257,6 +258,7 @@ export const load: PageServerLoad = async ({ locals, url, depends }) => {
     ? {
         headline: latestInsightRow.headline,
         body: latestInsightRow.body,
+        action_points: latestInsightRow.action_points ?? [],
         business_date: latestInsightRow.business_date,
         fallback_used: latestInsightRow.fallback_used,
         is_yesterday: latestInsightRow.business_date !== todayBerlin
