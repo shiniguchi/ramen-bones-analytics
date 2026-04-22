@@ -28,7 +28,13 @@ export type InsightPayload = {
     today_delta_pct: number;
     last_week_delta_pct: number;
     last_four_weeks_delta_pct: number;
+    // tx_count is the SINGLE-DAY count on `week_ending` — kept for back-compat.
+    // The prompt forbids emitting this directly; weekly output uses
+    // `last_week_tx_count` below.
     tx_count: number;
+    // Sum of tx_count across the full Mon–Sun `last_week_*` window. Matches
+    // the scope of last_week_revenue so "X transactions last week" is honest.
+    last_week_tx_count: number;
     avg_ticket: number;
   };
   // ISO date (YYYY-MM-DD) of the Sunday that closes `last_week_*`. The
@@ -201,6 +207,22 @@ export async function buildPayload(
   const week_ending = lastSunday ? isoDate(lastSunday) : "";
 
   const tx_count = kpiRows.slice(0, 1).reduce((a, r) => a + (Number(r.tx_count ?? 0) || 0), 0);
+  // Weekly tx count — sum over the same Mon–Sun window as last_week_revenue.
+  // If lastSunday couldn't be resolved, falls through to 0 (safe default).
+  const last_week_tx_count = lastSunday
+    ? (() => {
+        const weekStart = new Date(lastSunday);
+        weekStart.setUTCDate(weekStart.getUTCDate() - 6);
+        const startStr = isoDate(weekStart);
+        const endStr = isoDate(lastSunday);
+        return kpiRows.reduce((acc, r) => {
+          const d = String(r.business_date);
+          return d >= startStr && d <= endStr
+            ? acc + (Number(r.tx_count ?? 0) || 0)
+            : acc;
+        }, 0);
+      })()
+    : 0;
   const avg_ticket = Math.round(
     Number(kpiRows[0]?.avg_ticket ?? kpiRows[0]?.avg_ticket_cents ?? 0) || 0,
   );
@@ -307,6 +329,7 @@ export async function buildPayload(
       last_week_delta_pct,
       last_four_weeks_delta_pct,
       tx_count,
+      last_week_tx_count,
       avg_ticket,
     },
     week_ending,

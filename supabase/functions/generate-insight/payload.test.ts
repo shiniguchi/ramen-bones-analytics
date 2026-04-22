@@ -18,6 +18,7 @@ Deno.test("InsightPayload type includes all D-05 required fields (Mon–Sun week
       last_week_delta_pct: 0,
       last_four_weeks_delta_pct: 0,
       tx_count: 0,
+      last_week_tx_count: 0,
       avg_ticket: 0,
     },
     week_ending: "2026-04-19",
