@@ -5,6 +5,7 @@ import InsightCard from "$lib/components/InsightCard.svelte";
 
 describe("InsightCard", () => {
   const baseInsight = {
+    id: "11111111-1111-1111-1111-111111111111",
     headline: "Past 7 days €1842 ▼ 12% vs prior week",
     body: "Past 7 days logged €1842 in revenue. Four-week rolling total €8120. Returning customers drove 38% of spend.",
     action_points: [
@@ -74,5 +75,15 @@ describe("InsightCard", () => {
       insight: { ...baseInsight, action_points: [] },
     });
     expect(container.querySelector("ul")).toBeNull();
+  });
+
+  it("shows edit button when isAdmin=true", () => {
+    const { container } = render(InsightCard, { insight: baseInsight, isAdmin: true });
+    expect(container.querySelector("button[aria-label='Edit insight']")).not.toBeNull();
+  });
+
+  it("hides edit button when isAdmin=false (default)", () => {
+    const { container } = render(InsightCard, { insight: baseInsight });
+    expect(container.querySelector("button[aria-label='Edit insight']")).toBeNull();
   });
 });
