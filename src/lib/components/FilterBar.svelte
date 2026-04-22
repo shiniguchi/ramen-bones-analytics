@@ -8,6 +8,8 @@
   import DatePickerPopover from './DatePickerPopover.svelte';
   import Popover from './ui/popover.svelte';
   import Checkbox from './ui/checkbox.svelte';
+  import { page } from '$app/state';
+  import { t, type MessageKey } from '$lib/i18n/messages';
   import type { FiltersState } from '$lib/filters';
   import type { RangeWindow, Grain } from '$lib/dateRange';
 
@@ -33,41 +35,43 @@
     onDaysChange = () => {}
   }: Props = $props();
 
-  const salesTypeOptions = [
-    { value: 'all', label: 'All' },
-    { value: 'INHOUSE', label: 'Inhouse' },
-    { value: 'TAKEAWAY', label: 'Takeaway' }
-  ];
+  const salesTypeOptions = $derived([
+    { value: 'all',      label: t(page.data.locale, 'sales_type_all') },
+    { value: 'INHOUSE',  label: t(page.data.locale, 'sales_type_inhouse') },
+    { value: 'TAKEAWAY', label: t(page.data.locale, 'sales_type_takeaway') }
+  ]);
 
-  const cashOptions = [
-    { value: 'all', label: 'All' },
-    { value: 'cash', label: 'Cash' },
-    { value: 'card', label: 'Card' }
-  ];
+  const cashOptions = $derived([
+    { value: 'all',  label: t(page.data.locale, 'cash_all') },
+    { value: 'cash', label: t(page.data.locale, 'cash_cash') },
+    { value: 'card', label: t(page.data.locale, 'cash_card') }
+  ]);
 
-  // Mon=1..Sun=7 ordered labels for the popover rows.
-  const DAY_ROWS: { value: number; label: string; short: string }[] = [
-    { value: 1, label: 'Mon', short: 'Mon' },
-    { value: 2, label: 'Tue', short: 'Tue' },
-    { value: 3, label: 'Wed', short: 'Wed' },
-    { value: 4, label: 'Thu', short: 'Thu' },
-    { value: 5, label: 'Fri', short: 'Fri' },
-    { value: 6, label: 'Sat', short: 'Sat' },
-    { value: 7, label: 'Sun', short: 'Sun' }
+  // Mon=1..Sun=7 ordered labels for the popover rows. Localized via t().
+  const DAY_KEYS: MessageKey[] = [
+    'day_mon', 'day_tue', 'day_wed', 'day_thu', 'day_fri', 'day_sat', 'day_sun'
   ];
+  const DAY_ROWS = $derived(
+    DAY_KEYS.map((k, i) => ({
+      value: i + 1,
+      label: t(page.data.locale, k),
+      short: t(page.data.locale, k)
+    }))
+  );
 
   // Derive a compact trigger label from the current days array.
   // "All days" / "Mon–Fri" / "Sat–Sun" / "Wed only" / "<n> days"
   const daysLabel = $derived.by(() => {
-    if (days.length === 7) return 'All days';
+    const loc = page.data.locale;
+    if (days.length === 7) return t(loc, 'days_all');
     const csv = [...days].sort((a, b) => a - b).join(',');
-    if (csv === '1,2,3,4,5') return 'Mon–Fri';
-    if (csv === '6,7') return 'Sat–Sun';
+    if (csv === '1,2,3,4,5') return t(loc, 'days_mon_fri');
+    if (csv === '6,7') return t(loc, 'days_sat_sun');
     if (days.length === 1) {
       const row = DAY_ROWS.find((r) => r.value === days[0]);
-      return `${row?.short ?? '?'} only`;
+      return t(loc, 'days_only', { day: row?.short ?? '?' });
     }
-    return `${days.length} days`;
+    return t(loc, 'days_n', { n: days.length });
   });
 
   let daysOpen = $state(false);
@@ -107,7 +111,7 @@
       options={salesTypeOptions}
       selected={filters.sales_type ?? 'all'}
       onchange={onsalestypechange}
-      label="Sales type"
+      label={t(page.data.locale, 'filter_sales_type')}
     />
     <!-- Separator -->
     <div class="h-6 w-px shrink-0 bg-zinc-200" aria-hidden="true"></div>
@@ -115,7 +119,7 @@
       options={cashOptions}
       selected={filters.is_cash ?? 'all'}
       onchange={oncashfilterchange}
-      label="Payment type"
+      label={t(page.data.locale, 'filter_payment_type')}
     />
     <!-- Separator -->
     <div class="h-6 w-px shrink-0 bg-zinc-200" aria-hidden="true"></div>
@@ -124,7 +128,7 @@
       {#snippet trigger()}
         <button
           type="button"
-          aria-label="Days of week"
+          aria-label={t(page.data.locale, 'days_aria')}
           aria-haspopup="dialog"
           aria-expanded={daysOpen}
           data-testid="days-popover-trigger"
@@ -136,7 +140,7 @@
       {/snippet}
       {#snippet children()}
         <div data-testid="days-popover-content" class="flex flex-col gap-1">
-          <p class="mb-1 text-xs font-medium text-zinc-500">Filter by day of week</p>
+          <p class="mb-1 text-xs font-medium text-zinc-500">{t(page.data.locale, 'days_filter_heading')}</p>
           {#each DAY_ROWS as row (row.value)}
             <Checkbox
               checked={days.includes(row.value)}
@@ -151,19 +155,19 @@
               data-testid="days-preset-all"
               class="min-h-9 rounded-md bg-zinc-100 px-2.5 py-1 text-xs font-medium text-zinc-700 hover:bg-zinc-200"
               onclick={() => applyPreset([1, 2, 3, 4, 5, 6, 7])}
-            >All</button>
+            >{t(page.data.locale, 'days_preset_all')}</button>
             <button
               type="button"
               data-testid="days-preset-weekdays"
               class="min-h-9 rounded-md bg-zinc-100 px-2.5 py-1 text-xs font-medium text-zinc-700 hover:bg-zinc-200"
               onclick={() => applyPreset([1, 2, 3, 4, 5])}
-            >Weekdays</button>
+            >{t(page.data.locale, 'days_preset_weekdays')}</button>
             <button
               type="button"
               data-testid="days-preset-weekends"
               class="min-h-9 rounded-md bg-zinc-100 px-2.5 py-1 text-xs font-medium text-zinc-700 hover:bg-zinc-200"
               onclick={() => applyPreset([6, 7])}
-            >Weekends</button>
+            >{t(page.data.locale, 'days_preset_weekends')}</button>
           </div>
         </div>
       {/snippet}

@@ -7,6 +7,8 @@
   import { scaleSequential } from 'd3-scale';
   import { interpolateBlues } from 'd3-scale-chromatic';
   import { format, parseISO } from 'date-fns';
+  import { page } from '$app/state';
+  import { t, type MessageKey } from '$lib/i18n/messages';
   import { formatEUR } from '$lib/format';
   import { getFilters } from '$lib/dashboardStore.svelte';
 
@@ -47,8 +49,11 @@
   const CELL_PX = 14;
   const MONTH_LABEL_PAD_PX = 24; // must match Chart padding.top below
 
-  // Day-of-week row labels aligned to Monday-first order.
-  const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  // Day-of-week row labels aligned to Monday-first order. Localized via t().
+  const DAY_KEYS: MessageKey[] = [
+    'day_mon', 'day_tue', 'day_wed', 'day_thu', 'day_fri', 'day_sat', 'day_sun'
+  ];
+  const DAY_LABELS = $derived(DAY_KEYS.map((k) => t(page.data.locale, k)));
 
   // CSS gradient string sampled from interpolateBlues at 10 stops — used as the
   // colorbar legend fill. Matches the sequential scale used for cell color.
@@ -74,14 +79,13 @@
   data-testid="daily-heatmap-card"
   class="rounded-xl border border-zinc-200 bg-white p-4"
 >
-  <h2 class="text-base font-semibold text-zinc-900">Daily revenue heatmap</h2>
+  <h2 class="text-base font-semibold text-zinc-900">{t(page.data.locale, 'heatmap_title')}</h2>
   <p class="mt-1 text-xs text-zinc-500">
-    Each square is one day — darker = more revenue. Shows full history, always
-    unfiltered.
+    {t(page.data.locale, 'heatmap_subtitle')}
   </p>
 
   {#if dated.length === 0}
-    <p class="mt-4 pt-6 text-center text-sm text-zinc-500">No daily data yet.</p>
+    <p class="mt-4 pt-6 text-center text-sm text-zinc-500">{t(page.data.locale, 'heatmap_empty')}</p>
   {:else}
   <!-- Horizontal-scroll wrapper: Calendar lays out weeks left-to-right and can
        exceed viewport width when history extends beyond ~52 weeks. Day labels
@@ -141,9 +145,9 @@
           {#snippet children({ data: cell })}
             <Tooltip.Header>{format(cell.date, 'EEE, MMM d, yyyy')}</Tooltip.Header>
             <Tooltip.List>
-              <Tooltip.Item label="Revenue" value={formatEUR(cell.revenue_cents ?? 0)} />
+              <Tooltip.Item label={t(page.data.locale, 'tooltip_revenue')} value={formatEUR(cell.revenue_cents ?? 0)} />
               {#if cell.tx_count}
-                <Tooltip.Item label="Transactions" value={`${cell.tx_count} txn`} />
+                <Tooltip.Item label={t(page.data.locale, 'tooltip_transactions')} value={`${cell.tx_count} ${t(page.data.locale, 'txn_suffix')}`} />
               {/if}
             </Tooltip.List>
           {/snippet}

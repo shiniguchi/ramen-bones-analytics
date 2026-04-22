@@ -4,6 +4,8 @@
   // Stacked bars = ratio view. Top-20 ranked by REVENUE (not count), rest → "Other".
   // Dashed trend line overlays total revenue per bucket via bucketTrend.
   import { Chart, Svg, Axis, Bars, Spline, Text, Tooltip } from 'layerchart';
+  import { page } from '$app/state';
+  import { t } from '$lib/i18n/messages';
   import { formatEUR } from '$lib/format';
   import EmptyState from './EmptyState.svelte';
   import { ITEM_COLORS, OTHER_COLOR } from '$lib/chartPalettes';
@@ -112,8 +114,8 @@
   data-testid="calendar-item-revenue-card"
   class="rounded-xl border border-zinc-200 bg-white p-4"
 >
-  <h2 class="text-base font-semibold text-zinc-900">Revenue per period — top 20 menu items</h2>
-  <p class="mt-1 text-xs text-zinc-500">Share of revenue per period. Rest grouped as "Other".</p>
+  <h2 class="text-base font-semibold text-zinc-900">{t(page.data.locale, 'cal_item_revenue_title')}</h2>
+  <p class="mt-1 text-xs text-zinc-500">{t(page.data.locale, 'cal_item_revenue_subtitle')}</p>
   {#if filtered.length === 0}
     <EmptyState card="calendar-items" />
   {:else}
@@ -180,7 +182,7 @@
                   />
                 {/if}
               {/each}
-              <Tooltip.Item label="Total" value={formatEUR((bucketIdx >= 0 ? totals[bucketIdx] : 0) * 100)} />
+              <Tooltip.Item label={t(page.data.locale, 'tooltip_total')} value={formatEUR((bucketIdx >= 0 ? totals[bucketIdx] : 0) * 100)} />
             </Tooltip.List>
           {/snippet}
         </Tooltip.Root>

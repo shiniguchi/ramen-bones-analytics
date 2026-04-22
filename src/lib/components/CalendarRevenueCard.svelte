@@ -5,6 +5,8 @@
   // Self-subscribes to dashboardStore via getter calls inside $derived.by() —
   // same pattern as KpiTile. No prop-drilling of data/grain/filters.
   import { Chart, Svg, Axis, Bars, Spline, Text, Tooltip } from 'layerchart';
+  import { page } from '$app/state';
+  import { t } from '$lib/i18n/messages';
   import { formatEUR } from '$lib/format';
   import EmptyState from './EmptyState.svelte';
   import VisitSeqLegend from './VisitSeqLegend.svelte';
@@ -82,7 +84,7 @@
 </script>
 
 <div data-testid="calendar-revenue-card" class="rounded-xl border border-zinc-200 bg-white p-4">
-  <h2 class="text-base font-semibold text-zinc-900">Revenue per period — by visit number</h2>
+  <h2 class="text-base font-semibold text-zinc-900">{t(page.data.locale, 'cal_revenue_title')}</h2>
   {#if getFiltered().length === 0}
     <EmptyState card="calendar-revenue" />
   {:else}
@@ -142,7 +144,7 @@
                   <Tooltip.Item label={s.label} color={s.color} value={formatEUR((fullRow[s.key] as number) * 100)} />
                 {/if}
               {/each}
-              <Tooltip.Item label="Total" value={formatEUR((bucketIdx >= 0 ? totals[bucketIdx] : 0) * 100)} />
+              <Tooltip.Item label={t(page.data.locale, 'tooltip_total')} value={formatEUR((bucketIdx >= 0 ? totals[bucketIdx] : 0) * 100)} />
             </Tooltip.List>
           {/snippet}
         </Tooltip.Root>

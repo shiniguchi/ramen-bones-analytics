@@ -9,6 +9,8 @@
   import Popover from '$lib/components/ui/popover.svelte';
   import Button from '$lib/components/ui/button.svelte';
   import Input from '$lib/components/ui/input.svelte';
+  import { page } from '$app/state';
+  import { t } from '$lib/i18n/messages';
   import { cn } from '$lib/utils';
   import type { FiltersState } from '$lib/filters';
   import type { RangeWindow } from '$lib/dateRange';
@@ -33,17 +35,17 @@
     }
   });
 
-  // Preset labels in order.
-  const PRESETS: { id: 'today' | '7d' | '30d' | '90d' | 'all'; label: string }[] = [
-    { id: 'today', label: 'Today' },
-    { id: '7d', label: '7d' },
-    { id: '30d', label: '30d' },
-    { id: '90d', label: '90d' },
-    { id: 'all', label: 'All' }
-  ];
+  // Preset labels in order — numeric presets (7d/30d/90d) are locale-universal.
+  const PRESETS = $derived<{ id: 'today' | '7d' | '30d' | '90d' | 'all'; label: string }[]>([
+    { id: 'today', label: t(page.data.locale, 'range_today') },
+    { id: '7d',    label: '7d' },
+    { id: '30d',   label: '30d' },
+    { id: '90d',   label: '90d' },
+    { id: 'all',   label: t(page.data.locale, 'range_all') }
+  ]);
 
   const presetLabel = $derived.by(() => {
-    if (filters.range === 'custom') return 'Custom';
+    if (filters.range === 'custom') return t(page.data.locale, 'range_custom');
     const p = PRESETS.find((x) => x.id === filters.range);
     return p?.label ?? '7d';
   });
@@ -104,9 +106,9 @@
     </Button>
   {/snippet}
 
-  <h3 class="mb-3 text-base font-medium">Select date range</h3>
+  <h3 class="mb-3 text-base font-medium">{t(page.data.locale, 'date_range_select')}</h3>
 
-  <div class="mb-2 text-xs font-medium text-muted-foreground">Quick select</div>
+  <div class="mb-2 text-xs font-medium text-muted-foreground">{t(page.data.locale, 'date_quick_select')}</div>
   <div class="mb-4 flex flex-wrap gap-2">
     {#each PRESETS as p}
       <button
@@ -124,17 +126,17 @@
     {/each}
   </div>
 
-  <div class="mb-2 text-xs font-medium text-muted-foreground">Custom range</div>
+  <div class="mb-2 text-xs font-medium text-muted-foreground">{t(page.data.locale, 'date_custom_range')}</div>
   <div class="mb-4 flex flex-col gap-2">
     <label class="flex flex-col gap-1 text-xs font-medium">
-      <span>From</span>
+      <span>{t(page.data.locale, 'date_from')}</span>
       <Input type="date" bind:value={fromDraft} class="min-h-11" />
     </label>
     <label class="flex flex-col gap-1 text-xs font-medium">
-      <span>To</span>
+      <span>{t(page.data.locale, 'date_to')}</span>
       <Input type="date" bind:value={toDraft} class="min-h-11" />
     </label>
   </div>
 
-  <Button class="min-h-11 w-full" onclick={applyCustom}>Apply range</Button>
+  <Button class="min-h-11 w-full" onclick={applyCustom}>{t(page.data.locale, 'date_apply')}</Button>
 </Popover>

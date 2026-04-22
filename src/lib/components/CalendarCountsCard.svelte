@@ -3,6 +3,8 @@
   // tx_count metric instead of revenue_cents. Title + testid differ only.
   // D-06 gradient + D-07 cash segment + D-08 shared legend.
   import { Chart, Svg, Axis, Bars, Spline, Text, Tooltip } from 'layerchart';
+  import { page } from '$app/state';
+  import { t } from '$lib/i18n/messages';
   import EmptyState from './EmptyState.svelte';
   import VisitSeqLegend from './VisitSeqLegend.svelte';
   import { VISIT_SEQ_COLORS, CASH_COLOR } from '$lib/chartPalettes';
@@ -60,7 +62,7 @@
 </script>
 
 <div data-testid="calendar-counts-card" class="rounded-xl border border-zinc-200 bg-white p-4">
-  <h2 class="text-base font-semibold text-zinc-900">Transactions per period — by visit number</h2>
+  <h2 class="text-base font-semibold text-zinc-900">{t(page.data.locale, 'cal_counts_title')}</h2>
   {#if getFiltered().length === 0}
     <EmptyState card="calendar-counts" />
   {:else}
@@ -117,10 +119,10 @@
             <Tooltip.List>
               {#each series as s (s.key)}
                 {#if ((fullRow?.[s.key] as number) ?? 0) > 0}
-                  <Tooltip.Item label={s.label} color={s.color} value={`${fullRow[s.key]} txn`} />
+                  <Tooltip.Item label={s.label} color={s.color} value={`${fullRow[s.key]} ${t(page.data.locale, 'txn_suffix')}`} />
                 {/if}
               {/each}
-              <Tooltip.Item label="Total" value={`${bucketIdx >= 0 ? totals[bucketIdx] : 0} txn`} />
+              <Tooltip.Item label={t(page.data.locale, 'tooltip_total')} value={`${bucketIdx >= 0 ? totals[bucketIdx] : 0} ${t(page.data.locale, 'txn_suffix')}`} />
             </Tooltip.List>
           {/snippet}
         </Tooltip.Root>

@@ -3,6 +3,8 @@
   // Consumed by CalendarRevenueCard and CalendarCountsCard inline below their charts.
   // No per-segment labels (2nd/3rd/…/7x) — tooltip reveals those on hover/tap.
   import { VISIT_SEQ_COLORS, CASH_COLOR } from '$lib/chartPalettes';
+  import { page } from '$app/state';
+  import { t } from '$lib/i18n/messages';
 
   let { showCash = true }: { showCash?: boolean } = $props();
 </script>
@@ -19,6 +21,6 @@
   {#if showCash}
     <span class="mx-1 text-zinc-400">|</span>
     <div class="h-2 w-4 rounded" style:background-color={CASH_COLOR} data-testid="cash-swatch"></div>
-    <span>Cash</span>
+    <span>{t(page.data.locale, 'legend_cash')}</span>
   {/if}
 </div>

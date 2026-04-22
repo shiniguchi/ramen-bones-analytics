@@ -1,17 +1,21 @@
 // Shared empty-state copy lookup, keyed by card id. D-20.
 // Cards render EmptyState.svelte with a `card` prop that selects an entry here.
+// Copy lives in src/lib/i18n/messages.ts — this table only maps card ids to
+// message keys, so translations stay in one place per i18n contract.
+import type { MessageKey } from './i18n/messages';
+
 export const emptyStates = {
-  revenueFixed: { heading: 'No transactions', body: 'No sales recorded in this window.' },
-  revenueChip: { heading: 'No transactions', body: 'Try a wider date range.' },
-  cohort: { heading: 'No grouping data yet', body: 'Needs at least one non-cash transaction.' },
-  error: { heading: "Couldn't load", body: 'Try refreshing the page.' },
+  revenueFixed:       { headingKey: 'empty_revenue_fixed_heading',     bodyKey: 'empty_revenue_fixed_body' },
+  revenueChip:        { headingKey: 'empty_revenue_chip_heading',      bodyKey: 'empty_revenue_chip_body' },
+  cohort:             { headingKey: 'empty_cohort_heading',            bodyKey: 'empty_cohort_body' },
+  error:              { headingKey: 'empty_error_heading',             bodyKey: 'empty_error_body' },
 
   // Phase 10 additions (D-18)
-  'calendar-revenue':  { heading: 'No revenue yet', body: 'No transactions in this window.' },
-  'calendar-counts':   { heading: 'No transactions yet', body: 'No transactions in this window.' },
-  'calendar-items':    { heading: 'No order items', body: 'No menu items tracked yet.' },
-  'cohort-revenue':    { heading: 'Not enough history', body: 'Grouping charts need at least 5 customers per group.' },
-  'cohort-avg-ltv':    { heading: 'Not enough history', body: 'Grouping charts need at least 5 customers per group.' }
-} as const;
+  'calendar-revenue': { headingKey: 'empty_calendar_revenue_heading',  bodyKey: 'empty_calendar_revenue_body' },
+  'calendar-counts':  { headingKey: 'empty_calendar_counts_heading',   bodyKey: 'empty_calendar_counts_body' },
+  'calendar-items':   { headingKey: 'empty_calendar_items_heading',    bodyKey: 'empty_calendar_items_body' },
+  'cohort-revenue':   { headingKey: 'empty_cohort_revenue_heading',    bodyKey: 'empty_cohort_revenue_body' },
+  'cohort-avg-ltv':   { headingKey: 'empty_cohort_avg_ltv_heading',    bodyKey: 'empty_cohort_avg_ltv_body' }
+} as const satisfies Record<string, { headingKey: MessageKey; bodyKey: MessageKey }>;
 
 export type EmptyCard = keyof typeof emptyStates;

@@ -7,6 +7,7 @@
   import { enhance } from '$app/forms';
   import { invalidateAll } from '$app/navigation';
   import { page } from '$app/state';
+  import { t } from '$lib/i18n/messages';
   import { DEFAULT_LOCALE, type Locale } from '$lib/i18n/locales';
 
   type InsightI18nEntry = { headline: string; body: string; action_points: string[] };
@@ -46,15 +47,28 @@
     };
   });
 
-  // Weekly-cadence label (e.g. "Week ending Apr 15, 2026"). The dashboard
-  // refreshes once per week, so we anchor the card to the snapshot date
-  // rather than a relative "yesterday" indicator.
+  // Locale → Intl BCP47 tag for date formatting. "ja" → "ja-JP", etc.
+  // en stays US-style ("Apr 15, 2026"), others use the locale's default.
+  const intlTag = $derived.by<string>(() => {
+    const loc = activeLocale;
+    return loc === 'en' ? 'en-US'
+         : loc === 'ja' ? 'ja-JP'
+         : loc === 'de' ? 'de-DE'
+         : loc === 'es' ? 'es-ES'
+         : loc === 'fr' ? 'fr-FR'
+         : 'en-US';
+  });
+
+  // Weekly-cadence label (e.g. "Week ending Apr 15, 2026" / "2026年4月15日終了週").
+  // The dashboard refreshes once per week, so we anchor the card to the
+  // snapshot date rather than a relative "yesterday" indicator.
   const weekEndingLabel = $derived.by(() => {
     try {
       const d = new Date(insight.business_date + 'T00:00:00Z');
-      return 'Week ending ' + new Intl.DateTimeFormat('en-US', {
+      const formatted = new Intl.DateTimeFormat(intlTag, {
         month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC'
       }).format(d);
+      return t(activeLocale, 'insight_week_ending', { date: formatted });
     } catch {
       return insight.business_date;
     }
@@ -62,17 +76,17 @@
 
   // Cadence + last-run footer: makes the weekly refresh schedule visible and
   // surfaces the actual generated_at so stale runs (missed Mondays) are obvious
-  // instead of silently-old copy. Format: "Refreshed weekly · last run Apr 22".
+  // instead of silently-old copy.
   const refreshLabel = $derived.by(() => {
-    if (!insight.generated_at) return 'Refreshed weekly';
+    if (!insight.generated_at) return t(activeLocale, 'insight_refreshed_weekly');
     try {
       const d = new Date(insight.generated_at);
-      const when = new Intl.DateTimeFormat('en-US', {
+      const when = new Intl.DateTimeFormat(intlTag, {
         month: 'short', day: 'numeric', year: 'numeric'
       }).format(d);
-      return `Refreshed weekly · last run ${when}`;
+      return t(activeLocale, 'insight_refreshed_with_last_run', { date: when });
     } catch {
-      return 'Refreshed weekly';
+      return t(activeLocale, 'insight_refreshed_weekly');
     }
   });
 
@@ -120,7 +134,7 @@
     <button
       type="button"
       onclick={enterEdit}
-      aria-label="Edit insight"
+      aria-label={t(activeLocale, 'insight_edit_aria')}
       class="absolute top-3 right-3 rounded p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700"
     >
       <!-- pencil icon (Lucide "pencil"), inline SVG so we don't add a dep -->
@@ -165,7 +179,7 @@
          fallback template fired instead of Haiku). Combines into one line so
          viewers get the full provenance at a glance. -->
     <span class="block text-xs leading-[1.4] font-normal text-zinc-500 mt-3">
-      {refreshLabel}{#if insight.fallback_used}&nbsp;· auto-generated{/if}
+      {refreshLabel}{#if insight.fallback_used}&nbsp;· {t(activeLocale, 'insight_auto_generated')}{/if}
     </span>
   {:else}
     <!-- Edit mode: form posts to the dashboard `updateInsight` action.
@@ -183,11 +197,11 @@
             await invalidateAll();
             mode = 'view';
           } else if (result.type === 'success' && !result.data?.ok) {
-            errorMsg = String(result.data?.error ?? 'update failed');
+            errorMsg = String(result.data?.error ?? t(activeLocale, 'insight_update_failed'));
           } else if (result.type === 'failure') {
-            errorMsg = String(result.data?.error ?? 'update failed');
+            errorMsg = String(result.data?.error ?? t(activeLocale, 'insight_update_failed'));
           } else if (result.type === 'error') {
-            errorMsg = result.error?.message ?? 'update failed';
+            errorMsg = result.error?.message ?? t(activeLocale, 'insight_update_failed');
           }
         };
       }}
@@ -197,7 +211,7 @@
       <input type="hidden" name="locale" value={activeLocale} />
 
       <label class="block">
-        <span class="block text-xs font-medium text-zinc-600 mb-1">Headline</span>
+        <span class="block text-xs font-medium text-zinc-600 mb-1">{t(activeLocale, 'insight_headline_label')}</span>
         <textarea
           name="headline"
           bind:value={draftHeadline}
@@ -208,7 +222,7 @@
       </label>
 
       <label class="block">
-        <span class="block text-xs font-medium text-zinc-600 mb-1">Body</span>
+        <span class="block text-xs font-medium text-zinc-600 mb-1">{t(activeLocale, 'insight_body_label')}</span>
         <textarea
           name="body"
           bind:value={draftBody}
@@ -219,14 +233,14 @@
       </label>
 
       <fieldset class="space-y-2">
-        <legend class="block text-xs font-medium text-zinc-600">Bullets (up to 3)</legend>
+        <legend class="block text-xs font-medium text-zinc-600">{t(activeLocale, 'insight_bullets_label')}</legend>
         {#each draftBullets as _, i}
           <input
             type="text"
             name="action_points"
             bind:value={draftBullets[i]}
             maxlength="80"
-            placeholder={`Bullet ${i + 1}`}
+            placeholder={t(activeLocale, 'insight_bullet_placeholder', { n: i + 1 })}
             class="w-full rounded-md border border-zinc-300 px-2 py-1 text-sm text-zinc-700 focus:outline-none focus:ring-2 focus:ring-zinc-400"
           />
         {/each}
@@ -242,7 +256,7 @@
           disabled={saving}
           class="rounded-md bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50"
         >
-          {saving ? 'Saving…' : 'Save'}
+          {saving ? t(activeLocale, 'insight_saving') : t(activeLocale, 'insight_save')}
         </button>
         <button
           type="button"
@@ -250,7 +264,7 @@
           disabled={saving}
           class="rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-50"
         >
-          Cancel
+          {t(activeLocale, 'insight_cancel')}
         </button>
       </div>
     </form>
