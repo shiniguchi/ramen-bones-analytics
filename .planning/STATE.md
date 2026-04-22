@@ -4,7 +4,7 @@ milestone: v1.2
 milestone_name: Dashboard Simplification & Visit Attribution
 status: "Phase 11 shipped — CF Pages outage fixed"
 stopped_at: Phase 11 (SSR Performance & Recovery) complete — 3 plans + 9 commits on main. Deployed site restored from Worker Error 1102 storm that unpinned production deployment. chipToRange('all') now clamps to FROM_FLOOR=2024-01-01; parseFilters soft-clamps pathological from/to; SSR fan-out cut from 11 to 6 queries (4 lifetime-unbounded queries moved to /api/* with LazyMount); fetchAll DEFAULT_MAX_PAGES dropped 1000→50. Production smoke curls pass — /, /login, /?range=all, /?from=1970-01-01 all return 303/200 with x-sveltekit-page header. 6 user-uncommitted Calendar*Card/dashboardStore changes preserved untouched throughout.
-last_updated: "2026-04-21T20:05:00Z"
+last_updated: "2026-04-22T09:35:00Z"
 progress:
   total_phases: 11
   completed_phases: 11
@@ -212,6 +212,7 @@ Plan: Complete
 | 260418-g6s | Range-chip cache-miss triggers SSR refetch via goto({invalidateAll:true}) — first-login users clicking "All" chip now actually re-fetches full-window data. Two commits: initial fix used depends+invalidate, Chrome MCP QA caught stale-URL trap (replaceState doesn't feed SvelteKit invalidate), followed up with goto() | 2026-04-18 | 982b010, 92c585a | [260418-g6s-range-chip-ssr-refetch-fix-depends-inval](./quick/260418-g6s-range-chip-ssr-refetch-fix-depends-inval/) |
 | 260419-dhm | DailyHeatmapCard — Mon-Sun row labels fixed left of scroll, blue-scale colorbar (€0 → max) below chart sampling interpolateBlues at 10 stops | 2026-04-19 | e98f074, 4345700 | [260419-dhm-labels-colorbar](./quick/260419-dhm-labels-colorbar/) |
 | 260420-wdf | Day-of-week filter (7 checkboxes, Mon..Sun) applied client-side to KPI tiles + calendar + heatmap + per-item cards; retired Lin/Log toggle (locked to log-linear). Repeater card scope-expanded to full Option-A recomputation (visit_count + cohort_month shift under the "what if" lens) via new lifetime-tx SSR fetch. Retention card keeps caveat (deferred). Sticky filter header fix: swapped layout wrapper overflow-x-hidden → overflow-x-clip so filter bar's existing `sticky top-0` binds to viewport instead of the implicit scroll container. Cloud-verified SQL-exact across all affected charts + mobile sticky-scroll PASS. | 2026-04-20 | 03db100, 1c9cf3a, 7027b4b, 545273c, d2f536d | [260420-wdf-dow-filter-retire-lin-log](./quick/260420-wdf-dow-filter-retire-lin-log/) |
+| 260422-fz1 | AI TL;DR action-point bullets on dashboard insight card — extended nightly Haiku tool-use call with `action_points: string[]` (2-3 observational bullets), new `action_points TEXT[] NOT NULL DEFAULT '{}'` column on `public.insights`, migration 0035 refreshes `insights_v`, digit-guard reused bullet-by-bullet, deterministic fallback bullets from existing 7-scalar template. 10/10 Svelte unit tests pass (2 new), 13/13 Deno fallback+digit-guard tests pass. Pending DEV deploy + pipeline re-trigger for live bullets. | 2026-04-22 | a496164 | [260422-fz1-add-ai-tl-dr-action-point-bullets-to-das](./quick/260422-fz1-add-ai-tl-dr-action-point-bullets-to-das/) |
 
 ## Session Continuity
 

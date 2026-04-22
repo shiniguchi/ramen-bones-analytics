@@ -241,7 +241,7 @@
 <main class="mx-auto max-w-screen-sm px-4 pb-12">
   <div class="flex flex-col gap-6">
     {#if data.latestInsight}
-      <InsightCard insight={data.latestInsight} />
+      <InsightCard insight={data.latestInsight} isAdmin={data.isAdmin ?? false} />
     {/if}
 
     <!-- D-10 cards 4-5: Revenue + Transactions KPI tiles -->

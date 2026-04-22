@@ -55,6 +55,7 @@ export const load: PageServerLoad = async ({ locals, url, depends }) => {
         { business_date: '2026-04-08', gross_cents: 4200, sales_type: 'INHOUSE', is_cash: false, visit_seq: 2, card_hash: 'h3' },
       ] as DailyRow[],
       latestInsight: null,
+      isAdmin: false,
       itemCounts: E2E_ITEM_COUNTS_ROWS,
       benchmarkAnchors: [],
       benchmarkSources: []
@@ -188,17 +189,21 @@ export const load: PageServerLoad = async ({ locals, url, depends }) => {
     .select('period_weeks,id,label,country,segment,credibility,cuisine_match,metric_type,conversion_note,sample_size,year,url,raw_value,normalized_value')
   ).catch((e: unknown) => { console.error('[benchmark_sources_v]', e); return [] as BenchmarkSourceRow[]; });
 
-  // Insights — latest row only (05-01).
+  // Insights — latest row only (05-01). action_points added in 260422-fz1.
+  // generated_at surfaces on the card so viewers can spot stale rows when
+  // the weekly pipeline misses a Monday.
   type InsightRow = {
     id: string;
     business_date: string;
     headline: string;
     body: string;
+    action_points: string[] | null;
     fallback_used: boolean;
+    generated_at: string;
   };
   const insightP = locals.supabase
     .from('insights_v')
-    .select('id, business_date, headline, body, fallback_used')
+    .select('id, business_date, headline, body, action_points, fallback_used, generated_at')
     .order('business_date', { ascending: false })
     .limit(1)
     .maybeSingle()
@@ -247,21 +252,34 @@ export const load: PageServerLoad = async ({ locals, url, depends }) => {
     );
   }
 
-  // Berlin timezone for is_yesterday flag.
-  const todayBerlin = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Europe/Berlin',
-    year: 'numeric', month: '2-digit', day: '2-digit'
-  }).format(new Date());
-
+  // Weekly refresh cadence — no "is_yesterday" indicator. The card renders a
+  // "Week ending <date>" label derived from business_date client-side.
   const latestInsight = latestInsightRow
     ? {
+        id: latestInsightRow.id,
         headline: latestInsightRow.headline,
         body: latestInsightRow.body,
+        action_points: latestInsightRow.action_points ?? [],
         business_date: latestInsightRow.business_date,
         fallback_used: latestInsightRow.fallback_used,
-        is_yesterday: latestInsightRow.business_date !== todayBerlin
+        generated_at: latestInsightRow.generated_at
       }
     : null;
+
+  // Admin gate for inline-edit of the InsightCard. RLS policy `memberships_own`
+  // already restricts SELECT to the current user's own row, so a bare select
+  // returns exactly the caller's membership record (or null when not logged in
+  // / not a member). Cheap (<5ms, PK lookup).
+  let isAdmin = false;
+  try {
+    const { data } = await locals.supabase
+      .from('memberships')
+      .select('role')
+      .maybeSingle();
+    isAdmin = (data?.role as string | undefined) === 'owner';
+  } catch (err) {
+    console.error('[+page.server] memberships role query failed', err);
+  }
 
   return {
     range,
@@ -272,6 +290,7 @@ export const load: PageServerLoad = async ({ locals, url, depends }) => {
     dailyRows,
     priorDailyRows,
     latestInsight,
+    isAdmin,
     itemCounts,
     benchmarkAnchors,
     benchmarkSources,
@@ -286,5 +305,34 @@ export const actions: Actions = {
   logout: async ({ locals }) => {
     await locals.supabase.auth.signOut();
     throw redirect(303, '/login');
+  },
+
+  // Admin inline-edit save path for the dashboard InsightCard.
+  // Authorization enforced server-side by the admin_update_insight RPC
+  // (SECURITY DEFINER checks memberships.role='owner'). This action just
+  // validates input shape and bubbles errors up as form errors.
+  updateInsight: async ({ request, locals }) => {
+    const form = await request.formData();
+    const id = String(form.get('id') ?? '');
+    const headline = String(form.get('headline') ?? '').trim();
+    const body = String(form.get('body') ?? '').trim();
+    const rawBullets = form.getAll('action_points').map((b) => String(b).trim()).filter(Boolean);
+
+    if (!id) return { ok: false as const, error: 'missing_id' };
+    if (!headline) return { ok: false as const, error: 'headline_required' };
+    if (!body) return { ok: false as const, error: 'body_required' };
+
+    const { error } = await locals.supabase.rpc('admin_update_insight', {
+      p_id: id,
+      p_headline: headline,
+      p_body: body,
+      p_action_points: rawBullets
+    });
+
+    if (error) {
+      console.error('[updateInsight] rpc failed', error);
+      return { ok: false as const, error: error.message };
+    }
+    return { ok: true as const };
   }
 };
