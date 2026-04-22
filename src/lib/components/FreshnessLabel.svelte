@@ -21,4 +21,4 @@
   });
 </script>
 
-<p data-testid="freshness-label" class="text-xs {label.color}">{label.text}</p>
+<p data-testid="freshness-label" class="text-xs tabular-nums {label.color}">{label.text}</p>
