@@ -8,6 +8,8 @@ import KpiTile from '../../src/lib/components/KpiTile.svelte';
 import GrainToggle from '../../src/lib/components/GrainToggle.svelte';
 import CohortRetentionCard from '../../src/lib/components/CohortRetentionCard.svelte';
 import { emptyStates } from '../../src/lib/emptyStates';
+import { messages as i18nMessages } from '../../src/lib/i18n/messages';
+const messagesEn = i18nMessages.en;
 import { pickVisibleCohorts, type RetentionRow } from '../../src/lib/sparseFilter';
 
 // LayerChart uses window.matchMedia internally; JSDOM doesn't provide it.
@@ -184,10 +186,13 @@ describe('Phase 4 card components (RED stubs — flip to it() as cards land)', (
 
   it('EmptyState renders per-card copy from emptyStates.ts (D-20)', () => {
     const { container } = render(EmptyState, { card: 'cohort' });
+    // After i18n migration emptyStates exposes *Key fields that resolve via
+    // messages.ts. Resolve through the default-locale (en) dictionary here
+    // so the test stays hermetic and doesn't depend on `page.data.locale`.
     const copy = emptyStates.cohort;
-    // Use container.querySelector to avoid collision with CohortRetentionCard renders
-    expect(container.textContent).toContain(copy.heading);
-    expect(container.textContent).toContain(copy.body);
+    const en = messagesEn;
+    expect(container.textContent).toContain(en[copy.headingKey]);
+    expect(container.textContent).toContain(en[copy.bodyKey]);
   });
   it('Per-card error fallback does NOT throw whole page (D-22)', () => {
     // KpiTile with value=null must render EmptyState, not throw.
@@ -202,7 +207,7 @@ describe('Phase 4 card components (RED stubs — flip to it() as cards land)', (
       });
       // EmptyState should be in the DOM (heading text from emptyStates.revenueFixed)
       const copy = emptyStates.revenueFixed;
-      expect(container.textContent).toContain(copy.heading);
+      expect(container.textContent).toContain(messagesEn[copy.headingKey]);
     }).not.toThrow();
   });
 });

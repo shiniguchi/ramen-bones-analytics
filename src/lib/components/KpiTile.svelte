@@ -4,6 +4,8 @@
   // When value is null (query failed), shows EmptyState fallback.
   import EmptyState from './EmptyState.svelte';
   import { formatEUR, formatEURShort } from '$lib/format';
+  import { page } from '$app/state';
+  import { t } from '$lib/i18n/messages';
 
   type Props = {
     title: string;
@@ -44,13 +46,17 @@
   const delta = $derived.by(() => {
     if (value === null) return null;
     // No prior or zero prior → show "no prior data"
+    const loc = page.data.locale;
     if (prior === null || prior === 0) {
-      return { text: `— no prior data`, color: 'text-zinc-500' };
+      return { text: `— ${t(loc, 'delta_no_prior')}`, color: 'text-zinc-500' };
     }
     const pct = Math.round(((value - prior) / prior) * 100);
     // Flat: |pct| < 1 (avoid "▲ +0%" noise)
     if (Math.abs(pct) < 1) {
-      return { text: `— flat vs ${windowLabel}`, color: 'text-zinc-500' };
+      return {
+        text: `— ${t(loc, 'delta_flat', { window: windowLabel ?? '' })}`,
+        color: 'text-zinc-500'
+      };
     }
     if (pct > 0) {
       return { text: `▲ +${pct}% vs ${windowLabel}`, color: 'text-green-700' };

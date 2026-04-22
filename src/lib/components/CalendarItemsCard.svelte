@@ -7,6 +7,8 @@
   // and grain (via bucketKey rebucket). Range is already applied upstream by the
   // SSR query in Plan 10-08.
   import { LineChart } from 'layerchart';
+  import { page } from '$app/state';
+  import { t } from '$lib/i18n/messages';
   import EmptyState from './EmptyState.svelte';
   import { ITEM_COLORS, OTHER_COLOR } from '$lib/chartPalettes';
   import { rollupTopNWithOther } from '$lib/itemCountsRollup';
@@ -114,8 +116,8 @@
 </script>
 
 <div data-testid="calendar-items-card" class="rounded-xl border border-zinc-200 bg-white p-4">
-  <h2 class="text-base font-semibold text-zinc-900">Items sold per period — top 20 menu items</h2>
-  <p class="mt-1 text-xs text-zinc-500">One line per item so you can spot what's trending up or down. Rest grouped as "Other".</p>
+  <h2 class="text-base font-semibold text-zinc-900">{t(page.data.locale, 'cal_items_title')}</h2>
+  <p class="mt-1 text-xs text-zinc-500">{t(page.data.locale, 'cal_items_subtitle')}</p>
   {#if filtered.length === 0}
     <EmptyState card="calendar-items" />
   {:else}

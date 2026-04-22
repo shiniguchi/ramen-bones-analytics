@@ -6,6 +6,8 @@ import '@testing-library/jest-dom/vitest';
 import { render } from '@testing-library/svelte';
 import CalendarItemsCard from '../../src/lib/components/CalendarItemsCard.svelte';
 import { emptyStates } from '../../src/lib/emptyStates';
+import { messages as i18nMessages } from '../../src/lib/i18n/messages';
+const messagesEn = i18nMessages.en;
 import { initStore } from '../../src/lib/dashboardStore.svelte';
 import { FILTER_DEFAULTS } from '../../src/lib/filters';
 
@@ -47,8 +49,8 @@ describe('CalendarItemsCard (VA-08)', () => {
     const card = container.querySelector('[data-testid="calendar-items-card"]');
     expect(card).toBeInTheDocument();
     const copy = emptyStates['calendar-items'];
-    expect(container.textContent).toContain(copy.heading);
-    expect(container.textContent).toContain(copy.body);
+    expect(container.textContent).toContain(messagesEn[copy.headingKey]);
+    expect(container.textContent).toContain(messagesEn[copy.bodyKey]);
   });
 
   it('renders "Items sold per period" heading when data present', () => {

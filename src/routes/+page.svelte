@@ -25,6 +25,8 @@
     cacheCovers, type DailyRow
   } from '$lib/dashboardStore.svelte';
   import { goto, replaceState } from '$app/navigation';
+  import { page } from '$app/state';
+  import { t } from '$lib/i18n/messages';
   import { mergeSearchParams } from '$lib/urlState';
   import { chipToRange, customToRange, type Range, type RangeWindow } from '$lib/dateRange';
   import { DAYS_DEFAULT, type FiltersState } from '$lib/filters';
@@ -134,16 +136,22 @@
     if (r === 'custom' && storeFilters.from && storeFilters.to) {
       return `${storeFilters.from} \u2013 ${storeFilters.to}`;
     }
-    if (r === 'today') return 'Today';
+    const loc = page.data.locale;
+    if (r === 'today') return t(loc, 'range_today');
+    if (r === 'all') return t(loc, 'range_all');
     return r;
   });
 
-  // Prior period label for delta display
-  const priorLabel = $derived(
-    storeFilters.range === 'all'
-      ? null
-      : `prior ${storeFilters.range === 'today' ? 'day' : storeFilters.range}`
-  );
+  // Prior period label for delta display — localized via prior_label template.
+  const priorLabel = $derived.by(() => {
+    if (storeFilters.range === 'all') return null;
+    const loc = page.data.locale;
+    const rangeWord =
+      storeFilters.range === 'today'
+        ? t(loc, 'grain_day').toLowerCase()
+        : storeFilters.range;
+    return t(loc, 'prior_label', { range: rangeWord });
+  });
 
   // Handle range change from DatePickerPopover.
   // Preset ids come through directly; 'custom' means the popover has already
@@ -247,7 +255,7 @@
     <!-- D-10 cards 4-5: Revenue + Transactions KPI tiles -->
     <div class="grid grid-cols-2 gap-4">
       <KpiTile
-        title="Revenue · {rangeLabel}"
+        title="{t(page.data.locale, 'kpi_revenue')} · {rangeLabel}"
         value={kpi.revenue_cents}
         prior={kpi.prior_revenue_cents}
         format="eur-int"
@@ -255,7 +263,7 @@
         emptyCard="revenueChip"
       />
       <KpiTile
-        title="Transactions · {rangeLabel}"
+        title="{t(page.data.locale, 'kpi_transactions')} · {rangeLabel}"
         value={kpi.tx_count}
         prior={kpi.prior_tx_count}
         format="int"
