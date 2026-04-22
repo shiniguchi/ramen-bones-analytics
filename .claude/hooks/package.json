@@ -1,0 +1,5 @@
+{
+  "type": "commonjs",
+  "private": true,
+  "_comment": "Scopes .claude/hooks/*.js files as CommonJS, regardless of parent package.json. Needed when the repo-root package.json declares \"type\": \"module\" (ESM) — without this file, Node tries to load the hook as ESM and crashes on require()."
+}
