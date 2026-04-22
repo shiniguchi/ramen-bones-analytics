@@ -81,6 +81,12 @@ async function generateForTenant(restaurantId: string, tz: string) {
   const payload = await buildPayload(supabase, restaurantId);
   // Allowed-digit set derived from the exact JSON the LLM will see — no drift.
   const allowed = flattenNumbers(payload);
+  // Whitelist window-size constants that appear in prompt examples + fallback
+  // template labels ("Past 7 days", "Last 4 weeks", "Four-week" etc.). These
+  // are structural tokens, not data values — if the payload happens to contain
+  // these digits they'd already be in `allowed`; if not, these additions make
+  // the window labels emittable without forcing awkward workarounds.
+  for (const lit of ["7", "4", "28"]) allowed.add(lit);
 
   let headline: string | null = null;
   let body: string | null = null;
@@ -197,7 +203,10 @@ function deriveBusinessDate(tz: string): string {
   return fmt.format(new Date());
 }
 
-// Collapse payload into the 7 scalars the fallback template needs.
+// Collapse payload into the scalars the fallback template needs.
+// today_* fields are retained for back-compat but no longer rendered by the
+// weekly-voice template — weekly refresh cadence means single-day values
+// would mislead readers on days between refreshes.
 function deriveFallbackInput(p: InsightPayload) {
   const sign = (d: number): "up" | "down" | "flat" =>
     d > 1 ? "up" : d < -1 ? "down" : "flat";
@@ -211,6 +220,9 @@ function deriveFallbackInput(p: InsightPayload) {
     seven_d_revenue_int: Math.round(p.kpi.seven_d_revenue),
     seven_d_delta_pct: Math.abs(Math.round(p.kpi.seven_d_delta_pct)),
     seven_d_delta_sign: sign(p.kpi.seven_d_delta_pct),
+    twenty_eight_d_revenue_int: Math.round(p.kpi.twenty_eight_d_revenue),
+    twenty_eight_d_delta_pct: Math.abs(Math.round(p.kpi.twenty_eight_d_delta_pct)),
+    twenty_eight_d_delta_sign: sign(p.kpi.twenty_eight_d_delta_pct),
     returning_pct: returningPct,
   };
 }

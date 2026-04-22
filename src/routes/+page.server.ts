@@ -248,20 +248,15 @@ export const load: PageServerLoad = async ({ locals, url, depends }) => {
     );
   }
 
-  // Berlin timezone for is_yesterday flag.
-  const todayBerlin = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Europe/Berlin',
-    year: 'numeric', month: '2-digit', day: '2-digit'
-  }).format(new Date());
-
+  // Weekly refresh cadence — no "is_yesterday" indicator. The card renders a
+  // "Week ending <date>" label derived from business_date client-side.
   const latestInsight = latestInsightRow
     ? {
         headline: latestInsightRow.headline,
         body: latestInsightRow.body,
         action_points: latestInsightRow.action_points ?? [],
         business_date: latestInsightRow.business_date,
-        fallback_used: latestInsightRow.fallback_used,
-        is_yesterday: latestInsightRow.business_date !== todayBerlin
+        fallback_used: latestInsightRow.fallback_used
       }
     : null;
 

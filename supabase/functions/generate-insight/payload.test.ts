@@ -11,10 +11,12 @@ Deno.test("InsightPayload type includes all D-05 required fields", () => {
     kpi: {
       today_revenue: 0,
       seven_d_revenue: 0,
+      twenty_eight_d_revenue: 0,
       thirty_d_revenue: 0,
       ninety_d_revenue: 0,
       today_delta_pct: 0,
       seven_d_delta_pct: 0,
+      twenty_eight_d_delta_pct: 0,
       tx_count: 0,
       avg_ticket: 0,
     },
@@ -22,7 +24,20 @@ Deno.test("InsightPayload type includes all D-05 required fields", () => {
     ltv: [],
     frequency: [],
     new_vs_returning: { new_revenue: 0, returning_revenue: 0, cash_revenue: 0 },
+    display: {
+      currency: "EUR",
+      today_revenue_eur: 0,
+      seven_d_revenue_eur: 0,
+      twenty_eight_d_revenue_eur: 0,
+      thirty_d_revenue_eur: 0,
+      ninety_d_revenue_eur: 0,
+      avg_ticket_eur: 0,
+      new_revenue_eur: 0,
+      returning_revenue_eur: 0,
+      cash_revenue_eur: 0,
+      returning_pct: 0,
+    },
   };
   assert(sample !== null);
-  assertEquals(typeof sample.kpi.today_revenue, "number");
+  assertEquals(typeof sample.kpi.seven_d_revenue, "number");
 });

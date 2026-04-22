@@ -5,26 +5,26 @@ import InsightCard from "$lib/components/InsightCard.svelte";
 
 describe("InsightCard", () => {
   const baseInsight = {
-    headline: "Weekend traffic slipped 18%",
-    body: "Saturday and Sunday transactions were the lowest in 4 weeks. Weekday revenue held steady at €2840.",
+    headline: "Past 7 days €1842 ▼ 12% vs prior week",
+    body: "Past 7 days logged €1842 in revenue. Four-week rolling total €8120. Returning customers drove 38% of spend.",
     action_points: [
-      "Weekend revenue 18% below 4-week average",
-      "Weekday €2840 steady",
+      "Past 7 days €1842 ▼ 12%",
+      "Last 4 weeks €8120 ▲ 4%",
+      "Returning share 38%",
     ],
-    business_date: "2026-04-14",
+    business_date: "2026-04-15",
     fallback_used: false,
-    is_yesterday: false,
   };
 
   it("renders headline and body in normal mode", () => {
     const { container } = render(InsightCard, { insight: baseInsight });
-    expect(container.querySelector("h2")?.textContent).toContain("Weekend traffic slipped 18%");
-    expect(container.querySelector("p")?.textContent).toContain("Saturday and Sunday");
+    expect(container.querySelector("h2")?.textContent).toContain("Past 7 days €1842 ▼ 12%");
+    expect(container.querySelector("p")?.textContent).toContain("Four-week rolling total");
   });
 
-  it("renders 'From yesterday' label when is_yesterday is true", () => {
-    const { container } = render(InsightCard, { insight: { ...baseInsight, is_yesterday: true } });
-    expect(container.textContent).toContain("From yesterday");
+  it("renders 'Week ending' label derived from business_date", () => {
+    const { container } = render(InsightCard, { insight: baseInsight });
+    expect(container.textContent).toMatch(/Week ending Apr 15, 2026/);
   });
 
   it("renders 'auto-generated' chip when fallback_used is true", () => {
@@ -37,9 +37,10 @@ describe("InsightCard", () => {
     expect(container.textContent).not.toContain("auto-generated");
   });
 
-  it("does NOT render 'From yesterday' label when is_yesterday is false", () => {
+  it("never renders day-scope labels (weekly cadence contract)", () => {
     const { container } = render(InsightCard, { insight: baseInsight });
     expect(container.textContent).not.toContain("From yesterday");
+    expect(container.textContent?.toLowerCase()).not.toContain("today");
   });
 
   it("uses text-zinc-900 for headline (UI-SPEC contrast rule)", () => {
@@ -62,9 +63,10 @@ describe("InsightCard", () => {
   it("renders action_points bullets in a list", () => {
     const { container } = render(InsightCard, { insight: baseInsight });
     const items = container.querySelectorAll("ul li");
-    expect(items.length).toBe(2);
-    expect(items[0].textContent).toContain("Weekend revenue 18%");
-    expect(items[1].textContent).toContain("Weekday €2840 steady");
+    expect(items.length).toBe(3);
+    expect(items[0].textContent).toContain("Past 7 days €1842");
+    expect(items[1].textContent).toContain("Last 4 weeks €8120");
+    expect(items[2].textContent).toContain("Returning share 38%");
   });
 
   it("omits the bullet list when action_points is empty", () => {

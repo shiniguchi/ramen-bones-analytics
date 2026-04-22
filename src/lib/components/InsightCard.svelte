@@ -9,21 +9,32 @@
     action_points: string[];
     business_date: string;
     fallback_used: boolean;
-    is_yesterday: boolean;
   };
 
   let { insight }: { insight: Insight } = $props();
+
+  // Weekly-cadence label (e.g. "Week ending Apr 15, 2026"). The dashboard
+  // refreshes once per week, so we anchor the card to the snapshot date
+  // rather than a relative "yesterday" indicator.
+  const weekEndingLabel = (() => {
+    try {
+      const d = new Date(insight.business_date + 'T00:00:00Z');
+      return 'Week ending ' + new Intl.DateTimeFormat('en-US', {
+        month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC'
+      }).format(d);
+    } catch {
+      return insight.business_date;
+    }
+  })();
 </script>
 
 <section
   role="article"
   class="rounded-xl border border-zinc-200 bg-white p-4"
 >
-  {#if insight.is_yesterday}
-    <span class="block text-xs leading-[1.4] font-normal text-zinc-500 mb-1">
-      From yesterday
-    </span>
-  {/if}
+  <span class="block text-xs leading-[1.4] font-normal text-zinc-500 mb-1">
+    {weekEndingLabel}
+  </span>
 
   <h2 class="text-xl font-semibold leading-tight text-zinc-900">
     {insight.headline}

@@ -17,10 +17,12 @@ export type InsightPayload = {
   kpi: {
     today_revenue: number;
     seven_d_revenue: number;
+    twenty_eight_d_revenue: number;
     thirty_d_revenue: number;
     ninety_d_revenue: number;
     today_delta_pct: number;
     seven_d_delta_pct: number;
+    twenty_eight_d_delta_pct: number;
     tx_count: number;
     avg_ticket: number;
   };
@@ -35,6 +37,7 @@ export type InsightPayload = {
     currency: "EUR";
     today_revenue_eur: number;
     seven_d_revenue_eur: number;
+    twenty_eight_d_revenue_eur: number;
     thirty_d_revenue_eur: number;
     ninety_d_revenue_eur: number;
     avg_ticket_eur: number;
@@ -101,6 +104,10 @@ export async function buildPayload(
   // Today = newest row; 7d / 30d / 90d rolling sums; prior windows for delta calc.
   const today_revenue = Math.round(sumWindow(kpiRows, 1));
   const seven_d_revenue = Math.round(sumWindow(kpiRows, 7));
+  // 28d window = 4 calendar weeks. Matches the weekly refresh cadence so
+  // "last 4 weeks vs prior 4 weeks" reads naturally in the LLM output —
+  // unlike 30d which is off by ~2 days.
+  const twenty_eight_d_revenue = Math.round(sumWindow(kpiRows, 28));
   const thirty_d_revenue = Math.round(sumWindow(kpiRows, 30));
   const ninety_d_revenue = Math.round(sumWindow(kpiRows, 90));
   // Prior comparables for deltas.
@@ -109,8 +116,10 @@ export async function buildPayload(
       ? Number(kpiRows[7]?.revenue ?? kpiRows[7]?.revenue_cents ?? 0) || 0
       : 0;
   const prior_7d = sumWindow(kpiRows.slice(7), 7);
+  const prior_28d = sumWindow(kpiRows.slice(28), 28);
   const today_delta_pct = deltaPct(today_revenue, prior_today);
   const seven_d_delta_pct = deltaPct(seven_d_revenue, prior_7d);
+  const twenty_eight_d_delta_pct = deltaPct(twenty_eight_d_revenue, prior_28d);
 
   const tx_count = kpiRows.slice(0, 1).reduce((a, r) => a + (Number(r.tx_count ?? 0) || 0), 0);
   const avg_ticket = Math.round(
@@ -198,6 +207,7 @@ export async function buildPayload(
     currency: "EUR" as const,
     today_revenue_eur: toEur(today_revenue),
     seven_d_revenue_eur: toEur(seven_d_revenue),
+    twenty_eight_d_revenue_eur: toEur(twenty_eight_d_revenue),
     thirty_d_revenue_eur: toEur(thirty_d_revenue),
     ninety_d_revenue_eur: toEur(ninety_d_revenue),
     avg_ticket_eur: toEur(avg_ticket),
@@ -211,10 +221,12 @@ export async function buildPayload(
     kpi: {
       today_revenue,
       seven_d_revenue,
+      twenty_eight_d_revenue,
       thirty_d_revenue,
       ninety_d_revenue,
       today_delta_pct,
       seven_d_delta_pct,
+      twenty_eight_d_delta_pct,
       tx_count,
       avg_ticket,
     },
