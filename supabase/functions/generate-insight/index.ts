@@ -77,8 +77,13 @@ Deno.serve(async (req) => {
 });
 
 async function generateForTenant(restaurantId: string, tz: string) {
-  const businessDate = deriveBusinessDate(tz);
   const payload = await buildPayload(supabase, restaurantId);
+  // business_date = the Sunday that closes the most recent complete Mon–Sun
+  // week in the data (computed by buildPayload). The card's "Week ending"
+  // label reads from this field, so aligning it with the aggregate window
+  // keeps the UI honest. Fall back to the tenant-local today date only if
+  // the data is empty / unparseable (edge case — fresh tenants).
+  const businessDate = payload.week_ending || deriveBusinessDate(tz);
   // Allowed-digit set derived from the exact JSON the LLM will see — no drift.
   const allowed = flattenNumbers(payload);
   // Whitelist window-size constants that appear in prompt examples + fallback
@@ -217,12 +222,12 @@ function deriveFallbackInput(p: InsightPayload) {
     today_revenue_int: Math.round(p.kpi.today_revenue),
     today_delta_pct: Math.abs(Math.round(p.kpi.today_delta_pct)),
     today_delta_sign: sign(p.kpi.today_delta_pct),
-    seven_d_revenue_int: Math.round(p.kpi.seven_d_revenue),
-    seven_d_delta_pct: Math.abs(Math.round(p.kpi.seven_d_delta_pct)),
-    seven_d_delta_sign: sign(p.kpi.seven_d_delta_pct),
-    twenty_eight_d_revenue_int: Math.round(p.kpi.twenty_eight_d_revenue),
-    twenty_eight_d_delta_pct: Math.abs(Math.round(p.kpi.twenty_eight_d_delta_pct)),
-    twenty_eight_d_delta_sign: sign(p.kpi.twenty_eight_d_delta_pct),
+    last_week_revenue_int: Math.round(p.kpi.last_week_revenue),
+    last_week_delta_pct: Math.abs(Math.round(p.kpi.last_week_delta_pct)),
+    last_week_delta_sign: sign(p.kpi.last_week_delta_pct),
+    last_four_weeks_revenue_int: Math.round(p.kpi.last_four_weeks_revenue),
+    last_four_weeks_delta_pct: Math.abs(Math.round(p.kpi.last_four_weeks_delta_pct)),
+    last_four_weeks_delta_sign: sign(p.kpi.last_four_weeks_delta_pct),
     returning_pct: returningPct,
   };
 }

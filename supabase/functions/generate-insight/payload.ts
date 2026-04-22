@@ -16,16 +16,25 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 export type InsightPayload = {
   kpi: {
     today_revenue: number;
-    seven_d_revenue: number;
-    twenty_eight_d_revenue: number;
+    // `last_week_*` and `last_four_weeks_*` are CALENDAR Mon–Sun aggregates,
+    // NOT rolling-7-row sums. They cover the most recent complete ISO week
+    // (Mon..Sun ending on `week_ending`) and the 4 complete weeks before it.
+    // Weekly refresh cadence + Mon–Sun framing = consistent reader mental model
+    // regardless of which weekday the data last ingested on.
+    last_week_revenue: number;
+    last_four_weeks_revenue: number;
     thirty_d_revenue: number;
     ninety_d_revenue: number;
     today_delta_pct: number;
-    seven_d_delta_pct: number;
-    twenty_eight_d_delta_pct: number;
+    last_week_delta_pct: number;
+    last_four_weeks_delta_pct: number;
     tx_count: number;
     avg_ticket: number;
   };
+  // ISO date (YYYY-MM-DD) of the Sunday that closes `last_week_*`. The
+  // LLM uses this for "Week ending <date>" framing; the Edge Function also
+  // stores this as the insights.business_date so the card label stays aligned.
+  week_ending: string;
   cohorts: Array<{ cohort_week: string; cohort_size: number; retention: number[] }>;
   ltv: Array<{ cohort_week: string; ltv_cents: number }>;
   frequency: Array<{ bucket: string; customer_count: number }>;
@@ -36,8 +45,8 @@ export type InsightPayload = {
   display: {
     currency: "EUR";
     today_revenue_eur: number;
-    seven_d_revenue_eur: number;
-    twenty_eight_d_revenue_eur: number;
+    last_week_revenue_eur: number;
+    last_four_weeks_revenue_eur: number;
     thirty_d_revenue_eur: number;
     ninety_d_revenue_eur: number;
     avg_ticket_eur: number;
@@ -72,6 +81,50 @@ function deltaPct(curr: number, prior: number): number {
   return Math.round(((curr - prior) / prior) * 100);
 }
 
+// Format a Date as "YYYY-MM-DD" in UTC — matches the string shape kpi_daily_mv
+// returns for `business_date` so we can compare cheaply without parsing twice.
+function isoDate(d: Date): string {
+  return d.toISOString().slice(0, 10);
+}
+
+// Resolve the Sunday that closes the most recent COMPLETE Mon–Sun week in
+// `rows` (which are ordered newest-first by business_date). If the newest row
+// is itself a Sunday, that Sunday is returned. If it's any other weekday, we
+// step back to the prior Sunday — the partial current week is excluded from
+// "last week" aggregates per the weekly-cadence contract (data must not
+// mis-represent incomplete weeks as complete).
+function resolveLastCompleteSunday(rows: KpiRow[]): Date | null {
+  if (rows.length === 0) return null;
+  const newest = new Date(String(rows[0].business_date) + "T00:00:00Z");
+  if (Number.isNaN(newest.getTime())) return null;
+  const dow = newest.getUTCDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+  const sunday = new Date(newest);
+  sunday.setUTCDate(sunday.getUTCDate() - dow);
+  return sunday;
+}
+
+// Sum revenue_cents across rows whose business_date falls within the N full
+// Mon–Sun weeks ending on (and including) `endSunday`. Rows outside that
+// window are ignored — the caller shifts `endSunday` back by 7*N days to
+// get the prior-period comparable.
+function sumCalendarWeeks(
+  rows: KpiRow[],
+  endSunday: Date,
+  weeks: number,
+): number {
+  const startMonday = new Date(endSunday);
+  startMonday.setUTCDate(startMonday.getUTCDate() - (7 * weeks - 1));
+  const startStr = isoDate(startMonday);
+  const endStr = isoDate(endSunday);
+  let total = 0;
+  for (const r of rows) {
+    const d = String(r.business_date);
+    if (d < startStr || d > endStr) continue;
+    total += Number(r.revenue ?? r.revenue_cents ?? 0) || 0;
+  }
+  return total;
+}
+
 export async function buildPayload(
   supabase: SupabaseClient,
   restaurantId: string,
@@ -101,25 +154,51 @@ export async function buildPayload(
   ]);
 
   const kpiRows = (kpiR.data ?? []) as KpiRow[];
-  // Today = newest row; 7d / 30d / 90d rolling sums; prior windows for delta calc.
+  // Today = newest row (kept for back-compat / debugging — the prompt forbids
+  // the LLM from rendering it). 30d / 90d stay as rolling windows since they
+  // don't align cleanly to calendar weeks anyway; neither is surfaced in the
+  // v2 weekly-voice output.
   const today_revenue = Math.round(sumWindow(kpiRows, 1));
-  const seven_d_revenue = Math.round(sumWindow(kpiRows, 7));
-  // 28d window = 4 calendar weeks. Matches the weekly refresh cadence so
-  // "last 4 weeks vs prior 4 weeks" reads naturally in the LLM output —
-  // unlike 30d which is off by ~2 days.
-  const twenty_eight_d_revenue = Math.round(sumWindow(kpiRows, 28));
   const thirty_d_revenue = Math.round(sumWindow(kpiRows, 30));
   const ninety_d_revenue = Math.round(sumWindow(kpiRows, 90));
-  // Prior comparables for deltas.
+
+  // Calendar-week aggregates. "last week" = the most recent COMPLETE Mon–Sun
+  // week; "prior week" = the Mon–Sun week before it. If kpiRows is empty or
+  // the newest date is unparseable, resolveLastCompleteSunday returns null
+  // and all week fields collapse to 0 — safe defaults that the fallback
+  // template handles via the zero-edge branches.
+  const lastSunday = resolveLastCompleteSunday(kpiRows);
+  const priorSunday = lastSunday
+    ? new Date(new Date(lastSunday).setUTCDate(lastSunday.getUTCDate() - 7))
+    : null;
+  const fourWeeksPriorSunday = lastSunday
+    ? new Date(new Date(lastSunday).setUTCDate(lastSunday.getUTCDate() - 28))
+    : null;
+
+  const last_week_revenue = lastSunday
+    ? Math.round(sumCalendarWeeks(kpiRows, lastSunday, 1))
+    : 0;
+  const prior_week_revenue = priorSunday
+    ? Math.round(sumCalendarWeeks(kpiRows, priorSunday, 1))
+    : 0;
+  const last_four_weeks_revenue = lastSunday
+    ? Math.round(sumCalendarWeeks(kpiRows, lastSunday, 4))
+    : 0;
+  const prior_four_weeks_revenue = fourWeeksPriorSunday
+    ? Math.round(sumCalendarWeeks(kpiRows, fourWeeksPriorSunday, 4))
+    : 0;
+
   const prior_today =
     kpiRows.length > 7
       ? Number(kpiRows[7]?.revenue ?? kpiRows[7]?.revenue_cents ?? 0) || 0
       : 0;
-  const prior_7d = sumWindow(kpiRows.slice(7), 7);
-  const prior_28d = sumWindow(kpiRows.slice(28), 28);
   const today_delta_pct = deltaPct(today_revenue, prior_today);
-  const seven_d_delta_pct = deltaPct(seven_d_revenue, prior_7d);
-  const twenty_eight_d_delta_pct = deltaPct(twenty_eight_d_revenue, prior_28d);
+  const last_week_delta_pct = deltaPct(last_week_revenue, prior_week_revenue);
+  const last_four_weeks_delta_pct = deltaPct(
+    last_four_weeks_revenue,
+    prior_four_weeks_revenue,
+  );
+  const week_ending = lastSunday ? isoDate(lastSunday) : "";
 
   const tx_count = kpiRows.slice(0, 1).reduce((a, r) => a + (Number(r.tx_count ?? 0) || 0), 0);
   const avg_ticket = Math.round(
@@ -152,25 +231,25 @@ export async function buildPayload(
 
   // `test_new_vs_returning` returns one row per (business_date, bucket).
   // Collapse to the 3 scalars the D-05 payload + fallback template expect:
-  // sum revenue_cents per bucket over the last 7 business dates (rolling
-  // week). `blackout_unknown` folds into cash_revenue to preserve the D-19
-  // tie-out invariant (total = new + returning + cash_anonymous + blackout).
+  // sum revenue_cents per bucket over the last complete Mon–Sun week (the
+  // same window as last_week_revenue). `blackout_unknown` folds into
+  // cash_revenue to preserve the D-19 tie-out invariant
+  // (total = new + returning + cash_anonymous + blackout).
   type NvrRow = {
     business_date?: string;
     bucket?: string;
     revenue_cents?: number | null;
   };
   const nvrRows = (nvrR.data ?? []) as NvrRow[];
-  const recentDates = Array.from(
-    new Set(nvrRows.map((r) => String(r.business_date ?? "")).filter(Boolean)),
-  )
-    .sort()
-    .reverse()
-    .slice(0, 7);
-  const recentSet = new Set(recentDates);
+  const weekStartStr = lastSunday
+    ? isoDate(new Date(new Date(lastSunday).setUTCDate(lastSunday.getUTCDate() - 6)))
+    : "";
+  const weekEndStr = lastSunday ? isoDate(lastSunday) : "";
+  const inLastWeek = (d: string) =>
+    weekStartStr !== "" && d >= weekStartStr && d <= weekEndStr;
   const nvrTotals = { new: 0, returning: 0, cash: 0 };
   for (const row of nvrRows) {
-    if (!recentSet.has(String(row.business_date ?? ""))) continue;
+    if (!inLastWeek(String(row.business_date ?? ""))) continue;
     const v = Number(row.revenue_cents ?? 0) || 0;
     switch (row.bucket) {
       case "new":
@@ -206,8 +285,8 @@ export async function buildPayload(
   const display = {
     currency: "EUR" as const,
     today_revenue_eur: toEur(today_revenue),
-    seven_d_revenue_eur: toEur(seven_d_revenue),
-    twenty_eight_d_revenue_eur: toEur(twenty_eight_d_revenue),
+    last_week_revenue_eur: toEur(last_week_revenue),
+    last_four_weeks_revenue_eur: toEur(last_four_weeks_revenue),
     thirty_d_revenue_eur: toEur(thirty_d_revenue),
     ninety_d_revenue_eur: toEur(ninety_d_revenue),
     avg_ticket_eur: toEur(avg_ticket),
@@ -220,16 +299,17 @@ export async function buildPayload(
   return {
     kpi: {
       today_revenue,
-      seven_d_revenue,
-      twenty_eight_d_revenue,
+      last_week_revenue,
+      last_four_weeks_revenue,
       thirty_d_revenue,
       ninety_d_revenue,
       today_delta_pct,
-      seven_d_delta_pct,
-      twenty_eight_d_delta_pct,
+      last_week_delta_pct,
+      last_four_weeks_delta_pct,
       tx_count,
       avg_ticket,
     },
+    week_ending,
     cohorts,
     ltv,
     frequency,
