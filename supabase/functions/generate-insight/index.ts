@@ -14,6 +14,21 @@ import { buildPayload, type InsightPayload } from "./payload.ts";
 // Haiku 4.5 — D-08. Cheap, fast, more than enough for 80-char headlines.
 const MODEL = "claude-haiku-4-5";
 
+// Locales emitted per insight. Must stay in sync with src/lib/i18n/locales.ts
+// LOCALES and supabase/migrations/0038 admin_update_insight v_locales.
+// Forkers can narrow via the INSIGHT_LOCALES env var (comma-separated).
+const DEFAULT_LOCALES = ["en", "de", "ja", "es", "fr"] as const;
+type Locale = (typeof DEFAULT_LOCALES)[number];
+const LOCALES: readonly Locale[] = (() => {
+  const raw = Deno.env.get("INSIGHT_LOCALES");
+  if (!raw) return DEFAULT_LOCALES;
+  const parsed = raw.split(",").map((s) => s.trim()).filter(Boolean);
+  const known = new Set<string>(DEFAULT_LOCALES);
+  const narrowed = parsed.filter((l): l is Locale => known.has(l));
+  // Always keep 'en' — it's the safety net for digit-guard failures + InsightCard fallback.
+  return narrowed.includes("en") ? narrowed : ["en", ...narrowed] as Locale[];
+})();
+
 // Secrets come from Deno.env ONLY — never hardcoded (INS-04, D-15).
 const supabase = createClient(
   Deno.env.get("SUPABASE_URL")!,
@@ -22,35 +37,47 @@ const supabase = createClient(
 const anthropic = new Anthropic({ apiKey: Deno.env.get("ANTHROPIC_API_KEY")! });
 
 // Tool-use schema — forces Haiku to emit structured JSON instead of freeform text.
+// Top-level shape: { <locale>: { headline, body, action_points }, ... }.
+// Numbers stay verbatim across locales — digit-guard enforces this per-locale.
+const LOCALE_ENTRY_SCHEMA = {
+  type: "object",
+  required: ["headline", "body", "action_points"],
+  properties: {
+    headline: { type: "string", description: "One sentence, max 80 chars, no trailing period." },
+    body: { type: "string", description: "2-3 sentences, max 280 chars total." },
+    action_points: {
+      type: "array",
+      minItems: 2,
+      maxItems: 3,
+      items: { type: "string", description: "Bullet, max 60 chars, no trailing period." },
+      description: "2-3 observational bullets on the most notable movements.",
+    },
+  },
+} as const;
+
 const TOOL = {
   name: "emit_insight",
   description:
-    "Emit the headline, body, and action-point bullets for today's dashboard insight card.",
+    "Emit the headline, body, and action-point bullets for today's dashboard insight card in every supported locale.",
   input_schema: {
     type: "object",
-    properties: {
-      headline: {
-        type: "string",
-        description: "One sentence, max 80 chars, no trailing period.",
-      },
-      body: {
-        type: "string",
-        description: "2-3 sentences, max 280 chars total.",
-      },
-      action_points: {
-        type: "array",
-        minItems: 2,
-        maxItems: 3,
-        items: {
-          type: "string",
-          description: "Bullet, max 60 chars, no trailing period.",
-        },
-        description: "2-3 observational bullets on the most notable movements.",
-      },
-    },
-    required: ["headline", "body", "action_points"],
+    required: Array.from(LOCALES),
+    properties: Object.fromEntries(LOCALES.map((l) => [l, LOCALE_ENTRY_SCHEMA])),
   },
 } as const;
+
+type LocaleEntry = { headline: string; body: string; action_points: string[] };
+
+function validateEntry(e: unknown): e is LocaleEntry {
+  if (!e || typeof e !== "object") return false;
+  const o = e as { headline?: unknown; body?: unknown; action_points?: unknown };
+  if (typeof o.headline !== "string" || o.headline.length === 0) return false;
+  if (typeof o.body !== "string" || o.body.length === 0) return false;
+  if (!Array.isArray(o.action_points)) return false;
+  const ap = o.action_points;
+  if (ap.length < 2 || ap.length > 3) return false;
+  return ap.every((b) => typeof b === "string" && b.length > 0);
+}
 
 // HTTP entrypoint — pg_cron hits this with service-role bearer token.
 Deno.serve(async (req) => {
@@ -93,17 +120,29 @@ async function generateForTenant(restaurantId: string, tz: string) {
   // the window labels emittable without forcing awkward workarounds.
   for (const lit of ["7", "4", "28"]) allowed.add(lit);
 
-  let headline: string | null = null;
-  let body: string | null = null;
-  let actionPoints: string[] = [];
+  // Per-locale insight entries. English is always present and acts as the
+  // safety net — if the LLM fails entirely, every locale gets the English
+  // deterministic fallback. If only a specific locale fails digit-guard,
+  // that one locale is replaced with the English fallback while others
+  // keep the LLM output.
+  const englishFallback: LocaleEntry = (() => {
+    const fb = buildFallback(deriveFallbackInput(payload));
+    return { headline: fb.headline, body: fb.body, action_points: fb.action_points };
+  })();
+
+  const localeEntries: Record<Locale, LocaleEntry> = Object.fromEntries(
+    LOCALES.map((l) => [l, englishFallback]),
+  ) as Record<Locale, LocaleEntry>;
+
   let fallbackUsed = false;
   let fallbackReason: string | undefined;
 
   try {
     const msg = await anthropic.messages.create({
       model: MODEL,
-      // 600 (up from 400) to fit headline + body + 2-3 bullets within one tool call.
-      max_tokens: 600,
+      // ~2000 tokens covers headline+body+bullets * 5 locales in one tool call.
+      // Haiku 4.5 at $0.80/M output → ~$0.002 per insight (nightly, 1 tenant).
+      max_tokens: 2000,
       temperature: 0.2,
       system: SYSTEM_PROMPT,
       tools: [TOOL],
@@ -119,68 +158,57 @@ async function generateForTenant(restaurantId: string, tz: string) {
     if (!toolBlock || typeof (toolBlock as { input: unknown }).input !== "object") {
       throw new Error("tool_use block missing");
     }
-    const input = (toolBlock as {
-      input: { headline?: unknown; body?: unknown; action_points?: unknown };
-    }).input;
-    if (
-      typeof input.headline !== "string" ||
-      typeof input.body !== "string" ||
-      input.headline.length === 0 ||
-      input.body.length === 0
-    ) {
-      throw new Error("invalid shape");
-    }
-    // action_points: must be an array of 2-3 non-empty strings. minItems/maxItems
-    // in the tool schema is advisory; Anthropic does not strictly enforce it, so
-    // we re-check here and route any shape drift to the deterministic fallback.
-    const ap = input.action_points;
-    if (
-      !Array.isArray(ap) ||
-      ap.length < 2 ||
-      ap.length > 3 ||
-      ap.some((b) => typeof b !== "string" || (b as string).length === 0)
-    ) {
-      throw new Error("invalid action_points shape");
-    }
-    const bullets = ap as string[];
+    const raw = (toolBlock as { input: Record<string, unknown> }).input;
 
-    // Digit-guard: every numeric token in LLM output must trace back to the payload.
-    // Same `allowed` set covers all three fields — no new payload traversal.
-    if (
-      !digitGuardOk(input.headline, allowed) ||
-      !digitGuardOk(input.body, allowed) ||
-      bullets.some((b) => !digitGuardOk(b, allowed))
-    ) {
-      throw new Error("digit-guard rejected");
+    // Per-locale validation + digit-guard. Locale-level failures don't trip
+    // the whole insight — only that locale's entry reverts to the English
+    // fallback, and fallback_used flips on.
+    const localeFailures: string[] = [];
+    for (const loc of LOCALES) {
+      const entry = raw[loc];
+      if (!validateEntry(entry)) {
+        localeFailures.push(`${loc}:shape`);
+        // localeEntries[loc] already seeded with englishFallback above.
+        continue;
+      }
+      const digitOk =
+        digitGuardOk(entry.headline, allowed) &&
+        digitGuardOk(entry.body, allowed) &&
+        entry.action_points.every((b) => digitGuardOk(b, allowed));
+      if (!digitOk) {
+        localeFailures.push(`${loc}:digit-guard`);
+        continue;
+      }
+      localeEntries[loc] = entry;
     }
 
-    headline = input.headline;
-    body = input.body;
-    actionPoints = bullets;
+    if (localeFailures.length > 0) {
+      fallbackUsed = true;
+      fallbackReason = `locale-level failures: ${localeFailures.join(",")}`;
+      console.error(
+        `[generate-insight] tenant=${restaurantId} ${fallbackReason}`,
+      );
+    }
   } catch (err) {
-    // Any failure in the LLM path — network, shape, digit-guard — routes to fallback.
-    // Logging the reason keeps "why did we fall back" observable in function logs.
+    // Whole-LLM failure — every locale keeps the English fallback that was
+    // seeded into localeEntries above.
     fallbackReason = (err as Error).message;
+    fallbackUsed = true;
     console.error(
       `[generate-insight] tenant=${restaurantId} fallback reason=${fallbackReason}`,
     );
-    const fb = buildFallback(deriveFallbackInput(payload));
-    headline = fb.headline;
-    body = fb.body;
-    actionPoints = fb.action_points;
-    fallbackUsed = true;
   }
 
   // Upsert so re-runs on the same business_date overwrite (idempotent).
+  // Writes i18n jsonb; the 0037 trigger mirrors i18n.en into the scalar
+  // headline/body/action_points columns so legacy readers keep working.
   const { error: upsertErr } = await supabase
     .from("insights")
     .upsert(
       {
         restaurant_id: restaurantId,
         business_date: businessDate,
-        headline,
-        body,
-        action_points: actionPoints,
+        i18n: localeEntries,
         input_payload: payload,
         model: MODEL,
         fallback_used: fallbackUsed,

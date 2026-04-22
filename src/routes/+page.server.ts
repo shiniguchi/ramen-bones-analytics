@@ -13,6 +13,7 @@ import { chipToRange, customToRange, type Range, type Grain } from '$lib/dateRan
 import { parseFilters, FROM_FLOOR } from '$lib/filters';
 import type { DailyRow } from '$lib/dashboardStore.svelte';
 import { fetchAll } from '$lib/supabasePagination';
+import { DEFAULT_LOCALE, isLocale } from '$lib/i18n/locales';
 
 export const load: PageServerLoad = async ({ locals, url, depends }) => {
   depends('app:dashboard');
@@ -192,6 +193,8 @@ export const load: PageServerLoad = async ({ locals, url, depends }) => {
   // Insights — latest row only (05-01). action_points added in 260422-fz1.
   // generated_at surfaces on the card so viewers can spot stale rows when
   // the weekly pipeline misses a Monday.
+  // Shape of i18n per locale — keep in sync with the 0037 migration contract.
+  type InsightI18nEntry = { headline: string; body: string; action_points: string[] };
   type InsightRow = {
     id: string;
     business_date: string;
@@ -200,10 +203,12 @@ export const load: PageServerLoad = async ({ locals, url, depends }) => {
     action_points: string[] | null;
     fallback_used: boolean;
     generated_at: string;
+    // Added by 0037. Always has an `en` block (CHECK constraint enforced).
+    i18n: Record<string, InsightI18nEntry> | null;
   };
   const insightP = locals.supabase
     .from('insights_v')
-    .select('id, business_date, headline, body, action_points, fallback_used, generated_at')
+    .select('id, business_date, headline, body, action_points, fallback_used, generated_at, i18n')
     .order('business_date', { ascending: false })
     .limit(1)
     .maybeSingle()
@@ -262,7 +267,8 @@ export const load: PageServerLoad = async ({ locals, url, depends }) => {
         action_points: latestInsightRow.action_points ?? [],
         business_date: latestInsightRow.business_date,
         fallback_used: latestInsightRow.fallback_used,
-        generated_at: latestInsightRow.generated_at
+        generated_at: latestInsightRow.generated_at,
+        i18n: latestInsightRow.i18n ?? {}
       }
     : null;
 
@@ -317,6 +323,12 @@ export const actions: Actions = {
     const headline = String(form.get('headline') ?? '').trim();
     const body = String(form.get('body') ?? '').trim();
     const rawBullets = form.getAll('action_points').map((b) => String(b).trim()).filter(Boolean);
+    // Locale from the form — defaults to the request's active locale if
+    // absent or not in LOCALES. The RPC re-validates against its own
+    // allowed-locales array, so bad values here get a 22023 error instead
+    // of silently writing to 'en'.
+    const formLocale = String(form.get('locale') ?? '');
+    const p_locale = isLocale(formLocale) ? formLocale : (locals.locale ?? DEFAULT_LOCALE);
 
     if (!id) return { ok: false as const, error: 'missing_id' };
     if (!headline) return { ok: false as const, error: 'headline_required' };
@@ -326,7 +338,8 @@ export const actions: Actions = {
       p_id: id,
       p_headline: headline,
       p_body: body,
-      p_action_points: rawBullets
+      p_action_points: rawBullets,
+      p_locale
     });
 
     if (error) {

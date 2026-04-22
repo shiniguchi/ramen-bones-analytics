@@ -6,7 +6,10 @@
   // `isAdmin` prop here only gates the edit UI, not the write permission.
   import { enhance } from '$app/forms';
   import { invalidateAll } from '$app/navigation';
+  import { page } from '$app/state';
+  import { DEFAULT_LOCALE, type Locale } from '$lib/i18n/locales';
 
+  type InsightI18nEntry = { headline: string; body: string; action_points: string[] };
   type Insight = {
     id?: string;
     headline: string;
@@ -15,12 +18,33 @@
     business_date: string;
     fallback_used: boolean;
     generated_at?: string;
+    // Per-locale map, shape enforced by migration 0037. Legacy rows that
+    // predate the migration can be absent — fall back to the scalar columns.
+    i18n?: Record<string, InsightI18nEntry>;
   };
 
   let {
     insight,
     isAdmin = false
   }: { insight: Insight; isAdmin?: boolean } = $props();
+
+  // Select the locale-specific view. Fallback chain: requested locale →
+  // English → legacy scalar columns. migration 0037 guarantees an `en`
+  // block exists for all new rows, so the third branch only fires for
+  // pre-0037 data or when the row was edited via the 4-arg legacy RPC.
+  const activeLocale = $derived<Locale>(page.data.locale ?? DEFAULT_LOCALE);
+  const view = $derived.by<InsightI18nEntry>(() => {
+    const loc = activeLocale;
+    const locEntry = insight.i18n?.[loc];
+    if (locEntry) return locEntry;
+    const enEntry = insight.i18n?.[DEFAULT_LOCALE];
+    if (enEntry) return enEntry;
+    return {
+      headline: insight.headline,
+      body: insight.body,
+      action_points: insight.action_points
+    };
+  });
 
   // Weekly-cadence label (e.g. "Week ending Apr 15, 2026"). The dashboard
   // refreshes once per week, so we anchor the card to the snapshot date
@@ -64,12 +88,15 @@
   let errorMsg = $state<string | null>(null);
 
   function enterEdit() {
-    draftHeadline = insight.headline;
-    draftBody = insight.body;
+    // Seed the edit form from the currently-viewed locale so the owner
+    // edits the language they're reading. Hidden `locale` input on the
+    // form submits the active locale to the updateInsight action.
+    draftHeadline = view.headline;
+    draftBody = view.body;
     draftBullets = [
-      insight.action_points[0] ?? '',
-      insight.action_points[1] ?? '',
-      insight.action_points[2] ?? ''
+      view.action_points[0] ?? '',
+      view.action_points[1] ?? '',
+      view.action_points[2] ?? ''
     ];
     errorMsg = null;
     mode = 'edit';
@@ -117,16 +144,16 @@
 
   {#if mode === 'view'}
     <h2 class="text-xl font-semibold leading-tight text-zinc-900">
-      {insight.headline}
+      {view.headline}
     </h2>
 
     <p class="mt-2 text-sm leading-normal text-zinc-700">
-      {insight.body}
+      {view.body}
     </p>
 
-    {#if insight.action_points.length > 0}
+    {#if view.action_points.length > 0}
       <ul class="mt-3 space-y-1 text-sm leading-normal text-zinc-700">
-        {#each insight.action_points as bullet}
+        {#each view.action_points as bullet}
           <li class="flex gap-2 before:text-zinc-400 before:content-['·']">
             <span>{bullet}</span>
           </li>
@@ -167,6 +194,7 @@
       class="space-y-3"
     >
       <input type="hidden" name="id" value={insight.id ?? ''} />
+      <input type="hidden" name="locale" value={activeLocale} />
 
       <label class="block">
         <span class="block text-xs font-medium text-zinc-600 mb-1">Headline</span>
