@@ -190,6 +190,8 @@ export const load: PageServerLoad = async ({ locals, url, depends }) => {
   ).catch((e: unknown) => { console.error('[benchmark_sources_v]', e); return [] as BenchmarkSourceRow[]; });
 
   // Insights — latest row only (05-01). action_points added in 260422-fz1.
+  // generated_at surfaces on the card so viewers can spot stale rows when
+  // the weekly pipeline misses a Monday.
   type InsightRow = {
     id: string;
     business_date: string;
@@ -197,10 +199,11 @@ export const load: PageServerLoad = async ({ locals, url, depends }) => {
     body: string;
     action_points: string[] | null;
     fallback_used: boolean;
+    generated_at: string;
   };
   const insightP = locals.supabase
     .from('insights_v')
-    .select('id, business_date, headline, body, action_points, fallback_used')
+    .select('id, business_date, headline, body, action_points, fallback_used, generated_at')
     .order('business_date', { ascending: false })
     .limit(1)
     .maybeSingle()
@@ -258,7 +261,8 @@ export const load: PageServerLoad = async ({ locals, url, depends }) => {
         body: latestInsightRow.body,
         action_points: latestInsightRow.action_points ?? [],
         business_date: latestInsightRow.business_date,
-        fallback_used: latestInsightRow.fallback_used
+        fallback_used: latestInsightRow.fallback_used,
+        generated_at: latestInsightRow.generated_at
       }
     : null;
 

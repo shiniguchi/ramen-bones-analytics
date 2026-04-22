@@ -86,4 +86,23 @@ describe("InsightCard", () => {
     const { container } = render(InsightCard, { insight: baseInsight });
     expect(container.querySelector("button[aria-label='Edit insight']")).toBeNull();
   });
+
+  it("always renders 'Refreshed weekly' cadence label in the footer", () => {
+    const { container } = render(InsightCard, { insight: baseInsight });
+    expect(container.textContent).toContain("Refreshed weekly");
+  });
+
+  it("appends last-run date from generated_at when provided", () => {
+    const { container } = render(InsightCard, {
+      insight: { ...baseInsight, generated_at: "2026-04-22T09:35:00Z" },
+    });
+    expect(container.textContent).toMatch(/Refreshed weekly · last run Apr 22, 2026/);
+  });
+
+  it("combines cadence + fallback label on one line when fallback_used is true", () => {
+    const { container } = render(InsightCard, {
+      insight: { ...baseInsight, fallback_used: true, generated_at: "2026-04-22T09:35:00Z" },
+    });
+    expect(container.textContent).toMatch(/Refreshed weekly · last run Apr 22, 2026.*auto-generated/s);
+  });
 });

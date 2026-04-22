@@ -14,6 +14,7 @@
     action_points: string[];
     business_date: string;
     fallback_used: boolean;
+    generated_at?: string;
   };
 
   let {
@@ -32,6 +33,22 @@
       }).format(d);
     } catch {
       return insight.business_date;
+    }
+  });
+
+  // Cadence + last-run footer: makes the weekly refresh schedule visible and
+  // surfaces the actual generated_at so stale runs (missed Mondays) are obvious
+  // instead of silently-old copy. Format: "Refreshed weekly · last run Apr 22".
+  const refreshLabel = $derived.by(() => {
+    if (!insight.generated_at) return 'Refreshed weekly';
+    try {
+      const d = new Date(insight.generated_at);
+      const when = new Intl.DateTimeFormat('en-US', {
+        month: 'short', day: 'numeric', year: 'numeric'
+      }).format(d);
+      return `Refreshed weekly · last run ${when}`;
+    } catch {
+      return 'Refreshed weekly';
     }
   });
 
@@ -117,11 +134,12 @@
       </ul>
     {/if}
 
-    {#if insight.fallback_used}
-      <span class="block text-xs leading-[1.4] font-normal text-zinc-500 mt-3">
-        · auto-generated
-      </span>
-    {/if}
+    <!-- Footer: cadence + last-run timestamp (+ auto-generated chip when the
+         fallback template fired instead of Haiku). Combines into one line so
+         viewers get the full provenance at a glance. -->
+    <span class="block text-xs leading-[1.4] font-normal text-zinc-500 mt-3">
+      {refreshLabel}{#if insight.fallback_used}&nbsp;· auto-generated{/if}
+    </span>
   {:else}
     <!-- Edit mode: form posts to the dashboard `updateInsight` action.
          `use:enhance` intercepts to keep the SPA shell, then we reload the
