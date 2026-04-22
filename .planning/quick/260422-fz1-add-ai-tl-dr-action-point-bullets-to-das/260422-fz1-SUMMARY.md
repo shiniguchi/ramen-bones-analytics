@@ -3,7 +3,7 @@ task: 260422-fz1
 title: AI TL;DR action-point bullets on dashboard insight card
 branch: feature/insight-action-points-260422
 status: complete
-commit: a496164
+commits: a496164, 0a73fae, 9f36914
 created: 2026-04-22
 completed: 2026-04-22
 ---
@@ -14,9 +14,11 @@ completed: 2026-04-22
 
 Nightly `generate-insight` Edge Function now emits a third structured field `action_points: string[]` (2–3 observational bullets) alongside the existing headline + body. Bullets persist in a new `action_points TEXT[]` column on `public.insights`, are exposed via `insights_v`, selected by the SSR loader, and rendered as a `<ul>` with dot glyphs inside `InsightCard.svelte` — sitting above the existing KPI tiles on the dashboard stream.
 
-## Commit
+## Commits
 
-`a496164` — `feat(quick-260422-fz1): add AI action_points bullets to insight card` (7 files changed, +131/-10)
+1. `a496164` — `feat(quick-260422-fz1): add AI action_points bullets to insight card` (7 files, +131/-10)
+2. `0a73fae` — `fix(quick-260422-fz1): append action_points at end of insights_v` — `CREATE OR REPLACE VIEW` can only append columns (SQLSTATE 42P16), discovered during `supabase db push` to DEV
+3. `9f36914` — `fix(quick-260422-fz1): flip insights_v to security_invoker=false` — fixed the pre-existing "permission denied for table insights" bug documented in the project memory from 2026-04-17. Without this, the InsightCard had silently rendered nothing since migration 0016 shipped.
 
 ## Files changed
 
@@ -41,11 +43,17 @@ Nightly `generate-insight` Edge Function now emits a third structured field `act
 - `deno test --no-check fallback.test.ts digit-guard.test.ts` → 13/13 passing (5 fallback + 8 digit-guard)
 - The digit-guard tautology test on the fallback still passes — new bullets print only numbers sourced from the same `FallbackInput` scalars.
 
-**Not yet verified (needs DEV deploy + pipeline re-trigger):**
-- Migration `0035_insights_action_points.sql` apply on DEV Supabase
-- Manual `generate-insight` invocation producing a real Haiku-generated row with non-empty `action_points`
-- Chrome MCP visual QA at 375 px and 1280 px for the new `<ul>` block
+**DEV verified:**
+- Migration `0035_insights_action_points.sql` applied to DEV Supabase via `supabase db push --linked` (first attempt failed — fixed by reordering columns in `CREATE OR REPLACE VIEW`)
+- `public.insights.action_points` column confirmed present (TEXT[] array, NOT NULL, default `{}`)
+- Seeded existing 2026-04-15 row with 3 test bullets (`Today revenue €203 ▼ 29% vs last week`, `Week €1,842 ▼ 12%`, `Returning share 38%`) to exercise the read path
+- Chrome MCP screenshot on localhost:5173 (running against hosted DEV Supabase): InsightCard rendered with headline + body + 3 dot-bullet `<ul>` matching the spec exactly
+- View flipped to `security_invoker=false` resolved the silent 42501 permission error that had prevented the card from ever rendering
+
+**Still unverified (manual, after merge to main):**
+- Manual `generate-insight` invocation producing a real Haiku-generated row with non-empty `action_points` (requires Edge Function re-deploy via Supabase Dashboard or `supabase functions deploy generate-insight`)
 - Fallback path: break `ANTHROPIC_API_KEY`, confirm deterministic bullets render
+- Cloudflare Pages deploy once merged to main
 
 ## Design decisions (locked in scope)
 
