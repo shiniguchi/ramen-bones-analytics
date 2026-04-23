@@ -1,0 +1,67 @@
+{
+  "_comment": "Per-repo chart→canonical-source-view mapping for data-cross-check-nudge.js. Hook fires ONLY when an edit matches a `pathContains` rule below AND has a matching extension. Generic .svelte components (EmptyState, FreshnessLabel, DashboardHeader, etc.) are intentionally NOT included — this hook is narrowly scoped to chart cards that show aggregated data.",
+  "extensions": [".svelte"],
+  "excludePaths": [
+    "node_modules/",
+    ".svelte-kit/",
+    "dist/",
+    "build/",
+    "tests/",
+    "test-results/",
+    ".test.",
+    ".spec."
+  ],
+  "rules": [
+    {
+      "pathContains": "CalendarRevenueCard.svelte",
+      "chart": "Calendar Revenue",
+      "sourceView": "transactions_filterable_v",
+      "bucketingHint": "SUM(amount_cents)/100 grouped by date_trunc(grain, business_date), where grain ∈ {day, week, month}",
+      "notes": "Locale-aware week start: Monday for de/ja/es/fr."
+    },
+    {
+      "pathContains": "CalendarCountsCard.svelte",
+      "chart": "Calendar Transaction Counts",
+      "sourceView": "transactions_filterable_v",
+      "bucketingHint": "COUNT(DISTINCT bill_id) grouped by date_trunc(grain, business_date)"
+    },
+    {
+      "pathContains": "CalendarItemsCard.svelte",
+      "chart": "Calendar Items (stacked qty)",
+      "sourceView": "item_counts_daily_v",
+      "bucketingHint": "SUM(qty) grouped by item_name × date_trunc(grain, business_date)",
+      "notes": "Component does its OWN .filter() — the 2026-04-20 bug. Verify it includes EVERY filter dim from filterRows()."
+    },
+    {
+      "pathContains": "CalendarItemRevenueCard.svelte",
+      "chart": "Calendar Items Revenue (stacked €)",
+      "sourceView": "item_counts_daily_v",
+      "bucketingHint": "SUM(revenue_cents)/100 grouped by item_name × date_trunc(grain, business_date)",
+      "notes": "Same self-filtering pattern as CalendarItemsCard — verify filter dim coverage."
+    },
+    {
+      "pathContains": "CohortRetentionCard.svelte",
+      "chart": "Cohort Retention curves",
+      "sourceView": "retention_curve_v (or retention_curve_monthly_v at month grain)",
+      "bucketingHint": "retention_rate per cohort_month × period_index. Sparse-cohort filter: cohorts with size < SPARSE_MIN_COHORT_SIZE are excluded — apply the same filter in SQL."
+    },
+    {
+      "pathContains": "DailyHeatmapCard.svelte",
+      "chart": "Daily DOW × hour heatmap",
+      "sourceView": "kpi_daily_v",
+      "bucketingHint": "AVG(amount_cents)/100 grouped by EXTRACT(DOW FROM business_date) × hour_of_day. activeDays filter applies in WHERE."
+    },
+    {
+      "pathContains": "RepeaterCohortCountCard.svelte",
+      "chart": "Repeater cohort counts",
+      "sourceView": "customer_ltv_v + visit_attribution_v",
+      "bucketingHint": "COUNT(DISTINCT customer_id) grouped by cohort × visit_count band. Stacked bars — sum of bands per cohort = total cohort size."
+    },
+    {
+      "pathContains": "KpiTile.svelte",
+      "chart": "KPI Tile (any single aggregated value)",
+      "sourceView": "depends on the `value` prop's source — trace the parent in src/routes/+page.svelte to see which view feeds the prop, then aggregate that view directly",
+      "bucketingHint": "Scalar — single aggregated value, not bucketed. Compare displayed value to SUM/COUNT/AVG of source view with current filter."
+    }
+  ]
+}

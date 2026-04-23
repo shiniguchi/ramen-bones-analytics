@@ -9,3 +9,4 @@
 - [LayerChart mobile horizontal scroll needs touchEvents override](feedback_layerchart_mobile_scroll.md) — always pass `tooltipContext={{ touchEvents: 'pan-x' }}` on scrollable charts or inner touch-action:pan-y blocks iOS swipe scroll
 - [CF Pages stuck after Error 1102 — manual redeploy recovers](project_cf_pages_stuck_recovery.md) — deployed SSR routes return HTTP 404 "Not found" (9 bytes) while static assets still 200; fix = `gh workflow run deploy.yml --ref main`
 - [visual-verify-nudge hook targets localhost, not DEV](feedback_visual_verify_hook_targets_localhost.md) — `.claude/hooks/verify-targets.json` URL stays at `http://localhost:5173`; DEV is for final QA, not per-edit nudge
+- [data-cross-check-nudge hook fires on chart-card edits](feedback_data_cross_check_hook.md) — `.claude/hooks/data-cross-check-nudge.js` forces SQL-vs-rendered comparison; new chart cards need a rule in `cross-check-targets.json`
