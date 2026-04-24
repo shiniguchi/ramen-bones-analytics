@@ -141,7 +141,14 @@ const en = {
   insight_save: 'Save',
   insight_saving: 'Saving…',
   insight_cancel: 'Cancel',
-  insight_update_failed: 'update failed'
+  insight_update_failed: 'update failed',
+
+  // --- MdeCurveCard (quick-260424-mdc) -----------------------------------
+  mde_title: 'Minimum detectable lift',
+  mde_caption: 'Based on {n1} days of baseline variability (σ {sigma}/day). Assumes 95% confidence, 80% power.',
+  mde_tooltip_day: 'Day {n2}',
+  mde_tooltip_mde: 'Needs ≥ {mde}/day avg',
+  mde_empty: 'Need ≥ 7 days of baseline data to draw the curve.'
 } as const;
 
 export type MessageKey = keyof typeof en;
@@ -269,7 +276,14 @@ const de: Record<MessageKey, string> = {
   insight_save: 'Speichern',
   insight_saving: 'Speichert…',
   insight_cancel: 'Abbrechen',
-  insight_update_failed: 'Aktualisierung fehlgeschlagen'
+  insight_update_failed: 'Aktualisierung fehlgeschlagen',
+
+  // MdeCurveCard (EN copy — polish later, same pattern as recent i18n rollout)
+  mde_title: 'Minimum detectable lift',
+  mde_caption: 'Based on {n1} days of baseline variability (σ {sigma}/day). Assumes 95% confidence, 80% power.',
+  mde_tooltip_day: 'Day {n2}',
+  mde_tooltip_mde: 'Needs ≥ {mde}/day avg',
+  mde_empty: 'Need ≥ 7 days of baseline data to draw the curve.'
 };
 
 // --- JA (日本語) ----------------------------------------------------------
@@ -392,7 +406,14 @@ const ja: Record<MessageKey, string> = {
   insight_save: '保存',
   insight_saving: '保存中…',
   insight_cancel: 'キャンセル',
-  insight_update_failed: '更新に失敗しました'
+  insight_update_failed: '更新に失敗しました',
+
+  // MdeCurveCard (EN copy — polish later, same pattern as recent i18n rollout)
+  mde_title: 'Minimum detectable lift',
+  mde_caption: 'Based on {n1} days of baseline variability (σ {sigma}/day). Assumes 95% confidence, 80% power.',
+  mde_tooltip_day: 'Day {n2}',
+  mde_tooltip_mde: 'Needs ≥ {mde}/day avg',
+  mde_empty: 'Need ≥ 7 days of baseline data to draw the curve.'
 };
 
 // --- ES (Español) ---------------------------------------------------------
@@ -518,7 +539,14 @@ const es: Record<MessageKey, string> = {
   insight_save: 'Guardar',
   insight_saving: 'Guardando…',
   insight_cancel: 'Cancelar',
-  insight_update_failed: 'error al actualizar'
+  insight_update_failed: 'error al actualizar',
+
+  // MdeCurveCard (EN copy — polish later, same pattern as recent i18n rollout)
+  mde_title: 'Minimum detectable lift',
+  mde_caption: 'Based on {n1} days of baseline variability (σ {sigma}/day). Assumes 95% confidence, 80% power.',
+  mde_tooltip_day: 'Day {n2}',
+  mde_tooltip_mde: 'Needs ≥ {mde}/day avg',
+  mde_empty: 'Need ≥ 7 days of baseline data to draw the curve.'
 };
 
 // --- FR (Français) --------------------------------------------------------
@@ -644,7 +672,14 @@ const fr: Record<MessageKey, string> = {
   insight_save: 'Enregistrer',
   insight_saving: 'Enregistrement…',
   insight_cancel: 'Annuler',
-  insight_update_failed: "échec de la mise à jour"
+  insight_update_failed: "échec de la mise à jour",
+
+  // MdeCurveCard (EN copy — polish later, same pattern as recent i18n rollout)
+  mde_title: 'Minimum detectable lift',
+  mde_caption: 'Based on {n1} days of baseline variability (σ {sigma}/day). Assumes 95% confidence, 80% power.',
+  mde_tooltip_day: 'Day {n2}',
+  mde_tooltip_mde: 'Needs ≥ {mde}/day avg',
+  mde_empty: 'Need ≥ 7 days of baseline data to draw the curve.'
 };
 
 export const messages: Record<Locale, Record<MessageKey, string>> = { en, de, ja, es, fr };

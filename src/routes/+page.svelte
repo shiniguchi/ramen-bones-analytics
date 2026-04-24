@@ -16,6 +16,7 @@
   import CalendarCountsCard from '$lib/components/CalendarCountsCard.svelte';
   import CalendarItemsCard from '$lib/components/CalendarItemsCard.svelte';
   import CalendarItemRevenueCard from '$lib/components/CalendarItemRevenueCard.svelte';
+  import MdeCurveCard from '$lib/components/MdeCurveCard.svelte';
   import RepeaterCohortCountCard from '$lib/components/RepeaterCohortCountCard.svelte';
   import LazyMount from '$lib/components/LazyMount.svelte';
   import { clientFetch } from '$lib/clientFetch';
@@ -285,6 +286,9 @@
 
     <!-- D-10 card 8: Calendar revenue (VA-04) — self-subscribes to dashboardStore -->
     <CalendarRevenueCard />
+
+    <!-- quick-260424-mdc: Minimum Detectable Effect curve — σ/n₁ from getFiltered() -->
+    <MdeCurveCard />
 
     <!-- D-10 card 9: Calendar items (VA-08) — receives window-scoped rows from SSR -->
     <CalendarItemsCard data={data.itemCounts} />
