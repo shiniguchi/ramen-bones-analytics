@@ -39,8 +39,6 @@ const en = {
 
   // --- Cohort cards (existing) -------------------------------------------
   repeater_cohort_title: 'Repeaters acquired by first-visit grouping',
-  repeater_cohort_subtitle:
-    'Customers who came back 2+ times, grouped by visit count — placed in their first-visit period.',
   cohort_retention_title: 'Retention rate by acquisition grouping',
   retention_day_filter_caveat: 'Day filter does not apply to cohort retention — cohorts use all days.',
   retention_months_of_history_one: 'Only {n} month of history — cohort curves will stabilize with more data.',
@@ -51,16 +49,11 @@ const en = {
 
   // --- Calendar cards -----------------------------------------------------
   heatmap_title: 'Daily revenue heatmap',
-  heatmap_subtitle:
-    'Each square is one day — darker = more revenue. Shows full history, always unfiltered.',
   heatmap_empty: 'No daily data yet.',
   cal_counts_title: 'Transactions per period — by visit number',
   cal_revenue_title: 'Revenue per period — by visit number',
   cal_items_title: 'Items sold per period — top 20 menu items',
-  cal_items_subtitle:
-    'One line per item so you can spot what\'s trending up or down. Rest grouped as "Other".',
   cal_item_revenue_title: 'Revenue per period — top 20 menu items',
-  cal_item_revenue_subtitle: 'Share of revenue per period. Rest grouped as "Other".',
 
   // --- Legend / tooltip shared -------------------------------------------
   legend_cash: 'Cash',
@@ -188,8 +181,6 @@ const de: Record<MessageKey, string> = {
   freshness_outdated_suffix: ' — Daten könnten veraltet sein',
 
   repeater_cohort_title: 'Wiederkehrende Kunden nach Erstbesuch-Kohorte',
-  repeater_cohort_subtitle:
-    'Kunden mit 2+ Besuchen, nach Besuchsanzahl gruppiert — eingeordnet nach Erstbesuch-Zeitraum.',
   cohort_retention_title: 'Kundenbindungsrate nach Akquisitions-Kohorte',
   retention_day_filter_caveat:
     'Der Wochentagsfilter gilt nicht für die Kundenbindung — Kohorten nutzen alle Tage.',
@@ -202,16 +193,11 @@ const de: Record<MessageKey, string> = {
     'Tägliche Kohorten haben zu wenige Wiederkehrer für eine Auswertung (Min. {n}). Wöchentliche Kohorten werden angezeigt.',
 
   heatmap_title: 'Tägliche Umsatz-Heatmap',
-  heatmap_subtitle:
-    'Jedes Quadrat ist ein Tag — dunkler = mehr Umsatz. Zeigt den gesamten Verlauf, immer ungefiltert.',
   heatmap_empty: 'Noch keine Tagesdaten.',
   cal_counts_title: 'Transaktionen pro Zeitraum — nach Besuchsnummer',
   cal_revenue_title: 'Umsatz pro Zeitraum — nach Besuchsnummer',
   cal_items_title: 'Verkaufte Artikel pro Zeitraum — Top 20 Menüpunkte',
-  cal_items_subtitle:
-    'Eine Linie pro Artikel, damit Trends sichtbar werden. Rest als „Andere" gruppiert.',
   cal_item_revenue_title: 'Umsatz pro Zeitraum — Top 20 Menüpunkte',
-  cal_item_revenue_subtitle: 'Umsatzanteil pro Zeitraum. Rest als „Andere" gruppiert.',
 
   legend_cash: 'Bargeld',
   tooltip_revenue: 'Umsatz',
@@ -331,8 +317,6 @@ const ja: Record<MessageKey, string> = {
   freshness_outdated_suffix: ' — データが古い可能性があります',
 
   repeater_cohort_title: '初回来店グループ別のリピーター',
-  repeater_cohort_subtitle:
-    '2回以上来店した顧客を来店回数別にグループ化し、初回来店の期間に割り当てています。',
   cohort_retention_title: '獲得グループ別のリテンション率',
   retention_day_filter_caveat: '曜日フィルターはリテンションには適用されません — 全曜日で集計します。',
   retention_months_of_history_one:
@@ -344,14 +328,11 @@ const ja: Record<MessageKey, string> = {
     '日次コホートはリピーター数が少なすぎるため表示できません（最小 {n}）。代わりに週次コホートを表示します。',
 
   heatmap_title: '日別売上ヒートマップ',
-  heatmap_subtitle: '各マスが1日 — 濃いほど売上が多い。全期間・フィルター無視で表示。',
   heatmap_empty: '日次データがまだありません。',
   cal_counts_title: '期間別取引件数 — 来店回数別',
   cal_revenue_title: '期間別売上 — 来店回数別',
   cal_items_title: '期間別販売数 — メニュー上位20品',
-  cal_items_subtitle: '1品目1ラインで傾向が見えます。それ以外は「その他」にまとめています。',
   cal_item_revenue_title: '期間別売上 — メニュー上位20品',
-  cal_item_revenue_subtitle: '期間別売上シェア。それ以外は「その他」にまとめています。',
 
   legend_cash: '現金',
   tooltip_revenue: '売上',
@@ -471,8 +452,6 @@ const es: Record<MessageKey, string> = {
   freshness_outdated_suffix: ' — los datos pueden estar desactualizados',
 
   repeater_cohort_title: 'Repetidores adquiridos por cohorte de primera visita',
-  repeater_cohort_subtitle:
-    'Clientes con 2 o más visitas, agrupados por número de visitas — ubicados en su período de primera visita.',
   cohort_retention_title: 'Tasa de retención por cohorte de adquisición',
   retention_day_filter_caveat:
     'El filtro de día no aplica a retención de cohortes — las cohortes usan todos los días.',
@@ -485,16 +464,11 @@ const es: Record<MessageKey, string> = {
     'Las cohortes diarias tienen muy pocos clientes recurrentes para graficar (mín. {n}). Mostrando cohortes semanales en su lugar.',
 
   heatmap_title: 'Mapa de calor de ingresos diarios',
-  heatmap_subtitle:
-    'Cada cuadro es un día — más oscuro = más ingresos. Muestra todo el historial, sin filtros.',
   heatmap_empty: 'Aún no hay datos diarios.',
   cal_counts_title: 'Transacciones por período — por número de visita',
   cal_revenue_title: 'Ingresos por período — por número de visita',
   cal_items_title: 'Artículos vendidos por período — top 20 del menú',
-  cal_items_subtitle:
-    'Una línea por artículo para detectar tendencias. El resto agrupado como "Otros".',
   cal_item_revenue_title: 'Ingresos por período — top 20 del menú',
-  cal_item_revenue_subtitle: 'Cuota de ingresos por período. El resto agrupado como "Otros".',
 
   legend_cash: 'Efectivo',
   tooltip_revenue: 'Ingresos',
@@ -614,8 +588,6 @@ const fr: Record<MessageKey, string> = {
   freshness_outdated_suffix: ' — données potentiellement obsolètes',
 
   repeater_cohort_title: 'Clients fidèles acquis par cohorte de première visite',
-  repeater_cohort_subtitle:
-    'Clients avec 2+ visites, regroupés par nombre de visites — classés par période de première visite.',
   cohort_retention_title: "Taux de rétention par cohorte d'acquisition",
   retention_day_filter_caveat:
     "Le filtre jour ne s'applique pas à la rétention — les cohortes utilisent tous les jours.",
@@ -628,16 +600,11 @@ const fr: Record<MessageKey, string> = {
     'Les cohortes quotidiennes ont trop peu de clients fidèles pour être tracées (min. {n}). Affichage des cohortes hebdomadaires à la place.',
 
   heatmap_title: "Carte thermique du chiffre d'affaires quotidien",
-  heatmap_subtitle:
-    "Chaque carré est un jour — plus foncé = plus de CA. Affiche tout l'historique, toujours non filtré.",
   heatmap_empty: "Pas encore de données quotidiennes.",
   cal_counts_title: 'Transactions par période — par numéro de visite',
   cal_revenue_title: "Chiffre d'affaires par période — par numéro de visite",
   cal_items_title: 'Articles vendus par période — top 20 du menu',
-  cal_items_subtitle:
-    'Une ligne par article pour repérer les tendances. Le reste regroupé en « Autres ».',
   cal_item_revenue_title: "Chiffre d'affaires par période — top 20 du menu",
-  cal_item_revenue_subtitle: "Part de CA par période. Le reste regroupé en « Autres ».",
 
   legend_cash: 'Espèces',
   tooltip_revenue: "Chiffre d'affaires",

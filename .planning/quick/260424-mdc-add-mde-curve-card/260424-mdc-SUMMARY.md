@@ -145,3 +145,63 @@ Verified files exist on disk:
 Verified commits on branch `quick-260424-mde`:
 - `66926c2` — feat(mde): pure MDE math helpers + unit tests ✓
 - `e612519` — feat(mde): add MdeCurveCard to dashboard with reactive σ/n₁ ✓
+
+## Follow-up commits (same session, after interactive review)
+
+- `34f686e` — docs(quick-260424-mdc): PLAN + SUMMARY + STATE (orchestrator-side
+  artifact commit from the gsd-quick workflow).
+- `a809d53` — feat(dashboard): chart descriptions in 5 locales + MDE polish +
+  heatmap Monday-first.
+  * MDE render bugs fixed: Chart now uses explicit `xScale={scaleLinear()}` +
+    `xDomain={[1, 14]}` and the main Spline gets explicit `data/x/y` props.
+    Root cause: LayerChart auto-inference stretched the x range 14× the plot
+    width, and the no-prop Spline aliased the 2-point reference Spline's
+    series state (both failure modes collapsed the curve to a single vertical
+    line at x=237).
+  * Caption gained μ (baseline daily mean) alongside σ. Description paragraph
+    added under the title citing **Welch's t-test**.
+  * Card moved from between Revenue/Items calendars to the BOTTOM of the
+    dashboard (decision-support — consulted after primary KPIs).
+  * 7 chart cards (heatmap, calendar counts/revenue/items/item-revenue,
+    cohort retention, repeater) gained a description paragraph under the
+    title in all 5 locales. 4 cards had their `*_subtitle` key swapped to
+    `*_description` carrying richer copy; 3 cards without subtitles got a
+    new `<p>`.
+  * DailyHeatmapCard Sunday-row alignment: LayerChart's `<Calendar>` uses
+    d3-time's `timeWeek` hardcoded (Sunday-start), so Sundays visually landed
+    in the same column as the Mon-Sat that follow. Patched: Sunday cells
+    shift one cell left (clamped at 0) so Mon-Sun weeks align Monday-first.
+- `0d9776b` — feat(hooks): localhost-qa-gate Stop hook + CLAUDE.md callout +
+  MDE tick polish.
+  * New `.claude/hooks/localhost-qa-gate.js` Stop hook (CJS, ~160 LOC):
+    parses the session transcript, blocks turn-end when any Edit/Write/
+    MultiEdit touched a frontend file without a subsequent
+    `mcp__claude-in-chrome__navigate` to localhost. Loop-protected via
+    `stop_hook_active`.
+  * `.claude/CLAUDE.md` gained a bold "🚨 Exception — Frontend / UI changes:
+    LOCALHOST FIRST" block carving out the one exception to the repo's
+    "always work against DEV" default.
+  * MDE x-axis ticks fixed: `integerTicks(14)` emitted `[0, 3, 6, 9, 12, 14]`
+    which d3 formatted as `"0.0", "3.0" …` with an offscreen tick at 0.
+    Now explicit `ticks={[1, 4, 7, 10, 14]} format={v => String(v)}`, tick
+    `7` aligns exactly with the dashed reference line at x=237.2.
+- `<PR cleanup>` — `/review-pr` holistic alignment: deleted 4 orphan
+  `*_subtitle` i18n keys (20 lines removed across 5 locales) that were
+  left dead after the description swap. Kept `src/lib/trendline.ts`
+  `integerTicks` intact (still used by CalendarItemsCard).
+
+## Final QA (post-cleanup, via Chrome MCP on localhost:5173)
+
+- range=all: n₁=234, σ=€354, μ=€899. Curve renders 14 path commands
+  monotonically descending; dashed reference at x=237.2 aligns with
+  tick 7.
+- range=all + days=3,4,5 (Wed-Fri): n₁=126, σ=€208, μ=€727. MDE(14) ≈ €164
+  — within 3 % of an external Welch's-t calculation (n₁=119, σ=€203,
+  MDE(14) = €161).
+- range=30d + days=1 (Mon only) → n₁ drops below 7 → EmptyState renders
+  with the localized mde_empty copy.
+- Heatmap Sunday row rightmost cell: x=616 (was 630). Sun 19 now visually
+  aligns with Mon 13-Sat 18, not Mon 20-Fri 24.
+- JA locale live-verified: title/description/caption all in Japanese
+  with "Welchのt検定".
+- Console across 5 navigations: zero runtime errors.
