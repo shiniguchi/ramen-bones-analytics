@@ -25,7 +25,6 @@
     MDE_MIN_BASELINE_DAYS,
     MDE_MAX_CAMPAIGN_DAYS
   } from '$lib/mde';
-  import { integerTicks } from '$lib/trendline';
 
   // σ + n₁ derived from the filtered baseline. Recomputes on every
   // range / sales_type / is_cash / day-of-week change.
@@ -69,7 +68,7 @@
       >
         <Svg>
           <Axis placement="left" format={formatEURShort} grid rule />
-          <Axis placement="bottom" ticks={integerTicks(MDE_MAX_CAMPAIGN_DAYS)} rule />
+          <Axis placement="bottom" ticks={[1, 4, 7, 10, 14]} format={(v: number) => String(v)} rule />
           <!-- Dashed vertical reference at n₂=7 ("1 week") — 2-point Spline. -->
           <Spline
             data={[{ n2: 7, mde: 0 }, { n2: 7, mde: yMax }]}

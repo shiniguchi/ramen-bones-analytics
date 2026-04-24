@@ -6,6 +6,16 @@
 
 Always work against **DEV** unless the user says "local" or "prod".
 
+### 🚨 Exception — Frontend / UI changes: LOCALHOST FIRST
+
+Any change to `src/routes/**`, `src/lib/components/**`, or any `.svelte` / `.css` / CSS-in-JS file **MUST** be verified via Chrome MCP against `http://localhost:5173` BEFORE you claim the task is done. DEV is for FINAL QA after push — never for the per-edit feedback loop. `.claude/hooks/verify-targets.json` encodes this rule literally, and `.claude/hooks/localhost-qa-gate.js` (Stop hook) blocks turn-end if a frontend file was edited without a localhost navigate in the session transcript.
+
+**Order is non-negotiable:**
+1. Edit the frontend file
+2. If no dev server is running, start one (`npm run dev` → localhost:5173)
+3. Chrome MCP navigate → interact → read console → state `Visual verification: PASS/FAIL/PARTIAL`
+4. (optional) Push branch → DEV deploy → Chrome MCP DEV URL for final QA
+
 <!-- TODO: Fill in environment table for this project.
 | Resource     | DEV                    | PROD                   |
 | ------------ | ---------------------- | ---------------------- |
