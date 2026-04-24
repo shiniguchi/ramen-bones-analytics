@@ -145,10 +145,20 @@ const en = {
 
   // --- MdeCurveCard (quick-260424-mdc) -----------------------------------
   mde_title: 'Minimum detectable lift',
-  mde_caption: 'Based on {n1} days of baseline variability (σ {sigma}/day). Assumes 95% confidence, 80% power.',
+  mde_description: "Your campaign needs to beat baseline by at least this much per day to register as statistically significant (Welch's t-test).",
+  mde_caption: 'Based on {n1} days of baseline (μ {mu}/day, σ {sigma}/day). Assumes 95% confidence, 80% power.',
   mde_tooltip_day: 'Day {n2}',
   mde_tooltip_mde: 'Needs ≥ {mde}/day avg',
-  mde_empty: 'Need ≥ 7 days of baseline data to draw the curve.'
+  mde_empty: 'Need ≥ 7 days of baseline data to draw the curve.',
+
+  // --- Per-card descriptions (quick-260424-mdc) -------------------------
+  heatmap_description: "Each cell is one day's gross revenue — darker blue means a stronger day. Scan the rows to see which weekday carries the week, and the columns to spot steady vs swinging weeks.",
+  cal_counts_description: 'Number of transactions per day / week / month, stacked by how many times each customer has visited before. Tall bars = busy periods; the cash segment covers walk-ins without card attribution.',
+  cal_revenue_description: 'Gross revenue per day / week / month, stacked by customer visit sequence (1st, 2nd … 8x+). Compare bar heights for trend, and the color split to see whether growth comes from new or returning customers.',
+  cal_items_description: 'Top-selling menu items by transaction count. Longer bars = more plates served — use this to spot which items carry the restaurant day-to-day.',
+  cal_item_revenue_description: 'Top-selling menu items by gross revenue. Differs from transaction count when an item has a higher ticket — use this to find hidden profit drivers.',
+  cohort_retention_description: 'How many customers come back in the weeks / months after their first visit. A flat line = sticky; a sharp drop = one-and-done. Each cohort is a separate line so you can compare quarters.',
+  repeater_cohort_description: 'Repeat-customer count by first-visit cohort. The stack on the right shows your newest cohort attracting the most returners; thinner left stacks = older cohorts fading out.'
 } as const;
 
 export type MessageKey = keyof typeof en;
@@ -278,12 +288,22 @@ const de: Record<MessageKey, string> = {
   insight_cancel: 'Abbrechen',
   insight_update_failed: 'Aktualisierung fehlgeschlagen',
 
-  // MdeCurveCard (EN copy — polish later, same pattern as recent i18n rollout)
-  mde_title: 'Minimum detectable lift',
-  mde_caption: 'Based on {n1} days of baseline variability (σ {sigma}/day). Assumes 95% confidence, 80% power.',
-  mde_tooltip_day: 'Day {n2}',
-  mde_tooltip_mde: 'Needs ≥ {mde}/day avg',
-  mde_empty: 'Need ≥ 7 days of baseline data to draw the curve.'
+  // MdeCurveCard
+  mde_title: 'Minimal nachweisbarer Anstieg',
+  mde_description: 'Ihre Kampagne muss den Normalumsatz pro Tag um mindestens diesen Betrag übertreffen, um statistisch signifikant zu sein (Welch-t-Test).',
+  mde_caption: 'Basierend auf {n1} Tagen Baseline (μ {mu}/Tag, σ {sigma}/Tag). Annahme: 95 % Konfidenz, 80 % Power.',
+  mde_tooltip_day: 'Tag {n2}',
+  mde_tooltip_mde: '≥ {mde}/Tag (Ø) erforderlich',
+  mde_empty: 'Mindestens 7 Tage Baseline-Daten erforderlich, um die Kurve zu zeichnen.',
+
+  // Per-card descriptions
+  heatmap_description: 'Jede Kachel zeigt den Tagesumsatz — je dunkler das Blau, desto stärker der Tag. Zeilen zeigen, welcher Wochentag die Woche trägt; Spalten zeigen ruhige vs schwankende Wochen.',
+  cal_counts_description: 'Anzahl Transaktionen pro Tag / Woche / Monat, gestapelt nach der Besuchsnummer jedes Kunden. Hohe Balken = geschäftige Zeiträume; das Barsegment erfasst Laufkundschaft ohne Kartenzuordnung.',
+  cal_revenue_description: 'Umsatz pro Tag / Woche / Monat, gestapelt nach Besuchsnummer (1., 2. … 8x+). Balkenhöhe zeigt den Trend; die Farbverteilung zeigt, ob Wachstum von Neu- oder Stammkunden kommt.',
+  cal_items_description: 'Meistverkaufte Menüpunkte nach Transaktionszahl. Längere Balken = mehr servierte Portionen — so erkennen Sie, welche Gerichte das Geschäft täglich tragen.',
+  cal_item_revenue_description: 'Meistverkaufte Menüpunkte nach Umsatz. Unterscheidet sich von der Transaktionszahl, wenn ein Gericht einen höheren Preis hat — so finden Sie versteckte Umsatzbringer.',
+  cohort_retention_description: 'Wie viele Kunden nach ihrem ersten Besuch in den Wochen / Monaten danach zurückkehren. Flache Linie = treu; steiler Abfall = einmalig. Jede Kohorte ist eine eigene Linie, damit Quartale vergleichbar sind.',
+  repeater_cohort_description: 'Anzahl wiederkehrender Kunden nach Erstbesuch-Kohorte. Der rechte Stapel zeigt Ihre neueste Kohorte mit den meisten Rückkehrern; dünnere linke Stapel = ältere Kohorten, die abflauen.'
 };
 
 // --- JA (日本語) ----------------------------------------------------------
@@ -408,12 +428,22 @@ const ja: Record<MessageKey, string> = {
   insight_cancel: 'キャンセル',
   insight_update_failed: '更新に失敗しました',
 
-  // MdeCurveCard (EN copy — polish later, same pattern as recent i18n rollout)
-  mde_title: 'Minimum detectable lift',
-  mde_caption: 'Based on {n1} days of baseline variability (σ {sigma}/day). Assumes 95% confidence, 80% power.',
-  mde_tooltip_day: 'Day {n2}',
-  mde_tooltip_mde: 'Needs ≥ {mde}/day avg',
-  mde_empty: 'Need ≥ 7 days of baseline data to draw the curve.'
+  // MdeCurveCard
+  mde_title: '検出可能な最小売上リフト',
+  mde_description: 'キャンペーンが統計的に有意と判定されるには、通常の1日平均売上をこの金額以上上回る必要があります（Welchのt検定）。',
+  mde_caption: 'ベースライン{n1}日分のデータに基づく（μ {mu}/日、σ {sigma}/日）。信頼度95％、検出力80％を想定。',
+  mde_tooltip_day: '{n2}日目',
+  mde_tooltip_mde: '1日平均 {mde} 以上必要',
+  mde_empty: '曲線を描画するにはベースラインデータが7日以上必要です。',
+
+  // Per-card descriptions
+  heatmap_description: '各マスが1日の売上を示します — 濃い青ほど売上が高い日。行で「どの曜日が一週間を支えているか」、列で「安定している週か波のある週か」を読み取れます。',
+  cal_counts_description: '1日 / 週 / 月ごとの取引件数を、各顧客の来店回数別に積み上げて表示します。棒が高いほど忙しい時期。現金セグメントはカード紐付けのない一見客を含みます。',
+  cal_revenue_description: '1日 / 週 / 月ごとの売上を、来店回数（1回目・2回目…8回以上）別に積み上げて表示します。棒の高さでトレンドを、色の構成で新規顧客と常連のどちらが伸びているかを確認できます。',
+  cal_items_description: '取引件数で見たメニューの売れ筋。棒が長いほど出数が多い — お店を日々支えている一皿を見つけるのに使えます。',
+  cal_item_revenue_description: '売上額で見たメニューの売れ筋。客単価の高い一皿は取引件数と順位が変わります — 隠れた稼ぎ頭を見つけるのに使えます。',
+  cohort_retention_description: '初回来店後の数週 / 数ヶ月で再来店する顧客の割合です。線が水平 = 定着している、急降下 = 一度きり。コホートごとに線が分かれているので四半期を比較できます。',
+  repeater_cohort_description: '初回来店コホート別のリピーター数です。右端のスタックが高いほど、最新のコホートが多くのリピーターを生んでいます。左側が細い = 古いコホートが先細りしている状態。'
 };
 
 // --- ES (Español) ---------------------------------------------------------
@@ -541,12 +571,22 @@ const es: Record<MessageKey, string> = {
   insight_cancel: 'Cancelar',
   insight_update_failed: 'error al actualizar',
 
-  // MdeCurveCard (EN copy — polish later, same pattern as recent i18n rollout)
-  mde_title: 'Minimum detectable lift',
-  mde_caption: 'Based on {n1} days of baseline variability (σ {sigma}/day). Assumes 95% confidence, 80% power.',
-  mde_tooltip_day: 'Day {n2}',
-  mde_tooltip_mde: 'Needs ≥ {mde}/day avg',
-  mde_empty: 'Need ≥ 7 days of baseline data to draw the curve.'
+  // MdeCurveCard
+  mde_title: 'Aumento mínimo detectable',
+  mde_description: 'Tu campaña necesita superar la línea base en al menos esta cantidad por día para ser estadísticamente significativa (prueba t de Welch).',
+  mde_caption: 'Basado en {n1} días de línea base (μ {mu}/día, σ {sigma}/día). Asume 95 % de confianza y 80 % de potencia.',
+  mde_tooltip_day: 'Día {n2}',
+  mde_tooltip_mde: 'Necesita ≥ {mde}/día (prom.)',
+  mde_empty: 'Se necesitan al menos 7 días de datos de línea base para dibujar la curva.',
+
+  // Per-card descriptions
+  heatmap_description: 'Cada celda es el ingreso bruto de un día — azul más oscuro = día más fuerte. Las filas muestran qué día de la semana sostiene la semana; las columnas, semanas estables vs variables.',
+  cal_counts_description: 'Número de transacciones por día / semana / mes, apiladas según cuántas veces ha visitado cada cliente. Barras altas = períodos ocupados; el segmento "efectivo" cubre clientes sin atribución por tarjeta.',
+  cal_revenue_description: 'Ingreso bruto por día / semana / mes, apilado por secuencia de visitas del cliente (1ª, 2ª … 8+). Compara la altura para ver la tendencia y los colores para ver si el crecimiento viene de clientes nuevos o recurrentes.',
+  cal_items_description: 'Platos más vendidos por número de transacciones. Barras más largas = más platos servidos — úsalo para detectar qué platos sostienen el restaurante día a día.',
+  cal_item_revenue_description: 'Platos más vendidos por ingreso bruto. Difiere del recuento cuando un plato tiene un ticket más alto — úsalo para encontrar generadores de beneficio ocultos.',
+  cohort_retention_description: 'Cuántos clientes regresan en las semanas / meses posteriores a su primera visita. Línea plana = fidelizados; caída brusca = de una sola vez. Cada cohorte es una línea distinta para comparar trimestres.',
+  repeater_cohort_description: 'Recuento de clientes recurrentes por cohorte de primera visita. La pila de la derecha muestra que tu cohorte más reciente atrae la mayor cantidad de retornos; pilas más delgadas a la izquierda = cohortes antiguas que se diluyen.'
 };
 
 // --- FR (Français) --------------------------------------------------------
@@ -674,12 +714,22 @@ const fr: Record<MessageKey, string> = {
   insight_cancel: 'Annuler',
   insight_update_failed: "échec de la mise à jour",
 
-  // MdeCurveCard (EN copy — polish later, same pattern as recent i18n rollout)
-  mde_title: 'Minimum detectable lift',
-  mde_caption: 'Based on {n1} days of baseline variability (σ {sigma}/day). Assumes 95% confidence, 80% power.',
-  mde_tooltip_day: 'Day {n2}',
-  mde_tooltip_mde: 'Needs ≥ {mde}/day avg',
-  mde_empty: 'Need ≥ 7 days of baseline data to draw the curve.'
+  // MdeCurveCard
+  mde_title: 'Augmentation minimale détectable',
+  mde_description: "Votre campagne doit dépasser la référence d'au moins ce montant par jour pour être statistiquement significative (test t de Welch).",
+  mde_caption: "Basé sur {n1} jours de référence (μ {mu}/jour, σ {sigma}/jour). Hypothèse : 95 % de confiance, 80 % de puissance.",
+  mde_tooltip_day: 'Jour {n2}',
+  mde_tooltip_mde: '≥ {mde}/jour (moy.) requis',
+  mde_empty: "Au moins 7 jours de données de référence sont nécessaires pour tracer la courbe.",
+
+  // Per-card descriptions
+  heatmap_description: "Chaque cellule représente le chiffre d'affaires d'une journée — plus le bleu est foncé, plus la journée a été forte. Les lignes révèlent le jour qui porte la semaine ; les colonnes, les semaines régulières vs irrégulières.",
+  cal_counts_description: "Nombre de transactions par jour / semaine / mois, empilées selon le nombre de visites précédentes de chaque client. Barres hautes = périodes chargées ; le segment « espèces » couvre les passages sans attribution par carte.",
+  cal_revenue_description: "Chiffre d'affaires par jour / semaine / mois, empilé selon la séquence de visites du client (1ʳᵉ, 2ᵉ … 8x+). Comparez la hauteur pour la tendance ; la répartition des couleurs indique si la croissance vient de nouveaux clients ou de fidèles.",
+  cal_items_description: "Plats les plus vendus par nombre de transactions. Plus la barre est longue, plus le plat est servi — utile pour identifier les plats qui font tourner le restaurant au quotidien.",
+  cal_item_revenue_description: "Plats les plus vendus par chiffre d'affaires. Diffère du nombre de transactions quand un plat a un ticket plus élevé — utile pour repérer les moteurs de profit cachés.",
+  cohort_retention_description: "Combien de clients reviennent dans les semaines / mois suivant leur première visite. Ligne plate = fidélisés ; chute nette = passage unique. Chaque cohorte est une ligne séparée pour comparer les trimestres.",
+  repeater_cohort_description: "Nombre de clients fidèles par cohorte de première visite. La pile de droite montre que votre cohorte la plus récente attire le plus de retours ; des piles plus fines à gauche = cohortes anciennes qui s'estompent."
 };
 
 export const messages: Record<Locale, Record<MessageKey, string>> = { en, de, ja, es, fr };

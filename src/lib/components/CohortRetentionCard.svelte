@@ -166,6 +166,9 @@
       {/if}
     </div>
   </div>
+  <p class="mt-1 text-xs text-zinc-500 text-balance">
+    {t(page.data.locale, 'cohort_retention_description')}
+  </p>
 
   {#if dayFilterActive}
     <p

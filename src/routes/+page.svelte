@@ -287,9 +287,6 @@
     <!-- D-10 card 8: Calendar revenue (VA-04) — self-subscribes to dashboardStore -->
     <CalendarRevenueCard />
 
-    <!-- quick-260424-mdc: Minimum Detectable Effect curve — σ/n₁ from getFiltered() -->
-    <MdeCurveCard />
-
     <!-- D-10 card 9: Calendar items (VA-08) — receives window-scoped rows from SSR -->
     <CalendarItemsCard data={data.itemCounts} />
 
@@ -322,5 +319,9 @@
         <RepeaterCohortCountCard data={customerLtv} repeaterTx={repeaterTx} />
       {/snippet}
     </LazyMount>
+
+    <!-- quick-260424-mdc: Minimum Detectable Effect curve — last card by design
+         (decision-support, consulted after owner has absorbed the primary KPIs). -->
+    <MdeCurveCard />
   </div>
 </main>

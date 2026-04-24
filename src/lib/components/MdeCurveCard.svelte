@@ -12,6 +12,7 @@
   // Self-subscribes to dashboardStore via getFiltered() inside $derived.by —
   // same pattern as KpiTile / CalendarRevenueCard (no prop-drilling).
   import { Chart, Svg, Axis, Spline, Tooltip } from 'layerchart';
+  import { scaleLinear } from 'd3-scale';
   import { page } from '$app/state';
   import { t } from '$lib/i18n/messages';
   import { formatEUR, formatEURShort } from '$lib/format';
@@ -30,7 +31,9 @@
   // range / sales_type / is_cash / day-of-week change.
   const stats = $derived.by(() => {
     const rev = dailyRevenuesEUR(getFiltered());
-    return { n1: rev.length, sigma: sampleStd(rev) };
+    const n1 = rev.length;
+    const mean = n1 > 0 ? rev.reduce((s, v) => s + v, 0) / n1 : 0;
+    return { n1, sigma: sampleStd(rev), mean };
   });
 
   // Empty array ⇒ EmptyState (< 7 baseline days or σ=0).
@@ -46,6 +49,9 @@
 
 <div data-testid="mde-curve-card" class="rounded-xl border border-zinc-200 bg-white p-4">
   <h2 class="text-base font-semibold text-zinc-900">{t(page.data.locale, 'mde_title')}</h2>
+  <p class="mt-1 text-xs text-zinc-500 text-balance">
+    {t(page.data.locale, 'mde_description')}
+  </p>
   {#if curve.length === 0}
     <EmptyState card="mde-curve" />
   {:else}
@@ -54,6 +60,9 @@
         data={curve}
         x="n2"
         y="mde"
+        xScale={scaleLinear()}
+        xDomain={[1, MDE_MAX_CAMPAIGN_DAYS]}
+        yScale={scaleLinear()}
         yDomain={[0, yMax]}
         padding={{ left: 48, right: 12, top: 16, bottom: 28 }}
         tooltipContext={{ mode: 'bisect-x', touchEvents: 'auto' }}
@@ -68,7 +77,9 @@
             y="mde"
             class="stroke-zinc-400 [stroke-dasharray:4_4]"
           />
-          <Spline class="stroke-zinc-900 stroke-[2]" />
+          <!-- Main MDE curve. Explicit data+x+y so it doesn't alias the reference
+               Spline's single-x dataset via Chart series-state inference. -->
+          <Spline data={curve} x="n2" y="mde" class="stroke-zinc-900 stroke-[2]" />
         </Svg>
         <Tooltip.Root>
           {#snippet children({ data: row })}
@@ -86,6 +97,7 @@
     <p class="mt-2 text-xs text-zinc-500">
       {t(page.data.locale, 'mde_caption', {
         n1: stats.n1,
+        mu: formatEUR(stats.mean * 100),
         sigma: formatEUR(stats.sigma * 100)
       })}
     </p>

@@ -80,8 +80,8 @@
   class="rounded-xl border border-zinc-200 bg-white p-4"
 >
   <h2 class="text-base font-semibold text-zinc-900">{t(page.data.locale, 'heatmap_title')}</h2>
-  <p class="mt-1 text-xs text-zinc-500">
-    {t(page.data.locale, 'heatmap_subtitle')}
+  <p class="mt-1 text-xs text-zinc-500 text-balance">
+    {t(page.data.locale, 'heatmap_description')}
   </p>
 
   {#if dated.length === 0}
@@ -124,8 +124,15 @@
                 {@const hasData = cell.data?.revenue_cents != null && cell.data.revenue_cents > 0}
                 {@const dow = mondayFirstRow(cell.data.date) + 1}
                 {@const isExcluded = excluded.has(dow)}
+                <!-- LayerChart's Calendar uses d3-time's timeWeek (Sunday-start) for
+                     cell.x, so Sundays share the column of the FOLLOWING Mon-Sat.
+                     We render Monday-first — Sunday must visually end the week —
+                     so shift Sunday cells one column left. Clamp at 0 for the
+                     degenerate case where the very first day in `start` is a Sunday. -->
+                {@const isSunday = cell.data.date.getDay() === 0}
+                {@const shiftedX = isSunday ? Math.max(0, cell.x - cellSize[0]) : cell.x}
                 <Rect
-                  x={cell.x}
+                  x={shiftedX}
                   y={mondayFirstRow(cell.data.date) * cellSize[1]}
                   width={cellSize[0]}
                   height={cellSize[1]}

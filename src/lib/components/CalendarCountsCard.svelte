@@ -63,6 +63,9 @@
 
 <div data-testid="calendar-counts-card" class="rounded-xl border border-zinc-200 bg-white p-4">
   <h2 class="text-base font-semibold text-zinc-900">{t(page.data.locale, 'cal_counts_title')}</h2>
+  <p class="mt-1 text-xs text-zinc-500 text-balance">
+    {t(page.data.locale, 'cal_counts_description')}
+  </p>
   {#if getFiltered().length === 0}
     <EmptyState card="calendar-counts" />
   {:else}
