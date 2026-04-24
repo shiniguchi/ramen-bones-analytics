@@ -95,8 +95,8 @@
       >{t(page.data.locale, 'clamp_badge_label')}</span>
     {/if}
   </div>
-  <p class="mt-1 text-xs text-zinc-500">
-    {t(page.data.locale, 'repeater_cohort_subtitle')}
+  <p class="mt-1 text-xs text-zinc-500 text-balance">
+    {t(page.data.locale, 'repeater_cohort_description')}
   </p>
 
   {#if chartData.length === 0}

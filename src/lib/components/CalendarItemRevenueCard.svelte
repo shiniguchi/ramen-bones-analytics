@@ -115,7 +115,7 @@
   class="rounded-xl border border-zinc-200 bg-white p-4"
 >
   <h2 class="text-base font-semibold text-zinc-900">{t(page.data.locale, 'cal_item_revenue_title')}</h2>
-  <p class="mt-1 text-xs text-zinc-500">{t(page.data.locale, 'cal_item_revenue_subtitle')}</p>
+  <p class="mt-1 text-xs text-zinc-500 text-balance">{t(page.data.locale, 'cal_item_revenue_description')}</p>
   {#if filtered.length === 0}
     <EmptyState card="calendar-items" />
   {:else}

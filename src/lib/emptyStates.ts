@@ -15,7 +15,11 @@ export const emptyStates = {
   'calendar-counts':  { headingKey: 'empty_calendar_counts_heading',   bodyKey: 'empty_calendar_counts_body' },
   'calendar-items':   { headingKey: 'empty_calendar_items_heading',    bodyKey: 'empty_calendar_items_body' },
   'cohort-revenue':   { headingKey: 'empty_cohort_revenue_heading',    bodyKey: 'empty_cohort_revenue_body' },
-  'cohort-avg-ltv':   { headingKey: 'empty_cohort_avg_ltv_heading',    bodyKey: 'empty_cohort_avg_ltv_body' }
+  'cohort-avg-ltv':   { headingKey: 'empty_cohort_avg_ltv_heading',    bodyKey: 'empty_cohort_avg_ltv_body' },
+
+  // quick-260424-mdc: MDE curve needs ≥ 7 baseline days to draw.
+  // Heading reuses the card title; body carries the why.
+  'mde-curve':        { headingKey: 'mde_title',                       bodyKey: 'mde_empty' }
 } as const satisfies Record<string, { headingKey: MessageKey; bodyKey: MessageKey }>;
 
 export type EmptyCard = keyof typeof emptyStates;

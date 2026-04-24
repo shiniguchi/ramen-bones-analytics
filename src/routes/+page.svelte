@@ -16,6 +16,7 @@
   import CalendarCountsCard from '$lib/components/CalendarCountsCard.svelte';
   import CalendarItemsCard from '$lib/components/CalendarItemsCard.svelte';
   import CalendarItemRevenueCard from '$lib/components/CalendarItemRevenueCard.svelte';
+  import MdeCurveCard from '$lib/components/MdeCurveCard.svelte';
   import RepeaterCohortCountCard from '$lib/components/RepeaterCohortCountCard.svelte';
   import LazyMount from '$lib/components/LazyMount.svelte';
   import { clientFetch } from '$lib/clientFetch';
@@ -318,5 +319,9 @@
         <RepeaterCohortCountCard data={customerLtv} repeaterTx={repeaterTx} />
       {/snippet}
     </LazyMount>
+
+    <!-- quick-260424-mdc: Minimum Detectable Effect curve — last card by design
+         (decision-support, consulted after owner has absorbed the primary KPIs). -->
+    <MdeCurveCard />
   </div>
 </main>
