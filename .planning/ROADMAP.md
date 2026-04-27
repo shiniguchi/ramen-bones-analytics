@@ -237,7 +237,11 @@ Plans:
   2. CI grep guard added to `scripts/ci-guards.sh` (or equivalent) fails the build on any `auth.jwt()->>'tenant_id'` reference inside `supabase/migrations/` — codebase claim is `restaurant_id`; a deliberate red-team migration in tests verifies the guard fires
   3. v1.3 GHA cron schedule contract documented (target: `external-data` 00:00 UTC, `forecast-refresh` 01:00 UTC, `forecast-mv-refresh` 03:00 UTC, `forecast-backtest` Tuesday 23:00 UTC) with CI test that asserts no schedule overlap under either CET (UTC+1) or CEST (UTC+2) and ≥60-minute gap between cascade stages
   4. Discuss-phase artifact `.planning/phases/12-forecasting-foundation/12-CONTEXT.md` ratifies anticipation cutoff (`campaign_start − 7 days`), the `WEATHER_PROVIDER=brightsky` production default, and the `restaurant_id` rename of every §7 schema sketch in `12-PROPOSAL.md`
-**Plans**: TBD
+**Plans**: 4 plans
+  - [ ] 12-01-PLAN.md — `pipeline_runs` skeleton migration (D-07/D-08) + DEV schema push
+  - [ ] 12-02-PLAN.md — `tools/its_validity_audit.py` + weekly GHA cron (FND-09)
+  - [ ] 12-03-PLAN.md — Guard 7 (`tenant_id` regression) + red-team fixture (FND-10)
+  - [ ] 12-04-PLAN.md — Guard 8 cron-schedule contract (FND-11)
 
 ### Phase 13: External Data Ingestion
 **Goal**: Five external-data tables (weather, holidays, school holidays, transit alerts, recurring events) plus operational tables (`pipeline_runs`, `shop_calendar`) populate nightly from a single GHA workflow, backfilled from 2025-06-11

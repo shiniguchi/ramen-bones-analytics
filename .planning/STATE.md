@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: External Data & Forecasting Foundation
-status: "Phase 12 context locked — ready for /gsd-plan-phase 12"
-stopped_at: Phase 12 (Foundation — Decisions & Guards) context gathered 2026-04-28. CONTEXT.md ratifies anticipation cutoff (campaign_start − 7d), WEATHER_PROVIDER=brightsky production default, and restaurant_id rename of every §7 schema sketch (the three ROADMAP §SC4 mandates). 6 implementation defaults locked covering its_validity_audit.py source/cadence, pipeline_runs skeleton pulled forward from Phase 13, CI Guard 7 (tenant_id regression), CI Guard 8 (cron-schedule contract), and §7 rename mechanics. Previously-untracked 12-PROPOSAL.md driving artifact also committed. Next step is /gsd-plan-phase 12 to break Phase 12 into executable plans (audit script + pipeline_runs migration + 2 CI guards + GHA workflow).
-last_updated: "2026-04-28T00:00:00Z"
+status: "Phase 12 planned — ready for /gsd-execute-phase 12 (4 plans, 2 waves)"
+stopped_at: Phase 12 (Foundation — Decisions & Guards) planned 2026-04-28. 4 plans across 2 waves: Wave 1 = 12-01 (pipeline_runs skeleton migration 0039 + DEV schema push) + 12-03 (Guard 7 tenant_id regression + red-team fixture); Wave 2 = 12-02 (its_validity_audit.py + weekly Mon 09:00 UTC GHA cron) + 12-04 (Guard 8 check-cron-schedule.py + ci-guards.sh delegation). FND-09 covered by 12-01 + 12-02; FND-10 by 12-03; FND-11 by 12-04. Plan-checker passed after one revision round (1 BLOCKER + 3 WARNINGS resolved: ALL THREE-findings audit fixture per PROPOSAL §13, Task 2 acceptance_criteria, Task 3 split into 3a auto + 3b checkpoint, silent-zero-findings preflight guard). 12-PATTERNS.md written.
+last_updated: "2026-04-28T01:00:00Z"
 progress:
   total_phases: 17
   completed_phases: 11
@@ -28,12 +28,12 @@ progress:
 ## Current Position
 
 Milestone: v1.3 (External Data & Forecasting Foundation)
-Phase: 12 (Foundation — Decisions & Guards) — Context locked, ready to plan
+Phase: 12 (Foundation — Decisions & Guards) — Planned, ready to execute (4 plans, 2 waves)
 Plan: —
 
-- **Status:** Phase 12 CONTEXT.md committed (fded786). Ready for `/gsd-plan-phase 12`.
+- **Status:** Phase 12 plans written (4 PLANs + PATTERNS.md). Ready for `/gsd-execute-phase 12`.
 - **Progress:** [██████░░░░] 65% (11/17 phases complete; v1.0+v1.1+v1.2 shipped)
-- **Last activity:** 2026-04-28 — Phase 12 discuss-phase: ratified 3 ROADMAP §SC4 mandates, locked 6 implementation defaults (G1–G6) for audit script, pipeline_runs skeleton, CI Guards 7–8, §7 rename mechanics
+- **Last activity:** 2026-04-28 — Phase 12 plan-phase: 4 plans across 2 waves; checker passed after 1 revision round (BLOCKER + 3 WARNINGS resolved); FND-09/10/11 covered
 - **v1.2 closed:** 11 phases, 60 plans, 100% — Phase 11 SSR fix landed 2026-04-21
 - **v1.0 status:** Shipped to friend (97% plans complete; repo flipped PUBLIC 2026-04-15 with topics + description set; Plan 05-06 Task 2 fork walkthrough deferred out of v1 scope)
 
