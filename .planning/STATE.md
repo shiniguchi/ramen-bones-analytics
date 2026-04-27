@@ -1,16 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.2
-milestone_name: Dashboard Simplification & Visit Attribution
-status: "Phase 11 shipped — CF Pages outage fixed"
-stopped_at: Phase 11 (SSR Performance & Recovery) complete — 3 plans + 9 commits on main. Deployed site restored from Worker Error 1102 storm that unpinned production deployment. chipToRange('all') now clamps to FROM_FLOOR=2024-01-01; parseFilters soft-clamps pathological from/to; SSR fan-out cut from 11 to 6 queries (4 lifetime-unbounded queries moved to /api/* with LazyMount); fetchAll DEFAULT_MAX_PAGES dropped 1000→50. Production smoke curls pass — /, /login, /?range=all, /?from=1970-01-01 all return 303/200 with x-sveltekit-page header. 6 user-uncommitted Calendar*Card/dashboardStore changes preserved untouched throughout.
-last_updated: "2026-04-22T09:35:00Z"
+milestone: v1.3
+milestone_name: External Data & Forecasting Foundation
+status: "Defining requirements"
+stopped_at: Milestone v1.3 started 2026-04-27 — driven by friend-owner's 2026-04-14 marketing campaign needing causal lift attribution. Pre-baked 1484-line proposal in .planning/phases/12-forecasting-foundation/12-PROPOSAL.md serves as MILESTONE-CONTEXT (verified data sources, schema sketches, GHA cron pattern, failure modes, backtest fairness rules, ITS validity audit). Skipping phases.clear to preserve proposal. Research and roadmap pending.
+last_updated: "2026-04-27T00:00:00Z"
 progress:
-  total_phases: 11
-  completed_phases: 11
-  total_plans: 60
-  completed_plans: 60
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # STATE: Ramen Bones Analytics
@@ -27,12 +27,14 @@ progress:
 
 ## Current Position
 
-Milestone: v1.2 (Dashboard Simplification & Visit Attribution) — Phase 11 complete (3/3 plans); urgent SSR performance fix closed 2026-04-21 production outage
-Phase: 11
-Plan: Complete
+Milestone: v1.3 (External Data & Forecasting Foundation) — Not started, defining requirements
+Phase: —
+Plan: —
 
-- **Status:** Phase 11 shipped — CF Pages outage fixed
-- **Progress:** [██████████] 100%
+- **Status:** Defining requirements (research + roadmap pending)
+- **Progress:** [░░░░░░░░░░] 0%
+- **Last activity:** 2026-04-27 — Milestone v1.3 started; PROJECT.md + STATE.md updated; research and roadmapper pending
+- **v1.2 closed:** 11 phases, 60 plans, 100% — Phase 11 SSR fix landed 2026-04-21
 - **v1.0 status:** Shipping to friend (97% plans complete; repo flipped PUBLIC 2026-04-15 with topics + description set; Plan 05-06 Task 2 fork walkthrough deferred out of v1 scope — forkability is explicitly not a v1 concern per user direction)
 
 ## Performance Metrics

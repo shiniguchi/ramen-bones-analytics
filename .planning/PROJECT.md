@@ -77,28 +77,25 @@ A restaurant owner opens the site on their phone and makes a real business decis
 | Card hash as customer ID | Works without opt-in, captures all repeat visits | — Pending |
 | Forkable open-source, no paid tier | Product philosophy — give the banking playbook away | — Pending |
 
-## Current Milestone: v1.2 Dashboard Simplification & Visit Attribution
+## Current Milestone: v1.3 External Data & Forecasting Foundation
 
-**Goal:** Strip the dashboard to 3 core charts with per-transaction visit-count attribution, simplify filters to cash/card + inhouse/takeaway, and fix the SSR performance lag.
+**Goal:** Ingest free external signals (weather, holidays, events), build a multi-horizon forecasting engine, render forecast overlays on the revenue chart, and attribute campaign uplift via Interrupted Time Series counterfactuals.
 
 **Target features:**
-- Visit-count attribution: each transaction gets its card_hash's nth-visit number (1st, 2nd, 3rd, 4x, 5x, 6x, 7x, 8x+), attributed to the date it occurred
-- Calendar revenue chart with visit-count breakdown (stacked bars by 1st timer, 2nd timer, etc.)
-- Calendar customer counts chart with same visit-count breakdown
-- Retention curve per weekly/monthly first-time acquisition date cohort
-- Simplified filters: inhouse/takeaway + cash/card only — all filters apply to ALL tiles and charts (no unscoped reference tiles)
-- Drop 2 of 3 revenue cards — keep 1 card using selected granularity
-- Fix 2s granularity toggle lag (current goto+invalidateAll forces full SSR round-trip)
-- Drop unused views: frequency_v, new_vs_returning_v, ltv_v, country filter components
+- External data ingestion: Open-Meteo weather, `python-holidays` federal+state, `ferien-api.de` school breaks, BVG transit-strike RSS, hand-curated recurring events — backfilled from 2025-06-11 with 7-day forward forecast where available
+- Multi-horizon forecasting engine: SARIMAX (primary) + Prophet + ETS + Theta + Naive baseline at +7d / +35d (5w) / +120d (4mo) / +365d (1yr); daily refit at 03:00 Berlin; conformal CIs at long horizons
+- Forecast chart UI: LayerChart overlay on revenue card with horizon toggle, event markers, hover popup showing per-horizon RMSE/MAPE/last-refit; granularity toggle re-buckets sample paths for proper CI aggregation
+- ITS-based uplift attribution: Track-B counterfactual fit on pre-campaign era (2025-06-11 → 2026-04-13) only; cumulative `actual − Track-B` per campaign window with 95% MC CIs in `campaign_uplift_v`
+- Backtest gate: rolling-origin CV at 4 horizons, 12-week harness, ≥10% RMSE improvement vs naive same-DoW required to deploy a new model
+- Last-7-actual-days nightly accuracy log surfaced on hover tooltip (freshness ≤24h)
 
 **Key context:**
-- Visit-count attribution is the core new metric — "how many 3rd-timers came in on Tuesday?"
-- Existing cohort_mv can feed retention curve with modifications
-- New MV needed for per-transaction visit-sequence number
-- Country filter (FLT-05, shipped in Phase 7) dropped — user doesn't need it
-- Payment method simplifies from specific networks (Visa/Mastercard/Maestro/Bar) to binary cash/card
-- All filters apply to everything — no unscoped reference tiles
-- v1.1 DATA-MODEL.md is superseded — v1.2 simplifies the schema significantly
+- Friend-owner started a marketing campaign on 2026-04-14; she needs a "did it work?" answer that current MDE analysis cannot give (lift detection requires ≥6 weeks at current σ)
+- Pre-campaign era (10 months, 2025-06-11 → 2026-04-13) is the natural control period — Track-B counterfactual on pre-period only enables causal inference without a customer holdout (Instagram channel = no per-follower exclusion possible)
+- Driving artifact: `.planning/phases/12-forecasting-foundation/12-PROPOSAL.md` (1484-line pre-baked proposal — verified data sources, schema sketches, GHA cron pattern, failure modes, backtest fairness rules, hover-popup spec, ITS validity audit)
+- $0/month budget preserved: Open-Meteo + python-holidays + ferien-api.de + BVG RSS + GitHub Actions = $0
+- Out of scope: full Marketing Mix Modeling (defer to v1.4+ when 3+ channels exist), real-time/hourly forecasting, item-level demand, multi-shop scaling
+- Phase numbering continues from 11 → Phases 12-N (no `--reset-phase-numbers`)
 
 ## Evolution
 
@@ -118,4 +115,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-17 — Phase 10 (Charts) complete (8/8 plans, 7/7 must-haves verified). All v1.2 charts shipped: VA-04 calendar revenue, VA-05 calendar counts, VA-06 retention weekly-clamp hint, VA-07 LTV histogram, VA-08 calendar item counts, VA-09 cohort revenue, VA-10 cohort avg LTV. 12-card dashboard composed in D-10 order with SSR fan-out (6 parallel queries). 157/157 unit tests pass; 11/12 E2E pass (1 LayerChart 2.x selector deferred). Lazy-mount + LCP measurement deferred (Path C — pending CF Pages deploy). Milestone v1.2 at 100% (57/57 plans).*
+*Last updated: 2026-04-27 — Milestone v1.3 (External Data & Forecasting Foundation) started. Driver: friend-owner's 2026-04-14 marketing campaign needs causal lift attribution that current MDE analysis can't deliver. Skipping `phases.clear` to preserve `.planning/phases/12-forecasting-foundation/12-PROPOSAL.md` (1484-line user input proposal). v1.2 wrapped at Phase 11 (CF Pages outage fix, 100% complete).*
