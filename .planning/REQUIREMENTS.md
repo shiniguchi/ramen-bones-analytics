@@ -359,61 +359,61 @@ Each requirement maps to exactly one roadmap phase.
 
 | Requirement | Phase | Status | Evidence |
 |-------------|-------|--------|----------|
-| FND-09 | TBD (roadmapper) | Pending | — |
-| FND-10 | TBD (roadmapper) | Pending | — |
-| FND-11 | TBD (roadmapper) | Pending | — |
-| EXT-01 | TBD (roadmapper) | Pending | — |
-| EXT-02 | TBD (roadmapper) | Pending | — |
-| EXT-03 | TBD (roadmapper) | Pending | — |
-| EXT-04 | TBD (roadmapper) | Pending | — |
-| EXT-05 | TBD (roadmapper) | Pending | — |
-| EXT-06 | TBD (roadmapper) | Pending | — |
-| EXT-07 | TBD (roadmapper) | Pending | — |
-| EXT-08 | TBD (roadmapper) | Pending | — |
-| EXT-09 | TBD (roadmapper) | Pending | — |
-| FCS-01 | TBD (roadmapper) | Pending | — |
-| FCS-02 | TBD (roadmapper) | Pending | — |
-| FCS-03 | TBD (roadmapper) | Pending | — |
-| FCS-04 | TBD (roadmapper) | Pending | — |
-| FCS-05 | TBD (roadmapper) | Pending | — |
-| FCS-06 | TBD (roadmapper) | Pending | — |
-| FCS-07 | TBD (roadmapper) | Pending | — |
-| FCS-08 | TBD (roadmapper) | Pending | — |
-| FCS-09 | TBD (roadmapper) | Pending | — |
-| FCS-10 | TBD (roadmapper) | Pending | — |
-| FCS-11 | TBD (roadmapper) | Pending | — |
-| FUI-01 | TBD (roadmapper) | Pending | — |
-| FUI-02 | TBD (roadmapper) | Pending | — |
-| FUI-03 | TBD (roadmapper) | Pending | — |
-| FUI-04 | TBD (roadmapper) | Pending | — |
-| FUI-05 | TBD (roadmapper) | Pending | — |
-| FUI-06 | TBD (roadmapper) | Pending | — |
-| FUI-07 | TBD (roadmapper) | Pending | — |
-| FUI-08 | TBD (roadmapper) | Pending | — |
-| FUI-09 | TBD (roadmapper) | Pending | — |
-| UPL-01 | TBD (roadmapper) | Pending | — |
-| UPL-02 | TBD (roadmapper) | Pending | — |
-| UPL-03 | TBD (roadmapper) | Pending | — |
-| UPL-04 | TBD (roadmapper) | Pending | — |
-| UPL-05 | TBD (roadmapper) | Pending | — |
-| UPL-06 | TBD (roadmapper) | Pending | — |
-| UPL-07 | TBD (roadmapper) | Pending | — |
-| BCK-01 | TBD (roadmapper) | Pending | — |
-| BCK-02 | TBD (roadmapper) | Pending | — |
-| BCK-03 | TBD (roadmapper) | Pending | — |
-| BCK-04 | TBD (roadmapper) | Pending | — |
-| BCK-05 | TBD (roadmapper) | Pending | — |
-| BCK-06 | TBD (roadmapper) | Pending | — |
-| BCK-07 | TBD (roadmapper) | Pending | — |
-| BCK-08 | TBD (roadmapper) | Pending | — |
+| FND-09 | Phase 12 — Foundation: Decisions & Guards | Pending | — |
+| FND-10 | Phase 12 — Foundation: Decisions & Guards | Pending | — |
+| FND-11 | Phase 12 — Foundation: Decisions & Guards | Pending | — |
+| EXT-01 | Phase 13 — External Data Ingestion | Pending | — |
+| EXT-02 | Phase 13 — External Data Ingestion | Pending | — |
+| EXT-03 | Phase 13 — External Data Ingestion | Pending | — |
+| EXT-04 | Phase 13 — External Data Ingestion | Pending | — |
+| EXT-05 | Phase 13 — External Data Ingestion | Pending | — |
+| EXT-06 | Phase 13 — External Data Ingestion | Pending | — |
+| EXT-07 | Phase 13 — External Data Ingestion | Pending | — |
+| EXT-08 | Phase 13 — External Data Ingestion | Pending | — |
+| EXT-09 | Phase 13 — External Data Ingestion | Pending | — |
+| FCS-01 | Phase 14 — Forecasting Engine: BAU Track | Pending | — |
+| FCS-02 | Phase 14 — Forecasting Engine: BAU Track | Pending | — |
+| FCS-03 | Phase 14 — Forecasting Engine: BAU Track | Pending | — |
+| FCS-04 | Phase 14 — Forecasting Engine: BAU Track | Pending | — |
+| FCS-05 | Phase 14 — Forecasting Engine: BAU Track | Pending | — |
+| FCS-06 | Phase 14 — Forecasting Engine: BAU Track | Pending | — |
+| FCS-07 | Phase 14 — Forecasting Engine: BAU Track | Pending | — |
+| FCS-08 | Phase 14 — Forecasting Engine: BAU Track | Pending | — |
+| FCS-09 | Phase 14 — Forecasting Engine: BAU Track | Pending | — |
+| FCS-10 | Phase 14 — Forecasting Engine: BAU Track | Pending | — |
+| FCS-11 | Phase 14 — Forecasting Engine: BAU Track | Pending | — |
+| FUI-01 | Phase 15 — Forecast Chart UI | Pending | — |
+| FUI-02 | Phase 15 — Forecast Chart UI | Pending | — |
+| FUI-03 | Phase 15 — Forecast Chart UI | Pending | — |
+| FUI-04 | Phase 15 — Forecast Chart UI | Pending | — |
+| FUI-05 | Phase 15 — Forecast Chart UI | Pending | — |
+| FUI-06 | Phase 15 — Forecast Chart UI | Pending | — |
+| FUI-07 | Phase 15 — Forecast Chart UI | Pending | — |
+| FUI-08 | Phase 15 — Forecast Chart UI | Pending | — |
+| FUI-09 | Phase 15 — Forecast Chart UI | Pending | — |
+| UPL-01 | Phase 16 — ITS Uplift Attribution | Pending | — |
+| UPL-02 | Phase 16 — ITS Uplift Attribution | Pending | — |
+| UPL-03 | Phase 16 — ITS Uplift Attribution | Pending | — |
+| UPL-04 | Phase 16 — ITS Uplift Attribution | Pending | — |
+| UPL-05 | Phase 16 — ITS Uplift Attribution | Pending | — |
+| UPL-06 | Phase 16 — ITS Uplift Attribution | Pending | — |
+| UPL-07 | Phase 16 — ITS Uplift Attribution | Pending | — |
+| BCK-01 | Phase 17 — Backtest Gate & Quality Monitoring | Pending | — |
+| BCK-02 | Phase 17 — Backtest Gate & Quality Monitoring | Pending | — |
+| BCK-03 | Phase 17 — Backtest Gate & Quality Monitoring | Pending | — |
+| BCK-04 | Phase 17 — Backtest Gate & Quality Monitoring | Pending | — |
+| BCK-05 | Phase 17 — Backtest Gate & Quality Monitoring | Pending | — |
+| BCK-06 | Phase 17 — Backtest Gate & Quality Monitoring | Pending | — |
+| BCK-07 | Phase 17 — Backtest Gate & Quality Monitoring | Pending | — |
+| BCK-08 | Phase 17 — Backtest Gate & Quality Monitoring | Pending | — |
 
 **Coverage:**
 - v1.0 requirements: 39 total (shipped)
 - v1.1 requirements: 14 active (Phases 6-7 complete), 12 superseded by v1.2
 - v1.2 requirements: 13 total, 13 mapped
-- v1.3 requirements: 47 total, mapping pending roadmapper (FND-09..11, EXT-01..09, FCS-01..11, FUI-01..09, UPL-01..07, BCK-01..08)
+- v1.3 requirements: 47 total, 47 mapped (FND-09..11 → Phase 12; EXT-01..09 → Phase 13; FCS-01..11 → Phase 14; FUI-01..09 → Phase 15; UPL-01..07 → Phase 16; BCK-01..08 → Phase 17)
 - Orphaned: 0
 
 ---
 *Requirements defined: 2026-04-13; v1.3 added 2026-04-27*
-*Last updated: 2026-04-17 — 09-05 gap closure evidence added for VA-11/12/13 (reactive date subtitle via getWindow() + mergeSearchParams URL composition helper — fix UAT Tests 7 & 9); Phase 9 all 5 plans complete*
+*Last updated: 2026-04-27 — v1.3 traceability resolved: 47/47 requirements mapped to Phases 12-17 by gsd-roadmapper*

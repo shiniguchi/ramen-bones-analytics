@@ -3,7 +3,7 @@
 **Created:** 2026-04-13
 **Granularity:** standard
 **Parallelization:** enabled
-**Coverage:** 39/39 v1 + 14/14 v1.1 + 13/13 v1.2 requirements mapped
+**Coverage:** 39/39 v1 + 14/14 v1.1 + 13/13 v1.2 + 47/47 v1.3 requirements mapped
 
 ## Core Value
 
@@ -30,12 +30,24 @@ A restaurant owner opens the site on their phone and makes a real business decis
 
 </details>
 
-### v1.2 Dashboard Simplification & Visit Attribution
+<details>
+<summary>v1.2 Dashboard Simplification & Visit Attribution (Phases 8-11) — SHIPPED 2026-04-21</summary>
 
-- [ ] **Phase 8: Visit Attribution Data Model** — visit_seq MV, is_cash flag, drop unused views/MVs
+- [x] **Phase 8: Visit Attribution Data Model** — visit_seq MV, is_cash flag, drop unused views/MVs
 - [x] **Phase 9: Filter Simplification & Performance** — Simplify to cash/card + inhouse/takeaway, client-side granularity toggle, drop 2 revenue cards
-- [ ] **Phase 10: Charts** — 7 charts (calendar revenue, calendar counts, retention curve, LTV per customer, order item counts, cohort total revenue, cohort avg LTV)
+- [x] **Phase 10: Charts** — 7 charts (calendar revenue, calendar counts, retention curve, LTV per customer, order item counts, cohort total revenue, cohort avg LTV)
 - [x] **Phase 11: SSR Performance & Recovery** — Clamp `'all'` range at SSR boundary, defer 4 lifetime-unbounded queries to `/api/*` + LazyMount, cap `fetchAll` pages — restores deployed CF Pages site after Worker Error 1102 took it offline
+
+</details>
+
+### v1.3 External Data & Forecasting Foundation
+
+- [ ] **Phase 12: Foundation — Decisions & Guards** — ITS validity audit script + CI grep guard (`tenant_id` → `restaurant_id`) + UTC-anchored cron schedule contract
+- [ ] **Phase 13: External Data Ingestion** — 5 ingest tables (weather/holidays/school/transit/events) + pipeline_runs + shop_calendar + GHA workflow + backfill from 2025-06-11
+- [ ] **Phase 14: Forecasting Engine — BAU Track** — SARIMAX/Prophet/ETS/Theta/Naive nightly fits + sample-path resampling + last_7_eval + forecast_daily_mv
+- [ ] **Phase 15: Forecast Chart UI** — RevenueForecastCard + horizon/legend toggles + hover popup + event markers + 3 deferred `/api/*` endpoints + 375px QA
+- [ ] **Phase 16: ITS Uplift Attribution** — campaign_calendar + Track-B counterfactual fit + campaign_uplift_v + CampaignUpliftCard with honest "CI overlaps zero" labeling
+- [ ] **Phase 17: Backtest Gate & Quality Monitoring** — rolling-origin CV at 4 horizons + ConformalIntervals + ≥10% RMSE promotion gate + freshness-SLO badges + ACCURACY-LOG
 
 ## Phase Details
 
@@ -136,7 +148,8 @@ A restaurant owner opens the site on their phone and makes a real business decis
 
 </details>
 
-### Phase Details — Current Milestone
+<details>
+<summary>v1.2 Phase Details (Phases 8-11)</summary>
 
 ### Phase 8: Visit Attribution Data Model
 **Goal**: Every transaction carries its card_hash's nth-visit number and a binary cash/card flag; unused views and dead code are removed
@@ -211,6 +224,88 @@ Plans:
   - [x] 11-02-PLAN.md — Defer 4 lifetime queries to `/api/*` + LazyMount/clientFetch primitives (atomic SSR cleanup + client wiring)
   - [x] 11-03-PLAN.md — Dev-only SSR timing log + CF Pages Free tripwire comment
 
+</details>
+
+### Phase Details — Current Milestone (v1.3)
+
+### Phase 12: Foundation — Decisions & Guards
+**Goal**: Lock the cross-cutting decisions and CI guards that every later v1.3 phase depends on — ITS validity audit committed and runnable, JWT-claim rename guard active, all v1.3 cron schedules anchored in UTC
+**Depends on**: Phase 11 (v1.2 complete)
+**Requirements**: FND-09, FND-10, FND-11
+**Success Criteria** (what must be TRUE):
+  1. `tools/its_validity_audit.py` exists in the repo, runs locally without errors, and is wired to a weekly GHA workflow that posts results to `pipeline_runs` (or a stand-in until Phase 13 creates that table) and surfaces concurrent-intervention warnings (price hikes, hour shifts, new menu items) for the 2026-04-14 campaign era
+  2. CI grep guard added to `scripts/ci-guards.sh` (or equivalent) fails the build on any `auth.jwt()->>'tenant_id'` reference inside `supabase/migrations/` — codebase claim is `restaurant_id`; a deliberate red-team migration in tests verifies the guard fires
+  3. v1.3 GHA cron schedule contract documented (target: `external-data` 00:00 UTC, `forecast-refresh` 01:00 UTC, `forecast-mv-refresh` 03:00 UTC, `forecast-backtest` Tuesday 23:00 UTC) with CI test that asserts no schedule overlap under either CET (UTC+1) or CEST (UTC+2) and ≥60-minute gap between cascade stages
+  4. Discuss-phase artifact `.planning/phases/12-forecasting-foundation/12-CONTEXT.md` ratifies anticipation cutoff (`campaign_start − 7 days`), the `WEATHER_PROVIDER=brightsky` production default, and the `restaurant_id` rename of every §7 schema sketch in `12-PROPOSAL.md`
+**Plans**: TBD
+
+### Phase 13: External Data Ingestion
+**Goal**: Five external-data tables (weather, holidays, school holidays, transit alerts, recurring events) plus operational tables (`pipeline_runs`, `shop_calendar`) populate nightly from a single GHA workflow, backfilled from 2025-06-11
+**Depends on**: Phase 12
+**Requirements**: EXT-01, EXT-02, EXT-03, EXT-04, EXT-05, EXT-06, EXT-07, EXT-08, EXT-09
+**Success Criteria** (what must be TRUE):
+  1. `weather_daily`, `holidays`, `school_holidays`, `transit_alerts`, `recurring_events` tables all populated with rows from 2025-06-11 onward; `weather_daily` extends 7 days into the future via the configured provider (default `brightsky` for production, `open-meteo` switchable via `WEATHER_PROVIDER` env var); `holidays` includes Internationaler Frauentag (Berlin BE state); `school_holidays` covers all 5–6 BE break blocks per year via raw `httpx` against `ferien-api.de` (the abandoned PyPI wrapper is NOT used)
+  2. `pipeline_runs` audit table records `started_at`, `completed_at`, `row_count`, `upstream_freshness_h`, `success`/`failure`/`fallback` status for every fetch run and is the single source of truth for downstream freshness checks
+  3. `shop_calendar` populated 365 days forward per restaurant; closed days flagged `is_open=false` and treated as `NaN` (not zero) at forecast-fit time — verifiable by `select count(*) from shop_calendar where date > current_date and date <= current_date + 365 >= 365`
+  4. Hybrid-RLS enforced: shared location-keyed tables (`weather_daily`/`holidays`/`school_holidays`/`transit_alerts`/`recurring_events`) use `for select using (true)` with `REVOKE INSERT/UPDATE/DELETE` on `authenticated`/`anon`; tenant-scoped tables (`pipeline_runs`/`shop_calendar`) use `auth.jwt()->>'restaurant_id'`; the existing two-tenant CI isolation test is extended to cover all 7 new tables
+  5. `external-data-refresh.yml` GHA workflow runs nightly at 00:00 UTC, completes in <5 minutes on `ubuntu-latest`, writes rows to all 5 ingest tables, populates `pipeline_runs`, and never fails the cascade silently — a deliberate Open-Meteo failure in CI surfaces a `fallback` status row, not an exception
+  6. `recurring_events.yaml` (15–20 hand-curated Berlin events per year) loads via `PyYAML`, and a pg_cron annual-refresh reminder fires every September 15 to nag the maintainer to update the next year's events
+**Plans**: TBD
+
+### Phase 14: Forecasting Engine — BAU Track
+**Goal**: SARIMAX (primary) + Prophet (yearly_seasonality hard-pinned False) + ETS + Theta + Naive same-DoW baseline fit nightly per restaurant, write 365-day-forward forecasts to `forecast_daily` with 1000-path samples for correct multi-day CI aggregation; nightly last-7-day evaluator populates `forecast_quality`
+**Depends on**: Phase 13
+**Requirements**: FCS-01, FCS-02, FCS-03, FCS-04, FCS-05, FCS-06, FCS-07, FCS-08, FCS-09, FCS-10, FCS-11
+**Success Criteria** (what must be TRUE):
+  1. `forecast_daily` long-format table stores rows keyed on `(restaurant_id, kpi_name, target_date, model_name, horizon_days, run_date, forecast_track)` with `forecast_track` defaulting to `'bau'`; SARIMAX/ETS/Theta/Naive write rows nightly; Prophet writes rows nightly with `yearly_seasonality=False` until `len(history) >= 730` (unit test asserts the flag stays False until 2027-06-11); Chronos-Bolt-Tiny + NeuralProphet sit behind `FORECAST_ENABLED_MODELS` env-var feature flags (off by default in production)
+  2. SARIMAX exog matrix flavor (column set + ordering) verified identical at fit and predict time via a unit test that fails when the regressor signature drifts; `forecast_daily.exog_signature` (or equivalent) records the source flavor (`archive` vs `forecast` vs `climatology`) for every fit
+  3. `last_7_eval.py` runs nightly per BAU model, scoring the last 7 actual days against each model's prior 7-day-ahead forecast; results write to `forecast_quality` with `evaluation_window='last_7_days'`; Track-B (`forecast_track='cf'`) is explicitly skipped (structurally unverifiable past campaign-start cutoff)
+  4. `forecast_daily_mv` collapses to "latest run per `(restaurant_id, kpi_name, target_date, model_name, forecast_track)`" with a unique index supporting `REFRESH MATERIALIZED VIEW CONCURRENTLY`; `REVOKE ALL` from `authenticated`/`anon`; `forecast_with_actual_v` wrapper view (RLS-scoped via `auth.jwt()->>'restaurant_id'`) is the only surface the SvelteKit app reads; CI grep guard forbids any `from('forecast_daily')` or `from('forecast_daily_mv')` in `src/`
+  5. `forecast-refresh.yml` GHA workflow runs nightly at 01:00 UTC (≥60 min after Phase 13's external-data fetch), completes in <10 min, writes BAU forecasts; failure populates `pipeline_runs` and a freshness check on the SvelteKit load triggers a stale-data badge on the next dashboard load; `pg_cron`'s `refresh_analytics_mvs()` is extended to refresh `forecast_daily_mv` after Python writes complete
+  6. Sample-path resampling for granularity toggle is server-side: 1000 paths × 365d × N models stored in `forecast_daily.yhat_samples jsonb`; clients receive only aggregated `mean + 95% CI` per requested granularity (day/week/month) — never raw sample arrays — verified by a payload-budget assertion on the `/api/forecast` response (Phase 15 consumes this; the contract is owned here)
+**Plans**: TBD
+
+### Phase 15: Forecast Chart UI
+**Goal**: Friend-owner opens the dashboard on her phone at 375px and sees actual revenue + SARIMAX BAU forecast + 95% CI band, with horizon chips, model legend toggle, hover popup showing per-horizon RMSE/MAPE/last-refit, event markers for campaign-start/holidays/strikes, and stale-data badge when upstream fetches missed
+**Depends on**: Phase 14 (after schema + first model land — parallel-eligible per research synthesis 30–40% schedule compression)
+**Requirements**: FUI-01, FUI-02, FUI-03, FUI-04, FUI-05, FUI-06, FUI-07, FUI-08, FUI-09
+**Success Criteria** (what must be TRUE):
+  1. `RevenueForecastCard.svelte` renders actual revenue + SARIMAX BAU forecast line + 95% CI uncertainty band at 375px with no horizontal scroll; default state shows 1 forecast line + naive baseline + CI band only (additional models opt-in via `ForecastLegend.svelte` chips, default OFF on mobile to prevent spaghetti)
+  2. `HorizonToggle.svelte` lets the owner switch between `7d` / `5w` / `4mo` / `1yr` (default `7d`); X-axis re-zooms client-side; same forecast table, different slice; granularity toggle (day/week/month) re-buckets sample paths server-side via `/api/forecast?granularity=` and the client never receives raw 1000-path arrays
+  3. `ForecastHoverPopup.svelte` (tap-to-pin on mobile per Svelte 5 `Tooltip.Root` + `{#snippet children}` pattern) shows: forecast value + 95% CI for that date, horizon (days from today), last-7-actual-days RMSE/MAPE/bias/direction-hit-rate, cumulative deviation since campaign launch, last-refit timestamp; `EventMarker.svelte` overlays campaign-start (red), federal holidays (dashed green), school-holiday-block backgrounds (teal), recurring events (yellow), BVG strike days (red bar) with progressive disclosure (≤50 markers visible at default zoom)
+  4. `/api/forecast`, `/api/forecast-quality`, `/api/campaign-uplift` are all deferred endpoints behind `LazyMount` per the Phase 11 SSR pattern; all use canonical `locals.safeGetSession()` (not `getClaims()` direct) and set `Cache-Control: private, no-store`
+  5. Empty-state ("Forecast generating, check back tomorrow") shown until first forecast lands; stale-data badge ("Data ≥24h stale — last refresh: …") shown when `pipeline_runs.upstream_freshness_h > 24` for any cascade stage; uncalibrated-CI badge shown for the 365d horizon while history < 2 years
+  6. All v1.3 frontend components verified at `localhost:5173` via Chrome MCP (per `.claude/CLAUDE.md` localhost-first rule) BEFORE any DEV deploy QA — including a 375px iPhone-SE-equivalent screenshot showing only 1 forecast line + CI band by default and zero `invalid_default_snippet` console warnings from `Tooltip.Root`
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 16: ITS Uplift Attribution
+**Goal**: Friend-owner sees a single dedicated card on the dashboard answering "did the 2026-04-14 campaign work?" via Track-B counterfactual fit on pre-campaign era only, with cumulative `actual − Track-B` per campaign window, 95% Monte Carlo CIs, and honest "CI overlaps zero — no detectable lift" labeling when warranted
+**Depends on**: Phase 14 (BAU forecast must be stable before counterfactual is meaningful) + Phase 15 (UI scaffolding for the new card)
+**Requirements**: UPL-01, UPL-02, UPL-03, UPL-04, UPL-05, UPL-06, UPL-07
+**Success Criteria** (what must be TRUE):
+  1. `campaign_calendar` table records each campaign's `start_date`, `end_date`, `name`, `channel`, `notes`; tenant-scoped via `auth.jwt()->>'restaurant_id'` for read; writes via `service_role` / Supabase Studio for V1 (admin form deferred to v1.4); the 2026-04-14 friend-owner campaign is seeded as the first row
+  2. Track-B counterfactual fits on pre-campaign data only — `TRAIN_END = campaign_start_date − 7 days` (anticipation buffer); `pipeline_runs.fit_train_end` records the cutoff for every CF refit; CI test asserts no `forecast_track='cf'` row was written using a `fit_train_end` ≥ `min(campaign_calendar.start_date)`; sensitivity analysis log at `tests/forecast/cutoff_sensitivity.md` shows uplift estimate at multiple cutoffs (`-14d`, `-7d`, `-1d`)
+  3. `revenue_comparable_eur` derived KPI excludes new menu items launched coincidentally with the campaign era (per `tools/its_validity_audit.py` 2026-04-27 findings: Onsen EGG, Tantan, Hell beer); Track-B fits on this baseline-comparable revenue — never on raw revenue (a CI grep guard forbids the regression)
+  4. `campaign_uplift_v` exposes per-campaign-window `Σ(actual − Track-B)` with 95% Monte Carlo CI from 1000 sample paths AND a `naive_dow_uplift_eur` cross-check column (sanity check against trend-extrapolation false positives in the declining 10-month pre-period); cumulative-since-launch shown as a running total per `(campaign, model)`
+  5. `CampaignUpliftCard.svelte` renders the per-campaign cumulative uplift on the dashboard at 375px; explicitly displays "CI overlaps zero — no detectable lift" when 95% CI includes 0; never reports a single-point estimate without its CI band; tap-to-pin tooltip explains the 7-day anticipation buffer in plain language
+  6. `cumulative_uplift.py` runs nightly after Track-B forecast completes; quarterly off-week reminder fires from a `feature_flags` table on 2026-10-15 (~6 months post-campaign) to re-anchor the counterfactual; `EventMarker.svelte` overlays campaign-start markers on `RevenueForecastCard.svelte` from Phase 15
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 17: Backtest Gate & Quality Monitoring
+**Goal**: A weekly rolling-origin CV harness scores every model at 4 horizons (7d/35d/120d/365d), conformal-calibrates the 35d CI, gates promotion on ≥10% RMSE improvement vs a regressor-aware naive baseline, and writes a public ACCURACY-LOG that stays honest even when the simpler model wins
+**Depends on**: Phase 16 (need ≥4 weeks of forecast-vs-actual history to gate on; cold-start handled by "BACKTEST PENDING" UI badge until day 28)
+**Requirements**: BCK-01, BCK-02, BCK-03, BCK-04, BCK-05, BCK-06, BCK-07, BCK-08
+**Success Criteria** (what must be TRUE):
+  1. `backtest.py` runs `statsforecast.cross_validation` with rolling-origin folds at 4 horizons (`h=7`, `h=35`, `h=120`, `h=365`), computing RMSE + MAPE per `(model × horizon × fold)` and writing rows to `forecast_quality` with `evaluation_window='rolling_origin_cv'`; `ConformalIntervals(h=35, n_windows=4)` calibrates 95% CIs at horizons ≥35d; long horizons (120d, 365d) carry an `uncalibrated — ≥2 years data needed` UI badge until the 2-year mark (cold start handled with "BACKTEST PENDING — gathering 7 days of evidence" badge until day 8)
+  2. Backtest comparisons use a regressor-aware naive baseline (same exog regressors as competing models) — every fold reports BOTH `naive_dow` and `naive_dow_with_holidays` RMSE; the gate compares against the higher of the two to prevent unfair gains from regressor-only access
+  3. Promotion gate: any model promoted from feature-flag to production must beat the regressor-aware naive baseline by ≥10% RMSE on rolling-origin out-of-sample, computed per horizon; gate failure blocks the deploy workflow; `feature_flags.{model}.enabled` cannot flip true unless the latest `forecast_quality` row passes
+  4. `forecast-backtest.yml` GHA workflow runs weekly on Tuesday 23:00 UTC and writes results to `forecast_quality`; `forecast-quality-gate.yml` runs on every forecast-engine PR and fails CI when gate criteria miss for any model already promoted to production; both workflows complete in <5 min on `ubuntu-latest`
+  5. `docs/forecast/ACCURACY-LOG.md` auto-committed weekly with RMSE history per `(model × horizon)`, with each row showing the gate verdict (`PASS` / `FAIL` / `PENDING`); when no model beats naive, the log honestly records "naive-DoW-with-holidays remains production model — no challenger promoted this week"
+  6. Freshness-SLO check on every `+page.server.ts` load: if `pipeline_runs.upstream_freshness_h > 24` for any cascade stage (external-data, forecast, MV refresh), the dashboard renders the stale-data badge from Phase 15; a deliberate weather-fetch failure in CI verifies the badge surfaces within one nightly cycle
+**Plans**: TBD
+
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
@@ -226,13 +321,20 @@ Plans:
 | 9. Filter Simplification & Performance | v1.2 | 5/5 | Complete   | 2026-04-17 |
 | 10. Charts | v1.2 | 7/8 | Complete    | 2026-04-17 |
 | 11. SSR Performance & Recovery | v1.2 | 3/3 | Complete | 2026-04-21 |
+| 12. Foundation — Decisions & Guards | v1.3 | 0/? | Not started | — |
+| 13. External Data Ingestion | v1.3 | 0/? | Not started | — |
+| 14. Forecasting Engine — BAU Track | v1.3 | 0/? | Not started | — |
+| 15. Forecast Chart UI | v1.3 | 0/? | Not started | — |
+| 16. ITS Uplift Attribution | v1.3 | 0/? | Not started | — |
+| 17. Backtest Gate & Quality Monitoring | v1.3 | 0/? | Not started | — |
 
 ## Coverage Summary
 
 - **v1.0 requirements:** 39 (shipped)
 - **v1.1 requirements:** 14 (Phases 6-7 complete; Phases 8-11 superseded by v1.2)
 - **v1.2 requirements:** 13
-- **Mapped:** 66 (100%)
+- **v1.3 requirements:** 47 (FND-09..11, EXT-01..09, FCS-01..11, FUI-01..09, UPL-01..07, BCK-01..08)
+- **Mapped:** 113 (100%)
 - **Orphaned:** 0
 - **Duplicated:** 0
 
@@ -253,6 +355,67 @@ Plans:
 | VA-11 | Phase 9 — Filter Simplification & Performance |
 | VA-12 | Phase 9 — Filter Simplification & Performance |
 | VA-13 | Phase 9 — Filter Simplification & Performance |
+
+### v1.3 Coverage Map
+
+| Requirement | Phase |
+|-------------|-------|
+| FND-09 | Phase 12 — Foundation: Decisions & Guards |
+| FND-10 | Phase 12 — Foundation: Decisions & Guards |
+| FND-11 | Phase 12 — Foundation: Decisions & Guards |
+| EXT-01 | Phase 13 — External Data Ingestion |
+| EXT-02 | Phase 13 — External Data Ingestion |
+| EXT-03 | Phase 13 — External Data Ingestion |
+| EXT-04 | Phase 13 — External Data Ingestion |
+| EXT-05 | Phase 13 — External Data Ingestion |
+| EXT-06 | Phase 13 — External Data Ingestion |
+| EXT-07 | Phase 13 — External Data Ingestion |
+| EXT-08 | Phase 13 — External Data Ingestion |
+| EXT-09 | Phase 13 — External Data Ingestion |
+| FCS-01 | Phase 14 — Forecasting Engine: BAU Track |
+| FCS-02 | Phase 14 — Forecasting Engine: BAU Track |
+| FCS-03 | Phase 14 — Forecasting Engine: BAU Track |
+| FCS-04 | Phase 14 — Forecasting Engine: BAU Track |
+| FCS-05 | Phase 14 — Forecasting Engine: BAU Track |
+| FCS-06 | Phase 14 — Forecasting Engine: BAU Track |
+| FCS-07 | Phase 14 — Forecasting Engine: BAU Track |
+| FCS-08 | Phase 14 — Forecasting Engine: BAU Track |
+| FCS-09 | Phase 14 — Forecasting Engine: BAU Track |
+| FCS-10 | Phase 14 — Forecasting Engine: BAU Track |
+| FCS-11 | Phase 14 — Forecasting Engine: BAU Track |
+| FUI-01 | Phase 15 — Forecast Chart UI |
+| FUI-02 | Phase 15 — Forecast Chart UI |
+| FUI-03 | Phase 15 — Forecast Chart UI |
+| FUI-04 | Phase 15 — Forecast Chart UI |
+| FUI-05 | Phase 15 — Forecast Chart UI |
+| FUI-06 | Phase 15 — Forecast Chart UI |
+| FUI-07 | Phase 15 — Forecast Chart UI |
+| FUI-08 | Phase 15 — Forecast Chart UI |
+| FUI-09 | Phase 15 — Forecast Chart UI |
+| UPL-01 | Phase 16 — ITS Uplift Attribution |
+| UPL-02 | Phase 16 — ITS Uplift Attribution |
+| UPL-03 | Phase 16 — ITS Uplift Attribution |
+| UPL-04 | Phase 16 — ITS Uplift Attribution |
+| UPL-05 | Phase 16 — ITS Uplift Attribution |
+| UPL-06 | Phase 16 — ITS Uplift Attribution |
+| UPL-07 | Phase 16 — ITS Uplift Attribution |
+| BCK-01 | Phase 17 — Backtest Gate & Quality Monitoring |
+| BCK-02 | Phase 17 — Backtest Gate & Quality Monitoring |
+| BCK-03 | Phase 17 — Backtest Gate & Quality Monitoring |
+| BCK-04 | Phase 17 — Backtest Gate & Quality Monitoring |
+| BCK-05 | Phase 17 — Backtest Gate & Quality Monitoring |
+| BCK-06 | Phase 17 — Backtest Gate & Quality Monitoring |
+| BCK-07 | Phase 17 — Backtest Gate & Quality Monitoring |
+| BCK-08 | Phase 17 — Backtest Gate & Quality Monitoring |
+
+### v1.3 Dependencies & Parallelism
+
+- **Phase 12 → 13:** CI grep guard must exist before any new migration (mechanical `tenant_id` → `restaurant_id` rename of §7 sketches)
+- **Phase 13 → 14:** External-data tables must exist before SARIMAX exog matrix can be assembled
+- **Phase 14 ↔ 15:** Parallel-eligible after Phase 14's schema + first model (SARIMAX) lands — research synthesis estimates 30–40% schedule compression; UI work in Phase 15 can mock against real `forecast_daily` rows once the schema is up
+- **Phase 14 → 16:** BAU forecast must be stable before Track-B counterfactual is meaningful (BAU is the apples-to-apples benchmark)
+- **Phase 15 → 16:** UI scaffolding (`ForecastHoverPopup` cum-deviation row, `EventMarker` campaign-start overlay) must be settled before `CampaignUpliftCard` layout can compose with it cleanly
+- **Phase 16 → 17:** Need ≥4 weeks of forecast-vs-actual history to gate on; cold-start UI badge "BACKTEST PENDING" handles days 1–7
 
 ### Historical Coverage
 
@@ -278,3 +441,4 @@ The following v1.1 requirements were superseded by v1.2 and are no longer on the
 *Roadmap created: 2026-04-13*
 *v1.1 Dashboard Redesign milestone added: 2026-04-15*
 *v1.2 Dashboard Simplification & Visit Attribution: 2026-04-16 (Phases 8-11 superseded)*
+*v1.3 External Data & Forecasting Foundation: 2026-04-27 (Phases 12-17 — driving artifact at .planning/phases/12-forecasting-foundation/12-PROPOSAL.md)*

@@ -2,49 +2,49 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: External Data & Forecasting Foundation
-status: "Defining requirements"
-stopped_at: Milestone v1.3 started 2026-04-27 — driven by friend-owner's 2026-04-14 marketing campaign needing causal lift attribution. Pre-baked 1484-line proposal in .planning/phases/12-forecasting-foundation/12-PROPOSAL.md serves as MILESTONE-CONTEXT (verified data sources, schema sketches, GHA cron pattern, failure modes, backtest fairness rules, ITS validity audit). Skipping phases.clear to preserve proposal. Research and roadmap pending.
+status: "Roadmap complete — ready for /gsd-discuss-phase 12"
+stopped_at: Roadmap for v1.3 complete (2026-04-27). 6 phases (12-17), 47 v1.3 requirements mapped 100%. Driving artifact .planning/phases/12-forecasting-foundation/12-PROPOSAL.md preserved. Next step is /gsd-discuss-phase 12 (Foundation — Decisions & Guards) to lock the cross-cutting decisions before any migrations land.
 last_updated: "2026-04-27T00:00:00Z"
 progress:
-  total_phases: 0
-  completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
-  percent: 0
+  total_phases: 17
+  completed_phases: 11
+  total_plans: 60
+  completed_plans: 60
+  percent: 65
 ---
 
 # STATE: Ramen Bones Analytics
 
-**Last updated:** 2026-04-15
+**Last updated:** 2026-04-27
 
 ## Project Reference
 
 - **Core Value:** A restaurant owner opens the site on their phone and makes a real business decision from the numbers they see.
-- **Current Focus:** Phase 10 — charts
+- **Current Focus:** Phase 12 — Foundation: Decisions & Guards (v1.3 kickoff)
 - **Timeline:** Slow and deliberate — understand data first, ship one layer at a time
 - **Granularity:** standard
 - **Tenants in v1:** 1 (architecture multi-tenant-ready)
 
 ## Current Position
 
-Milestone: v1.3 (External Data & Forecasting Foundation) — Not started, defining requirements
-Phase: —
+Milestone: v1.3 (External Data & Forecasting Foundation) — Roadmap complete, ready to start
+Phase: 12 (Foundation — Decisions & Guards) — Not started
 Plan: —
 
-- **Status:** Defining requirements (research + roadmap pending)
-- **Progress:** [░░░░░░░░░░] 0%
-- **Last activity:** 2026-04-27 — Milestone v1.3 started; PROJECT.md + STATE.md updated; research and roadmapper pending
+- **Status:** Roadmap complete (47/47 v1.3 requirements mapped across Phases 12-17). Ready for `/gsd-discuss-phase 12`.
+- **Progress:** [██████░░░░] 65% (11/17 phases complete; v1.0+v1.1+v1.2 shipped)
+- **Last activity:** 2026-04-27 — Roadmap for v1.3 written: 6 phases (12-17), 47 reqs mapped, dependencies + parallelism opportunities encoded
 - **v1.2 closed:** 11 phases, 60 plans, 100% — Phase 11 SSR fix landed 2026-04-21
-- **v1.0 status:** Shipping to friend (97% plans complete; repo flipped PUBLIC 2026-04-15 with topics + description set; Plan 05-06 Task 2 fork walkthrough deferred out of v1 scope — forkability is explicitly not a v1 concern per user direction)
+- **v1.0 status:** Shipped to friend (97% plans complete; repo flipped PUBLIC 2026-04-15 with topics + description set; Plan 05-06 Task 2 fork walkthrough deferred out of v1 scope)
 
 ## Performance Metrics
 
 | Metric | Value |
 |--------|-------|
-| Phases planned | 5 |
-| Phases complete | 0 |
-| Requirements mapped | 41/41 |
-| Plans executed | 0 |
+| Phases planned | 17 (5 v1.0 + 2 v1.1 + 4 v1.2 + 6 v1.3) |
+| Phases complete | 11 |
+| Requirements mapped | 113/113 (39 v1.0 + 14 v1.1 + 13 v1.2 + 47 v1.3) |
+| Plans executed | 60 |
 | Phase 01-foundation P05 | 5m | 2 tasks | 4 files |
 | Phase 01-foundation P06 | 20min | 3 tasks | 9 files |
 | Phase 02-ingestion P01 | 6min | 2 tasks | 5 files |
@@ -102,11 +102,27 @@ Plan: —
 - Card hash as customer ID; never store PAN/PII
 - Free + forkable business model
 
+### v1.3 Strategic Decisions (from research synthesis 2026-04-27)
+
+- **Two-track architecture in one table** via `forecast_track` discriminator (`'bau'` | `'cf'`) — single MV, single wrapper view, single orchestrator serves both BAU and counterfactual fits
+- **Hybrid RLS pattern:** shared location-keyed tables (weather/holidays/school/transit/events) use `for select using (true)`; tenant-scoped tables (`pipeline_runs`/`shop_calendar`/`forecast_daily`/`campaign_calendar`) use `auth.jwt()->>'restaurant_id'`
+- **JWT claim is `restaurant_id`, NOT `tenant_id`** — proposal §7 sketches must be mechanically renamed before pasting; CI grep guard added in Phase 12 catches regressions
+- **Cron schedules anchored in UTC, not Berlin local** — `external-data` 00:00 UTC, `forecast-refresh` 01:00 UTC, `forecast-mv-refresh` 03:00 UTC, `forecast-backtest` Tuesday 23:00 UTC; ≥60-min gap between cascade stages prevents DST inversions
+- **Sample-path resampling is mandatory and server-side** — 1000 paths × 365d × N models stored in `forecast_daily.yhat_samples jsonb`; clients only ever see aggregated mean+CI; summing daily `yhat_lower`/`yhat_upper` for week/month is a documented anti-pattern
+- **Track-B fits on pre-campaign era only** with `TRAIN_END = campaign_start − 7 days` (anticipation buffer); `pipeline_runs.fit_train_end` records the cutoff for every CF refit; CI test asserts no campaign-era row leaked into a Track-B fit
+- **`revenue_comparable_eur` for ITS attribution** strips post-launch new menu items (Onsen EGG, Tantan, Hell beer per 2026-04-27 audit); Track-B never fits on raw revenue
+- **Mobile-first chart defaults:** 1 forecast line + naive baseline + CI band only; Prophet/Chronos/NeuralProphet/ensemble are toggle-on via legend; default OFF on 375px to prevent spaghetti
+- **Open-Meteo "non-commercial" gray zone:** production deployment defaults to `WEATHER_PROVIDER=brightsky` (DWD public-domain); Open-Meteo is local-dev only; switching cost = one env var
+- **Prophet `yearly_seasonality=False` hard-pinned until `len(history) >= 730`** — silent auto-flip at 2026-06-11 would fit Fourier ghosts on a single annual cycle
+- **Stack additions:** 9 new Python deps (`statsmodels`, `prophet==1.3.0` + `holidays>=0.25,<1`, `statsforecast`, `utilsforecast`, `openmeteo-requests`, `httpx`, `feedparser`, `PyYAML`); 0 new JS deps (LayerChart 2.0.0-next.54 already provides Spline/Area/Rule/Tooltip primitives)
+
 ### Load-Bearing Architectural Rules
 
 1. RLS + security-definer wrapper views must exist BEFORE the first MV is built
 2. Raw ingest idempotent via natural-key upsert `(restaurant_id, source_tx_id)` + 2-day overlap window
 3. Every read path goes through `*_v` wrappers; `REVOKE ALL` on MVs; tenant id only from signed JWT claim
+4. (v1.3) GHA schedules Python; pg_cron schedules SQL refreshes only; communication via `pipeline_runs`
+5. (v1.3) `LazyMount` deferred load mandatory for `/api/forecast`, `/api/forecast-quality`, `/api/campaign-uplift` per Phase 11 lessons (CF Workers Error 1102 risk)
 
 ### Top Risks (from PITFALLS.md)
 
@@ -115,6 +131,12 @@ Plan: —
 3. Timezone off-by-one day boundary — solved in Phase 1 via `business_date` column
 4. Claude hallucinates a number — solved in Phase 5 via digit-guard + deterministic fallback
 5. Founder scope creep — enforced by FEATURES.md P1 contract across every phase
+6. (v1.3) Prophet `yearly_seasonality='auto'` silently flips at 2026-06-11 — Phase 14 hard-pins to False until 730d
+7. (v1.3) SARIMAX exog leakage between fit-time actuals and predict-time forecasts — Phase 14 logs `exog_signature` per fit
+8. (v1.3) Track-B trend extrapolation in declining 10-month pre-period inflates uplift — Phase 16 cross-checks against `naive_dow_uplift_eur`
+9. (v1.3) Concurrent intervention contamination (3 new menu items at campaign start) — Phase 12 audit + Phase 16 `revenue_comparable_eur` filter
+10. (v1.3) Stale weather → silent stale forecast — Phase 17 freshness-SLO badges + `pipeline_runs.upstream_freshness_h` check before forecast cron runs
+11. (v1.3) Mobile chart spaghetti — Phase 15 default = 1 forecast line + CI band; Chrome MCP localhost-first verification per `.claude/CLAUDE.md`
 
 ### Decisions
 
@@ -154,7 +176,7 @@ Plan: —
 - [Phase 05-insights-forkability]: 05-04: InsightCard wired via insights_v fan-out; is_yesterday derived in Berlin tz; ci-guards Guard 1 extended to forbid raw .from('insights') from src/. Plan deviated from session.user.app_metadata.timezone (load uses locals.supabase, no session var) — Berlin hardcoded for v1.
 - [Phase 05-insights-forkability]: 05-03: fallback template uses 'prior week' not '7d/7 days' to avoid leaking a literal digit 7 through the digit-guard tautology
 - [Phase 05-insights-forkability]: 05-05: Forkability shipped — MIT LICENSE, 5-section .env.example (cf pages / supabase secrets / vault / github actions / local dev), README Phase 2–Ship quickstart, fork-dryrun.sh green (23 checks). INS-05/INS-06 closed.
-- [Phase 05-insights-forkability]: 05-06 T1: GitHub repo metadata set via `gh` — 9 topics (analytics, restaurant-analytics, sveltekit, svelte, supabase, cloudflare-pages, forkable, pos-integration, cohort-analysis) + description. Repo flipped PUBLIC on 2026-04-15 during interactive execution of 05-06 (user-approved). Plan's `visibility:PUBLIC` acceptance criterion now satisfied. Flip does NOT re-open T2 fork walkthrough — forkability is explicitly out of v1 scope per user direction, not gated on visibility.
+- [Phase 05-insights-forkability]: 05-06 T1: GitHub repo metadata set via `gh` — 9 topics + description. Repo flipped PUBLIC on 2026-04-15 during interactive execution of 05-06 (user-approved).
 - [Phase 06-filter-foundation]: 06-02: Popover portal via physical DOM relocation (bind:this + appendChild to #popover-root) with best-effort restore on cleanup — avoids Svelte mount() recursion. Snippet-accepting primitives tested via tests/unit/fixtures/*Harness.svelte wrappers.
 - [Phase 06]: 06-01: zod filter schema + parseFilters + customToRange + Guard 6 shipped; tests live in tests/unit/ (not src/lib/) to match project runner scope; Guard 6 wired into existing single-file scripts/ci-guards.sh runner
 - [Phase 06-filter-foundation]: 06-03: transactions_filterable_v wrapper view (JWT-scoped); loader refactored to parseFilters(url) as sole URL->state converter; chip-scoped tiles honor sales_type+payment_method via .in(); distinct option arrays loaded unfiltered (D-14); fixed reference tiles stay unscoped per UI-SPEC; 6 integration tests via hand-rolled chainable supabase mock
@@ -164,39 +186,40 @@ Plan: —
 - [Phase 09]: SSR returns raw dailyRows instead of pre-aggregated kpi object — 12+ queries reduced to 4
 - [Phase 09]: All filter controls use replaceState (no SSR round-trip) for <200ms client response
 - [Phase 09]: FilterSheet + MultiSelectDropdown deleted, replaced by inline SegmentedToggles in FilterBar
-- [Phase 09]: 09-03 gap-closure: 0020/0022 t.id -> source_tx_id, tx_id text (transactions PK is composite, no surrogate id) — Migration 0003 established (restaurant_id, source_tx_id text) as the composite PK; Phase 8 D-04 incorrectly specified tx_id uuid. Fixed in place (migrations unpushed, history stays clean).
-- [Phase 09]: 09-03: 0021 rewritten as DROP VIEW IF EXISTS + CREATE VIEW — Postgres forbids column removal via CREATE OR REPLACE VIEW (SQLSTATE 42P16) — Surfaced during TEST verification. Rule 3 deviation. Pattern: view column-shape changes require DROP + CREATE, not CREATE OR REPLACE.
-- [Phase 09]: 09-04: Reactive filters state pattern — module-private $state + public getFilters() getter + object-spread in setters so downstream $derived re-runs. Collapses the dual-source drift between SSR data.filters (used for labels) and store private state (used for KPI math). Zero child-component changes needed.
-- [Phase 09-filter-simplification-performance]: 09-05: page.url from $app/state is stale after replaceState — window.location.href is the live source. mergeSearchParams(updates): URL helper centralizes URL composition so filter write-paths can't silently drop params.
-- [Phase 09-filter-simplification-performance]: 09-05: getWindow(): RangeWindow getter returns a fresh object every call — identity-change invariant that $derived(getWindow()) in +page.svelte depends on; memoizing would silently break DatePickerPopover subtitle reactivity (locked by test W3).
-- [Phase 10-charts]: 10-01: Nyquist RED wave authored — 8 test files (505 lines) covering all Phase 10 requirements VA-04..VA-10; every downstream task (10-02..10-08) has a pre-existing failing test to flip GREEN
-- [Phase 10-charts]: 10-01: CF Pages deploy unblocked (Path A) — workflow 24481554088 added deploy.yml on 2026-04-15; 5 most-recent main-branch deploys all succeeded. Phase branches trigger off main-merge or 'gh workflow run --ref'. No local-preview fallback needed.
-- [Phase 10-charts]: 10-01: Seed-demo-data.sql extended idempotently — 76 tx + 15 cash + 76 order-items under demo-phase10- prefix (guarded-delete compatible); stg_orderbird_order_items uses hashtext(source_tx_id) mod 11 for deterministic item selection; do-block asserts ≥75/15/75/8 thresholds
-- [Phase 10-charts]: 10-02: transactions_filterable_v extended to 8 cols (+visit_seq +card_hash) via DROP+CREATE; LEFT JOIN on visit_attribution_mv reused from 0022. Dual-push to DEV (paafpikebsudoqxwumgm) and TEST (akyugfvsdfrwuzirmylo) projects required — no TEST_DB_URL in .env so used supabase link re-ref.
-- [Phase 10-charts]: 10-03: customer_ltv_mv (4462 rows) + item_counts_daily_mv (4432 rows) shipped with wrapper views, test helpers, full 5-step D-04 refresh DAG. Integration tests 8/10 green (2 it.todo remain). All CI guards pass.
-- [Phase 10-charts]: 10-03: item_counts_daily_mv join key verified: transactions.source_tx_id = stg_orderbird_order_items.invoice_number (normalize.ts:185). is_cash derived from visit_attribution_mv via LEFT JOIN + COALESCE(..., true) matching 0022 pattern.
-- [Phase 10-charts]: 10-04: d3-scale-chromatic promoted from transitive (layerchart) to direct dep — chartPalettes imports interpolateBlues/schemeTableau10 are now load-bearing and can't silently break on layerchart bumps
-- [Phase 10-charts]: 10-04: Plan's +page.server.ts build-break caveat did NOT materialize — existing `as DailyRow[]` cast on E2E bypass literals bypasses strict-mode checks for added visit_seq/card_hash fields. Wave 4 does NOT need to wait on 10-08 for build-gate unblock.
-- [Phase 10-charts]: 10-04: cohortAgg duplicates `>= SPARSE_MIN_COHORT_SIZE` check instead of reusing pickVisibleCohorts() — that helper is typed for RetentionRow only; threshold constant shared via sparseFilter.ts import.
-- [Phase 10-charts]: 10-06: LtvHistogramCard is filter-independent (no range prop) — LTV is lifetime; filter-scoping would be semantically wrong. CalendarItemsCard computes top-8 client-side from the filtered window per D-14; zero-fills missing series keys to prevent LayerChart stack-gap artifacts.
-- [Phase 10-charts]: 10-07: D-17 hint contract unified across VA-06/09/10 — byte-identical cohort-clamp-hint testid + copy + amber-600 styling; grain='day' only triggers hint (B2 fix; month passes through because cohort chart natively honors monthly cohorts)
-- [Phase 10-charts]: 10-07: Cohort Revenue/AvgLtv cards use plain <BarChart data x y orientation bandPadding> composition (not Chart+Svg+Axis stack); LayerChart handles scales/axes/tooltips internally — simpler than retention card pattern
-- [Phase 10-charts]: 10-05: cards self-subscribe to dashboardStore via getter calls in $derived.by() — no prop-drilling from +page.svelte; same pattern as KpiTile
-- [Phase 10-charts]: 10-05: LayerChart high-level <BarChart seriesLayout='stack'> handles stack math/scales/tooltip internally — hand-rolled <Rect>/<Bars> forbidden per RESEARCH anti-patterns
-- [Phase 10-charts]: 10-05: JSDOM normalizes inline-style hex to rgb on set; swatch tests assert computed style + palette constant separately so regression in either layer shows up
-- [Phase 10-charts]: 10-08: Path C eager-mount — Lighthouse crashed on Mac Silicon/x64 Node mismatch + branch not deployed to CF Pages; fell through to eager-mount per plan's hard-stop clause. No LazyMount.svelte shipped.
-- [Phase 10-charts]: 10-08: customer_ltv_v NOT range-filtered at SSR — LTV is lifetime; filter-scoping would hide customers outside chip window, breaking VA-07/09/10 semantics. item_counts_daily_v IS window-scoped per D-21 payload budget.
-- [Phase 10-charts]: 10-08: SSR fan-out grows 4→6 queries with per-card try/catch + empty fallback; Promise.all preserves Phase 4 D-22 per-card error isolation across all new queries.
+- [Phase 09]: 09-03 gap-closure: 0020/0022 t.id -> source_tx_id, tx_id text — Migration 0003 established (restaurant_id, source_tx_id text) as the composite PK; Phase 8 D-04 incorrectly specified tx_id uuid. Fixed in place.
+- [Phase 09]: 09-03: 0021 rewritten as DROP VIEW IF EXISTS + CREATE VIEW — Postgres forbids column removal via CREATE OR REPLACE VIEW (SQLSTATE 42P16). Pattern: view column-shape changes require DROP + CREATE.
+- [Phase 09]: 09-04: Reactive filters state pattern — module-private $state + public getFilters() getter + object-spread in setters so downstream $derived re-runs.
+- [Phase 09-filter-simplification-performance]: 09-05: page.url from $app/state is stale after replaceState — window.location.href is the live source. mergeSearchParams(updates): URL helper centralizes URL composition.
+- [Phase 09-filter-simplification-performance]: 09-05: getWindow(): RangeWindow getter returns a fresh object every call — identity-change invariant that $derived(getWindow()) in +page.svelte depends on.
+- [Phase 10-charts]: 10-01: Nyquist RED wave authored — 8 test files (505 lines) covering all Phase 10 requirements VA-04..VA-10
+- [Phase 10-charts]: 10-01: CF Pages deploy unblocked (Path A) — workflow 24481554088 added deploy.yml on 2026-04-15
+- [Phase 10-charts]: 10-01: Seed-demo-data.sql extended idempotently — 76 tx + 15 cash + 76 order-items under demo-phase10- prefix
+- [Phase 10-charts]: 10-02: transactions_filterable_v extended to 8 cols (+visit_seq +card_hash) via DROP+CREATE; LEFT JOIN on visit_attribution_mv reused from 0022.
+- [Phase 10-charts]: 10-03: customer_ltv_mv (4462 rows) + item_counts_daily_mv (4432 rows) shipped with wrapper views, test helpers, full 5-step D-04 refresh DAG.
+- [Phase 10-charts]: 10-03: item_counts_daily_mv join key verified: transactions.source_tx_id = stg_orderbird_order_items.invoice_number.
+- [Phase 10-charts]: 10-04: d3-scale-chromatic promoted from transitive (layerchart) to direct dep
+- [Phase 10-charts]: 10-04: cohortAgg duplicates `>= SPARSE_MIN_COHORT_SIZE` check instead of reusing pickVisibleCohorts() — that helper is typed for RetentionRow only.
+- [Phase 10-charts]: 10-06: LtvHistogramCard is filter-independent (no range prop) — LTV is lifetime; filter-scoping would be semantically wrong.
+- [Phase 10-charts]: 10-07: D-17 hint contract unified across VA-06/09/10 — byte-identical cohort-clamp-hint testid + copy + amber-600 styling
+- [Phase 10-charts]: 10-07: Cohort Revenue/AvgLtv cards use plain <BarChart> composition — LayerChart handles scales/axes/tooltips internally.
+- [Phase 10-charts]: 10-05: cards self-subscribe to dashboardStore via getter calls in $derived.by() — no prop-drilling.
+- [Phase 10-charts]: 10-05: LayerChart high-level <BarChart seriesLayout='stack'> handles stack math/scales/tooltip internally.
+- [Phase 10-charts]: 10-08: Path C eager-mount — Lighthouse crashed; fell through to eager-mount per plan's hard-stop clause. No LazyMount.svelte shipped (later landed in Phase 11).
+- [Phase 10-charts]: 10-08: customer_ltv_v NOT range-filtered at SSR — LTV is lifetime; filter-scoping would hide customers outside chip window.
+- [Phase 10-charts]: 10-08: SSR fan-out grows 4→6 queries with per-card try/catch + empty fallback.
 
 ### Open Todos
 
-- (v1.1) Confirm with founder whether monthly retention needs its own card in UI or can share the weekly Card with a toggle
-- (v1.1) Decide final bucket boundaries once we eyeball visit_seq distribution on real data (Phase 08 can print a histogram)
-- (deferred, out of v1 scope) v1.0 Plan 05-06 Task 2 fork walkthrough — forkability is not a v1 concern per user direction; revisit only when onboarding other restaurants becomes an explicit goal
+- (v1.3) Confirm with friend in office hours: did she tell regulars about the 2026-04-14 campaign before launch? If yes, when? — drives Track-B `TRAIN_END` cutoff (default `−7d` per research synthesis)
+- (v1.3) Phase 14 — `yhat_samples` jsonb storage trajectory: TTL/janitor decision (~125 MB/year/tenant on 500 MB Supabase free tier) — defer to plan-phase
+- (v1.3) Phase 13 — BVG RSS URL not yet end-to-end verified; CI step in 13's acceptance test
+- (v1.3) Phase 17 — Chronos GHA wall-time + HF cache hit rate not measured; watch-item for alerting
+- (v1.3) Phase 17 — NeuralProphet ≥5% RMSE-win promotion criterion; drop dep entirely after 4 weeks if no win
+- (deferred, out of v1 scope) v1.0 Plan 05-06 Task 2 fork walkthrough — forkability is not a v1 concern per user direction
 
 ### Blockers
 
-- (none — CF Pages unblocked 2026-04-15 by `ci: add CF Pages deploy workflow`; all deploys to `main` since have succeeded. See .planning/phases/10-charts/10-01-SUMMARY-cf-pages-decision.md for evidence.)
+- (none)
 
 ### Quick Tasks Completed
 
@@ -204,29 +227,29 @@ Plan: —
 |---|-------------|------|--------|-----------|
 | 260417-29v | Apply security headers to SSR responses in hooks.server.ts | 2026-04-16 | 11e85b9 | [260417-29v-apply-security-headers-to-ssr-responses-](./quick/260417-29v-apply-security-headers-to-ssr-responses-/) |
 | 260417-mfo | 3 mobile UI fixes: FilterBar spinner, Takeaway label nowrap, CohortRetentionCard grain-aware | 2026-04-17 | 28ba150, e02b272, c0f0a2b | [260417-mfo-3-ui-fixes-loading-spinner-takeaway-over](./quick/260417-mfo-3-ui-fixes-loading-spinner-takeaway-over/) |
-| 260417-mp2 | Fix silent dashboard crash (RangeError in formatBucketLabel on month grain) — 1-line slice in pickCohortKey + regression tests | 2026-04-17 | 62fab3e, c389bd4 | [260417-mp2-fix-silent-dashboard-bug-formatbucketlab](./quick/260417-mp2-fix-silent-dashboard-bug-formatbucketlab/) |
-| 260418-0td | Clean up unstaged MCP config — restored Context7 + claude-in-chrome, promoted .mcp.json to tracked, documented mcp-servers/ | 2026-04-17 | f8970f2, b20cad6 | [260418-0td-clean-up-unstaged-mcp-config-changes-res](./quick/260418-0td-clean-up-unstaged-mcp-config-changes-res/) |
+| 260417-mp2 | Fix silent dashboard crash (RangeError in formatBucketLabel on month grain) | 2026-04-17 | 62fab3e, c389bd4 | [260417-mp2-fix-silent-dashboard-bug-formatbucketlab](./quick/260417-mp2-fix-silent-dashboard-bug-formatbucketlab/) |
+| 260418-0td | Clean up unstaged MCP config | 2026-04-17 | f8970f2, b20cad6 | [260418-0td-clean-up-unstaged-mcp-config-changes-res](./quick/260418-0td-clean-up-unstaged-mcp-config-changes-res/) |
 | 260418-1ja | Pass 1 dashboard feedback: swap Counts/Revenue order, rename 7 chart titles, add compact €/int Y-axis formatters, fix revenue-chart cents→EUR bug | 2026-04-17 | f569933, af8f546, 00a0325 | [260418-1ja-pass-1-card-titles-order-swap-y-axis-rea](./quick/260418-1ja-pass-1-card-titles-order-swap-y-axis-rea/) |
-| 260418-28j | Pass 2 dashboard feedback: retention card — new retention_curve_monthly_v (fixes monthly period-0 34%→100%), x-axis cap 52w/12m, cohort line cap 4→12, remove client-side weeklyToMonthly | 2026-04-17 | f5825ca, 6333e56, 19219c6, 073b963, d834314 | [260418-28j-pass-2-retention-card-overhaul-monthly-s](./quick/260418-28j-pass-2-retention-card-overhaul-monthly-s/) |
-| 260418-3ec | Pass 3 dashboard feedback: repeater breakdown on VA-07/09/10 (VA-07 + VA-09 stacked, VA-10 grouped), LTV histogram dynamic €5 bins, classifyRepeater + cohort*ByRepeater helpers, REPEATER_COLORS palette | 2026-04-18 | 40ca05b, 831bb5e, 481aace | [260418-3ec-pass-3-repeater-breakdown-on-va-07-09-10](./quick/260418-3ec-pass-3-repeater-breakdown-on-va-07-09-10/) |
-| 260418-4oh | Pass 4 dashboard feedback (6 items): retention current-period NULL fix (migration 0028), mobile long-press freeze (.chart-touch-safe), retention tooltip (bisect-x), delete VA-09 CohortRevenueCard + dead helpers, top-20 items (ITEM_COLORS × 20), 8-bucket visit_count grouped LTV charts (VA-07 + VA-10) | 2026-04-18 | aa86219, 1598bf4, 6432bd2, 531a72f, ab771c2 | [260418-4oh-pass-4-6-items-top20-items-long-press-fi](./quick/260418-4oh-pass-4-6-items-top20-items-long-press-fi/) |
-| 260418-f99 | Plan A — 5 UI fixes pass: BarChart Y-axis padding, SegmentedToggle "Takeaway" overflow, KpiTile responsive type + €100k+ compact fallback, chart touch-action pan-x → auto (PC trackpad vertical scroll), retention Tooltip.Root moved out of Svg | 2026-04-18 | bec629c, 73d96b7, ec905d4, 02f39f3, 60ef822, e45fc20 | [260418-f99-plan-a-5-ui-fixes-pass](./quick/260418-f99-plan-a-5-ui-fixes-pass/) |
-| 260418-g6s | Range-chip cache-miss triggers SSR refetch via goto({invalidateAll:true}) — first-login users clicking "All" chip now actually re-fetches full-window data. Two commits: initial fix used depends+invalidate, Chrome MCP QA caught stale-URL trap (replaceState doesn't feed SvelteKit invalidate), followed up with goto() | 2026-04-18 | 982b010, 92c585a | [260418-g6s-range-chip-ssr-refetch-fix-depends-inval](./quick/260418-g6s-range-chip-ssr-refetch-fix-depends-inval/) |
-| 260419-dhm | DailyHeatmapCard — Mon-Sun row labels fixed left of scroll, blue-scale colorbar (€0 → max) below chart sampling interpolateBlues at 10 stops | 2026-04-19 | e98f074, 4345700 | [260419-dhm-labels-colorbar](./quick/260419-dhm-labels-colorbar/) |
-| 260420-wdf | Day-of-week filter (7 checkboxes, Mon..Sun) applied client-side to KPI tiles + calendar + heatmap + per-item cards; retired Lin/Log toggle (locked to log-linear). Repeater card scope-expanded to full Option-A recomputation (visit_count + cohort_month shift under the "what if" lens) via new lifetime-tx SSR fetch. Retention card keeps caveat (deferred). Sticky filter header fix: swapped layout wrapper overflow-x-hidden → overflow-x-clip so filter bar's existing `sticky top-0` binds to viewport instead of the implicit scroll container. Cloud-verified SQL-exact across all affected charts + mobile sticky-scroll PASS. | 2026-04-20 | 03db100, 1c9cf3a, 7027b4b, 545273c, d2f536d | [260420-wdf-dow-filter-retire-lin-log](./quick/260420-wdf-dow-filter-retire-lin-log/) |
-| 260422-fz1 | AI TL;DR action-point bullets on dashboard insight card — extended nightly Haiku tool-use call with `action_points: string[]` (2-3 observational bullets), new `action_points TEXT[] NOT NULL DEFAULT '{}'` column on `public.insights`, migration 0035 refreshes `insights_v`, digit-guard reused bullet-by-bullet, deterministic fallback bullets from existing 7-scalar template. 10/10 Svelte unit tests pass (2 new), 13/13 Deno fallback+digit-guard tests pass. Pending DEV deploy + pipeline re-trigger for live bullets. | 2026-04-22 | a496164 | [260422-fz1-add-ai-tl-dr-action-point-bullets-to-das](./quick/260422-fz1-add-ai-tl-dr-action-point-bullets-to-das/) |
-| 260424-mdc | MDE (Minimum Detectable Effect) line chart card on dashboard — new `MdeCurveCard.svelte` plots min per-day lift a campaign must produce to be statistically significant for n₂ ∈ {1…14} days; σ and n₁ derived live from `getFiltered()` via `$derived.by` (reacts to every filter change + nightly SSR invalidation). Pure-math module `src/lib/mde.ts` + 13 Vitest cases incl. Step-3 PDF sanity check (σ=222, n₁=20, n₂=4 → MDE≈€340). 5 new i18n keys × 5 locales; table-driven `emptyStates.ts` entry. Zero SSR / backend changes. Mounted between `CalendarRevenueCard` and `CalendarItemsCard`. | 2026-04-24 | 66926c2, e612519 | [260424-mdc-add-mde-curve-card](./quick/260424-mdc-add-mde-curve-card/) |
+| 260418-28j | Pass 2 dashboard feedback: retention card overhaul | 2026-04-17 | f5825ca, 6333e56, 19219c6, 073b963, d834314 | [260418-28j-pass-2-retention-card-overhaul-monthly-s](./quick/260418-28j-pass-2-retention-card-overhaul-monthly-s/) |
+| 260418-3ec | Pass 3 dashboard feedback: repeater breakdown on VA-07/09/10 | 2026-04-18 | 40ca05b, 831bb5e, 481aace | [260418-3ec-pass-3-repeater-breakdown-on-va-07-09-10](./quick/260418-3ec-pass-3-repeater-breakdown-on-va-07-09-10/) |
+| 260418-4oh | Pass 4 dashboard feedback (6 items) | 2026-04-18 | aa86219, 1598bf4, 6432bd2, 531a72f, ab771c2 | [260418-4oh-pass-4-6-items-top20-items-long-press-fi](./quick/260418-4oh-pass-4-6-items-top20-items-long-press-fi/) |
+| 260418-f99 | Plan A — 5 UI fixes pass | 2026-04-18 | bec629c, 73d96b7, ec905d4, 02f39f3, 60ef822, e45fc20 | [260418-f99-plan-a-5-ui-fixes-pass](./quick/260418-f99-plan-a-5-ui-fixes-pass/) |
+| 260418-g6s | Range-chip cache-miss triggers SSR refetch via goto({invalidateAll:true}) | 2026-04-18 | 982b010, 92c585a | [260418-g6s-range-chip-ssr-refetch-fix-depends-inval](./quick/260418-g6s-range-chip-ssr-refetch-fix-depends-inval/) |
+| 260419-dhm | DailyHeatmapCard — Mon-Sun row labels fixed left of scroll, blue-scale colorbar | 2026-04-19 | e98f074, 4345700 | [260419-dhm-labels-colorbar](./quick/260419-dhm-labels-colorbar/) |
+| 260420-wdf | Day-of-week filter + repeater Option-A scope expansion + sticky filter header fix | 2026-04-20 | 03db100, 1c9cf3a, 7027b4b, 545273c, d2f536d | [260420-wdf-dow-filter-retire-lin-log](./quick/260420-wdf-dow-filter-retire-lin-log/) |
+| 260422-fz1 | AI TL;DR action-point bullets on dashboard insight card | 2026-04-22 | a496164 | [260422-fz1-add-ai-tl-dr-action-point-bullets-to-das](./quick/260422-fz1-add-ai-tl-dr-action-point-bullets-to-das/) |
+| 260424-mdc | MDE (Minimum Detectable Effect) line chart card on dashboard | 2026-04-24 | 66926c2, e612519 | [260424-mdc-add-mde-curve-card](./quick/260424-mdc-add-mde-curve-card/) |
 
 ## Session Continuity
 
-**Next command:** `/gsd:discuss-phase 06` to gather context for the Filter Foundation phase (custom date range + granularity toggle + 4 dropdown filters wired to existing views)
+**Next command:** `/gsd-discuss-phase 12` to ratify the Phase 12 cross-cutting decisions (anticipation cutoff, `WEATHER_PROVIDER=brightsky` production default, mechanical `tenant_id` → `restaurant_id` rename) and produce `12-CONTEXT.md` before any v1.3 migrations land.
 
-**Authoritative spec for v1.1:** `.planning/v1.1-DATA-MODEL.md` — read first. Has every column, SQL body, index, CASE ladder, and filter contract.
+**Authoritative spec for v1.3:** `.planning/phases/12-forecasting-foundation/12-PROPOSAL.md` (1484-line driving artifact — verified data sources, schema sketches, GHA cron pattern, failure modes, backtest fairness rules, ITS validity audit). Note: §7 SQL sketches use `tenant_id`; codebase claim is `restaurant_id` — Phase 12 CI grep guard catches the rename.
 
-**Resume hint:** Milestone v1.1 Dashboard Redesign was scoped in this session. Architecture is a pragmatic star schema: `dim_customer` (lifetime attrs) + `fct_transactions` (atomic fact MV with visit_seq / days_since_prev_visit window fns + denormalized filter dims) + 4 thin day-grain rollup MVs (`mv_new_customers_daily`, `mv_repeater_daily`, `mv_retention_monthly`, `mv_inter_visit_histogram`). Two bucket columns materialized: `lifetime_bucket` (how customer ended up) and `visit_seq_bucket` (point-in-time). Six filters: date range, granularity, sales_type, payment_method, wl_issuing_country, repeater bucket — dropdowns auto-populated from DISTINCT values. All refresh stays inside existing `refresh_analytics_mvs()` cron. Start with Phase 06 (Filter Foundation) for a quick UX win before any schema change.
+**Resume hint:** v1.3 roadmap complete. 6 phases (12-17) map all 47 v1.3 requirements. Phase 12 (Foundation — Decisions & Guards) is a discuss-phase + lightweight scripting effort (1-2 days). Phase 13 (External Data Ingestion) is the first heavy migration phase (~2 weeks). Phase 14 ↔ 15 parallel-eligible after 14's schema lands (estimated 30-40% schedule compression). Phase 17 has a hard dependency on ≥4 weeks of forecast-vs-actual history; cold-start UI badge "BACKTEST PENDING" handles days 1-7.
 
-**Last session:** 2026-04-24T00:00:00Z
-**Stopped At:** Completed quick task 260424-mdc on branch `quick-260424-mde` — new MDE (Minimum Detectable Effect) line chart card shipped to the dashboard. Two commits: (66926c2) pure-math module `src/lib/mde.ts` + 13-case Vitest file incl. Step-3 PDF sanity check (σ=222, n₁=20, n₂=4 → MDE≈€340); (e612519) `MdeCurveCard.svelte` LayerChart Spline with dashed vertical ref at n₂=7, reactive `$derived.by(getFiltered())` chain that re-draws on every filter change + nightly SSR invalidation, mounted between CalendarRevenueCard and CalendarItemsCard, plus 5 new i18n keys × 5 locales and `emptyStates.ts` entry (table-driven — no EmptyState.svelte edit needed). Zero SSR/backend changes. Gates: 13/13 new Vitest cases green, `npm run build` green. Post-push DEV QA pending (Chrome MCP per CLAUDE.md — verify curve shifts on range chip, caption n₁ drops on Mon-only filter, zero `invalid_default_snippet` console warnings).
+**Last session:** 2026-04-27T00:00:00Z
+**Stopped At:** Wrote v1.3 ROADMAP (Phases 12-17, 47 reqs), updated STATE.md progress block (17 total phases / 11 complete / 65%), wrote v1.3 traceability into REQUIREMENTS.md. Driving artifact `.planning/phases/12-forecasting-foundation/12-PROPOSAL.md` preserved untouched. Ready for `/gsd-discuss-phase 12`.
 
 ---
-*State initialized: 2026-04-13*
+*State initialized: 2026-04-13; v1.3 roadmap recorded: 2026-04-27*
