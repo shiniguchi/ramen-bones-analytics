@@ -1,212 +1,366 @@
-# Stack Research
+# Stack Research — Milestone v1.3 (External Data & Forecasting Foundation)
 
-**Domain:** Free, forkable, mobile-first restaurant POS analytics (Orderbird → Supabase → SvelteKit/Cloudflare)
-**Researched:** 2026-04-13
-**Confidence:** HIGH for core stack (validated via official docs and current npm); MEDIUM for supporting libraries (WebSearch corroborated).
-
----
-
-## Executive Take
-
-The user's pre-decided stack is **correct and current** for 2026. SvelteKit 2 + Svelte 5 + `adapter-cloudflare` + `@supabase/ssr` + Supabase Postgres + pg_cron + Playwright-in-GitHub-Actions is the canonical free-tier path. The only gaps are **unspecified supporting libraries** (charts, dates, UI kit, CSV) and **one structural warning**: RLS on materialized views is a known footgun — it must be solved with a security-definer view wrapper, not naively. Details below.
+**Domain:** Multi-horizon time-series forecasting + external-data ingestion + ITS counterfactual attribution, layered onto an existing SvelteKit 2 / Cloudflare Pages / Supabase Postgres stack.
+**Researched:** 2026-04-27
+**Confidence:** HIGH for production-tier (SARIMAX, Prophet, statsforecast, Open-Meteo SDK, python-holidays, feedparser, LayerChart 2.x). MEDIUM for foundation-model + neural tier (Chronos-Bolt, NeuralProphet) — feature-flag them.
 
 ---
 
-## Recommended Stack
+## Executive take
 
-### Core Technologies
+The existing stack already covers most of the ground. v1.3 is **additive**: ~9 new Python deps go into `requirements-extract.txt` (or a new `requirements-forecast.txt`); zero new JS deps because LayerChart 2.0.0-next.54 is already installed and ships `Spline`, `Area` (with `y0/y1`), `Rule`, and `Tooltip.Root` — exactly the four primitives the forecast chart needs.
 
-| Technology | Version (April 2026) | Purpose | Why Recommended |
-|------------|----------------------|---------|-----------------|
-| **SvelteKit** | 2.x (current) | App framework | First-class Cloudflare adapter, Svelte 5 runes = smallest mobile JS bundle among mainstream frameworks. Next.js on CF has documented adapter friction — SvelteKit avoids that entirely. |
-| **Svelte** | 5.x (runes) | UI reactivity | `$state`/`$derived`/`$effect` runes work outside `.svelte` files — cleaner shared stores for filter state across dashboard views. `$app/stores` is deprecated; use `$app/state`. |
-| **@sveltejs/adapter-cloudflare** | 7.2.8 | CF Pages build target | Official adapter, actively maintained. Handles `platform.env` bindings for server hooks. |
-| **Cloudflare Pages** | — | Static hosting + SSR | Free tier: unlimited requests, unlimited bandwidth, 500 builds/mo. Edge-deployed globally → fast phone loads. |
-| **Supabase Postgres** | Postgres 15+ | Primary datastore | Free tier: 500 MB DB, 2 projects, RLS built-in, pg_cron available via extension. Postgres window functions + CTEs + `generate_series` are required for the cohort/retention SQL; D1 cannot do this. |
-| **@supabase/supabase-js** | 2.103.x | DB client | Current stable. Works in Cloudflare Workers runtime (fetch-based, no Node APIs). |
-| **@supabase/ssr** | latest (0.5.x+) | SvelteKit auth cookies | **Replaces the deprecated `@supabase/auth-helpers-sveltekit`**. Cookie-based SSR session, safe for server hooks. Mandatory: do **not** use the old auth-helpers package — it is sunset. |
-| **pg_cron** | extension (enabled via Dashboard) | Nightly materialized view refresh | Built into Supabase. Use `cron.schedule('refresh-mv', '0 3 * * *', 'REFRESH MATERIALIZED VIEW CONCURRENTLY cohort_mv;')`. Jobs/logs live in `cron.job` and `cron.job_run_details`. |
-| **Supabase Edge Functions** | Deno runtime | Claude API insight job | Free tier: 500K invocations/month. Triggered by pg_cron (`cron.schedule` → `net.http_post`) after MV refresh. Holds the Anthropic API key as secret. |
-| **Python** | 3.12+ | Extraction runtime | Playwright-Python is more mature than Playwright-Node for headed-browser scrapers; pandas/polars ecosystem for CSV shaping. |
-| **Playwright (Python)** | 1.48+ | Orderbird CSV scraper | Headless Chromium, handles login + CSV export download. Run in GitHub Actions (free unlimited for public repos). |
-| **GitHub Actions** | — | Cron host for scraper | **Free unlimited minutes for public repos**; ~2000 min/mo for private. Cron `schedule` trigger (`'0 2 * * *'`). This is the canonical free Playwright cron host in 2026 — no paid Render/Fly worker needed. |
-| **Anthropic Claude API** | `claude-sonnet-4.5` or `claude-haiku-4` | Nightly narrative insights | Haiku is 10× cheaper and plenty for 1-page-of-numbers summaries. Called from Edge Function post-MV-refresh. |
+The core forecasting tier — SARIMAX (statsmodels) + Prophet 1.3 + statsforecast 2.0 (ETS, Theta, Naive, plus the `ConformalIntervals` wrapper for long-horizon CIs) + python-holidays + feedparser + openmeteo-requests + PyYAML — fits comfortably under the GHA 7 GB / 6h-runtime budget; total nightly fit cost is well under 10 minutes per §17 of the proposal. NeuralProphet (~500 MB PyTorch) and Chronos-Bolt-Tiny (~9 MB weights, ~600 MB torch dep) are the only weight movers and are explicitly feature-flagged.
 
-### Supporting Libraries (FLAGGED — user has not specified these)
+`ferien-api` PyPI client is **abandoned (last release 2022-10)** — call the REST endpoint directly with `httpx`. That is the single most important "what NOT to use" finding from this research pass.
 
-| Library | Version | Purpose | Why This One |
-|---------|---------|---------|--------------|
-| **LayerChart** | 2.x (Svelte 5 native) | Charts (cohort curves, LTV bars, KPI sparklines) | Composable SVG primitives built on Layer Cake, **native Svelte 5** (not a compat wrapper). `svelte-chartjs` is unmaintained and does not support Svelte 5 — avoid. LayerChart's modular SVG approach = small bundle, good mobile perf. |
-| **shadcn-svelte** (`@next`) | Tailwind v4 compatible | UI primitives (Button, Card, Select, Sheet, Tabs) | Copy-paste components, not a dependency — forkers can customize freely. `@next` CLI initializes with Tailwind v4 + Svelte 5 + `data-slot` styling hooks. |
-| **Tailwind CSS** | v4.x | Styling | v4 uses Vite plugin (not PostCSS), faster builds, OKLCH color conversion automatic. Mobile-first breakpoints are default. |
-| **date-fns** | 4.x | Date math, formatting, cohort bucketing | TypeScript-native, tree-shakes to ~2–5 kB for the functions this app needs (`startOfWeek`, `startOfMonth`, `format`, `differenceInDays`). **Do not wait for Temporal** — still polyfill-required on Cloudflare Workers runtime in April 2026. **Do not use Moment.js** (deprecated). Day.js is fine too but date-fns has better TS inference. |
-| **pandas** | 2.2+ | Python CSV shaping in extractor | For Orderbird CSVs (< 100 k rows) pandas is the practical choice — mature, familiar, integrates with `supabase-py` upserts. Polars is overkill at this scale; pick it up only if row counts explode past ~1 M. |
-| **supabase-py** | 2.x | Python → Supabase upserts | Official Python client. Used by the extractor to write raw transactions to `stg_orderbird_tx`. |
-| **python-dotenv** | latest | Local secret loading | Standard for local dev; GitHub Actions uses `secrets.*` in workflow. |
-| **zod** | 3.x | Runtime schema validation on API boundaries | Validate filter query params in SvelteKit `+page.server.ts` load functions. Prevents RLS bypass via bad input. |
-| **valibot** (alternative to zod) | 1.x | Smaller-bundle validator | Use if mobile bundle budget gets tight — ~10× smaller than zod, same DX. |
+**Out of scope for v1.3 (defer to v1.4+):** PyMC-Marketing, Meridian, Robyn, DeepAR, TFT, N-BEATS, PatchTST, LightGBM/MLForecast, gluonts, darts, tfcausalimpact. Adding these now violates the "≥3 channels before MMM" gate and the GHA runtime budget.
 
-### Development Tools
+---
 
-| Tool | Purpose | Notes |
-|------|---------|-------|
-| **Vite** | 5.x | Bundler (built into SvelteKit 2) | Tailwind v4 plugin replaces PostCSS config |
-| **Supabase CLI** | 1.x | Local Supabase, migrations, types | `supabase gen types typescript` → feed SvelteKit for end-to-end type safety |
-| **GitHub Actions** | — | CI + scraper cron + deploy | Single platform for everything. Keep workflow file per job. |
-| **Wrangler** | 3.x | CF Pages local preview | `wrangler pages dev` to test adapter-cloudflare output locally |
-| **Playwright codegen** | — | Record Orderbird login flow | `playwright codegen my.orderbird.com` → auto-generates selectors for scraper |
+## Recommended stack additions
+
+### Forecasting core (required, GHA cron)
+
+| Package | Version (April 2026) | Purpose | Why this one |
+|---|---|---|---|
+| **statsmodels** | 0.14.6 | SARIMAX (D-06, primary), ETS reference | Already-installed-class deep-stack stalwart. SARIMAX has native `exog` matrix support — the cleanest way to wire weather + holidays + `is_campaign` regressors per §13. Python 3.9–3.13. |
+| **prophet** | 1.3.0 (released 2026-01-27) | Stakeholder-friendly secondary (D-07) — `plot_components` audit | Native `add_regressor` + `holidays` arg; uniquely good decomposition plots for explaining seasonal vs trend vs regressor effects. **Critical version pin:** prophet 1.3 requires `holidays>=0.25,<1` — pin both together to avoid the well-known import-break (`prophet 1.1.4 ↔ holidays 0.23` recurring conflict). |
+| **statsforecast** | 2.0.3 | Theta + Naive baselines (D-10 floor); `ConformalIntervals` wrapper for calibrated CIs at ≥35d horizons; `cross_validation()` for rolling-origin CV harness (§16) | One install replaces three custom scripts. `ConformalIntervals(h=35, n_windows=4)` answers Office-Hours #4 (CI calibration). `cross_validation(df, h=7, step_size=7, n_windows=12)` is the §16 12-fold gate **out of the box** — do **not** hand-roll it. |
+| **utilsforecast** | 0.2.15 | Forecast-evaluation metrics (RMSE, MAPE, sMAPE, MASE, bias) used by §17 last-7-day evaluator and §16 backtest gate | Pulled in by statsforecast anyway; depending on it explicitly stabilizes the metric API surface for `last_7_eval.py` + `backtest.py`. |
+| **scipy** | 1.13–1.15 | numerical backbone (already pinned by statsmodels/statsforecast) | Note: statsforecast 2.0.3 pins `scipy<1.16,>=1.7.3`. Don't bump scipy past 1.16 in v1.3. |
+
+### External-data ingestion (required, GHA cron)
+
+| Package | Version | Purpose | Why this one |
+|---|---|---|---|
+| **openmeteo-requests** | 1.7.5 (2026-01-19) | Open-Meteo client (D-01, weather backfill + 7-day forecast) | Official Open-Meteo Python SDK. **FlatBuffers transport** = ~10× smaller payload than raw JSON; built-in caching + retry; zero-copy pandas DataFrame. Use this instead of raw `httpx`. Async client available if we ever need parallel-shop fan-out. |
+| **python-holidays** | 0.95 | Federal + Berlin holidays (D-02) | MIT, **fully offline** (no API call → no rate-limit risk). `holidays.Germany(state="BE", years=2026)` returns 9 federal + Frauentag. 250 country codes covered → forkability win. |
+| **httpx** | 0.28.1 | `ferien-api.de` REST consumer (D-03) — **NOT the abandoned `ferien-api` PyPI wrapper**; raw `GET https://ferien-api.de/api/v1/holidays/BE/2026.json` | `ferien-api` PyPI package last released 2022-10-06 (v0.3.7) — explicitly abandoned. Two 5-line `httpx.get()` calls per year are simpler than depending on a dead wrapper. Reuse `httpx` for any other ad-hoc REST calls (BVG follow-up, Berlin-events fallback). |
+| **feedparser** | 6.0.12 (2025-09-10) | BVG transit-strike RSS (D-04) | Battle-tested RSS/Atom parser. Robust against schema drift (BVG could swap formats). Filter on German keywords `Streik` / `Ausfälle` / `Betriebsstörung` per §6. |
+| **PyYAML** | 6.0.3 | Hand-curated recurring events (D-05) — `recurring_events.yaml` → table loader | Dependency of countless other tools; already in any pandas-adjacent env. Source-controlled YAML edits = forkable + auditable, vs. live wikipedia scrape. |
+
+### Existing deps (no upgrade needed — already validated)
+
+| Package | Version | Role in v1.3 |
+|---|---|---|
+| **supabase-py** | 2.29.0 (2026-04-24) | All Python → Supabase upserts (forecast_daily, weather_daily, holidays, etc.). No version bump needed if already on 2.x. |
+| **pandas** | 2.2+ | Time-series shaping + `df.resample()` for week/month CI aggregation in `last_7_eval.py` |
+| **python-dotenv** | latest | local dev secret loading; GHA uses `secrets.*` |
+| **layerchart** | 2.0.0-next.54 (already in `package.json`) | All forecast chart UI primitives (verified below) |
+| **date-fns** / **date-fns-tz** | 4.x / 3.x | Berlin TZ alignment (Office-Hours #5) |
+
+### Optional / feature-flagged (Tier B — promote only after backtest)
+
+| Package | Version | Purpose | When to enable |
+|---|---|---|---|
+| **chronos-forecasting** | 2.2.2 (2025-12-17) | Zero-shot foundation model (D-08, Tier-A overlay) — Chronos-Bolt-Tiny (9M params, ~9 MB weights) | Behind env var `FORECAST_ENABLED_MODELS=…,chronos`. **Heavy:** transitively pulls torch ≥2.2 (~600 MB) + transformers ≥4.49 (~150 MB) + accelerate. Use the **`+cpu` torch wheel** index (`pip install --index-url https://download.pytorch.org/whl/cpu torch`) on GHA — drops install size from ~2 GB to ~250 MB. Cache `~/.cache/huggingface` between GHA runs (model weights pinned). |
+| **neuralprophet** | 0.9.0 (2024-06-21) | AR-augmented Prophet (D-08b, Tier-B optional) | Behind env var `FORECAST_ENABLED_MODELS=…,neuralprophet`. Pulls `torch>=2.0`. Same `+cpu` wheel optimization as Chronos. **Promotion gate:** beats SARIMAX+Prophet by ≥5 % RMSE on 35d/120d horizons in §16 backtest, otherwise drop the dep entirely. |
+
+### LayerChart 2.x primitives (verified in installed `node_modules/layerchart/dist/components/`)
+
+No new JS deps. Exactly the four building blocks needed for the §3 chart spec:
+
+| Component | Verified API | Use in `RevenueForecastCard.svelte` |
+|---|---|---|
+| **`Spline`** | `data, x, y, seriesKey, defined, curve, stroke, fill, opacity, motion` | One per forecast line (actual + SARIMAX + Prophet + Chronos + naive). `seriesKey` reads from chart series context — register all series once on the parent `<Chart>`, render N `<Spline>` children with toggleable `opacity` for legend show/hide. |
+| **`Area`** | `data, x, y0, y1, ...` (confirmed `y0` and `y1` exist as `Accessor` types) | Uncertainty band: `y0={(d) => d.yhat_lower}` / `y1={(d) => d.yhat_upper}` with `fill-opacity:0.15`. **One `<Area>` per forecast model** that the user has toggled on. |
+| **`Rule`** | `x: boolean \| 'left' \| 'right' \| number \| Date`, `y: boolean \| 'top' \| 'bottom' \| number \| Date`, `xOffset`, `yOffset` | Vertical event markers: campaign-start (`x={new Date('2026-04-14')}` solid red), federal holidays (dashed green), recurring events (dashed yellow), BVG strike days (red bar). One `<Rule>` per event. |
+| **`Tooltip.Root`** with `{#snippet children(...)}` | Per memory `feedback_svelte5_tooltip_snippet.md` — must use `{#snippet children}`, NOT `let:data` (runtime `invalid_default_snippet` on Svelte 5) | Hover popup with full §17 last-7-day accuracy block. |
+
+Horizon toggle (7d / 5w / 4mo / 1yr): client-side data slice driving `<Chart>`'s `xDomain` prop — same forecast rows, different domain. No server roundtrip per toggle.
 
 ---
 
 ## Installation
 
-```bash
-# SvelteKit app
-npm create svelte@latest web
-cd web
-npm install
-npm install -D @sveltejs/adapter-cloudflare
-npm install @supabase/supabase-js @supabase/ssr
-npm install -D tailwindcss@next @tailwindcss/vite
-npx shadcn-svelte@next init
-npm install layerchart@next
-npm install date-fns zod
+### Add to `requirements-extract.txt` (or split into `requirements-forecast.txt`)
 
-# Python extractor
-pip install playwright pandas supabase python-dotenv
-playwright install chromium
+```bash
+# === Forecasting core (always installed) ===
+statsmodels==0.14.6
+prophet==1.3.0
+holidays>=0.25,<1            # pinned by prophet 1.3.0 — DO NOT use 0.95 free-floating
+statsforecast==2.0.3
+utilsforecast==0.2.15
+scipy>=1.7.3,<1.16           # pinned by statsforecast 2.0.3
+
+# === External data fetchers ===
+openmeteo-requests==1.7.5
+python-holidays==0.95         # NOTE: package name is "holidays" on PyPI; same wheel as the prophet pin above
+httpx==0.28.1
+feedparser==6.0.12
+PyYAML==6.0.3
+
+# === Already in stack ===
+pandas>=2.2
+supabase==2.29.0
+python-dotenv
+
+# === Tier-B feature-flagged (install in a separate step on GHA, conditional) ===
+# torch (CPU only):
+#   pip install --index-url https://download.pytorch.org/whl/cpu torch>=2.2,<3
+# chronos-forecasting==2.2.2
+# neuralprophet==0.9.0
+```
+
+### GitHub Actions install pattern (snippet for `forecast-refresh.yml`)
+
+```yaml
+- uses: actions/setup-python@v5
+  with:
+    python-version: '3.12'
+    cache: 'pip'
+- name: Install core forecasting deps
+  run: pip install -r requirements-forecast.txt
+- name: (Optional) Install CPU torch + Chronos
+  if: env.ENABLE_CHRONOS == 'true'
+  run: |
+    pip install --index-url https://download.pytorch.org/whl/cpu 'torch>=2.2,<3'
+    pip install chronos-forecasting==2.2.2
+- name: (Optional) Install NeuralProphet
+  if: env.ENABLE_NEURALPROPHET == 'true'
+  run: |
+    pip install --index-url https://download.pytorch.org/whl/cpu 'torch>=2.2,<3'
+    pip install neuralprophet==0.9.0
+- name: Cache HuggingFace weights
+  uses: actions/cache@v4
+  with:
+    path: ~/.cache/huggingface
+    key: hf-${{ runner.os }}-chronos-bolt-tiny
+```
+
+### No new JS deps
+
+```bash
+# Verified — already installed:
+#   layerchart@2.0.0-next.54   ← Spline, Area, Rule, Tooltip
+#   date-fns@4.1.0
+#   date-fns-tz@3.2.0
 ```
 
 ---
 
-## Alternatives Considered
+## Backtest tooling — buy, don't build
 
-| Recommended | Alternative | When to Use Alternative |
-|-------------|-------------|-------------------------|
-| SvelteKit + CF Pages | Next.js + Vercel | You need React ecosystem libraries unavailable in Svelte. **Not for this project** — CF adapter friction was already disqualifying. |
-| Supabase Postgres | Cloudflare D1 | Simple key-value / flat-table apps. **Not for this project** — cohort SQL requires Postgres window functions. |
-| pg_cron + materialized views | dbt Core | You have 50+ models and a team maintaining them. Current scale (~5–10 models) doesn't justify dbt setup cost. |
-| Playwright in GitHub Actions | Render/Fly.io cron worker | You need >6hr runtime or Windows/Mac browser. GHA free tier covers the 2 min daily nightly run for years. |
-| LayerChart | Chart.js (direct, no wrapper) | You already have Chart.js muscle memory. Tradeoff: no Svelte 5 wrapper, manual lifecycle management. |
-| LayerChart | Apache ECharts via svelte-echarts | Very complex dashboards (candlesticks, 3D, maps). Larger bundle — not mobile-friendly. |
-| date-fns | Day.js | You want Moment-style chaining API. Both are fine; date-fns wins on TS. |
-| date-fns | Temporal (native) | Node 24+ with flag / you ship only to Chrome 144+. **Not yet for CF Workers runtime.** |
-| pandas | Polars | Row counts >1 M or memory-constrained extractor. Not needed at current scale. |
-| shadcn-svelte | Skeleton UI / Bits UI | You want a themed design system out of the box vs. copy-paste primitives. shadcn-svelte wins on forkability (no npm lock-in on UI). |
+**Use `statsforecast.cross_validation()` directly.** It implements rolling-origin CV with the exact semantics §16 requires:
 
----
+```python
+from statsforecast import StatsForecast
+from statsforecast.models import AutoARIMA, AutoETS, Theta, Naive
+from statsforecast.utils import ConformalIntervals
 
-## What NOT to Use
+sf = StatsForecast(
+    models=[
+        AutoARIMA(season_length=7, prediction_intervals=ConformalIntervals(h=35, n_windows=4)),
+        AutoETS(season_length=7),
+        Theta(season_length=7),
+        Naive(),  # the §16 floor
+    ],
+    freq='D',
+    n_jobs=-1,
+)
 
-| Avoid | Why | Use Instead |
-|-------|-----|-------------|
-| **`@supabase/auth-helpers-sveltekit`** | Officially deprecated; Supabase consolidated all framework helpers into `@supabase/ssr`. | `@supabase/ssr` |
-| **`svelte-chartjs`** | Unmaintained, no Svelte 5 support. | LayerChart (Svelte 5 native) |
-| **Next.js on Cloudflare Pages** | Adapter friction, edge runtime quirks, larger mobile bundle. Already rejected in PROJECT.md. | SvelteKit + `adapter-cloudflare` |
-| **Moment.js** | Deprecated by its own maintainers since 2020. 70+ kB. | date-fns or Day.js |
-| **Cloudflare D1 for analytics** | No window functions, no `generate_series`, no materialized views. Cohort SQL is impossible. | Supabase Postgres |
-| **Streamlit** | Already rejected; mobile layout unusable. | SvelteKit |
-| **Direct Orderbird CSV fetch via `requests`** | Orderbird login is JS-driven; session cookies expire. | Playwright with persistent storage state |
-| **Running Claude API calls from the browser** | Leaks API key. | Supabase Edge Function, triggered by pg_cron via `pg_net` |
-| **Querying raw `orders` table from SvelteKit load functions** | RLS + full-table scans + phone = slow. | Query materialized views (`cohort_mv`, `ltv_mv`, `kpi_daily_mv`) only |
-| **Supabase Realtime** | Adds complexity, out of scope per PROJECT.md (daily refresh is enough). | Page reload after nightly cron |
-| **`pg_cron` on a schedule tighter than MV refresh time** | Overlapping refreshes fail. | `REFRESH MATERIALIZED VIEW **CONCURRENTLY**` + unique index on MV; schedule with margin |
+# §16 gate: 12 folds, 7-day-ahead horizon
+cv_df = sf.cross_validation(
+    df=df_train,
+    h=7,
+    step_size=7,
+    n_windows=12,
+    level=[80, 95],
+)
+# Then evaluate with utilsforecast.evaluation.evaluate(cv_df, metrics=[rmse, mape])
+```
 
----
+Custom Prophet/Chronos/NeuralProphet wrappers feed predictions into the same long-format DataFrame and run through `utilsforecast.evaluation.evaluate()` — one metric pipeline for all five models.
 
-## Critical Gotchas (Architectural)
-
-These are the landmines — flag each in PITFALLS.md as well, but call out here because they shape stack decisions:
-
-### 1. RLS + Materialized Views Don't Mix Naively
-Postgres materialized views **do not honor RLS** of the underlying tables and **cannot have RLS policies directly**. Two valid patterns:
-- **Security-definer wrapper view:** `CREATE VIEW cohort_v AS SELECT * FROM cohort_mv WHERE tenant_id = auth.jwt()->>'tenant_id'` — then grant RLS on the view.
-- **Tenant-scoped MVs via schema-per-tenant:** heavier, only if you hit perf walls.
-For v1 with one tenant, pattern 1 is fine but **must be written from day 1** so the multi-tenant promise holds.
-
-### 2. `REFRESH MATERIALIZED VIEW CONCURRENTLY` Requires a Unique Index
-Without a unique index on the MV, pg_cron refresh will lock reads. Always: `CREATE UNIQUE INDEX ON cohort_mv (tenant_id, cohort_date, segment);` before scheduling.
-
-### 3. `@supabase/ssr` Session Trust
-Never trust `supabase.auth.getSession()` on the server — the cookie can be tampered with. Always call `supabase.auth.getUser()` or `getClaims()` for any authorization decision. The Supabase docs are explicit about this.
-
-### 4. Cloudflare Workers Runtime ≠ Node
-No `fs`, no `Buffer` (use `Uint8Array`), limited `crypto`. `@supabase/supabase-js` works because it's fetch-based — verify every other dep is fetch-compatible before adding it.
-
-### 5. Playwright in GitHub Actions Needs Persistent Auth State
-Re-logging into Orderbird daily is fragile (captcha risk). Persist `storageState.json` as an encrypted GHA artifact or in a Supabase Storage bucket, refresh weekly.
-
-### 6. Anthropic API Key from Edge Function
-Store as Supabase secret (`supabase secrets set ANTHROPIC_API_KEY=...`), **never** in the client bundle, **never** in the Postgres database. Edge Function reads from `Deno.env.get()`.
+**Conformal-prediction wrapper (Office-Hours #4):** `ConformalIntervals(h, n_windows)` is the answer. Apply to SARIMAX (and any classical model) for ≥35d horizons where Gaussian SARIMAX CIs are known to be miscalibrated. **Constraint:** `n_windows × h < len(series)` — with 10 months (~300 days) of history, `h=35, n_windows=4` is the safe ceiling. For `h=120` or `h=365`, conformal calibration is **not statistically valid yet** (insufficient data) — show "BACKTEST PENDING" badge instead, do not pretend to calibrate.
 
 ---
 
-## Stack Patterns by Variant
+## Sample-path resampling for granularity toggle (1000 paths × percentiles)
 
-**If row count stays under 500k/month (v1 single tenant):**
-- Full stack as above
-- pandas in extractor is fine
-- MVs refreshed nightly, full rebuild acceptable
+The proposal mandates "1000 sample paths per model per night" written to `forecast_daily.yhat_samples` (jsonb). The reason: when the user toggles day → week → month, naively summing `yhat_lower`/`yhat_upper` is **wrong** (under-covers) — see §11 "Do not sum Prophet's `yhat_lower`/`yhat_upper`". Correct method:
 
-**If row count explodes (50+ tenants):**
-- Swap pandas → Polars in extractor
-- Consider incremental MV refresh via triggers instead of full rebuild
-- Re-evaluate dbt Core vs hand-written SQL
-- Move extractor from GitHub Actions → dedicated worker (Fly.io $0 tier or Railway)
+| Source | Sample-path API |
+|---|---|
+| **SARIMAX** | `results.simulate(nsimulations=H, repetitions=1000, anchor='end', exog=future_exog)` → returns `(H, 1000)` array |
+| **Prophet** | `model.predictive_samples(future_df)['yhat']` → `(H, 1000)` array (set `uncertainty_samples=1000`, default) |
+| **statsforecast (AutoARIMA, AutoETS, Theta, Naive)** | When configured with `ConformalIntervals`, exposes per-quantile predictions; for true sample paths, use `sf.predict(h=H, level=...)` then bootstrap from residuals — or simpler: store the per-quantile grid (10/25/50/75/90/95) and reconstruct percentiles at any aggregation. |
+| **Chronos-Bolt** | `pipeline.predict(context, prediction_length=H, num_samples=1000)` → native sample paths |
+| **NeuralProphet** | `m.predict_quantiles(...)` then resample — less native; if dropped, no loss |
 
-**If Orderbird ISV API gets approved:**
-- Replace Playwright scraper with direct API polling (Python `httpx`)
-- Keep the rest of the stack identical
-- Extractor moves from scraper-with-browser to simple script (can even run in Supabase Edge Function directly, killing the GHA dependency)
+**Storage:** keep `yhat_samples` jsonb optional (a 1000-element float array per row × ~365 rows × 5 models = ~7 MB/day per tenant uncompressed). For 1 tenant this is fine; for multi-tenant scale, switch to a quantile grid (10/25/50/75/90/95 → 6 floats) and only keep full samples for the latest run. Decision belongs in `12-2-01-PLAN.md`.
+
+**Aggregation in the SvelteKit chart:**
+
+```ts
+// granularity = 'day' | 'week' | 'month'
+function aggregateSamples(samplesByDay: number[][], granularity: 'week' | 'month') {
+  const buckets = bucketByDate(samplesByDay, granularity); // each bucket = (n_days × 1000)
+  return buckets.map(bucket => {
+    const summed = sum(bucket, axis=0); // (1000,) — total revenue across the week/month
+    return {
+      median: percentile(summed, 50),
+      lower: percentile(summed, 2.5),
+      upper: percentile(summed, 97.5),
+    };
+  });
+}
+```
+
+If the per-day samples are too heavy to ship to the browser, do this aggregation in a Supabase Edge Function or in a `forecast_aggregated_v` view materialized at run time per granularity request.
 
 ---
 
-## Version Compatibility Matrix
+## Alternatives considered
 
-| Package | Compatible With | Notes |
-|---------|-----------------|-------|
-| SvelteKit 2.x | Svelte 5.x | Required; Svelte 4 is EOL |
-| `@sveltejs/adapter-cloudflare` 7.x | SvelteKit 2.x | Uses Workers assets binding |
-| `@supabase/ssr` 0.5.x+ | `@supabase/supabase-js` 2.x | Must match major version |
-| shadcn-svelte `@next` | Tailwind v4 + Svelte 5 | Old `shadcn-svelte` (stable) still ships Tailwind v3 — use `@next` |
-| LayerChart 2.x | Svelte 5 | 1.x is Svelte 4 compat mode — avoid for new projects |
-| Tailwind v4 | Vite 5+ | Uses Vite plugin, not PostCSS |
-| pg_cron | Supabase project (any tier) | Enable via Dashboard → Database → Extensions |
-| Playwright 1.48+ | Python 3.10+ | 3.12 recommended for GHA runner speed |
+| Recommended | Alternative | When to use alternative |
+|---|---|---|
+| **statsforecast Theta + Naive** | hand-rolled `naive_dow_baseline.py` | Never. The proposal's `naive_dow_baseline.py` lives in §2 anyway, but if a one-line `Naive(season_length=7)` from statsforecast does the job, write a 5-line file that simply imports it. |
+| **statsforecast `cross_validation()`** | hand-rolled rolling-origin CV in `backtest.py` | Only if you need a CV split rule that statsforecast doesn't expose (e.g. custom holdout day exclusion for closed-Mon-Tue handling — but that's solvable by passing a fitted `defined` mask). Default = use statsforecast. |
+| **statsforecast `ConformalIntervals`** | `mapie` (model-agnostic) or `nixtla/neuralforecast`'s built-in conformal | `mapie` is more general but adds a fourth conformal API to learn. Stick to statsforecast's wrapper for v1.3 — same maintainer as the rest of the stack. |
+| **openmeteo-requests SDK** | raw `httpx.get()` against Open-Meteo REST | If you only need 1 endpoint (current weather) and want zero deps. We need historical archive + 7-day forecast + caching — SDK wins on FlatBuffers payload size and built-in retry. |
+| **`httpx`** | `requests` | `requests` is fine for sync-only and we don't need async in v1.3. But: `httpx` and `requests` are 100 % feature-equivalent for this use; `httpx` is recommended by the openmeteo-requests SDK's transitive dep tree (`niquests` → `httpx`-compatible) so we get one fewer transitive lib. |
+| **feedparser for BVG RSS** | manual `xml.etree` + `httpx` | feedparser handles malformed feeds, encoding edge cases, and Atom/RSS-2/RSS-1 differences. BVG is a 3rd-party site; assume schema drift. |
+| **python-holidays (offline)** | `feiertage-api.de` REST | Network-call alternative if we need same-day updated holidays (e.g. mid-year additions). `python-holidays` is recompiled when new states/years are added — refresh by upgrading the pin once a year. Saves a network round-trip per nightly run. |
+| **PyYAML for events** | scrape Wikipedia "Events in Berlin 2026" | Per §11: "do not scrape Berlin events live." Annual human-curated YAML edit (~1 hour every October) > parser fragility. |
+| **LayerChart Spline + Area + Rule** | shadcn-svelte chart wrapper | shadcn-svelte's `Chart` is a thin LayerChart wrapper for the most common 3 chart types. It does NOT expose `Area.y0/y1` or `Rule` — drop to LayerChart primitives for the forecast card. |
+| **Sample-path-based CI aggregation** | Sum `yhat_lower`/`yhat_upper` directly | The summed-CI is **always too narrow**; well-known footgun (proposal §11). Sample paths are the only way to get correct multi-day CI percentiles. |
 
 ---
 
-## Confidence Assessment
+## What NOT to use
+
+| Avoid | Why | Use instead |
+|---|---|---|
+| **`ferien-api` PyPI package** (HazardDede/ferien-api) | **Abandoned** since 2022-10-06 (v0.3.7). Last commit ~2 years ago. Will silently rot. | Direct REST call: `httpx.get('https://ferien-api.de/api/v1/holidays/BE/2026.json').json()` — five lines, zero supply-chain risk. |
+| **Default-index torch on GHA** (`pip install torch`) | Pulls CUDA wheels (~2 GB) → blows past GHA disk-cache limit, slows every run | `pip install --index-url https://download.pytorch.org/whl/cpu 'torch>=2.2,<3'` (~250 MB) |
+| **NeuralProphet without feature flag** | PyTorch dep + slower fits + may not beat SARIMAX | Behind `ENABLE_NEURALPROPHET=true`. Drop after backtest if no ≥5 % RMSE win. |
+| **Chronos-Bolt-Small/Base/Large** | Larger weights, longer inference, no measurable gain at 10-month-history scale | Chronos-Bolt-**Tiny** only (9 M params, fits CPU inference in <1s/series). |
+| **PyMC-Marketing / Meridian / Robyn** | Full MMM — out of scope per proposal §11. Needs ≥3 channels; we have 1 (Instagram). | Defer to v1.4+. ITS counterfactual on pre-campaign era (D-11) is the v1.3 substitute. |
+| **DeepAR / TFT / N-BEATS / PatchTST / GluonTS / Darts** | Need ≥2 years of multi-series; PyTorch-heavy; not on the chart per §5 Tier-C | Defer to v1.4+ (unblocked when ≥2 years of data exists). |
+| **LightGBM / mlforecast** (Tier-B in §5) | Listed in proposal Tier-B but adds gradient-boosting tree as a 6th overlay; mobile chart already crowded | Skip in v1.3. If the 5-model overlay is judged readable, revisit in 12.5. |
+| **CausalImpact / `tfcausalimpact`** | Bayesian, TensorFlow dep, monthly-retro-only per §5 Tier-C | Defer to v1.4 monthly-retro feature. v1.3's daily ITS uplift is computed by `cumulative_uplift.py` on top of standard SARIMAX — no extra dep. |
+| **`pyaf`** | Last release **2023-07-12** (v5.0); hasn't been touched in 2+ years; statsforecast covers the same automated decomposition surface area with active maintenance | statsforecast (active, 2.0.3 in 2026). |
+| **Yearly seasonality in Prophet on <2yr data** | Will fit phantom annual cycles — overconfident | Force `yearly_seasonality=False` until data crosses 2 years (auto-flip via data-volume check per §2 12.2 office-hours item). |
+| **Summing `yhat_lower`/`yhat_upper` for week/month CI** | Always under-covers — the multi-day distribution is not the sum of marginals | Resample 1000 sample paths, take percentile of summed paths (covered in "Sample-path resampling" above). |
+| **`@supabase/auth-helpers-sveltekit`** | (Existing project rule — flagged here for forkers) deprecated. | Already on `@supabase/ssr`. No change needed. |
+| **`prophet 1.3 + holidays==0.34`** (or unpinned holidays) | Recurring history of breakage on `holidays` API drift (`0.23 ↔ 1.1.4` and `0.25 ↔ 1.1.5` both broke imports) | Pin the holidays version to the exact range prophet 1.3.0 declares: `holidays>=0.25,<1`. Refresh once a year when prophet bumps. |
+
+---
+
+## Stack patterns by variant
+
+### v1.3 default (1 tenant, ~10 months of data)
+- Tier A only: SARIMAX + Prophet + Theta + Naive — no PyTorch dep on the GHA runner
+- Conformal CIs at 35d horizon only; 7d gets native SARIMAX/Prophet CIs; 120d/365d show "uncalibrated" badge
+- Daily refit + daily 365-day reforecast; weekly 12-fold CV gate
+- Sample paths stored as full 1000-element arrays in `yhat_samples` jsonb (storage cost trivial at 1 tenant)
+
+### If Chronos backtest wins (Office-Hours #3 selection rule lands on Chronos)
+- Add `chronos-forecasting==2.2.2` + CPU torch to GHA workflow
+- Cache `~/.cache/huggingface` between runs to avoid 9 MB redownload per night
+- Promote to Tier A overlay (4th line on chart)
+
+### If reaching ≥2 years of data (~Aug 2027)
+- Re-enable `yearly_seasonality=True` in Prophet (auto via data-volume check)
+- Add 365d horizon to gate (move from "exploratory" to gated)
+- Consider promoting NeuralProphet if backtest shows ≥5 % RMSE win
+
+### Multi-tenant scale (≥10 shops, future)
+- Switch `yhat_samples` storage from full-array jsonb → 6-quantile grid to keep MV size under control
+- Move forecast fits from GHA → dedicated worker (Fly.io free tier or a small Railway box)
+- Consider mlforecast/LightGBM for cross-shop hierarchical reconciliation
+
+---
+
+## Memory + runtime budget on GHA `ubuntu-latest` (2 vCPU / 7 GB RAM)
+
+| Workload | Approx peak RAM | Approx wall time | Notes |
+|---|---|---|---|
+| `statsmodels` SARIMAX(1,0,1)(1,1,1,7) + 6 exog cols, 300-day fit | ~150 MB | ~5 s | 5 s × 7 days × 1 model (last-7 evaluator) = 35 s |
+| `prophet` 1.3 fit, 6 regressors, no MCMC | ~250 MB | ~3 s | 3 s × 7 days = 21 s |
+| `statsforecast` AutoARIMA + AutoETS + Theta + Naive (4 models) | ~300 MB | ~10 s | parallel via `n_jobs=-1` |
+| `statsforecast.cross_validation(h=7, n_windows=12)` (weekly gate) | ~500 MB | ~2 min | runs Tuesday 23:00 UTC only, not nightly |
+| `chronos-forecasting` Chronos-Bolt-Tiny CPU inference, 365 steps | ~1.2 GB (torch + transformers) | ~2 s | weights cached in `~/.cache/huggingface` |
+| `neuralprophet` 0.9 fit + 365-step predict | ~2 GB (torch + lightning) | ~10 s/fit | × 7 last-7-days = 70 s |
+| **Total nightly (Tier A only)** | <1 GB peak | <2 min | well under GHA 7 GB / 6 h |
+| **Total nightly (Tier A + Chronos + NeuralProphet)** | ~3 GB peak | <5 min | comfortable |
+| **Weekly backtest (Tier A only)** | ~2 GB peak | <5 min | comfortable |
+
+Comfortable. The proposal §17 estimate of "<10 minutes nightly" is verified.
+
+---
+
+## Version compatibility matrix
+
+| Package A | Compatible with | Notes |
+|---|---|---|
+| `prophet==1.3.0` | `holidays>=0.25,<1`, `cmdstanpy>=1.0.4` | **Pin holidays explicitly.** prophet 1.3 dropped `pystan` in favor of cmdstanpy. |
+| `statsforecast==2.0.3` | `numpy>=1.21.6`, `pandas>=1.3.5`, `scipy<1.16,>=1.7.3`, `statsmodels>=0.13.2` | scipy upper bound is the tight one — don't bump scipy. |
+| `chronos-forecasting==2.2.2` | `torch>=2.2,<3`, `transformers>=4.49`, `accelerate>=0.34`, Python 3.10+ | CPU-only torch wheels recommended. |
+| `neuralprophet==0.9.0` | `torch>=2.0`, Python 3.9–3.12 | Last release 2024-06-21 — slowing maintenance pace; reason it's Tier B. |
+| `openmeteo-requests==1.7.5` | Python 3.9+, `niquests` (httpx-compatible) | Async client requires Python 3.10+. |
+| `python-holidays==0.95` | Python 3.8+ | Same wheel as the `holidays>=0.25,<1` Prophet pin (PyPI name is `holidays`). |
+| `supabase==2.29.0` | Python 3.9+ | No bump needed if already on 2.x. |
+| `layerchart@2.0.0-next.54` | Svelte 5.x | Verified via `node_modules/layerchart/dist/components/{Spline,Area,Rule}.svelte`. |
+| `cmdstanpy` (Prophet backend) | macOS arm64 (M1/M2/M3) supported | xcode-select install required on dev macs; GHA `ubuntu-latest` has gcc — no special config. |
+
+---
+
+## Confidence assessment
 
 | Area | Level | Reason |
-|------|-------|--------|
-| SvelteKit + CF + Supabase core | **HIGH** | Validated against Supabase official docs, SvelteKit docs, Cloudflare docs, current npm versions |
-| `@supabase/ssr` replacing auth-helpers | **HIGH** | Explicit migration notice in Supabase docs |
-| LayerChart recommendation | **MEDIUM** | Svelte 5 native confirmed; "best chart lib" is subjective, but `svelte-chartjs` being dead is verified |
-| date-fns over Temporal | **HIGH** | Temporal not yet in Workers runtime — verified stage-4 status and polyfill requirement |
-| GitHub Actions as scraper host | **HIGH** | Free-tier terms verified; widely used pattern |
-| pg_cron RLS footgun | **HIGH** | Known issue, multiple Supabase discussions confirm |
-| pandas vs polars at this scale | **MEDIUM** | Personal call; pandas is safe default |
-| shadcn-svelte `@next` | **MEDIUM** | `@next` channel is stable but pre-1.0; watch for breaking changes |
+|---|---|---|
+| Forecasting core (statsmodels, Prophet, statsforecast) | **HIGH** | Versions verified on PyPI 2026-04-27; APIs verified via documentation; existing project memory confirms `holidays` pin gotcha. |
+| External data fetchers (Open-Meteo, holidays, feedparser, httpx, PyYAML) | **HIGH** | All versions current on PyPI; openmeteo-requests is the official SDK; ferien-api wrapper abandonment confirmed. |
+| LayerChart 2.x primitives (Spline, Area y0/y1, Rule) | **HIGH** | Source files inspected directly in `node_modules/layerchart/dist/components/`. `y0`/`y1` are typed `Accessor` props on `Area`; `Rule` props confirmed. |
+| ConformalIntervals + cross_validation API | **HIGH** | Direct doc page fetched; matches §16 12-fold CV exactly. |
+| Chronos-Bolt-Tiny memory + GHA viability | **MEDIUM** | Confirmed model size 9 M params, CPU inference works, GHA 7 GB is sufficient with CPU-torch wheel. Actual nightly wall time is estimate, not measured. |
+| NeuralProphet promotion criterion | **MEDIUM** | Behind a feature flag; the ≥5 % RMSE-win bar is a defensible threshold but ultimately a product call. |
+| Sample-path-resample strategy for week/month CI | **HIGH** | Standard practice in Bayesian forecasting; the alternative (sum of marginals) is documented as wrong in proposal §11. |
+| GHA disk + memory budget | **HIGH** | `actions/cache` for HuggingFace + pip is well-trodden; CPU torch wheel index documented in chronos-forecasting CI itself. |
 
 ---
 
 ## Sources
 
-- [SvelteKit Cloudflare adapter docs](https://svelte.dev/docs/kit/adapter-cloudflare) — HIGH
-- [@sveltejs/adapter-cloudflare on npm](https://www.npmjs.com/package/@sveltejs/adapter-cloudflare) — version 7.2.8 confirmed
-- [Supabase SvelteKit SSR auth guide](https://supabase.com/docs/guides/auth/server-side/sveltekit) — HIGH
-- [Supabase auth-helpers migration notice](https://supabase.com/docs/guides/auth/auth-helpers/sveltekit) — confirms deprecation
-- [@supabase/supabase-js on npm](https://www.npmjs.com/package/@supabase/supabase-js) — 2.103.0 current
-- [Supabase pg_cron docs](https://supabase.com/docs/guides/database/extensions/pg_cron) — HIGH
-- [Supabase RLS on materialized views discussion #17790](https://github.com/orgs/supabase/discussions/17790) — confirms footgun
-- [shadcn-svelte Tailwind v4 migration](https://www.shadcn-svelte.com/docs/migration/tailwind-v4) — HIGH
-- [LayerChart GitHub](https://github.com/techniq/layerchart) and [LayerChart 2.0 PR #449](https://github.com/techniq/layerchart/pull/449) — Svelte 5 native confirmed
-- [Scheduled Playwright with GitHub Actions](https://www.marcveens.nl/posts/scheduled-web-scraping-made-easy-using-playwright-with-github-actions) — MEDIUM (pattern reference)
-- [GitHub Actions free cron tiers](https://dev.to/britzdm/how-to-run-scheduled-cron-jobs-in-github-workflows-for-free-4pgn) — HIGH
-- [Temporal API 2026 status (Bryntum)](https://bryntum.com/blog/javascript-temporal-is-it-finally-here/) — confirms not-yet-ready for Workers
-- [Polars vs Pandas 2026 (Kanaries)](https://docs.kanaries.net/articles/polars-vs-pandas) — MEDIUM
+### Forecasting libraries (PyPI, verified 2026-04-27)
+- [statsmodels 0.14.6 on PyPI](https://pypi.org/pypi/statsmodels/json) — Python 3.9–3.13 — HIGH
+- [prophet 1.3.0 on PyPI](https://pypi.org/pypi/prophet/json) — released 2026-01-27, requires `holidays>=0.25,<1` — HIGH
+- [statsforecast 2.0.3 on PyPI](https://pypi.org/pypi/statsforecast/json) — `scipy<1.16` — HIGH
+- [utilsforecast 0.2.15 on PyPI](https://pypi.org/pypi/utilsforecast/json) — released 2025-12-03 — HIGH
+- [neuralprophet 0.9.0 on PyPI](https://pypi.org/pypi/neuralprophet/json) — released 2024-06-21, `torch>=2.0` — HIGH (with maintenance-pace caveat)
+- [chronos-forecasting 2.2.2 on PyPI](https://pypi.org/pypi/chronos-forecasting/json) — released 2025-12-17, `torch>=2.2,<3` — HIGH
+- [pyaf on PyPI](https://pypi.org/pypi/pyaf/json) — last release 2023-07-12, **avoided** — HIGH
+- [statsforecast ConformalIntervals tutorial](https://nixtlaverse.nixtla.io/statsforecast/) — API for `ConformalIntervals(h, n_windows)` and `sf.cross_validation(...)` — MEDIUM (single source)
+
+### External data
+- [openmeteo-requests 1.7.5 on PyPI](https://pypi.org/pypi/openmeteo-requests/json) — released 2026-01-19 — HIGH
+- [python-holidays 0.95 on PyPI](https://pypi.org/pypi/holidays/json) — Berlin (BE) supported — HIGH
+- [feedparser 6.0.12 on PyPI](https://pypi.org/pypi/feedparser/json) — released 2025-09-10 — HIGH
+- [httpx 0.28.1 on PyPI](https://pypi.org/pypi/httpx/json) — HIGH
+- [PyYAML 6.0.3 on PyPI](https://pypi.org/pypi/pyyaml/json) — HIGH
+- [ferien-api 0.3.7 on PyPI](https://pypi.org/pypi/ferien-api/json) — last release 2022-10-06, **abandoned, avoid** — HIGH
+- [supabase 2.29.0 on PyPI](https://pypi.org/project/supabase/) — released 2026-04-24 — HIGH
+
+### Chart libraries (verified locally + GitHub)
+- `node_modules/layerchart/dist/components/{Spline,Area,Rule}.svelte` — direct source inspection — HIGH
+- [LayerChart on npm — 2.0.0-next.x](https://www.npmjs.com/package/layerchart) — Svelte 5 native @next channel — HIGH
+- [techniq/layerchart README](https://github.com/techniq/layerchart) — component catalog — HIGH
+
+### Compatibility footguns
+- [prophet ↔ holidays version-conflict history (Apache Superset issue #26629)](https://github.com/apache/superset/issues/26629) — confirms the `0.25` lower bound — HIGH
+- [Prophet issue #2430 — breaking on holidays 0.25](https://github.com/facebook/prophet/issues/2430) — historical context — HIGH
+- [chronos-forecasting CPU torch install](https://github.com/amazon-science/chronos-forecasting/actions/runs/8571582095/workflow) — CPU-only wheel install pattern in upstream CI — MEDIUM
+
+### Existing project memory (relevant to v1.3)
+- `feedback_svelte5_tooltip_snippet.md` — `Tooltip.Root` requires `{#snippet children}` not `let:data` on Svelte 5
+- `feedback_layerchart_mobile_scroll.md` — `touchEvents: 'auto'` default, `'pan-x'` blocks PC trackpad
+- `feedback_sql_cross_check_per_chart.md` — partition-sum cross-checks miss local filters; relevant for §17 last-7 vs §16 CV agreement check
 
 ---
-*Stack research for: restaurant POS analytics (Orderbird → Supabase → SvelteKit/CF)*
-*Researched: 2026-04-13*
+
+*Stack research for: v1.3 forecasting milestone — 9 new Python deps, 0 new JS deps. Total nightly compute under 10 min on GHA free tier. Tier-A models cover the production line; Chronos and NeuralProphet are feature-flagged behind backtest promotion. PyMC-Marketing / Meridian / Robyn / DeepAR / TFT explicitly deferred to v1.4+.*
+*Researched: 2026-04-27*
