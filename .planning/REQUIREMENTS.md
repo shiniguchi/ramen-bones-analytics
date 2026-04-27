@@ -138,6 +138,77 @@ Requirements for initial release. Each maps to exactly one roadmap phase.
 - [x] **VA-12**: Granularity/range toggle is client-side (no full SSR round-trip) — target <200ms perceived response
 - [x] **VA-13**: Drop 2 of 3 revenue reference cards — keep 1 revenue card using the active date range/granularity, respects all filters
 
+## v1.3 Requirements — External Data & Forecasting Foundation
+
+**Defined:** 2026-04-27
+**Milestone goal:** Ingest free external signals (weather, holidays, events), build a multi-horizon forecasting engine, render forecast overlays on the revenue chart, and attribute campaign uplift via Interrupted Time Series counterfactuals.
+**Driver:** Friend-owner started a marketing campaign 2026-04-14; current MDE analysis cannot detect <20% lifts in <6 weeks at current σ. Pre-campaign era 2025-06-11 → 2026-04-13 (10 months) is the natural ITS control period.
+
+### Foundation (Phase 12.0 — Decisions & Guards)
+
+- [ ] **FND-09**: `tools/its_validity_audit.py` committed to repo and runs weekly via GHA cron, surfacing concurrent-intervention warnings (price hikes, hour shifts, new menu items launched coincidentally with the campaign era)
+- [ ] **FND-10**: CI grep guard fails the build on `auth.jwt()->>'tenant_id'` references in `supabase/migrations/` — multi-tenant JWT claim in this codebase is `restaurant_id`, not `tenant_id`
+- [ ] **FND-11**: All v1.3 cron schedules anchored in UTC (not Berlin local) with ≥60-minute gaps between cascade stages; CI test asserts no schedule overlap under either CET or CEST
+
+### External Data Ingestion (Phase 12.1)
+
+- [ ] **EXT-01**: `weather_daily` table populated from a pluggable provider (default `brightsky` for production, `open-meteo` for local dev — toggled via `WEATHER_PROVIDER` env var) with daily backfill from 2025-06-11 and 7-day-forward forecast
+- [ ] **EXT-02**: `holidays` table populated by `python-holidays` covering federal + Berlin (BE) state holidays including Internationaler Frauentag (Berlin only)
+- [ ] **EXT-03**: `school_holidays` table populated via raw `httpx` against `ferien-api.de/api/v1/holidays/BE/{year}.json` (replacing the abandoned `ferien-api` PyPI wrapper) — covers all 5-6 BE state-school break blocks per year
+- [ ] **EXT-04**: `transit_alerts` table populated from BVG RSS with German keyword matching for `Streik`/`Warnstreik`; primary URL verified during planning, fallback URL documented
+- [ ] **EXT-05**: `recurring_events` table populated from a hand-curated `recurring_events.yaml` (15-20 Berlin city events per year); pg_cron annual-refresh reminder fires every September 15 to update the next year
+- [ ] **EXT-06**: `pipeline_runs` audit table records every fetch run with `started_at`, `completed_at`, `row_count`, `upstream_freshness_h`, and `success`/`failure` status — readable by downstream forecast Python and by the dashboard freshness badge
+- [ ] **EXT-07**: `shop_calendar` table records each restaurant's open/closed days for 365 days forward; closed days are mapped to `NaN` (not zero) before forecast model fits to prevent demand-underestimate bias
+- [ ] **EXT-08**: All 5 ingest tables enforce the hybrid-RLS pattern — location-keyed shared tables (`weather_daily`/`holidays`/`school_holidays`/`transit_alerts`/`recurring_events`) use `using (true)`; tenant-scoped tables (`pipeline_runs`/`shop_calendar`/`campaign_calendar`) use `auth.jwt()->>'restaurant_id'`; CI two-tenant isolation test extended to cover them
+- [ ] **EXT-09**: `external-data-refresh.yml` GHA workflow runs nightly at 00:00 UTC, completes in <5 min on `ubuntu-latest`, writes to all 5 ingest tables, and populates `pipeline_runs`
+
+### Forecasting Engine — BAU Track (Phase 12.2)
+
+- [ ] **FCS-01**: `forecast_daily` table stores forecasts in long format with columns `(restaurant_id, kpi_name, target_date, model_name, horizon_days, run_date, forecast_track, yhat, yhat_lower, yhat_upper, yhat_samples)` where `forecast_track ∈ {bau, cf}` enables a single schema for both tracks
+- [ ] **FCS-02**: SARIMAX (statsmodels) fits nightly with weather/holidays/school-holiday/event exog regressors and writes 365d-forward forecast covering every `(target_date, horizon_days)` combination
+- [ ] **FCS-03**: Prophet fits nightly with `yearly_seasonality=False` hard-pinned until `len(history) >= 730 days` — guards against the silent auto-flip at 2026-06-11 fitting Fourier ghosts on a single annual cycle
+- [ ] **FCS-04**: ETS, Theta, and a naive same-DoW baseline model all fit nightly producing comparable 365d forecasts in the same `forecast_daily` table
+- [ ] **FCS-05**: Chronos-Bolt-Tiny + NeuralProphet fit behind feature flags (off by default in production); CPU-only torch wheel keeps install size under 250 MB on GHA; HuggingFace cache persisted between runs
+- [ ] **FCS-06**: SARIMAX exog matrix flavor (`X_train` columns/order ↔ `X_predict` columns/order) verified identical at fit and score time; unit test fails if regressor drift detected between training and inference
+- [ ] **FCS-07**: `last_7_eval.py` runs nightly per model, scoring the last 7 actual days against each model's prior 7-day-ahead forecast; results write to `forecast_quality` with `evaluation_window='last_7_days'` and feed the hover-popup accuracy display
+- [ ] **FCS-08**: `forecast_daily_mv` materialized view exposes the latest run per `(restaurant_id, kpi, target_date, model, horizon, forecast_track)`; raw MV has `REVOKE ALL` on `authenticated`/`anon`; `forecast_with_actual_v` wrapper view is the only surface the app reads
+- [ ] **FCS-09**: `forecast-refresh.yml` GHA workflow runs nightly at 01:00 UTC (≥60 min after external-data), completes <10 min, writes BAU forecasts; failure populates `pipeline_runs` and surfaces a stale-data badge on next dashboard load
+- [ ] **FCS-10**: `pg_cron` `refresh_analytics_mvs()` extended to refresh `forecast_daily_mv` after Python writes complete (03:00 UTC), preserving the `REFRESH MATERIALIZED VIEW CONCURRENTLY` + unique-index pattern
+- [ ] **FCS-11**: Sample-path resampling for granularity toggle happens server-side: 1000 paths × 365d × N models stored in `yhat_samples jsonb`; client receives only aggregated mean + 95% CI per requested granularity (day/week/month)
+
+### Forecast Chart UI (Phase 12.3)
+
+- [ ] **FUI-01**: `RevenueForecastCard.svelte` renders actual revenue + SARIMAX BAU forecast line + 95% CI uncertainty band on the existing dashboard at 375px
+- [ ] **FUI-02**: Chart defaults to 1 forecast line + naive baseline + CI band only; additional models (Prophet, Chronos, NeuralProphet, ensemble median) are toggle-on via `ForecastLegend.svelte` to prevent mobile spaghetti
+- [ ] **FUI-03**: `HorizonToggle.svelte` lets the owner switch between `7d` / `5w` / `4mo` / `1yr` horizons; X-axis re-zooms; same forecast table, different slice; default is 7d
+- [ ] **FUI-04**: `ForecastHoverPopup.svelte` (tap-to-pin on mobile) shows: forecast value + 95% CI for that date, horizon (days from today), last-7-actual-days RMSE/MAPE/bias/direction-hit-rate, cumulative deviation since campaign launch, last-refit timestamp
+- [ ] **FUI-05**: `EventMarker.svelte` overlays vertical lines for campaign-start (red ▌), federal holidays (dashed green |), school-holiday-block boundaries (teal background shading), recurring events (yellow |), BVG strike days (red bar); ≤50 markers default with progressive disclosure for longer horizons
+- [ ] **FUI-06**: Granularity toggle (day/week/month) on the forecast card re-buckets forecast samples server-side via `/api/forecast?granularity=`; client receives only mean+CI, never raw 1000-path arrays
+- [ ] **FUI-07**: `/api/forecast`, `/api/forecast-quality`, `/api/campaign-uplift` are deferred endpoints behind `LazyMount` per the Phase 11 SSR pattern; all use canonical `locals.safeGetSession()` (not `getClaims()` direct) and set `Cache-Control: private, no-store`
+- [ ] **FUI-08**: Empty-state ("Forecast generating, check back tomorrow") shown until first forecast lands; stale-data badge ("Data ≥24h stale — last refresh: …") shown when `pipeline_runs.upstream_freshness_h > 24` for any cascade stage; uncalibrated-CI badge shown for the 365d horizon while history < 2 years
+- [ ] **FUI-09**: All v1.3 frontend components verified at `localhost:5173` via Chrome MCP (per `.claude/CLAUDE.md` localhost-first rule) BEFORE any DEV deploy QA
+
+### ITS Uplift Attribution — Track-B Counterfactual (Phase 12.4)
+
+- [ ] **UPL-01**: `campaign_calendar` table records each campaign's `start_date`, `end_date`, `name`, `channel`, and `notes`; tenant-scoped with admin-only writes (V1: seeded via Supabase Studio SQL editor; admin form deferred)
+- [ ] **UPL-02**: Track-B counterfactual fits on pre-campaign data only — `TRAIN_END = campaign_start_date − 7 days` (anticipation buffer); `pipeline_runs.fit_train_end` records the cutoff and CI test asserts no campaign-era row is included in any Track-B fit
+- [ ] **UPL-03**: `revenue_comparable_eur` derived KPI excludes new menu items launched coincidentally with campaign era (per `tools/its_validity_audit.py` findings 2026-04-27); Track-B fits on this baseline-comparable revenue, not raw revenue
+- [ ] **UPL-04**: `campaign_uplift_v` exposes per-campaign-window `Σ(actual − Track-B)` with 95% Monte Carlo CI from 1000 sample paths; cumulative-since-launch shown as a running total per (campaign, model)
+- [ ] **UPL-05**: `naive_dow_uplift_eur` cross-check column included in `campaign_uplift_v` — sanity check against false positives from trend extrapolation in the declining 10-month pre-period
+- [ ] **UPL-06**: `CampaignUpliftCard.svelte` renders per-campaign cumulative uplift on the dashboard; explicitly displays "CI overlaps zero — no detectable lift" when 95% CI includes 0; never reports a single-point estimate without CI
+- [ ] **UPL-07**: `cumulative_uplift.py` runs nightly after Track-B forecast completes; quarterly off-week reminder fires from `feature_flags` table on 2026-10-15 (~6 months post-campaign) to re-anchor the counterfactual
+
+### Backtest Gate & Quality Monitoring (Phase 12.5)
+
+- [ ] **BCK-01**: `backtest.py` runs `statsforecast.cross_validation` with rolling-origin folds at 4 horizons (7d / 35d / 120d / 365d), computing RMSE + MAPE per (model × horizon × fold)
+- [ ] **BCK-02**: `ConformalIntervals(h=35, n_windows=4)` calibrates 95% CIs at horizons ≥35d; long horizons (120d, 365d) carry an `uncalibrated — ≥2 years data needed` UI badge until the 2-year mark
+- [ ] **BCK-03**: Backtest comparisons use a regressor-aware naive baseline (same exog regressors as competing models) — prevents unfair gate against models that benefit from weather/holidays features
+- [ ] **BCK-04**: Promotion gate: any model promoted from feature-flag to production must beat naive same-DoW baseline by ≥10% RMSE on rolling-origin out-of-sample, computed per horizon; failure blocks the deploy workflow
+- [ ] **BCK-05**: `forecast-backtest.yml` GHA workflow runs weekly on Tuesday 23:00 Berlin; results write to `forecast_quality` with `evaluation_window='rolling_origin_cv'`
+- [ ] **BCK-06**: `forecast-quality-gate.yml` runs on every forecast-engine PR; fails CI when gate criteria miss for any model already promoted to production
+- [ ] **BCK-07**: `docs/forecast/ACCURACY-LOG.md` auto-committed weekly with RMSE history per (model × horizon)
+- [ ] **BCK-08**: Freshness-SLO check on every `+page.server.ts` load: if `pipeline_runs.upstream_freshness_h > 24` for any cascade stage, dashboard renders the stale-data badge
+
 ## v2 Requirements
 
 Deferred to future release. Tracked but not in current roadmap.
@@ -174,7 +245,13 @@ Deferred to future release. Tracked but not in current roadmap.
 | Customizable dashboard / widget builder | Non-technical user, confusion risk, anti-feature |
 | AI chat / "ask your data" | Hallucination risk, anti-feature per research |
 | Email digests / push notifications | v1 is pull-based; add only if validated |
-| Forecasting / predictions | Not enough historical data yet; trust-destroyer if wrong |
+| Full Marketing Mix Modeling (PyMC-Marketing, Meridian, Robyn) | Need ≥3 marketing channels — Instagram-only in v1.3; defer to v1.4+ |
+| Item-level demand forecasting | Need ≥18mo per-item history; revenue+tx-count granularity is enough for v1.3 |
+| Real-time / hourly forecast refresh | Daily covers 99% of decisions; ISV API not approved; CF Workers CPU budget |
+| Per-customer churn predictions | Sparse opt-in tracking + creepy + low signal at 1 location |
+| Multi-shop forecast scaling | Single tenant in v1; multi-tenant-ready schema, but model-tuning per shop deferred |
+| Deep-learning forecasters (TFT, DeepAR) | Need ≥2 years data + GPU; SARIMAX wins on this scale |
+| Custom date-range picker on the forecast card | Horizon chips (7d/5w/4mo/1yr) are sufficient — adding the picker on top is mobile UI clutter |
 | Cohort triangle / heatmap viz | Unreadable on phone; deferred to v2 |
 | Custom date-range picker on mobile | Preset chips only |
 | Fully configurable filter builder | Non-technical user; preset segments only |
@@ -278,12 +355,65 @@ Each requirement maps to exactly one roadmap phase.
 | VA-12 | Phase 9 — Filter Simplification & Performance | Complete | 09-01, 09-02, 09-03, 09-04, 09-05 |
 | VA-13 | Phase 9 — Filter Simplification & Performance | Complete | 09-01, 09-02, 09-03, 09-04, 09-05 |
 
+### v1.3
+
+| Requirement | Phase | Status | Evidence |
+|-------------|-------|--------|----------|
+| FND-09 | TBD (roadmapper) | Pending | — |
+| FND-10 | TBD (roadmapper) | Pending | — |
+| FND-11 | TBD (roadmapper) | Pending | — |
+| EXT-01 | TBD (roadmapper) | Pending | — |
+| EXT-02 | TBD (roadmapper) | Pending | — |
+| EXT-03 | TBD (roadmapper) | Pending | — |
+| EXT-04 | TBD (roadmapper) | Pending | — |
+| EXT-05 | TBD (roadmapper) | Pending | — |
+| EXT-06 | TBD (roadmapper) | Pending | — |
+| EXT-07 | TBD (roadmapper) | Pending | — |
+| EXT-08 | TBD (roadmapper) | Pending | — |
+| EXT-09 | TBD (roadmapper) | Pending | — |
+| FCS-01 | TBD (roadmapper) | Pending | — |
+| FCS-02 | TBD (roadmapper) | Pending | — |
+| FCS-03 | TBD (roadmapper) | Pending | — |
+| FCS-04 | TBD (roadmapper) | Pending | — |
+| FCS-05 | TBD (roadmapper) | Pending | — |
+| FCS-06 | TBD (roadmapper) | Pending | — |
+| FCS-07 | TBD (roadmapper) | Pending | — |
+| FCS-08 | TBD (roadmapper) | Pending | — |
+| FCS-09 | TBD (roadmapper) | Pending | — |
+| FCS-10 | TBD (roadmapper) | Pending | — |
+| FCS-11 | TBD (roadmapper) | Pending | — |
+| FUI-01 | TBD (roadmapper) | Pending | — |
+| FUI-02 | TBD (roadmapper) | Pending | — |
+| FUI-03 | TBD (roadmapper) | Pending | — |
+| FUI-04 | TBD (roadmapper) | Pending | — |
+| FUI-05 | TBD (roadmapper) | Pending | — |
+| FUI-06 | TBD (roadmapper) | Pending | — |
+| FUI-07 | TBD (roadmapper) | Pending | — |
+| FUI-08 | TBD (roadmapper) | Pending | — |
+| FUI-09 | TBD (roadmapper) | Pending | — |
+| UPL-01 | TBD (roadmapper) | Pending | — |
+| UPL-02 | TBD (roadmapper) | Pending | — |
+| UPL-03 | TBD (roadmapper) | Pending | — |
+| UPL-04 | TBD (roadmapper) | Pending | — |
+| UPL-05 | TBD (roadmapper) | Pending | — |
+| UPL-06 | TBD (roadmapper) | Pending | — |
+| UPL-07 | TBD (roadmapper) | Pending | — |
+| BCK-01 | TBD (roadmapper) | Pending | — |
+| BCK-02 | TBD (roadmapper) | Pending | — |
+| BCK-03 | TBD (roadmapper) | Pending | — |
+| BCK-04 | TBD (roadmapper) | Pending | — |
+| BCK-05 | TBD (roadmapper) | Pending | — |
+| BCK-06 | TBD (roadmapper) | Pending | — |
+| BCK-07 | TBD (roadmapper) | Pending | — |
+| BCK-08 | TBD (roadmapper) | Pending | — |
+
 **Coverage:**
 - v1.0 requirements: 39 total (shipped)
 - v1.1 requirements: 14 active (Phases 6-7 complete), 12 superseded by v1.2
 - v1.2 requirements: 13 total, 13 mapped
+- v1.3 requirements: 47 total, mapping pending roadmapper (FND-09..11, EXT-01..09, FCS-01..11, FUI-01..09, UPL-01..07, BCK-01..08)
 - Orphaned: 0
 
 ---
-*Requirements defined: 2026-04-13*
+*Requirements defined: 2026-04-13; v1.3 added 2026-04-27*
 *Last updated: 2026-04-17 — 09-05 gap closure evidence added for VA-11/12/13 (reactive date subtitle via getWindow() + mergeSearchParams URL composition helper — fix UAT Tests 7 & 9); Phase 9 all 5 plans complete*
