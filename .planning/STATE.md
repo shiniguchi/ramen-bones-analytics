@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: External Data & Forecasting Foundation
-status: "Roadmap complete — ready for /gsd-discuss-phase 12"
-stopped_at: Roadmap for v1.3 complete (2026-04-27). 6 phases (12-17), 47 v1.3 requirements mapped 100%. Driving artifact .planning/phases/12-forecasting-foundation/12-PROPOSAL.md preserved. Next step is /gsd-discuss-phase 12 (Foundation — Decisions & Guards) to lock the cross-cutting decisions before any migrations land.
-last_updated: "2026-04-27T00:00:00Z"
+status: "Phase 12 context locked — ready for /gsd-plan-phase 12"
+stopped_at: Phase 12 (Foundation — Decisions & Guards) context gathered 2026-04-28. CONTEXT.md ratifies anticipation cutoff (campaign_start − 7d), WEATHER_PROVIDER=brightsky production default, and restaurant_id rename of every §7 schema sketch (the three ROADMAP §SC4 mandates). 6 implementation defaults locked covering its_validity_audit.py source/cadence, pipeline_runs skeleton pulled forward from Phase 13, CI Guard 7 (tenant_id regression), CI Guard 8 (cron-schedule contract), and §7 rename mechanics. Previously-untracked 12-PROPOSAL.md driving artifact also committed. Next step is /gsd-plan-phase 12 to break Phase 12 into executable plans (audit script + pipeline_runs migration + 2 CI guards + GHA workflow).
+last_updated: "2026-04-28T00:00:00Z"
 progress:
   total_phases: 17
   completed_phases: 11
@@ -15,7 +15,7 @@ progress:
 
 # STATE: Ramen Bones Analytics
 
-**Last updated:** 2026-04-27
+**Last updated:** 2026-04-28
 
 ## Project Reference
 
@@ -27,13 +27,13 @@ progress:
 
 ## Current Position
 
-Milestone: v1.3 (External Data & Forecasting Foundation) — Roadmap complete, ready to start
-Phase: 12 (Foundation — Decisions & Guards) — Not started
+Milestone: v1.3 (External Data & Forecasting Foundation)
+Phase: 12 (Foundation — Decisions & Guards) — Context locked, ready to plan
 Plan: —
 
-- **Status:** Roadmap complete (47/47 v1.3 requirements mapped across Phases 12-17). Ready for `/gsd-discuss-phase 12`.
+- **Status:** Phase 12 CONTEXT.md committed (fded786). Ready for `/gsd-plan-phase 12`.
 - **Progress:** [██████░░░░] 65% (11/17 phases complete; v1.0+v1.1+v1.2 shipped)
-- **Last activity:** 2026-04-27 — Roadmap for v1.3 written: 6 phases (12-17), 47 reqs mapped, dependencies + parallelism opportunities encoded
+- **Last activity:** 2026-04-28 — Phase 12 discuss-phase: ratified 3 ROADMAP §SC4 mandates, locked 6 implementation defaults (G1–G6) for audit script, pipeline_runs skeleton, CI Guards 7–8, §7 rename mechanics
 - **v1.2 closed:** 11 phases, 60 plans, 100% — Phase 11 SSR fix landed 2026-04-21
 - **v1.0 status:** Shipped to friend (97% plans complete; repo flipped PUBLIC 2026-04-15 with topics + description set; Plan 05-06 Task 2 fork walkthrough deferred out of v1 scope)
 
@@ -242,14 +242,16 @@ Plan: —
 
 ## Session Continuity
 
-**Next command:** `/gsd-discuss-phase 12` to ratify the Phase 12 cross-cutting decisions (anticipation cutoff, `WEATHER_PROVIDER=brightsky` production default, mechanical `tenant_id` → `restaurant_id` rename) and produce `12-CONTEXT.md` before any v1.3 migrations land.
+**Next command:** `/gsd-plan-phase 12` to break Phase 12 into executable plans. Expected breakdown: ~4 plans covering (1) `tools/its_validity_audit.py` + test fixture, (2) `0039_pipeline_runs_skeleton.sql` migration, (3) CI Guard 7 (`tenant_id` regression) + negative test, (4) CI Guard 8 (`scripts/ci-guards/check-cron-schedule.py`) + `.github/workflows/its-validity-audit.yml`. CONTEXT.md `<canonical_refs>` section is the entry point for plan-phase agents.
 
-**Authoritative spec for v1.3:** `.planning/phases/12-forecasting-foundation/12-PROPOSAL.md` (1484-line driving artifact — verified data sources, schema sketches, GHA cron pattern, failure modes, backtest fairness rules, ITS validity audit). Note: §7 SQL sketches use `tenant_id`; codebase claim is `restaurant_id` — Phase 12 CI grep guard catches the rename.
+**Authoritative spec for v1.3:** `.planning/phases/12-forecasting-foundation/12-PROPOSAL.md` (1484-line driving artifact — verified data sources, schema sketches, GHA cron pattern, failure modes, backtest fairness rules, ITS validity audit). Note: §7 SQL sketches use `tenant_id`; codebase claim is `restaurant_id` — Phase 12 CI Guard 7 catches the rename.
 
-**Resume hint:** v1.3 roadmap complete. 6 phases (12-17) map all 47 v1.3 requirements. Phase 12 (Foundation — Decisions & Guards) is a discuss-phase + lightweight scripting effort (1-2 days). Phase 13 (External Data Ingestion) is the first heavy migration phase (~2 weeks). Phase 14 ↔ 15 parallel-eligible after 14's schema lands (estimated 30-40% schedule compression). Phase 17 has a hard dependency on ≥4 weeks of forecast-vs-actual history; cold-start UI badge "BACKTEST PENDING" handles days 1-7.
+**Phase 12 context (committed fded786):** `.planning/phases/12-forecasting-foundation/12-CONTEXT.md` — ratifies the three ROADMAP §SC4 mandates (D-01 anticipation cutoff −7d, D-02 brightsky production default, D-03 §7 rename rule) and locks 14 implementation decisions (D-04 audit script written fresh; D-05/D-06 audit scope + weekly cadence; D-07/D-08 `pipeline_runs` skeleton pulled forward from Phase 13 with non-tenant-scoped initial RLS; D-09/D-10/D-11 Guard 7 placement, scan paths, regex variants; D-12/D-13/D-14 final UTC schedule contract + ≥60-min cascade gap rule + Guard 8 enforcement). Discussion log at `12-DISCUSSION-LOG.md`.
 
-**Last session:** 2026-04-27T00:00:00Z
-**Stopped At:** Wrote v1.3 ROADMAP (Phases 12-17, 47 reqs), updated STATE.md progress block (17 total phases / 11 complete / 65%), wrote v1.3 traceability into REQUIREMENTS.md. Driving artifact `.planning/phases/12-forecasting-foundation/12-PROPOSAL.md` preserved untouched. Ready for `/gsd-discuss-phase 12`.
+**Resume hint:** v1.3 roadmap complete. 6 phases (12-17) map all 47 v1.3 requirements. Phase 12 (Foundation — Decisions & Guards) context locked 2026-04-28; planning + execution is a lightweight scripting effort (~1-2 days). Phase 13 (External Data Ingestion) is the first heavy migration phase (~2 weeks). Phase 14 ↔ 15 parallel-eligible after 14's schema lands (estimated 30-40% schedule compression). Phase 17 has a hard dependency on ≥4 weeks of forecast-vs-actual history; cold-start UI badge "BACKTEST PENDING" handles days 1-7.
+
+**Last session:** 2026-04-28T00:00:00Z
+**Stopped At:** Phase 12 context gathered. Wrote 12-CONTEXT.md (ratifies 3 SC4 mandates + 14 implementation decisions D-04..D-14), 12-DISCUSSION-LOG.md (audit trail of 6 gray-area decisions), and committed previously-untracked 12-PROPOSAL.md as the canonical driving artifact. Ready for `/gsd-plan-phase 12`.
 
 ---
-*State initialized: 2026-04-13; v1.3 roadmap recorded: 2026-04-27*
+*State initialized: 2026-04-13; v1.3 roadmap recorded: 2026-04-27; Phase 12 context: 2026-04-28*
