@@ -146,17 +146,23 @@ def collect_pg_crons() -> list[CronEntry]:
 # ----- DST simulation -----
 
 def utc_to_local_minutes(hour: int, minute: int, offset_hours: int) -> int:
-    """Return wall-clock as minutes-from-midnight in the local timezone.
-    Wraps around midnight. We compare day-of-week separately for weekly
-    crons; for daily crons (dow=-1) the wrap is fine because both crons
-    wrap consistently."""
+    """Return wall-clock as minutes-from-midnight in the local timezone,
+    or -1 if either hour or minute is a wildcard.
+
+    A wildcard hour/minute means the cron fires every hour/minute — there
+    is no single wall-clock slot to compare against. The detector treats
+    this as a "skip" signal (caller must check for >=0 before comparing).
+    Returning -1 (instead of 0 / midnight) avoids a false-positive collision
+    between a wildcard-hour cron and a literal-midnight cron — they don't
+    fire at the same wall-clock minute; one fires every hour, the other
+    once a day at 00:00.
+
+    Wraps around midnight via the % 24 on `hour + offset_hours`. We compare
+    day-of-week separately for weekly crons; for daily crons (dow=-1) the
+    wrap is fine because both crons wrap consistently.
+    """
     if hour < 0 or minute < 0:
-        # Wildcard hour/minute means the cron fires every hour/minute of
-        # the day — it overlaps with everything. Treat as a fatal mis-use
-        # in our project: no v1.3 cron uses hourly fan-out. Return a
-        # sentinel that triggers an overlap with anything in the same DOM
-        # / DOW slot.
-        return 0
+        return -1
     return ((hour + offset_hours) % 24) * 60 + minute
 
 
@@ -180,6 +186,10 @@ def detect_overlaps(entries: list[CronEntry]) -> list[str]:
             for label, off in (("CET", 1), ("CEST", 2)):
                 a_loc = utc_to_local_minutes(a.hour, a.minute, off)
                 b_loc = utc_to_local_minutes(b.hour, b.minute, off)
+                # -1 = wildcard hour/minute; cannot compare wall-clock
+                # collision against a literal time. Skip the pair.
+                if a_loc < 0 or b_loc < 0:
+                    continue
                 if a_loc == b_loc:
                     violations.append(
                         f"OVERLAP: {a.source} ('{a.cron}') and "
@@ -224,6 +234,10 @@ def detect_cascade_gap_violations(entries: list[CronEntry]) -> list[str]:
         for label, off in (("CET", 1), ("CEST", 2)):
             p_loc = utc_to_local_minutes(prev.hour, prev.minute, off)
             n_loc = utc_to_local_minutes(next_.hour, next_.minute, off)
+            # -1 = wildcard; cascade gap is undefined when a stage runs at
+            # every hour/minute. Skip rather than raise a misleading violation.
+            if p_loc < 0 or n_loc < 0:
+                continue
             gap = (n_loc - p_loc) % (24 * 60)  # next-day wrap if needed
             if gap < CASCADE_GAP_MIN:
                 violations.append(
@@ -236,6 +250,13 @@ def detect_cascade_gap_violations(entries: list[CronEntry]) -> list[str]:
 
 # ----- output -----
 
+def _fmt_local(t: int) -> str:
+    """Render minutes-from-midnight as HH:MM, or '*:*' for wildcard sentinel (-1)."""
+    if t < 0:
+        return "*:*"
+    return f"{t//60:02d}:{t%60:02d}"
+
+
 def render_markdown_table(entries: list[CronEntry]) -> str:
     lines = [
         "| Source | Cron (UTC) | CET (UTC+1) | CEST (UTC+2) |",
@@ -245,9 +266,7 @@ def render_markdown_table(entries: list[CronEntry]) -> str:
         cet = utc_to_local_minutes(e.hour, e.minute, 1)
         cest = utc_to_local_minutes(e.hour, e.minute, 2)
         lines.append(
-            f"| {e.source} | `{e.cron}` | "
-            f"{cet//60:02d}:{cet%60:02d} | "
-            f"{cest//60:02d}:{cest%60:02d} |"
+            f"| {e.source} | `{e.cron}` | {_fmt_local(cet)} | {_fmt_local(cest)} |"
         )
     return "\n".join(lines)
 
