@@ -1,6 +1,5 @@
 // Cohort aggregation helpers for VA-07 / VA-10. Client-side GROUP BY per D-01
 // hybrid approach — no dedicated MV because ~2000 customer payload is trivial.
-import { SPARSE_MIN_COHORT_SIZE } from './sparseFilter';
 import { startOfMonth, startOfWeek, parseISO, format } from 'date-fns';
 
 export type CustomerLtvRow = {
@@ -44,8 +43,13 @@ export const REPEATER_BUCKET_KEYS = VISIT_BUCKET_KEYS.slice(1) as readonly Visit
  * Feedback #6: per first-visit cohort, count of REPEAT customers
  * (visit_count >= 2), split by 7 visit buckets 2nd..8x+.
  * Answers "when did the restaurant acquire the customers who came back?".
- * Sparse-filters cohorts whose total_repeaters < SPARSE_MIN_COHORT_SIZE so tiny
- * all-first-timer cohorts don't clutter the chart.
+ * Quick task 260428-b21: this chart shows ANY cohort with at least one
+ * repeater (`>= 1`) instead of the shared SPARSE_MIN_COHORT_SIZE (= 5).
+ * Reason: the shared threshold hid the most-recent cohorts (e.g. weeks
+ * starting 2026-04-13/20/27) that hadn't accumulated 5 repeat visits yet.
+ * Their short stacks are themselves the signal that those cohorts are
+ * still maturing — no separate badge needed. Cohorts with zero repeaters
+ * naturally produce zero-height stacks and aren't visible regardless.
  */
 // ============================================================================
 // quick-260420-wdf: day-of-week-aware repeater recomputation.
@@ -125,7 +129,7 @@ export function cohortRepeaterCountByVisitBucket(
     agg.set(key, e);
   }
   return Array.from(agg.entries())
-    .filter(([, v]) => v.total_repeaters >= SPARSE_MIN_COHORT_SIZE)
+    .filter(([, v]) => v.total_repeaters >= 1)
     .map(([cohort, v]) => {
       const out = { cohort, total_repeaters: v.total_repeaters } as {
         cohort: string;

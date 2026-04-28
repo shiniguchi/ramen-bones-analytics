@@ -74,16 +74,18 @@ describe('cohortRepeaterCountByVisitBucket (feedback #6)', () => {
     }
   });
 
-  it('sparse-filters cohorts with fewer than SPARSE_MIN_COHORT_SIZE repeaters', () => {
-    // 4 repeaters only → below threshold of 5
-    const sparse: CustomerLtvRow[] = Array.from({ length: 4 }, (_, i) => ({
-      card_hash: `s${i}`,
+  it('keeps cohorts with at least one repeater (quick task 260428-b21)', () => {
+    // Single repeater — threshold lowered from SPARSE_MIN_COHORT_SIZE (5) to 1
+    // so that recent maturing cohorts are not hidden. Zero-repeater cohorts
+    // are still excluded by the next test below.
+    const oneRepeater: CustomerLtvRow[] = [{
+      card_hash: 's0',
       revenue_cents: 1000,
       visit_count: 2,
       cohort_week: '2026-02-02',
       cohort_month: '2026-02-01'
-    }));
-    expect(cohortRepeaterCountByVisitBucket(sparse, 'week')).toHaveLength(0);
+    }];
+    expect(cohortRepeaterCountByVisitBucket(oneRepeater, 'week')).toHaveLength(1);
   });
 
   it('cohorts with only first-timers are filtered out entirely (zero repeaters)', () => {
