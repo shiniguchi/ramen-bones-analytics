@@ -33,7 +33,7 @@ Plan: —
 
 - **Status:** Phase 12 plans written (4 PLANs + PATTERNS.md). Ready for `/gsd-execute-phase 12`.
 - **Progress:** [██████░░░░] 65% (11/17 phases complete; v1.0+v1.1+v1.2 shipped)
-- **Last activity:** 2026-04-28 — Quick task 260428-c87: skip post-ingest insight hook under vitest (kills 404 stderr noise in integration tests)
+- **Last activity:** 2026-04-28 — Quick task 260428-b21: show recent maturing cohorts on the repeater chart (lower threshold 5 → 1)
 - **v1.2 closed:** 11 phases, 60 plans, 100% — Phase 11 SSR fix landed 2026-04-21
 - **v1.0 status:** Shipped to friend (97% plans complete; repo flipped PUBLIC 2026-04-15 with topics + description set; Plan 05-06 Task 2 fork walkthrough deferred out of v1 scope)
 
@@ -243,6 +243,7 @@ Plan: —
 | 260428-wmd | Drop daily MV-refresh + insight pg_cron jobs; trigger both on-demand from ingest when a new complete Mon-Sun week is available | 2026-04-28 | d3d0f9d, af3f051 | [260428-wmd-ingest-trigger-insight](./quick/260428-wmd-ingest-trigger-insight/) |
 | 260428-5yr | Exclude supabase/** from vitest discovery so Deno Edge Function tests don't break CI | 2026-04-28 | a388d43 | [260428-5yr-vitest-exclude-deno](./quick/260428-5yr-vitest-exclude-deno/) |
 | 260428-c87 | Skip post-ingest insight hook under vitest (avoid RPC + 404 stderr in integration tests) | 2026-04-28 | cc3f862 | [260428-c87-skip-insight-hook-vitest](./quick/260428-c87-skip-insight-hook-vitest/) |
+| 260428-b21 | Show recent maturing cohorts on the repeater chart (lower threshold 5 → 1) | 2026-04-28 | 02c4266 | [260428-b21-repeater-cohort-recent](./quick/260428-b21-repeater-cohort-recent/) |
 
 ## Session Continuity
 
