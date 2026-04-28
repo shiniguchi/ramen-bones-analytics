@@ -33,7 +33,7 @@ Plan: —
 
 - **Status:** Phase 12 plans written (4 PLANs + PATTERNS.md). Ready for `/gsd-execute-phase 12`.
 - **Progress:** [██████░░░░] 65% (11/17 phases complete; v1.0+v1.1+v1.2 shipped)
-- **Last activity:** 2026-04-28 — Quick task 260428-wmd: drop daily MV-refresh + insight pg_cron jobs, trigger both on-demand from ingest when a new complete Mon-Sun week is available
+- **Last activity:** 2026-04-28 — Quick task 260428-5yr: exclude supabase/** from vitest discovery so Deno Edge Function tests don't break CI
 - **v1.2 closed:** 11 phases, 60 plans, 100% — Phase 11 SSR fix landed 2026-04-21
 - **v1.0 status:** Shipped to friend (97% plans complete; repo flipped PUBLIC 2026-04-15 with topics + description set; Plan 05-06 Task 2 fork walkthrough deferred out of v1 scope)
 
@@ -241,6 +241,7 @@ Plan: —
 | 260424-mdc | MDE (Minimum Detectable Effect) line chart card on dashboard | 2026-04-24 | 66926c2, e612519 | [260424-mdc-add-mde-curve-card](./quick/260424-mdc-add-mde-curve-card/) |
 | 260428-62e | Align ORDERBIRD_COLUMNS with new joined-CSV order_id-last format (parser + fixture) | 2026-04-28 | bc67dc6 | [260428-62e-parse-order-id-last](./quick/260428-62e-parse-order-id-last/) |
 | 260428-wmd | Drop daily MV-refresh + insight pg_cron jobs; trigger both on-demand from ingest when a new complete Mon-Sun week is available | 2026-04-28 | d3d0f9d, af3f051 | [260428-wmd-ingest-trigger-insight](./quick/260428-wmd-ingest-trigger-insight/) |
+| 260428-5yr | Exclude supabase/** from vitest discovery so Deno Edge Function tests don't break CI | 2026-04-28 | a388d43 | [260428-5yr-vitest-exclude-deno](./quick/260428-5yr-vitest-exclude-deno/) |
 
 ## Session Continuity
 
