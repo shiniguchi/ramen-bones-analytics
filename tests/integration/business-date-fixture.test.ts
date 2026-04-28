@@ -7,7 +7,7 @@ let restaurantId: string;
 beforeAll(async () => {
   const { data } = await admin
     .from('restaurants')
-    .insert({ name: 'TZ Fixture', timezone: 'Europe/Berlin' })
+    .insert({ name: 'TZ Fixture', timezone: 'Europe/Berlin', slug: `tz-fixture-${crypto.randomUUID()}` })
     .select()
     .single();
   restaurantId = data!.id;
