@@ -161,17 +161,17 @@ Conventions not yet established. Will populate as patterns emerge during develop
 Architecture not yet mapped. Follow existing patterns found in the codebase.
 <!-- GSD:architecture-end -->
 
-<!-- GSD:workflow-start source:GSD defaults -->
-## GSD Workflow Enforcement
+<!-- GSD:workflow-start source:docs/workflow.md -->
+## Development Workflow (canonical)
 
-Before using Edit, Write, or other file-changing tools, start work through a GSD command so planning artifacts and execution context stay in sync.
+**Every feature follows [`docs/workflow.md`](docs/workflow.md)** — the 19-row command sequence integrating GSD + GStack + Superpowers, with a tier picker (1 / 2 / 2F / 3) and artifact layout. Read it before any feature work.
 
-Use these entry points:
-- `/gsd:quick` for small fixes, doc updates, and ad-hoc tasks
-- `/gsd:debug` for investigation and bug fixing
-- `/gsd:execute-phase` for planned phase work
-
-Do not make direct repo edits outside a GSD workflow unless the user explicitly asks to bypass it.
+Quick rules (full list in `docs/workflow.md`):
+- **Skip `/gsd-plan-phase`** — Superpowers owns implementation plans (row 9: `superpowers:writing-plans`).
+- **Skip `superpowers:brainstorming`** — `/gstack-office-hours` does that job (row 4).
+- Use `/gsd-quick` for tier 1 only (doc-only, config, rename).
+- Phase work always on a `feature/phase-<NN>-<slug>` branch (Superpowers refuses `main`).
+- Frameworks pinned in `.claude/PLUGINS.md`.
 <!-- GSD:workflow-end -->
 
 

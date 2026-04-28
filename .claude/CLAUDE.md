@@ -1,6 +1,14 @@
 # Project Context
 
-<!-- TODO: Replace this block with a one-paragraph description of what this project does, who it's for, and the high-level architecture. Keep it under 10 lines. -->
+## Development Workflow (canonical)
+
+**Every feature follows [`docs/workflow.md`](../docs/workflow.md)** — the 19-row command sequence integrating GSD + GStack + Superpowers, with a tier picker (1 / 2 / 2F / 3). Read it before any feature work.
+
+Quick rules (full list in `docs/workflow.md`):
+- **Skip `/gsd-plan-phase`** — Superpowers owns implementation plans (`superpowers:writing-plans`).
+- **Skip `superpowers:brainstorming`** — `/gstack-office-hours` does that job.
+- Phase work always on a `feature/phase-<NN>-<slug>` branch (Superpowers refuses `main`).
+- Frameworks pinned in `.claude/PLUGINS.md`.
 
 ## Default Environment: DEV
 
