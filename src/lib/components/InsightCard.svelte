@@ -161,7 +161,7 @@
       {view.headline}
     </h2>
 
-    <p class="mt-2 text-sm leading-normal text-zinc-700">
+    <p class="mt-2 text-sm leading-normal whitespace-pre-line text-zinc-700">
       {view.body}
     </p>
 
