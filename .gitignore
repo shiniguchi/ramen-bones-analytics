@@ -11,7 +11,10 @@ test-results/
 .wrangler/
 playwright-report/
 .vscode/
+# gstack — symlink to ~/development/AiLine/shared-docs + per-skill prefixed
+# symlinks created by `./setup --prefix`. Per-machine; teammates run setup after clone.
 .claude/skills/gstack
+.claude/skills/gstack-*
 .worktrees/
 __pycache__/
 .pytest_cache/
