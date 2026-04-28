@@ -89,3 +89,28 @@ describe('Phase 13 schema: school_holidays', () => {
     expect(insErr).not.toBeNull();
   });
 });
+
+describe('Phase 13 schema: transit_alerts', () => {
+  it('table exists with the expected columns', async () => {
+    const { data, error } = await admin.rpc('test_table_columns', { p_table_name: 'transit_alerts' });
+    expect(error).toBeNull();
+    const names = (data ?? []).map((c: any) => c.column_name);
+    expect(names).toContain('alert_id');
+    expect(names).toContain('title');
+    expect(names).toContain('pub_date');
+    expect(names).toContain('matched_keyword');
+    expect(names).toContain('description');
+    expect(names).toContain('source_url');
+    expect(names).toContain('fetched_at');
+  });
+
+  it('anon SELECT allowed, INSERT denied', async () => {
+    const c = tenantClient();
+    const { error: selErr } = await c.from('transit_alerts').select('alert_id').limit(1);
+    expect(selErr).toBeNull();
+    const { error: insErr } = await c
+      .from('transit_alerts')
+      .insert({ alert_id: 'fake', title: 'Fake', pub_date: '2099-01-01T00:00:00Z', matched_keyword: 'Streik', source_url: 'https://example.test/' });
+    expect(insErr).not.toBeNull();
+  });
+});
