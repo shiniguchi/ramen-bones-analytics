@@ -93,17 +93,28 @@ fi
 # scripts/forecast/, scripts/external/, src/. Excludes .planning/ (proposal
 # text intentionally documents the wrong claim) and tools/ (audit script
 # operates on existing restaurant_id columns).
-GUARD7_PATHS="supabase/migrations/ scripts/forecast/ scripts/external/ src/"
-if grep -rnEH "auth\.jwt\(\)[[:space:]]*->>[[:space:]]*'tenant_id'" $GUARD7_PATHS 2>/dev/null; then
-  echo "::error::Guard 7 FAILED: auth.jwt()->>'tenant_id' found — JWT claim in this codebase is 'restaurant_id', not 'tenant_id'. Rename the reference (PROPOSAL.md §7 sketches must be mechanically renamed before paste)."
-  fail=1
-fi
-# D-11 (b): bare `'tenant_id'` quoted-string occurrences on a line that
-# ALSO mentions auth.jwt — catches paraphrased forms like
-# `auth.jwt() ->> 'tenant_id'::text` or `(auth.jwt())->>'tenant_id'`.
-if grep -rnEH "auth\.jwt.*'tenant_id'" $GUARD7_PATHS 2>/dev/null; then
-  echo "::error::Guard 7 FAILED: 'tenant_id' quoted on a line referencing auth.jwt — JWT claim in this codebase is 'restaurant_id'."
-  fail=1
+#
+# Pre-filter paths that exist on disk — `grep -rE` exits 2 when a path is
+# missing, which bash's `if` treats as falsy, silently swallowing real
+# matches. scripts/forecast/ + scripts/external/ are created in Phase 13;
+# until then they're absent and must be excluded from the grep call.
+GUARD7_CANDIDATES="supabase/migrations/ scripts/forecast/ scripts/external/ src/"
+GUARD7_PATHS=""
+for _p in $GUARD7_CANDIDATES; do
+  [ -e "$_p" ] && GUARD7_PATHS="$GUARD7_PATHS $_p"
+done
+if [ -n "$GUARD7_PATHS" ]; then
+  if grep -rnEH "auth\.jwt\(\)[[:space:]]*->>[[:space:]]*'tenant_id'" $GUARD7_PATHS 2>/dev/null; then
+    echo "::error::Guard 7 FAILED: auth.jwt()->>'tenant_id' found — JWT claim in this codebase is 'restaurant_id', not 'tenant_id'. Rename the reference (PROPOSAL.md §7 sketches must be mechanically renamed before paste)."
+    fail=1
+  fi
+  # D-11 (b): bare `'tenant_id'` quoted-string occurrences on a line that
+  # ALSO mentions auth.jwt — catches paraphrased forms like
+  # `auth.jwt() ->> 'tenant_id'::text` or `(auth.jwt())->>'tenant_id'`.
+  if grep -rnEH "auth\.jwt.*'tenant_id'" $GUARD7_PATHS 2>/dev/null; then
+    echo "::error::Guard 7 FAILED: 'tenant_id' quoted on a line referencing auth.jwt — JWT claim in this codebase is 'restaurant_id'."
+    fail=1
+  fi
 fi
 
 if [ "$fail" -eq 0 ]; then
