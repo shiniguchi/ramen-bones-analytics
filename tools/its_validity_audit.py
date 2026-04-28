@@ -13,12 +13,16 @@ and the weekly GHA run summary (D-06 + the 'Audit-script error vocabulary'
 note in 12-CONTEXT specifics). Hard-failing would block the cascade.
 
 Pre-flight guard (Issue-4 mitigation, T-12-10): if
-stg_orderbird_order_items.business_date is NULL for the entire campaign
+stg_orderbird_order_items.csv_date is NULL or empty across the campaign
 era, the audit would silently return zero findings — masking the very
 interventions FND-09 exists to surface. The pre-flight check raises
 explicitly with status='failure' and an error_msg pointing the operator
-at the Phase 02 ING-03 backfill. Memory ref: silent_error_isolation
+at the ingestion pipeline. Memory ref: silent_error_isolation
 (2026-04-17 dashboard bug).
+
+Date column: stg_orderbird_order_items.csv_date is TEXT (YYYY-MM-DD)
+because the staging table preserves the raw Orderbird CSV strings.
+The audit parses these via date.fromisoformat() before windowing.
 
 Only infrastructure errors (env missing, DB connection failure) AND the
 pre-flight failure cause non-zero exit. Data findings (warnings) exit 0.
@@ -51,7 +55,7 @@ NOISE_ITEMS = {"pop up menu"}
 
 class PreflightFailure(Exception):
     """Raised when the audit's input data is in a state that would cause
-    silent-zero-findings (e.g. business_date is NULL across the era).
+    silent-zero-findings (e.g. csv_date is NULL or empty across the era).
     Caller writes status='failure' + the message to pipeline_runs and
     exits non-zero. Issue-4 / T-12-10 mitigation.
     """
@@ -62,20 +66,23 @@ def preflight_check(client: Client) -> None:
     return zero findings.
 
     Failure modes guarded:
-    - stg_orderbird_order_items.business_date is NULL across the entire
-      campaign era → audit would dedup on (item_name, NULL) and skip every
-      row in find_new_menu_items. Phase 02 ING-03 backfill is the fix.
+    - stg_orderbird_order_items.csv_date is NULL or empty for every row in
+      the campaign era → audit would dedup on (item_name, None) and skip
+      every row in find_new_menu_items. The fix is rerunning the ingest
+      pipeline so csv_date carries the raw Orderbird YYYY-MM-DD string.
 
     Raises PreflightFailure with operator guidance text if guard trips.
     """
-    # Count rows in the campaign era (± window) where business_date is set.
+    # Count rows in the campaign era (± window) where csv_date is set.
+    # csv_date is TEXT (YYYY-MM-DD); supabase-py .gte/.lte does
+    # lexicographic comparison which is correct for ISO 8601 dates.
     window_start = (CAMPAIGN_START - timedelta(days=CONCURRENT_WINDOW_DAYS)).isoformat()
     window_end   = (CAMPAIGN_START + timedelta(days=CONCURRENT_WINDOW_DAYS)).isoformat()
     res = (
         client.table("stg_orderbird_order_items")
-        .select("business_date", count="exact")
-        .gte("business_date", window_start)
-        .lte("business_date", window_end)
+        .select("csv_date", count="exact")
+        .gte("csv_date", window_start)
+        .lte("csv_date", window_end)
         .limit(1)
         .execute()
     )
@@ -86,10 +93,10 @@ def preflight_check(client: Client) -> None:
     if n == 0:
         raise PreflightFailure(
             "Pre-flight FAILED: stg_orderbird_order_items has no rows with "
-            "business_date populated for the campaign era "
+            "csv_date populated for the campaign era "
             f"[{window_start}, {window_end}]; audit findings would be "
-            "silent-zero. Re-run after Phase 02 ING-03 backfill completes "
-            "(populates business_date on existing order_items rows)."
+            "silent-zero. Re-run after the Orderbird ingest pipeline "
+            "populates csv_date on staging rows for this date range."
         )
 
 
@@ -98,43 +105,67 @@ def find_new_menu_items(client: Client) -> list[str]:
     appears within CONCURRENT_WINDOW_DAYS of CAMPAIGN_START.
 
     Algorithm (server-side via supabase-py — no raw SQL strings):
-    1. SELECT distinct item_name + min(business_date) from
-       stg_orderbird_order_items, group by item_name (use a wrapper view
-       if available; otherwise pull all rows and aggregate in Python —
-       the table has < 100k rows on DEV).
+    1. SELECT item_name + csv_date from stg_orderbird_order_items
+       (the table has ~22k rows on DEV — pull all and aggregate in Python).
+       csv_date is TEXT (YYYY-MM-DD), parsed via date.fromisoformat().
     2. Drop items whose lower-cased name is in NOISE_ITEMS.
-    3. For each remaining item: if min(business_date) is within
+    3. For each remaining item: if min(csv_date) is within
        CAMPAIGN_START ± CONCURRENT_WINDOW_DAYS, append a finding string
        of the form:
        "WARNING: new menu item '<name>' first appears <YYYY-MM-DD> "
        "(within 14d of campaign_start=2026-04-14)"
     4. Return the list sorted by first-appearance date ascending.
 
-    NOTE: Relies on stg_orderbird_order_items.business_date being NON-NULL
+    NOTE: Relies on stg_orderbird_order_items.csv_date being NON-NULL
     for the campaign era. The pre-flight guard above (preflight_check)
-    is what makes this safe — without it, NULL business_date rows would
+    is what makes this safe — without it, NULL/empty csv_date rows would
     be silently filtered out below and the audit would return [].
     """
-    # Pull all order items; aggregate in Python (DEV has ~30k tx, ~80k items
-    # — well within memory budget for a once-weekly script).
-    res = (
-        client.table("stg_orderbird_order_items")
-        .select("item_name, business_date")
-        .order("business_date")
-        .execute()
-    )
-    if getattr(res, "error", None):
-        raise RuntimeError(f"select stg_orderbird_order_items failed: {res.error}")
+    # Pull all order items; aggregate in Python (DEV has ~22k items —
+    # well within memory budget for a once-weekly script).
+    # csv_date is TEXT in YYYY-MM-DD, so the .order() sort is lexicographic
+    # which matches chronological order for ISO 8601 dates.
+    #
+    # supabase-py defaults to a ~1000-row response limit. The staging table
+    # exceeds that, so we paginate explicitly via .range(start, end). The
+    # OFFSET/LIMIT is server-side; .order("csv_date") makes pagination
+    # deterministic across requests.
+    PAGE_SIZE = 1000
+    rows: list[dict] = []
+    offset = 0
+    while True:
+        page = (
+            client.table("stg_orderbird_order_items")
+            .select("item_name, csv_date")
+            .order("csv_date")
+            .range(offset, offset + PAGE_SIZE - 1)
+            .execute()
+        )
+        if getattr(page, "error", None):
+            raise RuntimeError(f"select stg_orderbird_order_items failed: {page.error}")
+        batch = page.data or []
+        if not batch:
+            break
+        rows.extend(batch)
+        if len(batch) < PAGE_SIZE:
+            break
+        offset += PAGE_SIZE
 
     first_seen: dict[str, date] = {}
-    for row in res.data or []:
+    for row in rows:
         name = (row.get("item_name") or "").strip()
-        biz = row.get("business_date")
-        if not name or not biz:
+        raw = row.get("csv_date")
+        if not name or not raw:
             continue
         if name.lower() in NOISE_ITEMS:
             continue
-        biz_date = date.fromisoformat(biz) if isinstance(biz, str) else biz
+        try:
+            biz_date = date.fromisoformat(raw) if isinstance(raw, str) else raw
+        except ValueError:
+            # Defensive: skip malformed csv_date strings (e.g. blank, garbage).
+            # The preflight check guarantees enough valid rows for the audit
+            # to surface findings; one malformed row shouldn't crash the run.
+            continue
         if name not in first_seen or biz_date < first_seen[name]:
             first_seen[name] = biz_date
 
