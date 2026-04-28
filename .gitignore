@@ -13,3 +13,6 @@ playwright-report/
 .vscode/
 .claude/skills/gstack
 .worktrees/
+__pycache__/
+.pytest_cache/
+.venv-*/
