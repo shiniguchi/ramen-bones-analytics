@@ -65,3 +65,27 @@ describe('Phase 13 schema: holidays', () => {
     expect(insErr).not.toBeNull();
   });
 });
+
+describe('Phase 13 schema: school_holidays', () => {
+  it('table exists with the expected columns', async () => {
+    const { data, error } = await admin.rpc('test_table_columns', { p_table_name: 'school_holidays' });
+    expect(error).toBeNull();
+    const names = (data ?? []).map((c: any) => c.column_name);
+    expect(names).toContain('state_code');
+    expect(names).toContain('block_name');
+    expect(names).toContain('start_date');
+    expect(names).toContain('end_date');
+    expect(names).toContain('year');
+    expect(names).toContain('fetched_at');
+  });
+
+  it('anon SELECT allowed, INSERT denied', async () => {
+    const c = tenantClient();
+    const { error: selErr } = await c.from('school_holidays').select('start_date').limit(1);
+    expect(selErr).toBeNull();
+    const { error: insErr } = await c
+      .from('school_holidays')
+      .insert({ state_code: 'BE', block_name: 'Fake', start_date: '2099-01-01', end_date: '2099-01-02', year: 2099 });
+    expect(insErr).not.toBeNull();
+  });
+});
