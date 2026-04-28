@@ -117,6 +117,18 @@ if [ -n "$GUARD7_PATHS" ]; then
   fi
 fi
 
+# Guard 8 (Phase 12 FND-11 / D-12..D-14): cron schedule overlap +
+# cascade-gap check. Delegates to scripts/ci-guards/check-cron-schedule.py
+# (stdlib-only Python 3) which parses every .github/workflows/*.yml
+# schedule.cron AND every cron.schedule() call in supabase/migrations/,
+# computes UTC + CET (UTC+1) + CEST (UTC+2) wall-clock times, and
+# asserts no overlap in either DST regime + >=60-min gap between
+# consecutive nightly cascade stages.
+if ! python3 "$(dirname "$0")/ci-guards/check-cron-schedule.py"; then
+  echo "::error::Guard 8 FAILED: cron schedule overlap or cascade-gap violation — see check-cron-schedule.py output."
+  fail=1
+fi
+
 if [ "$fail" -eq 0 ]; then
   echo "All CI guards passed."
 fi
