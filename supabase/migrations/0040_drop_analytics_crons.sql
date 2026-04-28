@@ -1,5 +1,6 @@
--- 0039_drop_analytics_crons.sql
+-- 0040_drop_analytics_crons.sql
 -- Quick task 260428-wmd: switch from time-based cron to ingest-driven refresh.
+-- (0039 is reserved by Phase 12 for pipeline_runs_skeleton; this slot is 0040.)
 --
 -- Drops the two daily pg_cron schedules:
 --   1. refresh-analytics-mvs (migration 0013, 03:00 UTC)
