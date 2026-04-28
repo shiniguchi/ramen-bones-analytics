@@ -114,3 +114,46 @@ describe('Phase 13 schema: transit_alerts', () => {
     expect(insErr).not.toBeNull();
   });
 });
+
+describe('Phase 13 schema: recurring_events', () => {
+  it('table exists with the expected columns', async () => {
+    const { data, error } = await admin.rpc('test_table_columns', { p_table_name: 'recurring_events' });
+    expect(error).toBeNull();
+    const names = (data ?? []).map((c: any) => c.column_name);
+    expect(names).toContain('event_id');
+    expect(names).toContain('name');
+    expect(names).toContain('category');
+    expect(names).toContain('start_date');
+    expect(names).toContain('end_date');
+    expect(names).toContain('impact_estimate');
+    expect(names).toContain('source');
+    expect(names).toContain('fetched_at');
+  });
+
+  it('anon SELECT allowed, INSERT denied', async () => {
+    const c = tenantClient();
+    const { error: selErr } = await c.from('recurring_events').select('event_id').limit(1);
+    expect(selErr).toBeNull();
+    const { error: insErr } = await c
+      .from('recurring_events')
+      .insert({ event_id: 'fake-2099', name: 'Fake', category: 'festival', start_date: '2099-01-01', end_date: '2099-01-02', impact_estimate: 'low' });
+    expect(insErr).not.toBeNull();
+  });
+
+  it('pg_cron job recurring-events-yearly-reminder is scheduled on Sep 15', async () => {
+    // cron.job is in the cron schema. PostgREST exposes only the schemas listed in
+    // supabase/config.toml [api].schemas (default: public). Use the service-role
+    // SQL passthrough via an RPC, OR query through the service-role REST endpoint
+    // with the Accept-Profile header. Simpler: define a small SECURITY DEFINER RPC
+    // that returns cron.job rows for a given jobname.
+    // We add it inline in 0045 (see migration). Here we just call it.
+    const { data, error } = await admin.rpc('test_cron_job_schedule', { p_jobname: 'recurring-events-yearly-reminder' });
+    expect(error).toBeNull();
+    const rows = (data ?? []) as Array<{ jobname: string; schedule: string }>;
+    expect(rows.length).toBe(1);
+    // Cron schedule format is `M H D Mon DOW`. We schedule at 09:00 UTC on Sep 15
+    // which means dom=15 month=9. Assert those two fields appear in the schedule
+    // string. Allow flexibility on min/hour wording.
+    expect(rows[0].schedule).toMatch(/15\s+9/);
+  });
+});
