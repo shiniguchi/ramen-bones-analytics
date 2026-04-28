@@ -12,3 +12,4 @@ test-results/
 playwright-report/
 .vscode/
 .claude/skills/gstack
+.worktrees/
