@@ -14,6 +14,7 @@ import {
   countTransactions,
 } from './upsert';
 import { printReport } from './report';
+import { refreshAndMaybeTriggerInsight } from './refresh';
 import type { IngestReport } from './types';
 
 export async function runIngest(
@@ -80,6 +81,29 @@ export async function runIngest(
     errors: 0,
   };
   printReport(report);
+
+  // Quick task 260428-wmd: replaces the daily pg_cron schedule (migration 0039
+  // unschedules `refresh-analytics-mvs` and `generate-insights`). Refreshes MVs
+  // and conditionally triggers the Edge Function only when a new complete
+  // Mon-Sun week is available compared to the latest insight's business_date.
+  // Failures here do not unwind the upsert — the data ingest is the load-bearing
+  // outcome; insight refresh is a downstream nicety.
+  try {
+    const refreshResult = await refreshAndMaybeTriggerInsight(
+      client,
+      env.SUPABASE_URL,
+      env.SUPABASE_SERVICE_ROLE_KEY,
+      env.RESTAURANT_ID,
+    );
+    console.log(JSON.stringify({ post_ingest: refreshResult }));
+  } catch (err) {
+    console.error(
+      JSON.stringify({
+        post_ingest_error: err instanceof Error ? err.message : String(err),
+      }),
+    );
+  }
+
   return report;
 }
 
