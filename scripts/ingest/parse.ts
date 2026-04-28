@@ -29,11 +29,11 @@ export const ORDERBIRD_COLUMNS = [
   'card_last4',
   'card_txn_id',
   'is_cash',
-  'order_id',
   'wl_card_number',
   'wl_card_type',
   'wl_payment_type',
   'wl_issuing_country',
+  'order_id',
 ] as const;
 
 export function parseCsv(text: string): Record<string, string>[] {
