@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: External Data & Forecasting Foundation
-status: "Phase 12 planned — ready for /gsd-execute-phase 12 (4 plans, 2 waves)"
-stopped_at: Phase 12 (Foundation — Decisions & Guards) planned 2026-04-28. 4 plans across 2 waves: Wave 1 = 12-01 (pipeline_runs skeleton migration 0039 + DEV schema push) + 12-03 (Guard 7 tenant_id regression + red-team fixture); Wave 2 = 12-02 (its_validity_audit.py + weekly Mon 09:00 UTC GHA cron) + 12-04 (Guard 8 check-cron-schedule.py + ci-guards.sh delegation). FND-09 covered by 12-01 + 12-02; FND-10 by 12-03; FND-11 by 12-04. Plan-checker passed after one revision round (1 BLOCKER + 3 WARNINGS resolved: ALL THREE-findings audit fixture per PROPOSAL §13, Task 2 acceptance_criteria, Task 3 split into 3a auto + 3b checkpoint, silent-zero-findings preflight guard). 12-PATTERNS.md written.
-last_updated: "2026-04-28T01:00:00Z"
+status: "Phase 12 shipped — PR #15 open (FND-09/10/11 closed)"
+stopped_at: Phase 12 (Foundation — Decisions & Guards) shipped 2026-04-28 via PR #15. FND-09 (audit script + skeleton migration + GHA cron), FND-10 (Guard 7 tenant_id regression), FND-11 (Guard 8 cron-schedule contract) all closed. 16 commits, 10 files, +1023/-1. Build hit 2 spec defects (business_date column doesn't exist → renamed to csv_date; supabase-py 1000-row default cap → added pagination); both fixed inline and documented in 12-02-SUMMARY.md. /qa-gate passed (0 critical/0 high). UAT 6/6 pass. GHA workflow_dispatch verification deferred until PR merges (workflow YAML must be on default branch). Post-merge: gh workflow run its-validity-audit.yml --ref main + verify GHA-produced pipeline_runs row.
+last_updated: "2026-04-28T19:00:00Z"
 progress:
   total_phases: 17
   completed_phases: 11
@@ -28,12 +28,12 @@ progress:
 ## Current Position
 
 Milestone: v1.3 (External Data & Forecasting Foundation)
-Phase: 12 (Foundation — Decisions & Guards) — Planned, ready to execute (4 plans, 2 waves)
+Phase: 12 (Foundation — Decisions & Guards) — Shipped via PR #15
 Plan: —
 
-- **Status:** Phase 12 plans written (4 PLANs + PATTERNS.md). Ready for `/gsd-execute-phase 12`.
-- **Progress:** [██████░░░░] 65% (11/17 phases complete; v1.0+v1.1+v1.2 shipped)
-- **Last activity:** 2026-04-28 — Quick task 260428-nmq: render newlines in InsightCard body (whitespace-pre-line) so admin-typed 改行 are visible
+- **Status:** Phase 12 shipped via [PR #15](https://github.com/shiniguchi/ramen-bones-analytics/pull/15). Awaiting CI green + merge. FND-09/10/11 closed.
+- **Progress:** [███████░░░] 71% (12/17 phases shipped on merge; v1.0+v1.1+v1.2 done)
+- **Last activity:** 2026-04-28 — Phase 12 ship: 16 commits, 10 files, +1023/-1; UAT 6/6 pass; /qa-gate clean; PR #15 open
 - **v1.2 closed:** 11 phases, 60 plans, 100% — Phase 11 SSR fix landed 2026-04-21
 - **v1.0 status:** Shipped to friend (97% plans complete; repo flipped PUBLIC 2026-04-15 with topics + description set; Plan 05-06 Task 2 fork walkthrough deferred out of v1 scope)
 
