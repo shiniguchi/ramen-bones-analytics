@@ -25,7 +25,7 @@ let TENANT_B: string;
 beforeAll(async () => {
   const { data: a, error: errA } = await admin
     .from('restaurants')
-    .insert({ name: `Phase10 Tenant A ${Date.now()}`, timezone: 'Europe/Berlin' })
+    .insert({ name: `Phase10 Tenant A ${Date.now()}`, timezone: 'Europe/Berlin', slug: `phase10-a-${crypto.randomUUID()}` })
     .select()
     .single();
   if (errA) throw errA;
@@ -33,7 +33,7 @@ beforeAll(async () => {
 
   const { data: b, error: errB } = await admin
     .from('restaurants')
-    .insert({ name: `Phase10 Tenant B ${Date.now()}`, timezone: 'Europe/Berlin' })
+    .insert({ name: `Phase10 Tenant B ${Date.now()}`, timezone: 'Europe/Berlin', slug: `phase10-b-${crypto.randomUUID()}` })
     .select()
     .single();
   if (errB) throw errB;

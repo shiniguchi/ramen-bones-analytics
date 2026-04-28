@@ -16,13 +16,13 @@ let userOrphan: string;
 beforeAll(async () => {
   const { data: a } = await admin
     .from('restaurants')
-    .insert({ name: 'Isolation Tenant A', timezone: 'Europe/Berlin' })
+    .insert({ name: 'Isolation Tenant A', timezone: 'Europe/Berlin', slug: `iso-a-${crypto.randomUUID()}` })
     .select()
     .single();
   tenantA = a!.id;
   const { data: b } = await admin
     .from('restaurants')
-    .insert({ name: 'Isolation Tenant B', timezone: 'Europe/Berlin' })
+    .insert({ name: 'Isolation Tenant B', timezone: 'Europe/Berlin', slug: `iso-b-${crypto.randomUUID()}` })
     .select()
     .single();
   tenantB = b!.id;

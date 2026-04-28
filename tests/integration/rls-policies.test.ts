@@ -14,13 +14,13 @@ let userB: string;
 beforeAll(async () => {
   const { data: a } = await admin
     .from('restaurants')
-    .insert({ name: 'RLS Tenant A', timezone: 'Europe/Berlin' })
+    .insert({ name: 'RLS Tenant A', timezone: 'Europe/Berlin', slug: `rls-a-${crypto.randomUUID()}` })
     .select()
     .single();
   tenantA = a!.id;
   const { data: b } = await admin
     .from('restaurants')
-    .insert({ name: 'RLS Tenant B', timezone: 'Europe/Berlin' })
+    .insert({ name: 'RLS Tenant B', timezone: 'Europe/Berlin', slug: `rls-b-${crypto.randomUUID()}` })
     .select()
     .single();
   tenantB = b!.id;
