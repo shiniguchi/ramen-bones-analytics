@@ -33,6 +33,21 @@ export async function refreshAndMaybeTriggerInsight(
   serviceRoleKey: string,
   restaurantId: string,
 ): Promise<RefreshResult> {
+  // Vitest sets VITEST=true automatically. Skip the hook entirely under tests:
+  // the integration suite exercises runIngest end-to-end against TEST Supabase,
+  // which doesn't host the generate-insight Edge Function (DEV-only deploy).
+  // Calling fetch from tests is also a side effect we don't want.
+  if (process.env.VITEST === 'true') {
+    return {
+      mv_refreshed: false,
+      latest_data_date: null,
+      latest_complete_week_ending: null,
+      latest_insight_business_date: null,
+      insight_triggered: false,
+      insight_skip_reason: 'vitest mode',
+    };
+  }
+
   // 1. Refresh both materialized views (cohort_mv + kpi_daily_mv) in one call.
   const { error: rpcErr } = await client.rpc('refresh_analytics_mvs');
   if (rpcErr) throw new Error(`MV refresh failed: ${rpcErr.message}`);
