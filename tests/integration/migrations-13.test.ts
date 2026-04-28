@@ -3,10 +3,13 @@ import { adminClient, tenantClient } from '../helpers/supabase';
 
 const admin = adminClient();
 
-// Phase 13 EXT-08: hybrid RLS verification across all 7 new tables.
-// Shared location-keyed tables read with `using (true)` for any auth'd user;
-// writes are revoked from authenticated/anon. Tenant-scoped tables key on
-// auth.jwt()->>'restaurant_id'.
+// Phase 13 EXT-08: hybrid RLS verification.
+// `weather_daily` is the first table covered (Task 2). Tasks 3–8 append
+// `describe()` blocks for `holidays`, `school_holidays`, `transit_alerts`,
+// `recurring_events`, `pipeline_runs` extension, and `shop_calendar`.
+// Shared (location-keyed) tables read with `using (true)` for any auth'd
+// user; writes are revoked from authenticated/anon. Tenant-scoped tables
+// key on auth.jwt()->>'restaurant_id'.
 
 describe('Phase 13 schema: weather_daily', () => {
   it('table exists with the expected columns', async () => {
@@ -23,6 +26,8 @@ describe('Phase 13 schema: weather_daily', () => {
     expect(cols['temp_min_c']).toBeDefined();
     expect(cols['temp_max_c']).toBeDefined();
     expect(cols['precip_mm']).toBeDefined();
+    expect(cols['wind_kph']).toBeDefined();
+    expect(cols['cloud_cover']).toBeDefined();
     expect(cols['provider']).toBeDefined();
     expect(cols['fetched_at']).toBeDefined();
   });

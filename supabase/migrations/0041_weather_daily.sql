@@ -28,14 +28,22 @@ create policy weather_daily_read
   on public.weather_daily for select
   using (true);
 
--- Writes are service-role only.
+-- service_role bypasses RLS (`bypassrls=true` at role level); writes
+-- to `service_role` are controlled by the table-level GRANT below, not
+-- by any RLS policy. The REVOKE here is what gates anon/authenticated.
 revoke insert, update, delete on public.weather_daily from authenticated, anon;
 grant select on public.weather_daily to authenticated, anon;
 grant select, insert, update, delete on public.weather_daily to service_role;
 
--- Test helper RPC: returns column metadata for any public-schema table.
--- Used by integration tests to verify schema without relying on information_schema
--- (which PostgREST does not expose reliably). Service-role only.
+-- test_table_columns: service-role-only schema introspection RPC for vitest tests.
+-- The `data_type` column returns `pg_type.typname` (Postgres internal catalog
+-- name, e.g. 'timestamptz', 'int4', 'numeric'), NOT the ANSI SQL standard
+-- `information_schema.columns.data_type` (e.g. 'timestamp with time zone',
+-- 'integer', 'numeric'). Vitest schema tests should rely on column NAMES,
+-- not on `data_type` values, unless they explicitly accept typname semantics.
+-- For array columns, typname returns the BASE element type (e.g. 'int4' for
+-- int[], not '_int4' or 'int[]') — currently moot because no Phase 13 table
+-- uses array columns.
 create or replace function public.test_table_columns(p_table_name text)
 returns table(column_name text, data_type text, is_nullable text)
 language sql
