@@ -25,6 +25,10 @@ jobs:
       - name: Link TEST project
         run: supabase link --project-ref ${{ secrets.TEST_SUPABASE_PROJECT_REF }} --password ${{ secrets.TEST_SUPABASE_DB_PASSWORD }}
       - name: Apply migrations to TEST project
-        run: supabase db push --password ${{ secrets.TEST_SUPABASE_DB_PASSWORD }} --yes
+        # --include-all: TEST project may have its own migration history with
+        # timestamps newer than ours; --include-all tells the CLI to apply
+        # any local migration that hasn't been applied remote yet, regardless
+        # of position vs the remote head.
+        run: supabase db push --password ${{ secrets.TEST_SUPABASE_DB_PASSWORD }} --include-all --yes
       - name: Run Vitest
         run: npx vitest run --reporter=dot

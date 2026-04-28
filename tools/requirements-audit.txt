@@ -1,0 +1,4 @@
+# Phase 12 FND-09 audit-script deps. Pinned conservatively — the audit must
+# not pull pandas / statsforecast / prophet (those are Phase 14 deps).
+supabase>=2.0,<3
+python-dotenv>=1.0,<2

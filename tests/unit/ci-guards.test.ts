@@ -15,7 +15,7 @@
 
 import { describe, it, expect, afterEach } from 'vitest';
 import { execSync } from 'node:child_process';
-import { writeFileSync, unlinkSync, existsSync, mkdirSync, rmSync } from 'node:fs';
+import { writeFileSync, unlinkSync, existsSync, mkdirSync, rmSync, readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 
 const EVIL = join(process.cwd(), 'src/lib/evil.ts');
@@ -49,6 +49,40 @@ describe('ci-guards.sh — Phase 3 D-24 raw table guard', () => {
   it('PASSES when src/ has no raw refs', () => {
     // Ensure no leftover evil file from a parallel/prior case.
     if (existsSync(EVIL)) unlinkSync(EVIL);
+    expect(() => execSync('bash scripts/ci-guards.sh', { stdio: 'pipe' })).not.toThrow();
+  });
+});
+
+// Phase 12 FND-10 / D-09..D-11: Guard 7 — JWT claim is `restaurant_id`,
+// not `tenant_id`. The fixture at tests/ci-guards/red-team-tenant-id.sql
+// is checked into the repo. This test copies it into supabase/migrations/
+// as a temp file so Guard 7's grep scans it, runs the guard script, and
+// asserts the guard fires (throw / exit 1). Then it cleans up the temp
+// file so subsequent runs of ci-guards.sh stay green.
+describe('ci-guards.sh — Phase 12 FND-10 Guard 7 (tenant_id regression)', () => {
+  const FIXTURE_PATH = join(process.cwd(), 'tests/ci-guards/red-team-tenant-id.sql');
+  const TEMP_MIGRATION = join(process.cwd(), 'supabase/migrations/9999_red_team_tenant_id_test.sql');
+
+  afterEach(() => {
+    if (existsSync(TEMP_MIGRATION)) unlinkSync(TEMP_MIGRATION);
+  });
+
+  it('FAILS when supabase/migrations/ contains auth.jwt()->>\'tenant_id\'', () => {
+    // Sanity: the fixture must exist (Task 2 of Plan 12-03 created it).
+    expect(existsSync(FIXTURE_PATH)).toBe(true);
+    const fixture = readFileSync(FIXTURE_PATH, 'utf8');
+
+    // Copy the fixture into supabase/migrations/ so Guard 7 sees it.
+    writeFileSync(TEMP_MIGRATION, fixture);
+
+    // Guard 7 must throw — script exits 1 with ::error::Guard 7 FAILED.
+    expect(() => execSync('bash scripts/ci-guards.sh', { stdio: 'pipe' })).toThrow();
+  });
+
+  it('PASSES when supabase/migrations/ has no tenant_id JWT references', () => {
+    // No temp file written this case — supabase/migrations/ is in its
+    // committed-state-only form, which is verified clean (all migrations
+    // use auth.jwt()->>'restaurant_id').
     expect(() => execSync('bash scripts/ci-guards.sh', { stdio: 'pipe' })).not.toThrow();
   });
 });

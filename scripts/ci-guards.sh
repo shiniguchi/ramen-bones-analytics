@@ -86,6 +86,49 @@ if [ -d src ]; then
   fi
 fi
 
+# Guard 7 (Phase 12 FND-10 / D-09..D-11): JWT claim is `restaurant_id`, NOT
+# `tenant_id`. PROPOSAL.md §7 schema sketches use the wrong claim and must
+# be mechanically renamed before any v1.3 migration is written. This guard
+# catches the regression. Scan paths per D-10: supabase/migrations/,
+# scripts/forecast/, scripts/external/, src/. Excludes .planning/ (proposal
+# text intentionally documents the wrong claim) and tools/ (audit script
+# operates on existing restaurant_id columns).
+#
+# Pre-filter paths that exist on disk — `grep -rE` exits 2 when a path is
+# missing, which bash's `if` treats as falsy, silently swallowing real
+# matches. scripts/forecast/ + scripts/external/ are created in Phase 13;
+# until then they're absent and must be excluded from the grep call.
+GUARD7_CANDIDATES="supabase/migrations/ scripts/forecast/ scripts/external/ src/"
+GUARD7_PATHS=""
+for _p in $GUARD7_CANDIDATES; do
+  [ -e "$_p" ] && GUARD7_PATHS="$GUARD7_PATHS $_p"
+done
+if [ -n "$GUARD7_PATHS" ]; then
+  if grep -rnEH "auth\.jwt\(\)[[:space:]]*->>[[:space:]]*'tenant_id'" $GUARD7_PATHS 2>/dev/null; then
+    echo "::error::Guard 7 FAILED: auth.jwt()->>'tenant_id' found — JWT claim in this codebase is 'restaurant_id', not 'tenant_id'. Rename the reference (PROPOSAL.md §7 sketches must be mechanically renamed before paste)."
+    fail=1
+  fi
+  # D-11 (b): bare `'tenant_id'` quoted-string occurrences on a line that
+  # ALSO mentions auth.jwt — catches paraphrased forms like
+  # `auth.jwt() ->> 'tenant_id'::text` or `(auth.jwt())->>'tenant_id'`.
+  if grep -rnEH "auth\.jwt.*'tenant_id'" $GUARD7_PATHS 2>/dev/null; then
+    echo "::error::Guard 7 FAILED: 'tenant_id' quoted on a line referencing auth.jwt — JWT claim in this codebase is 'restaurant_id'."
+    fail=1
+  fi
+fi
+
+# Guard 8 (Phase 12 FND-11 / D-12..D-14): cron schedule overlap +
+# cascade-gap check. Delegates to scripts/ci-guards/check-cron-schedule.py
+# (stdlib-only Python 3) which parses every .github/workflows/*.yml
+# schedule.cron AND every cron.schedule() call in supabase/migrations/,
+# computes UTC + CET (UTC+1) + CEST (UTC+2) wall-clock times, and
+# asserts no overlap in either DST regime + >=60-min gap between
+# consecutive nightly cascade stages.
+if ! python3 "$(dirname "$0")/ci-guards/check-cron-schedule.py"; then
+  echo "::error::Guard 8 FAILED: cron schedule overlap or cascade-gap violation — see check-cron-schedule.py output."
+  fail=1
+fi
+
 if [ "$fail" -eq 0 ]; then
   echo "All CI guards passed."
 fi
