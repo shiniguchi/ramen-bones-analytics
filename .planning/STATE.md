@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: External Data & Forecasting Foundation
-status: "Phase 12 shipped — PR #15 open (FND-09/10/11 closed)"
-stopped_at: Phase 12 (Foundation — Decisions & Guards) shipped 2026-04-28 via PR #15. FND-09 (audit script + skeleton migration + GHA cron), FND-10 (Guard 7 tenant_id regression), FND-11 (Guard 8 cron-schedule contract) all closed. 16 commits, 10 files, +1023/-1. Build hit 2 spec defects (business_date column doesn't exist → renamed to csv_date; supabase-py 1000-row default cap → added pagination); both fixed inline and documented in 12-02-SUMMARY.md. /qa-gate passed (0 critical/0 high). UAT 6/6 pass. GHA workflow_dispatch verification deferred until PR merges (workflow YAML must be on default branch). Post-merge: gh workflow run its-validity-audit.yml --ref main + verify GHA-produced pipeline_runs row.
-last_updated: "2026-04-28T19:00:00Z"
+status: "Phase 13 context gathered — ready for /gsd-plan-phase 13"
+stopped_at: Phase 13 (External Data Ingestion) context gathered 2026-04-28. 13-CONTEXT.md commits 14 implementation decisions (D-01..D-14) + 5 carry-forwards from Phase 12 (C-01..C-05). 8 gray areas auto-resolved per "follow recs first" preference: G-01 one-migration-per-table (0041-0047), G-02 single workflow w/ workflow_dispatch start_date input, G-03 one-file-per-source under scripts/external/ + run_all.py, G-04 per-source try/except + fallback row (locked by ROADMAP SC #5), G-05 config/shop_hours.yaml + Python loader, G-06 hand-rolled fixtures + monkeypatch httpx, G-07 ship ~15 hand-curated Berlin events, G-08 KEYWORDS module constant. BVG RSS URL todo folded into D-13 plan-phase verification. 12-PROPOSAL.md §7 schema sketches drive 7 migrations after restaurant_id rename (Phase 12 D-03). Commit 31b5c99.
+last_updated: "2026-04-28T20:00:00Z"
 progress:
   total_phases: 17
   completed_phases: 11
@@ -248,7 +248,7 @@ Plan: —
 
 ## Session Continuity
 
-**Next command:** `/gsd-plan-phase 12` to break Phase 12 into executable plans. Expected breakdown: ~4 plans covering (1) `tools/its_validity_audit.py` + test fixture, (2) `0039_pipeline_runs_skeleton.sql` migration, (3) CI Guard 7 (`tenant_id` regression) + negative test, (4) CI Guard 8 (`scripts/ci-guards/check-cron-schedule.py`) + `.github/workflows/its-validity-audit.yml`. CONTEXT.md `<canonical_refs>` section is the entry point for plan-phase agents.
+**Next command:** `/gsd-plan-phase 13` to break Phase 13 into executable plans. Expected breakdown: ~5-6 plans covering (1) seven migrations 0041-0047 (one per table; weather/holidays/school/transit/events + pipeline_runs ALTER + shop_calendar), (2) `scripts/external/` Python orchestrator (one file per source + run_all.py + pipeline_runs_writer + db.py), (3) `external-data-refresh.yml` GHA workflow (cron 0 0 * * * UTC + workflow_dispatch start_date input), (4) `config/recurring_events.yaml` + `config/shop_hours.yaml` starter content, (5) test fixtures + extended tenant-isolation test (7 new cases), (6) backfill execution from 2025-06-11 + DEV verification. 13-CONTEXT.md `<canonical_refs>` section is the entry point.
 
 **Authoritative spec for v1.3:** `.planning/phases/12-forecasting-foundation/12-PROPOSAL.md` (1484-line driving artifact — verified data sources, schema sketches, GHA cron pattern, failure modes, backtest fairness rules, ITS validity audit). Note: §7 SQL sketches use `tenant_id`; codebase claim is `restaurant_id` — Phase 12 CI Guard 7 catches the rename.
 
@@ -256,8 +256,8 @@ Plan: —
 
 **Resume hint:** v1.3 roadmap complete. 6 phases (12-17) map all 47 v1.3 requirements. Phase 12 (Foundation — Decisions & Guards) context locked 2026-04-28; planning + execution is a lightweight scripting effort (~1-2 days). Phase 13 (External Data Ingestion) is the first heavy migration phase (~2 weeks). Phase 14 ↔ 15 parallel-eligible after 14's schema lands (estimated 30-40% schedule compression). Phase 17 has a hard dependency on ≥4 weeks of forecast-vs-actual history; cold-start UI badge "BACKTEST PENDING" handles days 1-7.
 
-**Last session:** 2026-04-28T00:00:00Z
-**Stopped At:** Phase 12 context gathered. Wrote 12-CONTEXT.md (ratifies 3 SC4 mandates + 14 implementation decisions D-04..D-14), 12-DISCUSSION-LOG.md (audit trail of 6 gray-area decisions), and committed previously-untracked 12-PROPOSAL.md as the canonical driving artifact. Ready for `/gsd-plan-phase 12`.
+**Last session:** 2026-04-28T20:00:00Z
+**Stopped At:** Phase 13 context gathered. Wrote 13-CONTEXT.md (5 carry-forwards C-01..C-05 from Phase 12 + 14 implementation decisions D-01..D-14 covering migration sequencing, backfill mechanics, Python orchestrator structure, failure isolation, shop_calendar bootstrap, CI fixtures, recurring_events YAML, transit keywords) and 13-DISCUSSION-LOG.md (8 gray-area audit trail). All decisions auto-resolved per "follow recs first" preference. BVG RSS URL todo folded into D-13 plan-phase verification. Commit 31b5c99. Ready for `/gsd-plan-phase 13`.
 
 ---
-*State initialized: 2026-04-13; v1.3 roadmap recorded: 2026-04-27; Phase 12 context: 2026-04-28*
+*State initialized: 2026-04-13; v1.3 roadmap recorded: 2026-04-27; Phase 12 context: 2026-04-28; Phase 13 context: 2026-04-28*
