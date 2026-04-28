@@ -33,7 +33,7 @@ Plan: —
 
 - **Status:** Phase 12 plans written (4 PLANs + PATTERNS.md). Ready for `/gsd-execute-phase 12`.
 - **Progress:** [██████░░░░] 65% (11/17 phases complete; v1.0+v1.1+v1.2 shipped)
-- **Last activity:** 2026-04-28 — Phase 12 plan-phase: 4 plans across 2 waves; checker passed after 1 revision round (BLOCKER + 3 WARNINGS resolved); FND-09/10/11 covered
+- **Last activity:** 2026-04-28 — Quick task 260428-62e: align ORDERBIRD_COLUMNS with new joined-CSV order_id-last format (parser + fixture)
 - **v1.2 closed:** 11 phases, 60 plans, 100% — Phase 11 SSR fix landed 2026-04-21
 - **v1.0 status:** Shipped to friend (97% plans complete; repo flipped PUBLIC 2026-04-15 with topics + description set; Plan 05-06 Task 2 fork walkthrough deferred out of v1 scope)
 
@@ -239,6 +239,7 @@ Plan: —
 | 260420-wdf | Day-of-week filter + repeater Option-A scope expansion + sticky filter header fix | 2026-04-20 | 03db100, 1c9cf3a, 7027b4b, 545273c, d2f536d | [260420-wdf-dow-filter-retire-lin-log](./quick/260420-wdf-dow-filter-retire-lin-log/) |
 | 260422-fz1 | AI TL;DR action-point bullets on dashboard insight card | 2026-04-22 | a496164 | [260422-fz1-add-ai-tl-dr-action-point-bullets-to-das](./quick/260422-fz1-add-ai-tl-dr-action-point-bullets-to-das/) |
 | 260424-mdc | MDE (Minimum Detectable Effect) line chart card on dashboard | 2026-04-24 | 66926c2, e612519 | [260424-mdc-add-mde-curve-card](./quick/260424-mdc-add-mde-curve-card/) |
+| 260428-62e | Align ORDERBIRD_COLUMNS with new joined-CSV order_id-last format (parser + fixture) | 2026-04-28 | bc67dc6 | [260428-62e-parse-order-id-last](./quick/260428-62e-parse-order-id-last/) |
 
 ## Session Continuity
 
