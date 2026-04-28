@@ -42,3 +42,26 @@ describe('Phase 13 schema: weather_daily', () => {
     expect(insErr).not.toBeNull();
   });
 });
+
+describe('Phase 13 schema: holidays', () => {
+  it('table exists with the expected columns', async () => {
+    const { data, error } = await admin.rpc('test_table_columns', { p_table_name: 'holidays' });
+    expect(error).toBeNull();
+    const names = (data ?? []).map((c: any) => c.column_name);
+    expect(names).toContain('date');
+    expect(names).toContain('name');
+    expect(names).toContain('country_code');
+    expect(names).toContain('subdiv_code');
+    expect(names).toContain('fetched_at');
+  });
+
+  it('anon SELECT allowed, INSERT denied', async () => {
+    const c = tenantClient();
+    const { error: selErr } = await c.from('holidays').select('date').limit(1);
+    expect(selErr).toBeNull();
+    const { error: insErr } = await c
+      .from('holidays')
+      .insert({ date: '2099-01-01', name: 'fake', country_code: 'DE' });
+    expect(insErr).not.toBeNull();
+  });
+});
