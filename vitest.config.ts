@@ -25,6 +25,12 @@ export default defineConfig({
     testTimeout: 30000,
     hookTimeout: 30000,
     reporters: ['dot'],
-    passWithNoTests: true
+    passWithNoTests: true,
+    // supabase/functions/** holds Deno-only Edge Function tests (resolved via
+    // supabase/functions/*/deno.json import maps, e.g. std/assert). Run them
+    // with `deno test --allow-env --allow-net`, not node-vitest. Excluding
+    // here also restates vitest's safe defaults so the array fully replaces
+    // — not augments — the built-in list.
+    exclude: ['node_modules/**', 'dist/**', '.svelte-kit/**', 'supabase/**']
   }
 });
