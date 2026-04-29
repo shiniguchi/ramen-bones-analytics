@@ -20,11 +20,12 @@ from datetime import date, datetime, timedelta, timezone
 from typing import Any
 import httpx
 
+from . import _http
+
 LOCATION = 'berlin'
 LAT = 52.52
 LON = 13.40
 CHUNK_DAYS = 30
-TIMEOUT = 30.0
 
 
 class UpstreamUnavailableError(Exception):
@@ -100,7 +101,7 @@ def normalize_open_meteo(payload: dict[str, Any], location: str) -> list[dict[st
 def _fetch_brightsky(start: date, end: date) -> dict[str, Any]:
     url = 'https://api.brightsky.dev/weather'
     params = {'lat': LAT, 'lon': LON, 'date': start.isoformat(), 'last_date': end.isoformat()}
-    r = httpx.get(url, params=params, timeout=TIMEOUT)
+    r = _http.request_with_retry('GET', url, params=params)
     if r.status_code >= 500:
         raise UpstreamUnavailableError(f'brightsky {r.status_code}: {r.text[:200]}')
     r.raise_for_status()
@@ -115,7 +116,7 @@ def _fetch_open_meteo(start: date, end: date) -> dict[str, Any]:
         'daily': 'temperature_2m_min,temperature_2m_max,precipitation_sum,wind_speed_10m_max,cloud_cover_mean',
         'timezone': 'Europe/Berlin',
     }
-    r = httpx.get(url, params=params, timeout=TIMEOUT)
+    r = _http.request_with_retry('GET', url, params=params)
     if r.status_code >= 500:
         raise UpstreamUnavailableError(f'open-meteo {r.status_code}: {r.text[:200]}')
     r.raise_for_status()
@@ -123,6 +124,13 @@ def _fetch_open_meteo(start: date, end: date) -> dict[str, Any]:
 
 
 def fetch_weather(*, start_date: date, end_date: date) -> tuple[list[dict[str, Any]], float | None]:
+    """Fetch weather observations + forecast for [start_date, end_date].
+
+    REVIEW C-21: each chunk request retries transparently via _http on transient
+    429/503/ConnectError/ReadTimeout up to 3 attempts (exponential backoff).
+    Non-retriable 5xx (500/502/504) still propagate to the UpstreamUnavailableError
+    branch so a hard outage routes to a 'fallback' pipeline_runs row.
+    """
     provider = os.environ.get('WEATHER_PROVIDER', 'brightsky').strip().lower()
     rows: list[dict[str, Any]] = []
     for chunk_start, chunk_end in _chunks(start_date, end_date, CHUNK_DAYS):

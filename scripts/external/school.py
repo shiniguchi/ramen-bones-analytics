@@ -12,9 +12,10 @@ from datetime import date, datetime, timezone
 from typing import Any
 import httpx
 
+from . import _http
+
 STATE = 'BE'
 URL_TEMPLATE = 'https://ferien-api.de/api/v1/holidays/{state}/{year}.json'
-TIMEOUT = 20.0
 
 
 class UpstreamUnavailableError(Exception):
@@ -22,10 +23,12 @@ class UpstreamUnavailableError(Exception):
 
 
 def fetch_school(*, years: list[int]) -> list[dict[str, Any]]:
+    """REVIEW C-21: each per-year request retries on transient
+    429/503/ConnectError/ReadTimeout via _http.request_with_retry."""
     rows: list[dict[str, Any]] = []
     for y in years:
         url = URL_TEMPLATE.format(state=STATE, year=y)
-        r = httpx.get(url, timeout=TIMEOUT)
+        r = _http.request_with_retry('GET', url)
         if r.status_code >= 500:
             raise UpstreamUnavailableError(f'ferien-api.de {r.status_code} for {y}: {r.text[:200]}')
         r.raise_for_status()

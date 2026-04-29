@@ -33,12 +33,13 @@ from typing import Any
 import httpx
 import feedparser
 
+from . import _http
+
 URLS = [
     'https://www.bvg.de/de/verbindungen/stoerungsmeldungen.xml',  # primary  — STALE 2026-04-29 (200 text/html, not RSS)
     'https://www.bvg.de/de/aktuell/stoerungen/rss.xml',           # fallback — STALE 2026-04-29 (404)
 ]
 KEYWORDS = ['Streik', 'Warnstreik']
-TIMEOUT = 20.0
 
 
 class UpstreamUnavailableError(Exception):
@@ -62,7 +63,7 @@ def _match_keyword(text: str) -> str | None:
 
 
 def _fetch_one(url: str) -> bytes:
-    r = httpx.get(url, timeout=TIMEOUT)
+    r = _http.request_with_retry('GET', url)
     if r.status_code >= 500:
         raise UpstreamUnavailableError(f'BVG {r.status_code} on {url}')
     r.raise_for_status()
@@ -70,7 +71,11 @@ def _fetch_one(url: str) -> bytes:
 
 
 def fetch_transit() -> list[dict[str, Any]]:
-    """Try URLs in order; first 2xx wins. If all fail, raise UpstreamUnavailableError."""
+    """Try URLs in order; first 2xx wins. If all fail, raise UpstreamUnavailableError.
+
+    REVIEW C-21: each per-URL request retries on transient
+    429/503/ConnectError/ReadTimeout via _http.request_with_retry.
+    """
     body = None
     last_err: Exception | None = None
     for url in URLS:
