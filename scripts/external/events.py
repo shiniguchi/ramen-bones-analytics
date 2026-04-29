@@ -34,6 +34,10 @@ def load_events(path: str | Path) -> list[dict[str, Any]]:
             'notes':            entry.get('notes'),
             'source':           entry.get('source'),
         })
+    ids = [r['event_id'] for r in rows]
+    dupes = [x for x in ids if ids.count(x) > 1]
+    if dupes:
+        raise ValueError(f'duplicate event_ids in YAML: {sorted(set(dupes))}')
     return rows
 
 
