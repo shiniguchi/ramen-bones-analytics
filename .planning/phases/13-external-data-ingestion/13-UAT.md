@@ -58,9 +58,8 @@ note: `_strip_html`, `_safe_url` (allowlists http/https only), `URLS` ranked lis
 
 ### 9. Recurring Events YAML: 14+ Events + Duplicate Guard
 expected: `config/recurring_events.yaml` contains ≥14 hand-curated Berlin events for 2026/2027. `scripts/external/events.py` loads via PyYAML and asserts unique `event_id` (raises on duplicates). Migration 0045 includes pg_cron annual-refresh reminder for Sep 15.
-result: issue
-reported: "events.py has no runtime duplicate event_id check (REVIEW C-16 recommended `assert len(set) == len(rows)`). YAML has 14 events and upsert uses ON CONFLICT event_id which handles DB-level dedup, but no Python-side assertion to catch YAML-level duplicates before hitting the DB."
-severity: minor
+result: pass
+note: Fix already applied — events.py:37-40 has duplicate guard (`raise ValueError` on dupes). Test `test_load_production_yaml_has_unique_event_ids` covers it. Originally flagged as missing during UAT but code was updated in a later commit on the phase branch.
 
 ### 10. Shop Calendar: 365-Day Forward + Weekly Pattern + Overrides
 expected: `config/shop_hours.yaml` defines friend-restaurant weekly pattern (open/close times per day-of-week) + override dates. `scripts/external/shop_calendar.py` generates 365 days forward. Overrides win over weekly pattern. `is_open=false` for closed days.
@@ -95,23 +94,12 @@ note: All P1 review findings traced to fixing commits. MS-1 → env scoping + re
 ## Summary
 
 total: 15
-passed: 14
-issues: 1
+passed: 15
+issues: 0
 pending: 0
 skipped: 0
 blocked: 0
 
 ## Gaps
 
-- truth: "events.py asserts unique event_id at load time, raising on duplicates per REVIEW C-16"
-  status: failed
-  reason: "events.py has no runtime duplicate event_id check. YAML has 14 events and upsert uses ON CONFLICT event_id (DB-level dedup), but no Python-side assertion to catch YAML-level duplicates before hitting the DB."
-  severity: minor
-  test: 9
-  root_cause: "REVIEW C-16 recommended `assert len({r['event_id'] for r in rows}) == len(rows)` but it was not implemented in events.py. The DB ON CONFLICT clause handles dedup silently, so duplicates don't error — they just overwrite, which could mask a copy-paste mistake in the YAML."
-  artifacts:
-    - path: "scripts/external/events.py"
-      issue: "Missing duplicate event_id assertion at line ~36 (after building rows list)"
-  missing:
-    - "Add `ids = [r['event_id'] for r in rows]; assert len(set(ids)) == len(ids), f'duplicate event_ids: {[x for x in ids if ids.count(x) > 1]}'` after line 37 in events.py"
-  debug_session: ""
+[none — original gap (test 9) resolved; fix already present in events.py:37-40 + test coverage]
