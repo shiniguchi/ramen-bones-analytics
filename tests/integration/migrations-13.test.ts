@@ -140,21 +140,19 @@ describe('Phase 13 schema: recurring_events', () => {
     expect(insErr).not.toBeNull();
   });
 
-  it('pg_cron job recurring-events-yearly-reminder is scheduled on Sep 15', async () => {
+  it('pg_cron job recurring-events-yearly-reminder is scheduled at 09:00 UTC on Sep 15', async () => {
     // cron.job is in the cron schema. PostgREST exposes only the schemas listed in
-    // supabase/config.toml [api].schemas (default: public). Use the service-role
-    // SQL passthrough via an RPC, OR query through the service-role REST endpoint
-    // with the Accept-Profile header. Simpler: define a small SECURITY DEFINER RPC
-    // that returns cron.job rows for a given jobname.
-    // We add it inline in 0045 (see migration). Here we just call it.
+    // supabase/config.toml [api].schemas (default: public). 0045 ships a small
+    // SECURITY DEFINER RPC that returns cron.job rows for a given jobname.
     const { data, error } = await admin.rpc('test_cron_job_schedule', { p_jobname: 'recurring-events-yearly-reminder' });
     expect(error).toBeNull();
     const rows = (data ?? []) as Array<{ jobname: string; schedule: string }>;
     expect(rows.length).toBe(1);
-    // Cron schedule format is `M H D Mon DOW`. We schedule at 09:00 UTC on Sep 15
-    // which means dom=15 month=9. Assert those two fields appear in the schedule
-    // string. Allow flexibility on min/hour wording.
-    expect(rows[0].schedule).toMatch(/15\s+9/);
+    // REVIEW T-9: prior assertion was /15\s+9/ which matched both the correct
+    // '0 9 15 9 *' AND the wrong '0 0 15 9 *' (15 then 9 in different fields).
+    // Exact-match the canonical cron string instead — any drift in min/hour/dom/
+    // month/dow fails the test.
+    expect(rows[0].schedule).toBe('0 9 15 9 *');
   });
 });
 

@@ -45,4 +45,9 @@ jobs:
       - name: Install deps
         run: pip install -r scripts/external/requirements.txt
       - name: Run pytest
-        run: PYTHONPATH=. pytest tests/external/ -v
+        # REVIEW T-11: also include tests/ci-guards/ so Phase 12 Guard 8
+        # (cron-schedule overlap detection) regression coverage actually
+        # runs in CI. Previously these tests existed but were unreachable
+        # — a regression in scripts/ci-guards/check-cron-schedule.py
+        # would have shipped silently.
+        run: PYTHONPATH=. pytest tests/external/ tests/ci-guards/ -v
