@@ -1,0 +1,12 @@
+- restaurant_id: 11111111-1111-1111-1111-111111111111
+  weekly_pattern:
+    monday:    { is_open: true,  open_at: "12:00", close_at: "22:00" }
+    tuesday:   { is_open: true,  open_at: "12:00", close_at: "22:00" }
+    wednesday: { is_open: false }
+    thursday:  { is_open: true,  open_at: "12:00", close_at: "22:00" }
+    friday:    { is_open: true,  open_at: "12:00", close_at: "23:00" }
+    saturday:  { is_open: true,  open_at: "12:00", close_at: "23:00" }
+    sunday:    { is_open: false }
+  overrides:
+    - { date: "2026-05-01", is_open: false, reason: "Tag der Arbeit" }
+    - { date: "2026-05-15", is_open: true,  open_at: "10:00", close_at: "23:00", reason: "Long open day" }

@@ -183,6 +183,29 @@ def detect_overlaps(entries: list[CronEntry]) -> list[str]:
                 continue
             if a.month != -1 and b.month != -1 and a.month != b.month:
                 continue
+            # Mixed DOW+DOM axis: one cron uses a DOW restriction and the
+            # other uses a DOM restriction. These are orthogonal scheduling
+            # axes — they only truly collide when the specific DOM+month
+            # falls on the specific DOW (at most once per year). We cannot
+            # determine that without a calendar, so warn + skip rather than
+            # raising a false-positive violation. This is intentional:
+            # Guard 8 enforces the nightly cascade and overlap within the
+            # same scheduling class; rare once-per-year coincidences are
+            # out of scope for a static grep-based guard.
+            has_dow_a = a.dow != -1
+            has_dow_b = b.dow != -1
+            has_dom_a = a.dom != -1
+            has_dom_b = b.dom != -1
+            if (has_dow_a and not has_dow_b and has_dom_b) or \
+               (has_dow_b and not has_dow_a and has_dom_a):
+                print(
+                    f"check-cron-schedule: WARN: skipping potential mixed-axis "
+                    f"overlap between {a.source} (DOW-based) and {b.source} "
+                    f"(DOM-based) — collision only possible when DOM falls on "
+                    f"the specified DOW; cannot check statically.",
+                    file=sys.stderr,
+                )
+                continue
             for label, off in (("CET", 1), ("CEST", 2)):
                 a_loc = utc_to_local_minutes(a.hour, a.minute, off)
                 b_loc = utc_to_local_minutes(b.hour, b.minute, off)

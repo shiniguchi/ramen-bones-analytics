@@ -1,0 +1,16 @@
+- event_id: test-event-1
+  name: "Test Event 1"
+  category: festival
+  start_date: "2026-06-01"
+  end_date:   "2026-06-02"
+  impact_estimate: high
+  notes: "Used by test_events.py"
+  source: "https://example.test/"
+
+- event_id: test-event-2
+  name: "Test Event 2"
+  category: market
+  start_date: "2026-12-01"
+  end_date:   "2026-12-24"
+  impact_estimate: medium
+  source: "https://example.test/"

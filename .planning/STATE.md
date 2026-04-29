@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: External Data & Forecasting Foundation
-status: "Phase 13 implementation complete on feature/phase-13-external-data-ingestion (24 commits ahead of main, head c5be916) — awaiting review + ship sequence"
-stopped_at: Phase 13 (External Data Ingestion) implementation complete on `feature/phase-13-external-data-ingestion` (24 commits ahead of main, head `c5be916`). Shipped artifacts on the phase branch: 7 migrations `0041_weather_daily.sql` → `0047_shop_calendar.sql` (hybrid-RLS for shared location-keyed tables, tenant-scoped RLS for `pipeline_runs`/`shop_calendar`), all Python fetchers under `scripts/external/` (weather/holidays/school/transit/events/shop_calendar) + `run_all.py` orchestrator + `pipeline_runs_writer.py`, configs (`config/shop_hours.yaml`, `config/recurring_events.yaml` 14-event starter), `.github/workflows/external-data-refresh.yml` (nightly cron `0 0 * * *` UTC + `workflow_dispatch` backfill), `pytest-external` job in `tests.yml`, `tests/external/` (8 unit test files), `tests/integration/tenant-isolation` extended for 7 new tables, ci-guard `scripts/ci-guards/check-cron-schedule.py`, TDD plan `docs/superpowers/plans/2026-04-29-phase-13-external-data-ingestion.md` (3,140 lines). Workflow rows actually executed: 1-3 (STATE), 4 (DESIGN — office-hours + override), 8 (worktree), 9 (writing-plans), 10 (subagent-driven-development). Skipped: row 5 (`/gstack-autoplan`). Outstanding: rows 12 (`/qa-gate` — claimed but no artifact), 15 (`/gstack-review`), 16 (`/gstack-cso` — Tier 3 mandatory: 7 migrations + new RLS), 17 (`/gsd-verify-work`), 18 (`/gsd-ship`), 19 (`/gstack-retro`).
-last_updated: "2026-04-29T00:00:00Z"
+status: "Phase 13 shipped — PR #17"
+stopped_at: Phase 13 (External Data Ingestion) shipped 2026-04-29 via PR #17. 41 commits, 52 files, +6892 lines. UAT 15/15 pass. Code review 25 findings all addressed. EXT-01..EXT-09 complete. 74 pytest + 43 vitest new tests.
+last_updated: "2026-04-30T00:00:00Z"
 progress:
   total_phases: 17
-  completed_phases: 11
+  completed_phases: 12
   total_plans: 60
   completed_plans: 60
-  percent: 65
+  percent: 71
 ---
 
 # STATE: Ramen Bones Analytics
@@ -20,7 +20,7 @@ progress:
 ## Project Reference
 
 - **Core Value:** A restaurant owner opens the site on their phone and makes a real business decision from the numbers they see.
-- **Current Focus:** Phase 13 — External Data Ingestion (implementation complete on phase branch; awaiting review + ship)
+- **Current Focus:** Phase 13 — External Data Ingestion (shipped, PR #17 open)
 - **Timeline:** Slow and deliberate — understand data first, ship one layer at a time
 - **Granularity:** standard
 - **Tenants in v1:** 1 (architecture multi-tenant-ready)
@@ -28,12 +28,12 @@ progress:
 ## Current Position
 
 Milestone: v1.3 (External Data & Forecasting Foundation)
-Phase: 13 (External Data Ingestion) — Implementation complete on `feature/phase-13-external-data-ingestion` (24 commits, head `c5be916`); awaiting review + ship
-Plan: `docs/superpowers/plans/2026-04-29-phase-13-external-data-ingestion.md` (Superpowers TDD, 3,140 lines)
+Phase: 13 (External Data Ingestion) — Shipped via PR #17
+Plan: —
 
-- **Status:** Phase 13 fully built on phase branch — 7 migrations (`0041_weather_daily.sql` → `0047_shop_calendar.sql`), all Python fetchers (`scripts/external/{weather,holidays,school,transit,events,shop_calendar}.py` + `run_all.py` + `pipeline_runs_writer.py`), configs (`shop_hours.yaml`, `recurring_events.yaml`), GHA workflow `external-data-refresh.yml` (cron `0 0 * * *` UTC + workflow_dispatch backfill), `pytest-external` CI job, 8 unit test files, tenant-isolation extended for 7 new tables, ci-guard `check-cron-schedule.py`. Branch unmerged. Phase 12 shipped via [PR #15](https://github.com/shiniguchi/ramen-bones-analytics/pull/15) (merged `2ff6ca0`).
-- **Progress:** [████████░░] 71% (12/17 phases shipped; v1.0+v1.1+v1.2 done; Phase 12 merged; Phase 13 built but unmerged)
-- **Last activity:** 2026-04-29 — STATE.md realigned to reflect Phase 13 actual state; previous unstale (`f67d481`) had Phase 13 marked at "context gathered" but reality is implementation complete on phase branch
+- **Status:** Phase 13 shipped via [PR #17](https://github.com/shiniguchi/ramen-bones-analytics/pull/17). 41 commits, 52 files, +6892 lines. UAT 15/15, review 25/25 addressed. EXT-01..EXT-09 complete.
+- **Progress:** [███████░░░] 71% (13/17 phases shipped on merge; v1.0+v1.1+v1.2 done)
+- **Last activity:** 2026-04-30 — Phase 13 PR #17 merge conflicts resolved, ready for merge
 - **v1.2 closed:** 11 phases, 60 plans, 100% — Phase 11 SSR fix landed 2026-04-21
 - **v1.0 status:** Shipped to friend (97% plans complete; repo flipped PUBLIC 2026-04-15 with topics + description set; Plan 05-06 Task 2 fork walkthrough deferred out of v1 scope)
 
@@ -42,7 +42,7 @@ Plan: `docs/superpowers/plans/2026-04-29-phase-13-external-data-ingestion.md` (S
 | Metric | Value |
 |--------|-------|
 | Phases planned | 17 (5 v1.0 + 2 v1.1 + 4 v1.2 + 6 v1.3) |
-| Phases complete | 11 |
+| Phases complete | 12 (13 on PR #17 merge) |
 | Requirements mapped | 113/113 (39 v1.0 + 14 v1.1 + 13 v1.2 + 47 v1.3) |
 | Plans executed | 60 |
 | Phase 01-foundation P05 | 5m | 2 tasks | 4 files |

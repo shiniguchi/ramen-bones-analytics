@@ -1,0 +1,33 @@
+# config/shop_hours.yaml
+# Phase 13 EXT-07: per-restaurant weekly open/close pattern + date overrides.
+# Idempotent loader projects this into shop_calendar 365 days forward each
+# nightly cron run.
+#
+# weekly_pattern keys: monday..sunday (lowercase).
+# overrides: list of {date: YYYY-MM-DD, is_open, open_at?, close_at?, reason?}.
+#
+# IMPORTANT — PRE-MERGE ACTION REQUIRED:
+# Replace `00000000-0000-0000-0000-000000000001` with the friend-restaurant's
+# actual UUID from public.restaurants (`select id from public.restaurants
+# where slug = 'ramen-bones'`). The placeholder UUID lets local pytest pass;
+# the executor MUST replace it before merging to main, otherwise the nightly
+# orchestrator will write rows for a non-existent restaurant_id and the
+# shop_calendar foreign-key cascade-on-delete will silently skip on insert.
+#
+# The actual open/close times below are PLACEHOLDERS too (12:00–23:00 every
+# day except Sunday closed). Confirm with the friend before merging — these
+# values feed Phase 14's NaN-mask for closed days.
+
+- restaurant_id: ba1bf707-aae9-46a9-8166-4b6459e6c2fd
+  weekly_pattern:
+    monday:    { is_open: true,  open_at: "12:00", close_at: "23:00" }
+    tuesday:   { is_open: true,  open_at: "12:00", close_at: "23:00" }
+    wednesday: { is_open: true,  open_at: "12:00", close_at: "23:00" }
+    thursday:  { is_open: true,  open_at: "12:00", close_at: "23:00" }
+    friday:    { is_open: true,  open_at: "12:00", close_at: "23:00" }
+    saturday:  { is_open: true,  open_at: "12:00", close_at: "23:00" }
+    sunday:    { is_open: false }
+  overrides:
+    - { date: "2026-12-24", is_open: false, reason: "Heiligabend (placeholder — confirm with friend)" }
+    - { date: "2026-12-25", is_open: false, reason: "1. Weihnachtstag (placeholder)" }
+    - { date: "2026-12-31", is_open: true,  open_at: "12:00", close_at: "18:00", reason: "Silvester short hours (placeholder)" }

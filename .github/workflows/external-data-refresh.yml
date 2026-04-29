@@ -1,0 +1,65 @@
+name: External Data Refresh
+on:
+  schedule:
+    - cron: '0 0 * * *'        # 00:00 UTC nightly (CET 01:00, CEST 02:00) — D-12 + Guard 8
+  workflow_dispatch:
+    inputs:
+      start_date:
+        description: 'Backfill start date YYYY-MM-DD (omit for nightly default)'
+        required: false
+        default: ''
+      end_date:
+        description: 'Backfill end date YYYY-MM-DD (omit for today)'
+        required: false
+        default: ''
+
+# Least-privilege: only checkout + run python, no repo writes needed (REVIEW C-3).
+permissions:
+  contents: read
+
+# Single-flight: scheduled cron and manual workflow_dispatch must not race
+# against each other on the same DB rows (REVIEW C-18).
+concurrency:
+  group: external-data-refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15        # Phase 13 SC says <5 min nightly; <10 min backfill. 15 is the hard cap.
+    env:
+      GITHUB_SHA: ${{ github.sha }}
+      WEATHER_PROVIDER: brightsky      # Production default (CONTEXT.md C-02)
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: scripts/external/requirements.txt
+      - name: Install deps
+        run: pip install -r scripts/external/requirements.txt
+      - name: Run external-data refresh
+        # Inputs piped through env: vars (NOT direct ${{ }} in the script) so a
+        # malicious workflow_dispatch caller cannot inject shell metacharacters.
+        # Validate YYYY-MM-DD format before forwarding to argparse (REVIEW C-1/MS-1).
+        # Service-role key scoped to THIS step only — keeps it out of pip install
+        # and any future steps' environments (REVIEW C-2).
+        env:
+          SUPABASE_URL: ${{ secrets.DEV_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.DEV_SUPABASE_SERVICE_ROLE_KEY }}
+          START_DATE: ${{ inputs.start_date }}
+          END_DATE: ${{ inputs.end_date }}
+        run: |
+          set -euo pipefail
+          DATE_RE='^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
+          ARGS=()
+          if [ -n "$START_DATE" ]; then
+            [[ "$START_DATE" =~ $DATE_RE ]] || { echo "::error::start_date must match YYYY-MM-DD, got: $START_DATE"; exit 1; }
+            ARGS+=("--start-date" "$START_DATE")
+          fi
+          if [ -n "$END_DATE" ]; then
+            [[ "$END_DATE" =~ $DATE_RE ]] || { echo "::error::end_date must match YYYY-MM-DD, got: $END_DATE"; exit 1; }
+            ARGS+=("--end-date" "$END_DATE")
+          fi
+          python -m scripts.external.run_all "${ARGS[@]}"
