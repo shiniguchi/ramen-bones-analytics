@@ -37,7 +37,19 @@ grant select, insert, update, delete on public.recurring_events to service_role;
 -- pg_cron annual reminder: every Sep 15 at 09:00 UTC, write a warning
 -- row to pipeline_runs nudging the maintainer to add next-year events.
 -- Schedule: minute=0 hour=9 dom=15 month=9 dow=*
--- Idempotency: cron.schedule() upserts on jobname; safe across re-runs.
+--
+-- Idempotency (REVIEW C-7): cron.schedule() raises duplicate-jobname on a
+-- fresh replay (e.g. `supabase db reset`, or a forker's first deploy after
+-- the job was already created). The earlier "upserts on jobname" comment
+-- was wrong. Pattern below mirrors 0013/0040's unschedule-if-exists guard
+-- so this migration is replay-safe.
+do $$
+begin
+  if exists (select 1 from cron.job where jobname = 'recurring-events-yearly-reminder') then
+    perform cron.unschedule('recurring-events-yearly-reminder');
+  end if;
+end$$;
+
 select cron.schedule(
   'recurring-events-yearly-reminder',
   '0 9 15 9 *',
