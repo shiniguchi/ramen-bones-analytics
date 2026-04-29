@@ -177,26 +177,90 @@ describe('EXT-08: tenant-scoped table isolation', () => {
   });
 });
 
-describe('EXT-08: pipeline_runs RLS — global rows visible, tenant rows scoped', () => {
-  it('tenant A sees global rows (restaurant_id IS NULL) but only own tenant rows', async () => {
-    // Seed one global row + one tenant-A row + one tenant-B row.
-    const stamp = `iso-${Date.now()}`;
+describe('EXT-08: pipeline_runs lockdown (REVIEW MS-2) — raw table is service-role-only; clients read pipeline_runs_status_v', () => {
+  // Seed once and reuse across the suite: avoids cross-test interference and
+  // gives both tenants a consistent view of the same fixture set.
+  const stamp = `iso-${Date.now()}`;
+
+  beforeAll(async () => {
     await admin.from('pipeline_runs').insert([
-      { step_name: `${stamp}-global`, status: 'success', restaurant_id: null },
-      { step_name: `${stamp}-A`, status: 'success', restaurant_id: tenantA },
-      { step_name: `${stamp}-B`, status: 'success', restaurant_id: tenantB },
+      { step_name: `${stamp}-global`, status: 'success', restaurant_id: null,
+        error_msg: 'SECRET stack trace — global row should never reach a client' },
+      { step_name: `${stamp}-A`, status: 'success', restaurant_id: tenantA,
+        error_msg: 'tenant A internal' },
+      { step_name: `${stamp}-B`, status: 'success', restaurant_id: tenantB,
+        error_msg: 'tenant B internal' },
     ]);
+  });
+
+  afterAll(async () => {
+    await admin.from('pipeline_runs').delete().like('step_name', `${stamp}%`);
+  });
+
+  it('raw pipeline_runs SELECT is denied to authenticated tenant (revoked in 0049)', async () => {
+    const c = tenantClient();
+    await c.auth.signInWithPassword({ email: emailA, password });
+    const { data, error } = await c.from('pipeline_runs').select('*').limit(1);
+    // Either error≠null (revoke surfaces as PostgREST 401/permission-denied)
+    // or the strict RLS policy hides everything — in both cases data must
+    // contain ZERO of our seeded rows. error_msg cannot leak via this path.
+    if (error) {
+      expect(error).not.toBeNull();
+    } else {
+      const names = (data ?? []).map((r: any) => r.step_name);
+      expect(names).not.toContain(`${stamp}-global`);
+      expect(names).not.toContain(`${stamp}-A`);
+      expect(names).not.toContain(`${stamp}-B`);
+    }
+  });
+
+  it('tenant A reads global + own-tenant rows via pipeline_runs_status_v; never tenant B', async () => {
     const c = tenantClient();
     await c.auth.signInWithPassword({ email: emailA, password });
     const { data, error } = await c
-      .from('pipeline_runs')
+      .from('pipeline_runs_status_v')
       .select('step_name, restaurant_id')
       .like('step_name', `${stamp}%`);
     expect(error).toBeNull();
-    const seen = (data ?? []) as Array<{ step_name: string; restaurant_id: string | null }>;
-    const names = seen.map((r) => r.step_name).sort();
+    const names = ((data ?? []) as Array<{ step_name: string }>).map((r) => r.step_name).sort();
     expect(names).toContain(`${stamp}-global`);
     expect(names).toContain(`${stamp}-A`);
     expect(names).not.toContain(`${stamp}-B`);
+  });
+
+  it('tenant B reads global + own-tenant rows via pipeline_runs_status_v; never tenant A', async () => {
+    // Mirror test of the above — proves the view is symmetric, not a one-sided
+    // bug (e.g. policy hardcoded to a specific UUID would pass tenant A and
+    // fail this test) (REVIEW T-8).
+    const c = tenantClient();
+    await c.auth.signInWithPassword({ email: emailB, password });
+    const { data, error } = await c
+      .from('pipeline_runs_status_v')
+      .select('step_name, restaurant_id')
+      .like('step_name', `${stamp}%`);
+    expect(error).toBeNull();
+    const names = ((data ?? []) as Array<{ step_name: string }>).map((r) => r.step_name).sort();
+    expect(names).toContain(`${stamp}-global`);
+    expect(names).toContain(`${stamp}-B`);
+    expect(names).not.toContain(`${stamp}-A`);
+  });
+
+  it('pipeline_runs_status_v exposes NO sensitive columns — error_msg + commit_sha must be absent', async () => {
+    const c = tenantClient();
+    await c.auth.signInWithPassword({ email: emailA, password });
+    const { data, error } = await c
+      .from('pipeline_runs_status_v')
+      .select('*')
+      .like('step_name', `${stamp}%`)
+      .limit(1);
+    expect(error).toBeNull();
+    expect((data ?? []).length).toBeGreaterThan(0);
+    const row = (data as Array<Record<string, unknown>>)[0];
+    expect(row).not.toHaveProperty('error_msg');
+    expect(row).not.toHaveProperty('commit_sha');
+    // Sanity: safe columns ARE present.
+    expect(row).toHaveProperty('step_name');
+    expect(row).toHaveProperty('status');
+    expect(row).toHaveProperty('upstream_freshness_h');
   });
 });

@@ -176,11 +176,40 @@ describe('Phase 13 schema: pipeline_runs extension', () => {
     expect(names).toContain('commit_sha');
   });
 
-  it('RLS policy pipeline_runs_read exists with global+tenant rule', async () => {
+  it('RLS policy pipeline_runs_read is strict tenant-scoped (REVIEW MS-2 lockdown via 0049)', async () => {
     const { data, error } = await admin.rpc('test_table_policies', { p_table_name: 'pipeline_runs' });
     expect(error).toBeNull();
-    const policies = (data ?? []).map((p: any) => p.policyname);
-    expect(policies).toContain('pipeline_runs_read');
+    const policies = (data ?? []) as Array<{ policyname: string; cmd: string; qual: string }>;
+    const readPolicy = policies.find((p) => p.policyname === 'pipeline_runs_read');
+    expect(readPolicy).toBeDefined();
+    // After 0049 the global-row OR clause is gone — the policy is purely
+    // `restaurant_id::text = (auth.jwt() ->> 'restaurant_id')`. A future
+    // regression that re-adds `restaurant_id is null OR ...` would be caught
+    // here (REVIEW T-10).
+    expect(readPolicy!.qual).toContain("auth.jwt()");
+    expect(readPolicy!.qual).toContain("restaurant_id");
+    expect(readPolicy!.qual).not.toMatch(/restaurant_id\s+is\s+null/i);
+  });
+});
+
+describe('Phase 13 schema: pipeline_runs_status_v wrapper view (REVIEW MS-2)', () => {
+  it('view exists and exposes only safe columns (no error_msg, no commit_sha)', async () => {
+    // Use the helper RPC to introspect the view's column list. It works on
+    // views as well as tables in pg_attribute.
+    const { data, error } = await admin.rpc('test_table_columns', {
+      p_table_name: 'pipeline_runs_status_v',
+    });
+    expect(error).toBeNull();
+    const names = ((data ?? []) as Array<{ column_name: string }>).map((c) => c.column_name);
+    // Safe columns must be present.
+    expect(names).toContain('step_name');
+    expect(names).toContain('status');
+    expect(names).toContain('upstream_freshness_h');
+    expect(names).toContain('finished_at');
+    expect(names).toContain('restaurant_id');
+    // Sensitive columns must NOT be exposed.
+    expect(names).not.toContain('error_msg');
+    expect(names).not.toContain('commit_sha');
   });
 });
 
