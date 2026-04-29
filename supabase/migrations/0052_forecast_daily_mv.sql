@@ -30,7 +30,9 @@ revoke all on public.forecast_daily_mv from anon, authenticated;
 
 -- Wrapper view: joins forecast MV with kpi_daily_mv actuals.
 -- CASE maps kpi_name to the matching actual column from kpi_daily_mv.
--- kpi_daily_mv columns: revenue_cents (numeric), tx_count (int).
+-- forecast_daily stores kpi_name as 'revenue_eur' / 'invoice_count' (CONTEXT.md).
+-- kpi_daily_mv stores revenue_cents (numeric) / tx_count (int).
+-- CASE translates between the two naming conventions.
 create view public.forecast_with_actual_v as
 select
   f.restaurant_id,
@@ -46,8 +48,8 @@ select
   f.horizon_days,
   f.ci_level,
   case
-    when f.kpi_name = 'revenue_cents' then k.revenue_cents
-    when f.kpi_name = 'tx_count'      then k.tx_count::numeric
+    when f.kpi_name = 'revenue_eur'    then k.revenue_cents / 100.0
+    when f.kpi_name = 'invoice_count'  then k.tx_count::numeric
   end as actual
 from public.forecast_daily_mv f
 left join public.kpi_daily_mv k
