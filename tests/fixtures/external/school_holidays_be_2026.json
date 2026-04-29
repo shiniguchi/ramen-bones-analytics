@@ -1,0 +1,8 @@
+[
+  {"name": "Winterferien Berlin 2026", "start": "2026-02-02T00:00:00", "end": "2026-02-07T00:00:00", "year": 2026, "stateCode": "BE", "slug": "winterferien-2026-berlin"},
+  {"name": "Osterferien Berlin 2026", "start": "2026-03-30T00:00:00", "end": "2026-04-11T00:00:00", "year": 2026, "stateCode": "BE", "slug": "osterferien-2026-berlin"},
+  {"name": "Pfingstferien Berlin 2026", "start": "2026-05-15T00:00:00", "end": "2026-05-15T00:00:00", "year": 2026, "stateCode": "BE", "slug": "pfingstferien-2026-berlin"},
+  {"name": "Sommerferien Berlin 2026", "start": "2026-07-09T00:00:00", "end": "2026-08-21T00:00:00", "year": 2026, "stateCode": "BE", "slug": "sommerferien-2026-berlin"},
+  {"name": "Herbstferien Berlin 2026", "start": "2026-10-19T00:00:00", "end": "2026-10-31T00:00:00", "year": 2026, "stateCode": "BE", "slug": "herbstferien-2026-berlin"},
+  {"name": "Weihnachtsferien Berlin 2026", "start": "2026-12-21T00:00:00", "end": "2027-01-02T00:00:00", "year": 2026, "stateCode": "BE", "slug": "weihnachtsferien-2026-berlin"}
+]
