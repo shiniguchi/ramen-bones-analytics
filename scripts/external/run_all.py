@@ -45,10 +45,12 @@ def make_client():
 def _run_weather(client, start_date: date, end_date: date) -> str:
     started = datetime.now(timezone.utc)
     try:
-        # Weather always covers 7 forward days regardless of nightly start_date.
-        wstart = start_date
-        wend = max(end_date, date.today() + timedelta(days=7))
-        rows, freshness = weather.fetch_weather(start_date=wstart, end_date=wend)
+        # REVIEW C-12: respect the caller's window strictly. The earlier
+        # `wend = max(end_date, today + 7d)` silently extended EVERY backfill
+        # to today+7, turning a 2-day historical backfill into a 10-month
+        # fetch (risk: 15-min GHA timeout). Forecast extension is now the
+        # responsibility of __main__'s no-arg default (see below).
+        rows, freshness = weather.fetch_weather(start_date=start_date, end_date=end_date)
         n = weather.upsert(client, rows)
         pipeline_runs_writer.write_success(
             client, step_name='external_weather', started_at=started,
@@ -190,8 +192,14 @@ def main(*, start_date: date, end_date: date) -> int:
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Phase 13 external-data orchestrator')
     parser.add_argument('--start-date', help='YYYY-MM-DD; defaults to yesterday', default=None)
-    parser.add_argument('--end-date',   help='YYYY-MM-DD; defaults to today',     default=None)
+    parser.add_argument('--end-date',
+                        help='YYYY-MM-DD; defaults to today + 7 (covers nightly forecast horizon). '
+                             'Backfills should pass an explicit historical date here.',
+                        default=None)
     args = parser.parse_args()
     sd = date.fromisoformat(args.start_date) if args.start_date else date.today() - timedelta(days=1)
-    ed = date.fromisoformat(args.end_date)   if args.end_date   else date.today()
+    # REVIEW C-12: nightly default extends end_date by +7 days so weather fetches
+    # the forecast horizon without _run_weather having to silently override the
+    # caller's window. Explicit --end-date is honoured strictly.
+    ed = date.fromisoformat(args.end_date)   if args.end_date   else date.today() + timedelta(days=7)
     sys.exit(main(start_date=sd, end_date=ed))

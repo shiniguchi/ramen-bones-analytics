@@ -132,11 +132,20 @@ def fetch_weather(*, start_date: date, end_date: date) -> tuple[list[dict[str, A
         else:
             payload = _fetch_brightsky(chunk_start, chunk_end)
             rows.extend(normalize_brightsky(payload, LOCATION))
-    # Freshness: hours since latest date in returned rows.
-    if rows:
-        latest = max(r['date'] for r in rows)
+    # Freshness: hours since the latest PAST date in returned rows.
+    # REVIEW C-13: a forecast response includes future dates; computing freshness
+    # against MAX(all dates) yields a NEGATIVE number, which Phase 15's stale-data
+    # badge would interpret as "ultra-fresh" (smaller = fresher), disguising a
+    # stale forecast feed. Clamp the comparison to dates <= today; if the
+    # response is pure-forecast (no past dates) treat as 0.0 (current).
+    today = datetime.now(timezone.utc).date()
+    past_dates = [r['date'] for r in rows if r['date'] <= today]
+    if past_dates:
+        latest = max(past_dates)
         latest_dt = datetime(latest.year, latest.month, latest.day, tzinfo=timezone.utc)
-        freshness_h = (datetime.now(timezone.utc) - latest_dt).total_seconds() / 3600.0
+        freshness_h = max(0.0, (datetime.now(timezone.utc) - latest_dt).total_seconds() / 3600.0)
+    elif rows:
+        freshness_h = 0.0
     else:
         freshness_h = None
     return rows, freshness_h
