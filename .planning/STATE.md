@@ -4,7 +4,7 @@ milestone: v1.3
 milestone_name: External Data & Forecasting Foundation
 status: "Phase 13 context gathered — ready for /gsd-plan-phase 13"
 stopped_at: Phase 13 (External Data Ingestion) context gathered 2026-04-28. 13-CONTEXT.md commits 14 implementation decisions (D-01..D-14) + 5 carry-forwards from Phase 12 (C-01..C-05). 8 gray areas auto-resolved per "follow recs first" preference: G-01 one-migration-per-table (0041-0047), G-02 single workflow w/ workflow_dispatch start_date input, G-03 one-file-per-source under scripts/external/ + run_all.py, G-04 per-source try/except + fallback row (locked by ROADMAP SC #5), G-05 config/shop_hours.yaml + Python loader, G-06 hand-rolled fixtures + monkeypatch httpx, G-07 ship ~15 hand-curated Berlin events, G-08 KEYWORDS module constant. BVG RSS URL todo folded into D-13 plan-phase verification. 12-PROPOSAL.md §7 schema sketches drive 7 migrations after restaurant_id rename (Phase 12 D-03). Commit 31b5c99.
-last_updated: "2026-04-28T20:00:00Z"
+last_updated: "2026-04-29T00:00:00Z"
 progress:
   total_phases: 17
   completed_phases: 11
@@ -15,12 +15,12 @@ progress:
 
 # STATE: Ramen Bones Analytics
 
-**Last updated:** 2026-04-28
+**Last updated:** 2026-04-29
 
 ## Project Reference
 
 - **Core Value:** A restaurant owner opens the site on their phone and makes a real business decision from the numbers they see.
-- **Current Focus:** Phase 12 — Foundation: Decisions & Guards (v1.3 kickoff)
+- **Current Focus:** Phase 13 — External Data Ingestion (context gathered, ready for `/gsd-plan-phase 13`)
 - **Timeline:** Slow and deliberate — understand data first, ship one layer at a time
 - **Granularity:** standard
 - **Tenants in v1:** 1 (architecture multi-tenant-ready)
@@ -28,12 +28,12 @@ progress:
 ## Current Position
 
 Milestone: v1.3 (External Data & Forecasting Foundation)
-Phase: 12 (Foundation — Decisions & Guards) — Shipped via PR #15
+Phase: 13 (External Data Ingestion) — Context gathered, ready for `/gsd-plan-phase 13`
 Plan: —
 
-- **Status:** Phase 12 shipped via [PR #15](https://github.com/shiniguchi/ramen-bones-analytics/pull/15). Awaiting CI green + merge. FND-09/10/11 closed.
-- **Progress:** [███████░░░] 71% (12/17 phases shipped on merge; v1.0+v1.1+v1.2 done)
-- **Last activity:** 2026-04-28 — Phase 12 ship: 16 commits, 10 files, +1023/-1; UAT 6/6 pass; /qa-gate clean; PR #15 open
+- **Status:** Phase 12 shipped via [PR #15](https://github.com/shiniguchi/ramen-bones-analytics/pull/15) (merged commit `2ff6ca0`); FND-09/10/11 closed. Phase 13 CONTEXT + DESIGN committed (`31b5c99`, `ba02e3a`, `28dacac`); founder overrode office-hours defer recommendation and chose to build Phase 13 as scoped per `13-CONTEXT.md`.
+- **Progress:** [████████░░] 71% (12/17 phases shipped; v1.0+v1.1+v1.2 done; Phase 12 merged)
+- **Last activity:** 2026-04-29 — Phase 13 context + design locked, AiLine canonical 19-row workflow adopted (`docs/workflow.md`), GStack pinned at SHA `36b99e5…` (`.claude/PLUGINS.md`)
 - **v1.2 closed:** 11 phases, 60 plans, 100% — Phase 11 SSR fix landed 2026-04-21
 - **v1.0 status:** Shipped to friend (97% plans complete; repo flipped PUBLIC 2026-04-15 with topics + description set; Plan 05-06 Task 2 fork walkthrough deferred out of v1 scope)
 
