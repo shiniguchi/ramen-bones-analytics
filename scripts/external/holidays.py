@@ -1,9 +1,27 @@
 """Phase 13 EXT-02: holidays fetcher (python-holidays).
 
 Returns rows for federal DE + Berlin (BE) state for the requested years.
-BE-specific entries (e.g. Internationaler Frauentag) carry subdiv_code='BE';
-federal-only entries carry subdiv_code=NULL. If a date appears as BOTH
-federal and BE, BE wins (subdiv_code='BE') and the BE name is preferred.
+Each date appears exactly once. `subdiv_code` distinguishes:
+  - NULL  -> federal holiday observed nationally (Tag der Deutschen Einheit, etc.)
+  - 'BE'  -> Berlin-only holiday not observed federally (Internationaler
+             Frauentag, March 8, since 2019)
+
+REVIEW C-11: prior implementation had two bugs.
+  1. It seeded by federal first, then iterated BE entries and overwrote with
+     `subdiv_code='BE'` on any name mismatch. But pyholidays returns localized
+     names that may differ between Germany() and Germany(subdiv='BE') for
+     the SAME federal date — flipping a national holiday's `subdiv_code` to
+     'BE' incorrectly. Downstream filters on `subdiv_code IS NULL` for
+     "federal" would have missed those rows.
+  2. When names matched, it kept federal-seed-with-NULL but the loop variable
+     was unused — a comment claimed "BE wins" which was the opposite of what
+     the code actually did when names matched.
+
+NEW APPROACH: Germany(subdiv='BE') is a SUPERSET that includes both federal
+and BE-only dates with their (BE-locale) names. We iterate that ONCE, then
+look up each date in Germany() (federal-only) to decide the subdiv_code.
+Federal name wins when the date is federal — consistent string match
+downstream regardless of BE locale variation.
 """
 from __future__ import annotations
 from datetime import date, datetime, timezone
@@ -12,30 +30,29 @@ import holidays as pyholidays
 
 
 def fetch_holidays(*, years: list[int]) -> list[dict[str, Any]]:
-    de_federal = pyholidays.Germany(years=years)        # federal
-    de_berlin  = pyholidays.Germany(subdiv='BE', years=years)  # BE-specific
+    de_federal = pyholidays.Germany(years=years)
+    de_berlin  = pyholidays.Germany(subdiv='BE', years=years)  # superset
 
-    by_date: dict[date, dict[str, Any]] = {}
-    # Seed with federal first.
-    for d, name in de_federal.items():
-        by_date[d] = {
-            'date': d,
-            'name': name,
-            'country_code': 'DE',
-            'subdiv_code': None,
-        }
-    # BE wins on overlap; introduces Frauentag etc.
-    for d, name in de_berlin.items():
-        # If federal already had this date, replace only when name differs (BE-only marker).
-        prior = by_date.get(d)
-        if prior is None or prior['name'] != name:
-            by_date[d] = {
+    rows: list[dict[str, Any]] = []
+    for d, be_name in de_berlin.items():
+        if d in de_federal:
+            # Federal holiday — observed nationwide, also lands in BE results.
+            # Use the federal name for downstream string-match consistency.
+            rows.append({
                 'date': d,
-                'name': name,
+                'name': de_federal[d],
+                'country_code': 'DE',
+                'subdiv_code': None,
+            })
+        else:
+            # BE-only (Frauentag etc.) — keep the BE-localized name.
+            rows.append({
+                'date': d,
+                'name': be_name,
                 'country_code': 'DE',
                 'subdiv_code': 'BE',
-            }
-    return list(by_date.values())
+            })
+    return rows
 
 
 def upsert(client, rows: list[dict[str, Any]]) -> int:

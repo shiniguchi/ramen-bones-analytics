@@ -1,9 +1,13 @@
 -- 0042_holidays.sql
 -- Phase 13 EXT-02: federal + Berlin (BE) state holidays incl. Frauentag.
 -- Source: python-holidays (bundled, no API key). Re-runs are idempotent
--- via ON CONFLICT (date) DO UPDATE — federal + BE rows MUST collapse to
--- one logical row per date; if a date is both federal and BE-only, BE
--- wins (subdiv_code='BE') and `name` carries both.
+-- via ON CONFLICT (date) DO UPDATE — each date collapses to one logical row.
+-- subdiv_code = NULL  -> federal holiday observed nationally
+--              = 'BE' -> Berlin-only (e.g. Internationaler Frauentag, Mar 8)
+-- (REVIEW C-11: prior comment said "BE wins on overlap" — the correct rule
+-- is FEDERAL wins on overlap so downstream string filters on the federal
+-- name stay consistent regardless of BE locale variation. See
+-- scripts/external/holidays.py for the rationale.)
 --
 -- Hybrid-RLS pattern (CONTEXT.md C-05): SELECT for everyone, writes
 -- service-role only. service_role bypasses RLS at the role level
