@@ -50,6 +50,12 @@ begin
   end if;
 end$$;
 
+-- REVIEW C-8: status='success' (was 'warning', which is NOT in the
+-- {success, fallback, failure} taxonomy used by pipeline_runs_writer.py
+-- and consumed by Phase 15 freshness queries — a literal 'warning'
+-- string would silently fall through enum match logic). The maintainer
+-- prompt now lives in error_msg, where Phase 15's reminder UI can read
+-- it without breaking the status enum contract.
 select cron.schedule(
   'recurring-events-yearly-reminder',
   '0 9 15 9 *',
@@ -58,9 +64,9 @@ select cron.schedule(
        'recurring_events_reminder',
        now(),
        now(),
-       'warning',
+       'success',
        0,
-       'Add recurring_events for ' || (extract(year from now()) + 1)::text || ' to config/recurring_events.yaml and run external-data-refresh.yml backfill'
+       'REMINDER: add recurring_events for ' || (extract(year from now()) + 1)::text || ' to config/recurring_events.yaml and run external-data-refresh.yml backfill'
      ); $$
 );
 
