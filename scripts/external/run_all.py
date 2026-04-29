@@ -26,7 +26,7 @@ from typing import Any
 
 from . import db, pipeline_runs_writer
 from . import weather, holidays, school, transit, events, shop_calendar
-from .weather import UpstreamUnavailableError as WeatherUnavailable
+from .weather import UpstreamUnavailableError as WeatherUnavailable, PartialUpstreamError as WeatherPartial
 from .school  import UpstreamUnavailableError as SchoolUnavailable
 from .transit import UpstreamUnavailableError as TransitUnavailable
 
@@ -57,6 +57,17 @@ def _run_weather(client, start_date: date, end_date: date) -> str:
             row_count=n, upstream_freshness_h=freshness,
         )
         return 'success'
+    except WeatherPartial as e:
+        # REVIEW C-14: chunk N failed but chunks 1..N-1 succeeded. Flush the
+        # partial data + record a 'fallback' row noting how much was retained.
+        # PartialUpstreamError MUST be caught BEFORE the parent
+        # FALLBACK_EXCEPTIONS tuple (it's a subclass of WeatherUnavailable).
+        n = weather.upsert(client, e.rows)
+        pipeline_runs_writer.write_fallback(
+            client, step_name='external_weather', started_at=started,
+            row_count=n, upstream_freshness_h=e.freshness_h, error_msg=str(e),
+        )
+        return 'fallback'
     except FALLBACK_EXCEPTIONS as e:
         pipeline_runs_writer.write_fallback(
             client, step_name='external_weather', started_at=started, error_msg=str(e),

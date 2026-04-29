@@ -33,6 +33,21 @@ class UpstreamUnavailableError(Exception):
     run_all.py catches this and writes a 'fallback' row to pipeline_runs."""
 
 
+class PartialUpstreamError(UpstreamUnavailableError):
+    """Raised when at least one chunk succeeded but a LATER chunk failed.
+
+    REVIEW C-14: prior fetch_weather threw away every row already collected
+    on chunk-N failure (one transient 502 on chunk 7 of 12 lost the first 6
+    chunks of work). This exception carries the partial rows + freshness so
+    run_all._run_weather can still upsert them and record a 'fallback' row
+    that reflects the partial-data reality instead of a clean 'failure'.
+    """
+    def __init__(self, message: str, rows: list[dict[str, Any]], freshness_h: float | None):
+        super().__init__(message)
+        self.rows = rows
+        self.freshness_h = freshness_h
+
+
 def _chunks(start: date, end: date, n: int) -> list[tuple[date, date]]:
     out = []
     cur = start
@@ -123,6 +138,25 @@ def _fetch_open_meteo(start: date, end: date) -> dict[str, Any]:
     return r.json()
 
 
+def _freshness_h(rows: list[dict[str, Any]]) -> float | None:
+    """Hours since the latest PAST date in `rows`.
+
+    REVIEW C-13: forecast responses include future dates; computing
+    freshness against MAX(all dates) yields a negative number which the
+    Phase 15 stale-data badge would mis-read as "ultra-fresh". Clamp to
+    dates <= today; pure-forecast responses report 0.0; empty -> None.
+    """
+    today = datetime.now(timezone.utc).date()
+    past_dates = [r['date'] for r in rows if r['date'] <= today]
+    if past_dates:
+        latest = max(past_dates)
+        latest_dt = datetime(latest.year, latest.month, latest.day, tzinfo=timezone.utc)
+        return max(0.0, (datetime.now(timezone.utc) - latest_dt).total_seconds() / 3600.0)
+    if rows:
+        return 0.0
+    return None
+
+
 def fetch_weather(*, start_date: date, end_date: date) -> tuple[list[dict[str, Any]], float | None]:
     """Fetch weather observations + forecast for [start_date, end_date].
 
@@ -130,33 +164,31 @@ def fetch_weather(*, start_date: date, end_date: date) -> tuple[list[dict[str, A
     429/503/ConnectError/ReadTimeout up to 3 attempts (exponential backoff).
     Non-retriable 5xx (500/502/504) still propagate to the UpstreamUnavailableError
     branch so a hard outage routes to a 'fallback' pipeline_runs row.
+
+    REVIEW C-14: when a chunk fails AFTER prior chunks succeeded, raise
+    PartialUpstreamError carrying the already-fetched rows + computed
+    freshness. run_all._run_weather catches this and still upserts the
+    partial data, then records a 'fallback' row. Old behavior threw 12+
+    chunks of work away on a single transient 502.
     """
     provider = os.environ.get('WEATHER_PROVIDER', 'brightsky').strip().lower()
     rows: list[dict[str, Any]] = []
     for chunk_start, chunk_end in _chunks(start_date, end_date, CHUNK_DAYS):
-        if provider == 'open-meteo':
-            payload = _fetch_open_meteo(chunk_start, chunk_end)
-            rows.extend(normalize_open_meteo(payload, LOCATION))
-        else:
-            payload = _fetch_brightsky(chunk_start, chunk_end)
-            rows.extend(normalize_brightsky(payload, LOCATION))
-    # Freshness: hours since the latest PAST date in returned rows.
-    # REVIEW C-13: a forecast response includes future dates; computing freshness
-    # against MAX(all dates) yields a NEGATIVE number, which Phase 15's stale-data
-    # badge would interpret as "ultra-fresh" (smaller = fresher), disguising a
-    # stale forecast feed. Clamp the comparison to dates <= today; if the
-    # response is pure-forecast (no past dates) treat as 0.0 (current).
-    today = datetime.now(timezone.utc).date()
-    past_dates = [r['date'] for r in rows if r['date'] <= today]
-    if past_dates:
-        latest = max(past_dates)
-        latest_dt = datetime(latest.year, latest.month, latest.day, tzinfo=timezone.utc)
-        freshness_h = max(0.0, (datetime.now(timezone.utc) - latest_dt).total_seconds() / 3600.0)
-    elif rows:
-        freshness_h = 0.0
-    else:
-        freshness_h = None
-    return rows, freshness_h
+        try:
+            if provider == 'open-meteo':
+                payload = _fetch_open_meteo(chunk_start, chunk_end)
+                rows.extend(normalize_open_meteo(payload, LOCATION))
+            else:
+                payload = _fetch_brightsky(chunk_start, chunk_end)
+                rows.extend(normalize_brightsky(payload, LOCATION))
+        except UpstreamUnavailableError as e:
+            if rows:
+                raise PartialUpstreamError(
+                    f'{e} (after {len(rows)} successful rows)',
+                    rows, _freshness_h(rows),
+                ) from e
+            raise  # nothing fetched yet — full failure as before
+    return rows, _freshness_h(rows)
 
 
 def upsert(client, rows: list[dict[str, Any]]) -> int:

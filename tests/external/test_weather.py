@@ -89,3 +89,55 @@ def test_fetch_weather_chunks_30_days(monkeypatch):
     monkeypatch.setattr(httpx, 'get', _logging_get)
     fetch_weather(start_date=date(2026, 1, 1), end_date=date(2026, 2, 14))  # 45 days
     assert len(call_log) >= 2
+
+
+def test_fetch_weather_partial_chunk_failure_preserves_earlier_rows(monkeypatch):
+    """REVIEW C-14: when chunk N fails AFTER chunk 1..N-1 succeeded, the
+    fetcher must raise PartialUpstreamError carrying the already-fetched
+    rows, NOT throw them away. run_all then upserts the partial data and
+    writes a 'fallback' row reflecting the partial-data reality.
+    """
+    from scripts.external.weather import PartialUpstreamError, UpstreamUnavailableError
+    payload = json.loads((FIX / 'weather_brightsky_3day.json').read_text())
+    monkeypatch.setenv('WEATHER_PROVIDER', 'brightsky')
+
+    call_count = {'n': 0}
+    def _flaky_get(url, params=None, **kwargs):
+        call_count['n'] += 1
+        req = httpx.Request('GET', url)
+        # First chunk: succeed. Second chunk: fail with 502.
+        if call_count['n'] == 1:
+            return httpx.Response(200, json=payload, request=req)
+        return httpx.Response(502, json={'error': 'Bad Gateway'}, request=req)
+    monkeypatch.setattr(httpx, 'get', _flaky_get)
+
+    # 45 days = 2 chunks. Chunk 1 returns 3 rows from fixture; chunk 2 502s.
+    with pytest.raises(PartialUpstreamError) as excinfo:
+        fetch_weather(start_date=date(2026, 1, 1), end_date=date(2026, 2, 14))
+
+    err = excinfo.value
+    assert isinstance(err, UpstreamUnavailableError)  # subclass — existing FALLBACK_EXCEPTIONS still catches it
+    assert len(err.rows) == 3, f'expected first-chunk rows preserved, got {len(err.rows)}'
+    # Freshness was computed against whatever historical dates the fixture has.
+    # (The 2026-04-29 fixture dates are far in the future relative to fixture content,
+    # but the helper handles that — we just assert it's a number or None, not crashed.)
+    assert err.freshness_h is None or isinstance(err.freshness_h, float)
+
+
+def test_fetch_weather_first_chunk_failure_raises_plain_upstream_unavailable(monkeypatch):
+    """REVIEW C-14 boundary: when the VERY FIRST chunk fails (no rows yet),
+    fetch_weather raises plain UpstreamUnavailableError — NOT PartialUpstreamError.
+    Caller treats it as full failure (no partial-data to flush).
+    """
+    from scripts.external.weather import PartialUpstreamError, UpstreamUnavailableError
+    monkeypatch.setenv('WEATHER_PROVIDER', 'brightsky')
+
+    def _bad(url, **kwargs):
+        req = httpx.Request('GET', url)
+        return httpx.Response(502, json={'error': 'Bad Gateway'}, request=req)
+    monkeypatch.setattr(httpx, 'get', _bad)
+
+    with pytest.raises(UpstreamUnavailableError) as excinfo:
+        fetch_weather(start_date=date(2026, 1, 1), end_date=date(2026, 2, 14))
+    assert not isinstance(excinfo.value, PartialUpstreamError), \
+        'first-chunk failure must raise plain UpstreamUnavailableError, not PartialUpstreamError'
