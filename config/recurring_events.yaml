@@ -1,0 +1,134 @@
+# config/recurring_events.yaml
+# Phase 13 EXT-05: hand-curated Berlin events. Annual rollover reminded
+# by pg_cron 'recurring-events-yearly-reminder' on Sep 15 each year.
+# Categories: festival | sports | market | holiday | other
+# Impact:     high | medium | low
+
+# --- 2026 ---
+- event_id: karneval-der-kulturen-2026
+  name: "Karneval der Kulturen 2026"
+  category: festival
+  start_date: "2026-05-22"
+  end_date:   "2026-05-25"
+  impact_estimate: high
+  notes: "Pfingsten parade; Kreuzberg/Neukölln traffic disrupted."
+  source: "https://www.berlin.de/karneval-der-kulturen/"
+
+- event_id: dfb-pokal-finale-2026
+  name: "DFB-Pokal-Finale 2026"
+  category: sports
+  start_date: "2026-05-23"
+  end_date:   "2026-05-23"
+  impact_estimate: medium
+  notes: "Olympiastadion fixture; football fans across the city."
+  source: "https://www.dfb.de/dfb-pokal/"
+
+- event_id: csd-berlin-2026
+  name: "Christopher Street Day Berlin 2026"
+  category: festival
+  start_date: "2026-07-25"
+  end_date:   "2026-07-25"
+  impact_estimate: high
+  notes: "Late July CSD parade; major foot traffic mid-city."
+  source: "https://csd-berlin.de/"
+
+- event_id: lange-nacht-museen-aug-2026
+  name: "Lange Nacht der Museen 2026"
+  category: festival
+  start_date: "2026-08-29"
+  end_date:   "2026-08-29"
+  impact_estimate: medium
+  notes: "Citywide museum night."
+  source: "https://www.lange-nacht-der-museen.de/"
+
+- event_id: berlin-marathon-2026
+  name: "Berlin Marathon 2026"
+  category: sports
+  start_date: "2026-09-26"
+  end_date:   "2026-09-27"
+  impact_estimate: high
+  notes: "Major street closures; tens of thousands of runners + spectators."
+  source: "https://www.bmw-berlin-marathon.com/"
+
+- event_id: festival-of-lights-2026
+  name: "Festival of Lights 2026"
+  category: festival
+  start_date: "2026-10-09"
+  end_date:   "2026-10-18"
+  impact_estimate: medium
+  notes: "Mid-October illumination event; tourist surge."
+  source: "https://festival-of-lights.de/"
+
+- event_id: weihnachtsmarkt-2026
+  name: "Berlin Weihnachtsmärkte 2026"
+  category: market
+  start_date: "2026-11-23"
+  end_date:   "2026-12-23"
+  impact_estimate: high
+  notes: "Christmas markets across the city; ~1 month window."
+  source: "https://www.berlin.de/weihnachten/weihnachtsmaerkte/"
+
+- event_id: silvester-2026
+  name: "Silvester / New Year's Eve 2026"
+  category: holiday
+  start_date: "2026-12-31"
+  end_date:   "2026-12-31"
+  impact_estimate: high
+  notes: "Brandenburg Gate party; fireworks; high foot traffic."
+  source: "https://silvester-am-brandenburger-tor.de/"
+
+# --- 2027 ---
+- event_id: karneval-der-kulturen-2027
+  name: "Karneval der Kulturen 2027"
+  category: festival
+  start_date: "2027-05-14"
+  end_date:   "2027-05-17"
+  impact_estimate: high
+  notes: "Pfingsten parade (Pentecost 2027 falls May 16)."
+  source: "https://www.berlin.de/karneval-der-kulturen/"
+
+- event_id: csd-berlin-2027
+  name: "Christopher Street Day Berlin 2027"
+  category: festival
+  start_date: "2027-07-24"
+  end_date:   "2027-07-24"
+  impact_estimate: high
+  notes: "Late July CSD parade."
+  source: "https://csd-berlin.de/"
+
+- event_id: berlin-marathon-2027
+  name: "Berlin Marathon 2027"
+  category: sports
+  start_date: "2027-09-25"
+  end_date:   "2027-09-26"
+  impact_estimate: high
+  notes: "Annual; date pattern is last full Sept weekend."
+  source: "https://www.bmw-berlin-marathon.com/"
+
+- event_id: festival-of-lights-2027
+  name: "Festival of Lights 2027"
+  category: festival
+  start_date: "2027-10-08"
+  end_date:   "2027-10-17"
+  impact_estimate: medium
+  source: "https://festival-of-lights.de/"
+
+- event_id: weihnachtsmarkt-2027
+  name: "Berlin Weihnachtsmärkte 2027"
+  category: market
+  start_date: "2027-11-22"
+  end_date:   "2027-12-23"
+  impact_estimate: high
+  source: "https://www.berlin.de/weihnachten/weihnachtsmaerkte/"
+
+- event_id: silvester-2027
+  name: "Silvester / New Year's Eve 2027"
+  category: holiday
+  start_date: "2027-12-31"
+  end_date:   "2027-12-31"
+  impact_estimate: high
+  source: "https://silvester-am-brandenburger-tor.de/"
+
+# NOTE: 2027 dates for festivals/sports are PROVISIONAL (annual events
+# without confirmed schedules yet). Re-verify and adjust during 2027
+# annual-rollover review (pg_cron reminder Sep 15 2026).
