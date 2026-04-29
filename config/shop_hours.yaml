@@ -18,7 +18,7 @@
 # day except Sunday closed). Confirm with the friend before merging — these
 # values feed Phase 14's NaN-mask for closed days.
 
-- restaurant_id: 00000000-0000-0000-0000-000000000001
+- restaurant_id: ba1bf707-aae9-46a9-8166-4b6459e6c2fd
   weekly_pattern:
     monday:    { is_open: true,  open_at: "12:00", close_at: "23:00" }
     tuesday:   { is_open: true,  open_at: "12:00", close_at: "23:00" }
