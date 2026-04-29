@@ -118,7 +118,7 @@ def _fetch_brightsky(start: date, end: date) -> dict[str, Any]:
     params = {'lat': LAT, 'lon': LON, 'date': start.isoformat(), 'last_date': end.isoformat()}
     r = _http.request_with_retry('GET', url, params=params)
     if r.status_code >= 500:
-        raise UpstreamUnavailableError(f'brightsky {r.status_code}: {r.text[:200]}')
+        raise UpstreamUnavailableError(f'brightsky {r.status_code}')
     r.raise_for_status()
     return r.json()
 
@@ -133,7 +133,7 @@ def _fetch_open_meteo(start: date, end: date) -> dict[str, Any]:
     }
     r = _http.request_with_retry('GET', url, params=params)
     if r.status_code >= 500:
-        raise UpstreamUnavailableError(f'open-meteo {r.status_code}: {r.text[:200]}')
+        raise UpstreamUnavailableError(f'open-meteo {r.status_code}')
     r.raise_for_status()
     return r.json()
 

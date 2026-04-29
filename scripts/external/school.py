@@ -30,7 +30,7 @@ def fetch_school(*, years: list[int]) -> list[dict[str, Any]]:
         url = URL_TEMPLATE.format(state=STATE, year=y)
         r = _http.request_with_retry('GET', url)
         if r.status_code >= 500:
-            raise UpstreamUnavailableError(f'ferien-api.de {r.status_code} for {y}: {r.text[:200]}')
+            raise UpstreamUnavailableError(f'ferien-api.de {r.status_code} for {y}')
         r.raise_for_status()
         for entry in r.json() or []:
             name = entry.get('name', '').strip()
