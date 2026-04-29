@@ -152,7 +152,11 @@ A free, forkable, mobile-first analytics web app that turns Orderbird POS transa
 <!-- GSD:conventions-start source:CONVENTIONS.md -->
 ## Conventions
 
-Conventions not yet established. Will populate as patterns emerge during development.
+- One SQL migration per logical unit (table, MV, or function group)
+- Python forecast scripts mirror `scripts/external/` layout: one file per model, shared utilities, orchestrator
+- `pipeline_runs` row per model fit for cascade freshness telemetry
+- Service-role Supabase client for batch writes; RLS-scoped wrapper views for reads
+- `restaurant_id` everywhere (CI Guard 7 enforces; never `tenant_id`)
 <!-- GSD:conventions-end -->
 
 <!-- GSD:architecture-start source:ARCHITECTURE.md -->
