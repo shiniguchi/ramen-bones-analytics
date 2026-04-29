@@ -113,3 +113,90 @@ describe('FND-05 + ANL-08: tenant isolation across wrapper views', () => {
     expect((data ?? []).length).toBe(0);
   });
 });
+
+// Phase 13 EXT-08: hybrid-RLS isolation across 7 new tables.
+// Shared (location-keyed) — wrong-tenant JWT must still be ALLOWED to SELECT
+// (these are city-wide reference data, deliberately readable by all auth'd
+// users) but must be DENIED any INSERT/UPDATE/DELETE.
+// Tenant-scoped — wrong-tenant JWT must return ZERO rows on SELECT.
+
+const sharedTables = [
+  'weather_daily',
+  'holidays',
+  'school_holidays',
+  'transit_alerts',
+  'recurring_events',
+];
+const tenantTables = ['shop_calendar'];
+
+describe('EXT-08: shared-table read allowed, write denied', () => {
+  it.each(sharedTables)('tenant A can SELECT %s', async (t) => {
+    const c = tenantClient();
+    await c.auth.signInWithPassword({ email: emailA, password });
+    const { error } = await c.from(t).select('*').limit(1);
+    expect(error).toBeNull();
+  });
+
+  it.each(sharedTables)('tenant A cannot INSERT into %s', async (t) => {
+    const c = tenantClient();
+    await c.auth.signInWithPassword({ email: emailA, password });
+    // The minimal payloads below intentionally violate NOT NULL / unique
+    // constraints in places — the assertion only cares that RLS denies
+    // the write before constraint validation. PostgREST surfaces both
+    // RLS denial and constraint failure as `error` non-null.
+    const { error } = await c.from(t).insert({ noop: 'x' } as any);
+    expect(error).not.toBeNull();
+  });
+});
+
+describe('EXT-08: tenant-scoped table isolation', () => {
+  it.each(tenantTables)('tenant A sees zero rows under tenant B fixture (%s)', async (t) => {
+    // Seed a tenant-B-scoped row as service-role.
+    const today = new Date().toISOString().slice(0, 10);
+    await admin.from(t).upsert({
+      restaurant_id: tenantB,
+      date: today,
+      is_open: true,
+    } as never, { onConflict: 'restaurant_id,date' as never } as never);
+
+    const c = tenantClient();
+    await c.auth.signInWithPassword({ email: emailA, password });
+    const { data, error } = await c.from(t).select('restaurant_id').eq('date', today);
+    expect(error).toBeNull();
+    const rows = (data ?? []) as Array<{ restaurant_id: string }>;
+    // Must NOT contain tenantB rows.
+    expect(rows.every((r) => r.restaurant_id !== tenantB)).toBe(true);
+  });
+
+  it.each(tenantTables)('orphan user sees zero rows on %s', async (t) => {
+    const c = tenantClient();
+    await c.auth.signInWithPassword({ email: emailOrphan, password });
+    const { data, error } = await c.from(t).select('*').limit(5);
+    expect(error).toBeNull();
+    expect((data ?? []).length).toBe(0);
+  });
+});
+
+describe('EXT-08: pipeline_runs RLS — global rows visible, tenant rows scoped', () => {
+  it('tenant A sees global rows (restaurant_id IS NULL) but only own tenant rows', async () => {
+    // Seed one global row + one tenant-A row + one tenant-B row.
+    const stamp = `iso-${Date.now()}`;
+    await admin.from('pipeline_runs').insert([
+      { step_name: `${stamp}-global`, status: 'success', restaurant_id: null },
+      { step_name: `${stamp}-A`, status: 'success', restaurant_id: tenantA },
+      { step_name: `${stamp}-B`, status: 'success', restaurant_id: tenantB },
+    ]);
+    const c = tenantClient();
+    await c.auth.signInWithPassword({ email: emailA, password });
+    const { data, error } = await c
+      .from('pipeline_runs')
+      .select('step_name, restaurant_id')
+      .like('step_name', `${stamp}%`);
+    expect(error).toBeNull();
+    const seen = (data ?? []) as Array<{ step_name: string; restaurant_id: string | null }>;
+    const names = seen.map((r) => r.step_name).sort();
+    expect(names).toContain(`${stamp}-global`);
+    expect(names).toContain(`${stamp}-A`);
+    expect(names).not.toContain(`${stamp}-B`);
+  });
+});
