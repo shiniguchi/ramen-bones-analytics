@@ -157,3 +157,29 @@ describe('Phase 13 schema: recurring_events', () => {
     expect(rows[0].schedule).toMatch(/15\s+9/);
   });
 });
+
+describe('Phase 13 schema: pipeline_runs extension', () => {
+  it('upstream_freshness_h and restaurant_id columns exist after ALTER', async () => {
+    const { data, error } = await admin.rpc('test_table_columns', { p_table_name: 'pipeline_runs' });
+    expect(error).toBeNull();
+    const names = (data ?? []).map((c: any) => c.column_name);
+    expect(names).toContain('upstream_freshness_h');
+    expect(names).toContain('restaurant_id');
+    // Skeleton columns must still be present (we only ADDed, never DROPed).
+    expect(names).toContain('run_id');
+    expect(names).toContain('step_name');
+    expect(names).toContain('started_at');
+    expect(names).toContain('finished_at');
+    expect(names).toContain('status');
+    expect(names).toContain('row_count');
+    expect(names).toContain('error_msg');
+    expect(names).toContain('commit_sha');
+  });
+
+  it('RLS policy pipeline_runs_read exists with global+tenant rule', async () => {
+    const { data, error } = await admin.rpc('test_table_policies', { p_table_name: 'pipeline_runs' });
+    expect(error).toBeNull();
+    const policies = (data ?? []).map((p: any) => p.policyname);
+    expect(policies).toContain('pipeline_runs_read');
+  });
+});
