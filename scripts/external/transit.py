@@ -28,12 +28,55 @@ schema change.
 """
 from __future__ import annotations
 import hashlib
+import html
+import re
 from datetime import datetime, timezone
 from typing import Any
 import httpx
 import feedparser
 
 from . import _http
+
+# REVIEW MS-3: stored XSS defense. BVG RSS is attacker-controllable in the
+# limited sense that anyone with access to publish the feed (or to spoof DNS)
+# can inject HTML/JS payloads into title/description. Strip tags + decode
+# entities at INGEST so the raw DB row is plain text.
+_HTML_TAG_RE = re.compile(r'<[^>]+>')
+
+TITLE_MAX = 500
+DESCRIPTION_MAX = 1000
+
+
+def _strip_html(text: str | None, max_len: int | None = None) -> str | None:
+    """Remove HTML tags + decode entities + collapse whitespace.
+
+    Conservative: drops *anything* that looks like a tag (regex, not a
+    parser). Acceptable for short-form RSS title/description; would be
+    wrong for rich content. Returns None for empty/whitespace-only input.
+    """
+    if not text:
+        return None
+    cleaned = _HTML_TAG_RE.sub('', text)
+    cleaned = html.unescape(cleaned)
+    cleaned = ' '.join(cleaned.split())
+    if not cleaned:
+        return None
+    if max_len and len(cleaned) > max_len:
+        cleaned = cleaned[:max_len]
+    return cleaned
+
+
+def _safe_url(url: str | None) -> str:
+    """Allowlist http(s):// only. Anything else (javascript:, data:, file:)
+    becomes empty string — Phase 15 renderer should treat empty as 'no link'.
+    REVIEW MS-3: prevents javascript:/data: URI XSS via the source_url field.
+    """
+    if not url:
+        return ''
+    s = url.strip()
+    if s.startswith('http://') or s.startswith('https://'):
+        return s
+    return ''
 
 URLS = [
     'https://www.bvg.de/de/verbindungen/stoerungsmeldungen.xml',  # primary  — STALE 2026-04-29 (200 text/html, not RSS)
@@ -75,6 +118,16 @@ def fetch_transit() -> list[dict[str, Any]]:
 
     REVIEW C-21: each per-URL request retries on transient
     429/503/ConnectError/ReadTimeout via _http.request_with_retry.
+
+    REVIEW C-10: detects feedparser silent-fail on HTML responses (the
+    documented BVG-stale-URL case where the endpoint returns 200 + landing
+    page HTML instead of RSS). feedparser.parse() does NOT raise on HTML —
+    it returns version='', entries=[]. We treat that as upstream-unavailable.
+
+    REVIEW MS-3: title / description / source_url are sanitized at ingest
+    (strip HTML, html.unescape, scheme-allowlist URLs) so a compromised feed
+    can't plant stored XSS or javascript: URIs that would later detonate in
+    the Phase 15 dashboard renderer.
     """
     body = None
     last_err: Exception | None = None
@@ -89,12 +142,34 @@ def fetch_transit() -> list[dict[str, Any]]:
         raise UpstreamUnavailableError(f'All BVG URLs failed; last={last_err}')
 
     feed = feedparser.parse(body)
+    # C-10: feedparser silent-fail detection. Empty version = format not
+    # recognized (HTML, plain text, gibberish). Refuse to write 'success'
+    # rows from a non-feed response.
+    if not feed.version:
+        bozo_reason = ''
+        if getattr(feed, 'bozo', False):
+            exc = getattr(feed, 'bozo_exception', None)
+            bozo_reason = f' bozo={type(exc).__name__ if exc else "True"}'
+        raise UpstreamUnavailableError(
+            f'feedparser could not identify feed format (received {len(body)}B body, '
+            f'likely HTML landing page or plain text){bozo_reason}'
+        )
+
     rows: list[dict[str, Any]] = []
     for entry in feed.entries:
-        title = entry.get('title', '') or ''
-        desc  = entry.get('description', '') or ''
-        link  = entry.get('link', '') or ''
-        haystack = f'{title} {desc}'
+        raw_title = entry.get('title', '') or ''
+        raw_desc  = entry.get('description', '') or ''
+        raw_link  = entry.get('link', '') or ''
+        # MS-3 sanitization happens BEFORE keyword matching so we don't
+        # silently drop a Streik whose title is wrapped in stray markup.
+        title = _strip_html(raw_title, max_len=TITLE_MAX)
+        desc  = _strip_html(raw_desc,  max_len=DESCRIPTION_MAX)
+        link  = _safe_url(raw_link)
+        # If sanitization stripped the title to nothing, the row is unusable —
+        # skip rather than insert an empty-title row.
+        if not title:
+            continue
+        haystack = f'{title} {desc or ""}'
         matched = _match_keyword(haystack)
         if matched is None:
             continue
@@ -109,7 +184,7 @@ def fetch_transit() -> list[dict[str, Any]]:
             'title':           title,
             'pub_date':        pub_dt,
             'matched_keyword': matched,
-            'description':     desc[:1000] if desc else None,
+            'description':     desc,
             'source_url':      link,
         })
     return rows
