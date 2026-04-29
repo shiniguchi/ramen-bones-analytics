@@ -32,3 +32,17 @@ jobs:
         run: supabase db push --password ${{ secrets.TEST_SUPABASE_DB_PASSWORD }} --include-all --yes
       - name: Run Vitest
         run: npx vitest run --reporter=dot
+
+  pytest-external:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: scripts/external/requirements.txt
+      - name: Install deps
+        run: pip install -r scripts/external/requirements.txt
+      - name: Run pytest
+        run: PYTHONPATH=. pytest tests/external/ -v
