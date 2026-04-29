@@ -16,6 +16,7 @@ playwright-report/
 # symlinks created by `./setup --prefix`. Per-machine; teammates run setup after clone.
 .claude/skills/gstack
 .claude/skills/gstack-*
+.gstack/
 .worktrees/
 __pycache__/
 .pytest_cache/

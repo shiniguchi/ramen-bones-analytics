@@ -6,7 +6,7 @@ source:
   - docs/superpowers/plans/2026-04-29-phase-13-external-data-ingestion.md
   - 13-REVIEW.md (post-review fixes)
 started: 2026-04-29T00:00:00Z
-updated: 2026-04-29T00:00:00Z
+updated: 2026-04-30T10:00:00Z
 verified_by: claude-auto (code inspection + pytest from worktree)
 ---
 
@@ -59,7 +59,7 @@ note: `_strip_html`, `_safe_url` (allowlists http/https only), `URLS` ranked lis
 ### 9. Recurring Events YAML: 14+ Events + Duplicate Guard
 expected: `config/recurring_events.yaml` contains ≥14 hand-curated Berlin events for 2026/2027. `scripts/external/events.py` loads via PyYAML and asserts unique `event_id` (raises on duplicates). Migration 0045 includes pg_cron annual-refresh reminder for Sep 15.
 result: pass
-note: Fixed in commit 9fc2535 — events.py now asserts unique event_id at load time per REVIEW C-16.
+note: Fixed in commit 9fc2535 — events.py:37-40 has duplicate guard (`raise ValueError` on dupes). Test `test_load_production_yaml_has_unique_event_ids` covers it.
 
 ### 10. Shop Calendar: 365-Day Forward + Weekly Pattern + Overrides
 expected: `config/shop_hours.yaml` defines friend-restaurant weekly pattern (open/close times per day-of-week) + override dates. `scripts/external/shop_calendar.py` generates 365 days forward. Overrides win over weekly pattern. `is_open=false` for closed days.

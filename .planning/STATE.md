@@ -4,7 +4,7 @@ milestone: v1.3
 milestone_name: External Data & Forecasting Foundation
 status: "Phase 13 shipped — PR #17"
 stopped_at: Phase 13 (External Data Ingestion) shipped 2026-04-29 via PR #17. 41 commits, 52 files, +6892 lines. UAT 15/15 pass. Code review 25 findings all addressed. EXT-01..EXT-09 complete. 74 pytest + 43 vitest new tests.
-last_updated: "2026-04-29T13:30:00Z"
+last_updated: "2026-04-30T00:00:00Z"
 progress:
   total_phases: 17
   completed_phases: 12
@@ -33,7 +33,7 @@ Plan: —
 
 - **Status:** Phase 13 shipped via [PR #17](https://github.com/shiniguchi/ramen-bones-analytics/pull/17). 41 commits, 52 files, +6892 lines. UAT 15/15, review 25/25 addressed. EXT-01..EXT-09 complete.
 - **Progress:** [███████░░░] 71% (13/17 phases shipped on merge; v1.0+v1.1+v1.2 done)
-- **Last activity:** 2026-04-29 — Phase 13 ship: 41 commits, 52 files, +6892; UAT 15/15; review clean; PR #17 open
+- **Last activity:** 2026-04-30 — Phase 13 PR #17 merge conflicts resolved, ready for merge
 - **v1.2 closed:** 11 phases, 60 plans, 100% — Phase 11 SSR fix landed 2026-04-21
 - **v1.0 status:** Shipped to friend (97% plans complete; repo flipped PUBLIC 2026-04-15 with topics + description set; Plan 05-06 Task 2 fork walkthrough deferred out of v1 scope)
 
@@ -248,7 +248,7 @@ Plan: —
 
 ## Session Continuity
 
-**Next command:** `/gsd-plan-phase 13` to break Phase 13 into executable plans. Expected breakdown: ~5-6 plans covering (1) seven migrations 0041-0047 (one per table; weather/holidays/school/transit/events + pipeline_runs ALTER + shop_calendar), (2) `scripts/external/` Python orchestrator (one file per source + run_all.py + pipeline_runs_writer + db.py), (3) `external-data-refresh.yml` GHA workflow (cron 0 0 * * * UTC + workflow_dispatch start_date input), (4) `config/recurring_events.yaml` + `config/shop_hours.yaml` starter content, (5) test fixtures + extended tenant-isolation test (7 new cases), (6) backfill execution from 2025-06-11 + DEV verification. 13-CONTEXT.md `<canonical_refs>` section is the entry point.
+**Next command:** `/gstack-review` against `main` from the phase branch (`feature/phase-13-external-data-ingestion`) — pre-landing diff review for SQL safety, RLS holes, trust boundaries. Then `/gstack-cso` (Tier 3 mandatory — 7 migrations + new RLS), then `/gsd-verify-work 13` (UAT on DEV), then `/gsd-ship`, then `/gstack-retro`. The 19-row workflow rows already executed are 1-3, 4, 8, 9, 10. Row 5 (`/gstack-autoplan`) was skipped. Row 12 (`/qa-gate`) believed run but no artifact in `~/.gstack/projects/...` — re-run if needed.
 
 **Authoritative spec for v1.3:** `.planning/phases/12-forecasting-foundation/12-PROPOSAL.md` (1484-line driving artifact — verified data sources, schema sketches, GHA cron pattern, failure modes, backtest fairness rules, ITS validity audit). Note: §7 SQL sketches use `tenant_id`; codebase claim is `restaurant_id` — Phase 12 CI Guard 7 catches the rename.
 
@@ -256,8 +256,8 @@ Plan: —
 
 **Resume hint:** v1.3 roadmap complete. 6 phases (12-17) map all 47 v1.3 requirements. Phase 12 (Foundation — Decisions & Guards) context locked 2026-04-28; planning + execution is a lightweight scripting effort (~1-2 days). Phase 13 (External Data Ingestion) is the first heavy migration phase (~2 weeks). Phase 14 ↔ 15 parallel-eligible after 14's schema lands (estimated 30-40% schedule compression). Phase 17 has a hard dependency on ≥4 weeks of forecast-vs-actual history; cold-start UI badge "BACKTEST PENDING" handles days 1-7.
 
-**Last session:** 2026-04-28T20:00:00Z
-**Stopped At:** Phase 13 context gathered. Wrote 13-CONTEXT.md (5 carry-forwards C-01..C-05 from Phase 12 + 14 implementation decisions D-01..D-14 covering migration sequencing, backfill mechanics, Python orchestrator structure, failure isolation, shop_calendar bootstrap, CI fixtures, recurring_events YAML, transit keywords) and 13-DISCUSSION-LOG.md (8 gray-area audit trail). All decisions auto-resolved per "follow recs first" preference. BVG RSS URL todo folded into D-13 plan-phase verification. Commit 31b5c99. Ready for `/gsd-plan-phase 13`.
+**Last session:** 2026-04-29 — STATE.md realignment after discovering Phase 13 implementation already done on phase branch
+**Stopped At:** Phase 13 implementation discovered complete on `feature/phase-13-external-data-ingestion` (24 commits ahead of main, head `c5be916`). Workflow rows 1-3, 4, 8, 9, 10 done; row 5 (`/gstack-autoplan`) skipped; rows 12, 15, 16, 17, 18, 19 outstanding. STATE.md previously claimed "context gathered, ready for /gsd-plan-phase 13" — that was a stale artifact from the discuss-phase session. Now realigned. Branch unmerged. Next: `/gstack-review` (row 15) → `/gstack-cso` (row 16, Tier 3 mandatory) → `/gsd-verify-work 13` (row 17) → `/gsd-ship` (row 18) → `/gstack-retro` (row 19).
 
 ---
-*State initialized: 2026-04-13; v1.3 roadmap recorded: 2026-04-27; Phase 12 context: 2026-04-28; Phase 13 context: 2026-04-28*
+*State initialized: 2026-04-13; v1.3 roadmap recorded: 2026-04-27; Phase 12 context: 2026-04-28; Phase 13 context: 2026-04-28; Phase 13 implementation complete: ≤2026-04-29; STATE.md realigned: 2026-04-29*
