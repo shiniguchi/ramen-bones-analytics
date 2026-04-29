@@ -1,0 +1,10 @@
+{
+  "weather": [
+    {"timestamp": "2026-04-29T00:00:00+00:00", "temperature": 8.0, "precipitation": 0.0, "wind_speed": 12.0, "cloud_cover": 50.0},
+    {"timestamp": "2026-04-29T12:00:00+00:00", "temperature": 16.0, "precipitation": 0.0, "wind_speed": 14.0, "cloud_cover": 30.0},
+    {"timestamp": "2026-04-30T00:00:00+00:00", "temperature": 9.0, "precipitation": 1.2, "wind_speed": 10.0, "cloud_cover": 80.0},
+    {"timestamp": "2026-04-30T12:00:00+00:00", "temperature": 14.0, "precipitation": 3.5, "wind_speed": 11.0, "cloud_cover": 90.0},
+    {"timestamp": "2026-05-01T00:00:00+00:00", "temperature": 7.0, "precipitation": 0.5, "wind_speed": 9.0, "cloud_cover": 60.0},
+    {"timestamp": "2026-05-01T12:00:00+00:00", "temperature": 13.0, "precipitation": 0.0, "wind_speed": 8.0, "cloud_cover": 40.0}
+  ]
+}
