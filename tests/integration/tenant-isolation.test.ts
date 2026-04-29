@@ -137,35 +137,87 @@ describe('EXT-08: shared-table read allowed, write denied', () => {
     expect(error).toBeNull();
   });
 
-  it.each(sharedTables)('tenant A cannot INSERT into %s', async (t) => {
+  // REVIEW T-6: per-table STRUCTURALLY VALID payloads. The earlier `{noop:'x'}`
+  // payload triggered NOT NULL constraint violation and surfaced error≠null
+  // regardless of RLS state — so the test passed even when RLS was fully
+  // open (constraint check fired before the policy). These payloads would
+  // succeed if RLS allowed the write, making error≠null actual proof that
+  // RLS denied the operation.
+  const validInsertPayloads: Record<string, Record<string, unknown>> = {
+    weather_daily:    { date: '2099-12-31', location: 'rls-test', provider: 'test' },
+    holidays:         { date: '2099-12-31', name: 'rls-test' },
+    school_holidays:  { state_code: 'XX', block_name: 'rls-test', start_date: '2099-01-01',
+                        end_date: '2099-01-07', year: 2099 },
+    transit_alerts:   { alert_id: 'rls-test-1', title: 'x',
+                        pub_date: '2099-12-31T00:00:00Z',
+                        matched_keyword: 'Streik', source_url: 'https://example.com/x' },
+    recurring_events: { event_id: 'rls-test-1', name: 'x', category: 'other',
+                        start_date: '2099-01-01', end_date: '2099-01-02',
+                        impact_estimate: 'low' },
+  };
+
+  it.each(sharedTables)('tenant A INSERT into %s is denied by RLS (not by constraint)', async (t) => {
     const c = tenantClient();
     await c.auth.signInWithPassword({ email: emailA, password });
-    // The minimal payloads below intentionally violate NOT NULL / unique
-    // constraints in places — the assertion only cares that RLS denies
-    // the write before constraint validation. PostgREST surfaces both
-    // RLS denial and constraint failure as `error` non-null.
-    const { error } = await c.from(t).insert({ noop: 'x' } as any);
+    const payload = validInsertPayloads[t];
+    expect(payload).toBeDefined();
+    const { error } = await c.from(t).insert(payload as never);
+    // The payload is valid; if RLS allowed the write, error would be null.
+    // error≠null here is unambiguous proof of RLS denial.
     expect(error).not.toBeNull();
+  });
+
+  // Cleanup any rows that somehow slipped through (defense in depth — a future
+  // RLS regression that lets one through shouldn't poison subsequent test runs).
+  afterAll(async () => {
+    await admin.from('weather_daily').delete().eq('location', 'rls-test');
+    await admin.from('holidays').delete().eq('date', '2099-12-31');
+    await admin.from('school_holidays').delete().eq('state_code', 'XX');
+    await admin.from('transit_alerts').delete().eq('alert_id', 'rls-test-1');
+    await admin.from('recurring_events').delete().eq('event_id', 'rls-test-1');
   });
 });
 
 describe('EXT-08: tenant-scoped table isolation', () => {
-  it.each(tenantTables)('tenant A sees zero rows under tenant B fixture (%s)', async (t) => {
-    // Seed a tenant-B-scoped row as service-role.
+  // REVIEW T-7: prior test seeded only tenant-B rows and asserted tenant A
+  // saw none — but an EMPTY result (e.g. JWT lacks restaurant_id claim
+  // entirely; RLS evaluates to NULL → deny ALL) trivially satisfies that
+  // check. Now seed BOTH tenants and assert positive (sees own row) AND
+  // negative (does not see other tenant's row) per table. A symmetric pair
+  // of tests for tenant A and tenant B catches one-sided RLS bugs (e.g.
+  // policy hardcoded to a specific UUID).
+  it.each(tenantTables)('tenant A sees own rows + NEVER tenant B (%s)', async (t) => {
     const today = new Date().toISOString().slice(0, 10);
-    await admin.from(t).upsert({
-      restaurant_id: tenantB,
-      date: today,
-      is_open: true,
-    } as never, { onConflict: 'restaurant_id,date' as never } as never);
+    await admin.from(t).upsert([
+      { restaurant_id: tenantA, date: today, is_open: true },
+      { restaurant_id: tenantB, date: today, is_open: true },
+    ] as never, { onConflict: 'restaurant_id,date' as never } as never);
 
     const c = tenantClient();
     await c.auth.signInWithPassword({ email: emailA, password });
     const { data, error } = await c.from(t).select('restaurant_id').eq('date', today);
     expect(error).toBeNull();
     const rows = (data ?? []) as Array<{ restaurant_id: string }>;
-    // Must NOT contain tenantB rows.
+    // Positive check: A sees its own row (proves JWT claim is read).
+    expect(rows.some((r) => r.restaurant_id === tenantA)).toBe(true);
+    // Negative check: A never sees B's row (proves RLS scoping holds).
     expect(rows.every((r) => r.restaurant_id !== tenantB)).toBe(true);
+  });
+
+  it.each(tenantTables)('tenant B sees own rows + NEVER tenant A (%s) — symmetric pair to catch one-sided bugs', async (t) => {
+    const today = new Date().toISOString().slice(0, 10);
+    await admin.from(t).upsert([
+      { restaurant_id: tenantA, date: today, is_open: true },
+      { restaurant_id: tenantB, date: today, is_open: true },
+    ] as never, { onConflict: 'restaurant_id,date' as never } as never);
+
+    const c = tenantClient();
+    await c.auth.signInWithPassword({ email: emailB, password });
+    const { data, error } = await c.from(t).select('restaurant_id').eq('date', today);
+    expect(error).toBeNull();
+    const rows = (data ?? []) as Array<{ restaurant_id: string }>;
+    expect(rows.some((r) => r.restaurant_id === tenantB)).toBe(true);
+    expect(rows.every((r) => r.restaurant_id !== tenantA)).toBe(true);
   });
 
   it.each(tenantTables)('orphan user sees zero rows on %s', async (t) => {
