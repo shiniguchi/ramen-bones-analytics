@@ -3,8 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: External Data & Forecasting Foundation
 status: "Phase 13 implementation complete on feature/phase-13-external-data-ingestion (24 commits ahead of main, head c5be916) — awaiting review + ship sequence"
-stopped_at: Phase 13 (External Data Ingestion) implementation complete on `feature/phase-13-external-data-ingestion` (24 commits ahead of main, head `c5be916`). Shipped artifacts on the phase branch: 7 migrations `0041_weather_daily.sql` → `0047_shop_calendar.sql` (hybrid-RLS for shared location-keyed tables, tenant-scoped RLS for `pipeline_runs`/`shop_calendar`), all Python fetchers under `scripts/external/` (weather/holidays/school/transit/events/shop_calendar) + `run_all.py` orchestrator + `pipeline_runs_writer.py`, configs (`config/shop_hours.yaml`, `config/recurring_events.yaml` 14-event starter), `.github/workflows/external-data-refresh.yml` (nightly cron `0 0 * * *` UTC + `workflow_dispatch` backfill), `pytest-external` job in `tests.yml`, `tests/external/` (8 unit test files), `tests/integration/tenant-isolation` extended for 7 new tables, ci-guard `scripts/ci-guards/check-cron-schedule.py`, TDD plan `docs/superpowers/plans/2026-04-29-phase-13-external-data-ingestion.md` (3,140 lines). Workflow rows actually executed: 1-3 (STATE), 4 (DESIGN — office-hours + override), 8 (worktree), 9 (writing-plans), 10 (subagent-driven-development). Skipped: row 5 (`/gstack-autoplan`). Outstanding: rows 12 (`/qa-gate` — claimed but no artifact), 15 (`/gstack-review`), 16 (`/gstack-cso` — Tier 3 mandatory: 7 migrations + new RLS), 17 (`/gsd-verify-work`), 18 (`/gsd-ship`), 19 (`/gstack-retro`).
-last_updated: "2026-04-29T00:00:00Z"
+stopped_at: "Phase 14 context gathered"
+resume_file: ".planning/phases/14-forecasting-engine-bau-track/14-CONTEXT.md"
+last_updated: "2026-04-29T01:00:00Z"
 progress:
   total_phases: 17
   completed_phases: 11
