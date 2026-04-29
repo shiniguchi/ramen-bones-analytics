@@ -183,3 +183,39 @@ describe('Phase 13 schema: pipeline_runs extension', () => {
     expect(policies).toContain('pipeline_runs_read');
   });
 });
+
+describe('Phase 13 schema: shop_calendar', () => {
+  it('table exists with the expected columns', async () => {
+    const { data, error } = await admin.rpc('test_table_columns', { p_table_name: 'shop_calendar' });
+    expect(error).toBeNull();
+    const names = (data ?? []).map((c: any) => c.column_name);
+    expect(names).toContain('restaurant_id');
+    expect(names).toContain('date');
+    expect(names).toContain('is_open');
+    expect(names).toContain('open_at');
+    expect(names).toContain('close_at');
+    expect(names).toContain('reason');
+    expect(names).toContain('fetched_at');
+  });
+
+  it('tenant-scoped RLS policy shop_calendar_read exists', async () => {
+    const { data, error } = await admin.rpc('test_table_policies', { p_table_name: 'shop_calendar' });
+    expect(error).toBeNull();
+    const policies = (data ?? []).map((p: any) => p.policyname);
+    expect(policies).toContain('shop_calendar_read');
+  });
+
+  it('anon SELECT returns zero rows (no JWT) and INSERT denied', async () => {
+    const c = tenantClient();
+    // Without an auth'd session, the JWT-scoped policy filters everything out.
+    const { data: rows, error: selErr } = await c.from('shop_calendar').select('date').limit(1);
+    expect(selErr).toBeNull();
+    expect((rows ?? []).length).toBe(0);
+    const { error: insErr } = await c.from('shop_calendar').insert({
+      restaurant_id: '00000000-0000-0000-0000-000000000000',
+      date: '2099-01-01',
+      is_open: false
+    });
+    expect(insErr).not.toBeNull();
+  });
+});
