@@ -141,3 +141,31 @@ def test_fetch_weather_first_chunk_failure_raises_plain_upstream_unavailable(mon
         fetch_weather(start_date=date(2026, 1, 1), end_date=date(2026, 2, 14))
     assert not isinstance(excinfo.value, PartialUpstreamError), \
         'first-chunk failure must raise plain UpstreamUnavailableError, not PartialUpstreamError'
+
+
+# REVIEW T-1: upsert() unit tests — pin on_conflict key + empty-rows guard
+# without needing a live Supabase.
+
+def test_weather_upsert_calls_table_with_correct_on_conflict(mock_client):
+    """on_conflict must be 'date,location' to match weather_daily PK from 0041."""
+    from scripts.external.weather import upsert
+    rows = [{'date': date(2026, 4, 29), 'location': 'berlin', 'provider': 'brightsky',
+             'temp_min_c': 8.0, 'temp_max_c': 16.0, 'precip_mm': 0.0,
+             'wind_kph': None, 'cloud_cover': None}]
+    n = upsert(mock_client, rows)
+    assert n == 1
+    assert len(mock_client.calls) == 1
+    call = mock_client.calls[0]
+    assert call['table'] == 'weather_daily'
+    assert call['op'] == 'upsert'
+    assert call['on_conflict'] == 'date,location'
+    # date must be serialized to ISO string for PostgREST.
+    assert call['payload'][0]['date'] == '2026-04-29'
+
+
+def test_weather_upsert_returns_zero_on_empty(mock_client):
+    """Empty rows must NOT issue a DB call (avoids no-op round trips)."""
+    from scripts.external.weather import upsert
+    n = upsert(mock_client, [])
+    assert n == 0
+    assert mock_client.calls == []

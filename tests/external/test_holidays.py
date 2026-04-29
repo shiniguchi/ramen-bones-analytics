@@ -2,7 +2,7 @@
 from __future__ import annotations
 from datetime import date
 
-from scripts.external.holidays import fetch_holidays
+from scripts.external.holidays import fetch_holidays, upsert, freshness_hours
 
 
 def test_returns_federal_dates_for_2026():
@@ -57,3 +57,28 @@ def test_federal_dates_keep_federal_name_not_be_localization():
 def test_empty_years_returns_empty():
     """Edge case: passing no years returns no rows (from REVIEW T-bonus)."""
     assert fetch_holidays(years=[]) == []
+
+
+# REVIEW T-1: upsert() + freshness_hours() unit tests.
+
+def test_holidays_upsert_calls_table_with_correct_on_conflict(mock_client):
+    rows = [{
+        'date': date(2026, 10, 3), 'name': 'Tag der Deutschen Einheit',
+        'country_code': 'DE', 'subdiv_code': None,
+    }]
+    n = upsert(mock_client, rows)
+    assert n == 1
+    call = mock_client.calls[0]
+    assert call['table'] == 'holidays'
+    assert call['on_conflict'] == 'date'
+    assert call['payload'][0]['date'] == '2026-10-03'
+
+
+def test_holidays_upsert_returns_zero_on_empty(mock_client):
+    assert upsert(mock_client, []) == 0
+    assert mock_client.calls == []
+
+
+def test_holidays_freshness_hours_is_static_zero():
+    """python-holidays is bundled — no upstream — freshness is always 0."""
+    assert freshness_hours() == 0.0

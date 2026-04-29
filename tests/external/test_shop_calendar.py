@@ -1,9 +1,9 @@
 """Phase 13 EXT-07: shop_calendar fetcher."""
 from __future__ import annotations
 from pathlib import Path
-from datetime import date, timedelta
+from datetime import date, time, timedelta
 
-from scripts.external.shop_calendar import generate_calendar, FORWARD_DAYS
+from scripts.external.shop_calendar import generate_calendar, upsert, freshness_hours, FORWARD_DAYS
 
 FIX = Path(__file__).resolve().parent.parent / 'fixtures' / 'external'
 
@@ -44,3 +44,55 @@ def test_generates_for_each_restaurant_in_yaml():
     rows = generate_calendar(FIX / 'shop_hours.yaml', today=today)
     rids = {r['restaurant_id'] for r in rows}
     assert rids == {'11111111-1111-1111-1111-111111111111'}
+
+
+# REVIEW T-1: upsert() + freshness_hours() unit tests.
+
+def test_shop_calendar_upsert_calls_table_with_correct_on_conflict(mock_client):
+    """on_conflict must match 0047's PK (restaurant_id, date)."""
+    rows = [{
+        'restaurant_id': '11111111-1111-1111-1111-111111111111',
+        'date':     date(2026, 4, 30),
+        'is_open':  True,
+        'open_at':  time(12, 0),
+        'close_at': time(22, 0),
+        'reason':   None,
+    }]
+    n = upsert(mock_client, rows)
+    assert n == 1
+    call = mock_client.calls[0]
+    assert call['table'] == 'shop_calendar'
+    assert call['on_conflict'] == 'restaurant_id,date'
+    # date + open_at + close_at must all be ISO-string-serialized.
+    p = call['payload'][0]
+    assert p['date']     == '2026-04-30'
+    assert p['open_at']  == '12:00:00'
+    assert p['close_at'] == '22:00:00'
+
+
+def test_shop_calendar_upsert_serializes_none_times_as_none(mock_client):
+    """Closed days have open_at/close_at = None; the serializer must keep None
+    (NOT crash trying to call .isoformat() on None)."""
+    rows = [{
+        'restaurant_id': '11111111-1111-1111-1111-111111111111',
+        'date':     date(2026, 4, 29),
+        'is_open':  False,
+        'open_at':  None,
+        'close_at': None,
+        'reason':   None,
+    }]
+    n = upsert(mock_client, rows)
+    assert n == 1
+    p = mock_client.calls[0]['payload'][0]
+    assert p['open_at']  is None
+    assert p['close_at'] is None
+
+
+def test_shop_calendar_upsert_returns_zero_on_empty(mock_client):
+    assert upsert(mock_client, []) == 0
+    assert mock_client.calls == []
+
+
+def test_shop_calendar_freshness_hours_is_static_zero():
+    """YAML config — bundled data, freshness is always 0."""
+    assert freshness_hours() == 0.0

@@ -4,8 +4,9 @@ from pathlib import Path
 import httpx
 import pytest
 
+from datetime import datetime, timezone, timedelta
 from scripts.external.transit import (
-    fetch_transit, KEYWORDS, UpstreamUnavailableError,
+    fetch_transit, upsert, freshness_hours, KEYWORDS, UpstreamUnavailableError,
     _strip_html, _safe_url,
 )
 
@@ -128,3 +129,38 @@ def test_fetch_transit_falls_back_when_primary_5xx(monkeypatch):
     assert len(calls) >= 2
     assert calls[0][1] == 503
     assert calls[-1][1] == 200
+
+
+# REVIEW T-1: upsert() + freshness_hours() unit tests.
+
+def test_transit_upsert_calls_table_with_correct_on_conflict(mock_client):
+    """on_conflict must match 0044's PK (alert_id)."""
+    pub = datetime(2026, 4, 28, 10, 0, 0, tzinfo=timezone.utc)
+    rows = [{
+        'alert_id': 'abc123', 'title': 'Warnstreik S-Bahn',
+        'pub_date': pub, 'matched_keyword': 'Warnstreik',
+        'description': 'Heute', 'source_url': 'https://www.bvg.de/x',
+    }]
+    n = upsert(mock_client, rows)
+    assert n == 1
+    call = mock_client.calls[0]
+    assert call['table'] == 'transit_alerts'
+    assert call['on_conflict'] == 'alert_id'
+    # pub_date must be ISO-string-serialized.
+    assert call['payload'][0]['pub_date'] == pub.isoformat()
+
+
+def test_transit_upsert_returns_zero_on_empty(mock_client):
+    assert upsert(mock_client, []) == 0
+    assert mock_client.calls == []
+
+
+def test_transit_freshness_hours_returns_none_on_empty():
+    assert freshness_hours([]) is None
+
+
+def test_transit_freshness_hours_computes_against_latest_pub_date():
+    past = datetime.now(timezone.utc) - timedelta(hours=5)
+    h = freshness_hours([{'pub_date': past}])
+    assert h is not None
+    assert 4.9 <= h <= 5.1
