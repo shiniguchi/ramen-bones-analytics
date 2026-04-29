@@ -8,7 +8,7 @@ into our schema with `block_name` (truncated of "Berlin" suffix) and
 `start_date` / `end_date`.
 """
 from __future__ import annotations
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from typing import Any
 import httpx
 
@@ -64,9 +64,16 @@ def upsert(client, rows: list[dict[str, Any]]) -> int:
 
 
 def freshness_hours(rows: list[dict[str, Any]]) -> float | None:
-    """Hours since the latest end_date in the returned rows."""
+    """Hours since the latest end_date in the returned rows.
+
+    REVIEW MS-4: switched from `datetime.utcnow()` (deprecated in Python 3.12,
+    naive datetime) to `datetime.now(timezone.utc)` to match weather.py:139.
+    Clamped to >= 0.0 because school break end_dates often live in the future
+    (the API publishes upcoming blocks) and a negative freshness would be
+    mis-read by the Phase 15 stale-data badge.
+    """
     if not rows:
         return None
     latest = max(r['end_date'] for r in rows)
-    latest_dt = datetime(latest.year, latest.month, latest.day)
-    return (datetime.utcnow() - latest_dt).total_seconds() / 3600.0
+    latest_dt = datetime(latest.year, latest.month, latest.day, tzinfo=timezone.utc)
+    return max(0.0, (datetime.now(timezone.utc) - latest_dt).total_seconds() / 3600.0)
