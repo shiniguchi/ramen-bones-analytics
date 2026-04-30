@@ -7,7 +7,7 @@ Autoplan E4: direction_hit_rate is computed on OPEN DAYS ONLY.
 """
 from __future__ import annotations
 import math
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 from typing import Optional
 
 import numpy as np
@@ -200,19 +200,20 @@ def evaluate_last_7(
     horizon_cutoff = min(math.floor(training_days * 0.2), 60)
 
     # 6. Write to forecast_quality
+    # forecast_quality columns: restaurant_id, kpi_name, model_name,
+    # horizon_days, evaluation_window, evaluated_at, n_days, rmse, mape,
+    # mean_bias, direction_hit_rate, horizon_reliability_cutoff
     quality_row = {
         'restaurant_id': restaurant_id,
         'kpi_name': kpi_name,
         'model_name': model_name,
-        'eval_date': str(date.today()),
-        'window_start': str(eval_start),
-        'window_end': str(eval_end),
+        'evaluated_at': datetime.now(timezone.utc).isoformat(),
+        'n_days': len(aligned_actuals),
         'rmse': round(metrics['rmse'], 4),
         'mape': round(metrics['mape'], 4),
         'mean_bias': round(metrics['mean_bias'], 4),
         'direction_hit_rate': round(metrics['direction_hit_rate'], 4),
         'horizon_reliability_cutoff': horizon_cutoff,
-        'n_obs': len(aligned_actuals),
     }
     client.table('forecast_quality').upsert(quality_row).execute()
 
