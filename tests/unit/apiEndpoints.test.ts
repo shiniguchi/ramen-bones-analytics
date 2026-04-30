@@ -530,3 +530,74 @@ describe('/api/forecast', () => {
     expect(res.headers.get('cache-control')).toBe('private, no-store');
   });
 });
+
+// -------------------- /api/forecast-quality --------------------
+import { GET as forecastQualityGET } from '../../src/routes/api/forecast-quality/+server';
+
+describe('/api/forecast-quality', () => {
+  const qRow = {
+    model_name: 'sarimax_bau',
+    kpi_name: 'revenue_eur',
+    horizon_days: 7,
+    rmse: 142.31,
+    mape: 0.084,
+    mean_bias: 12.5,
+    direction_hit_rate: 0.71,
+    evaluated_at: '2026-04-30T01:35:00Z',
+    evaluation_window: 'last_7_days'
+  };
+
+  it('authenticated GET returns 200 + array of ForecastQualityRow filtered to last_7_days', async () => {
+    const state = freshState({ forecast_quality: [qRow] });
+    const res = await forecastQualityGET(mkEvent(mkLocalsAuthed(state)));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(Array.isArray(body)).toBe(true);
+    expect(body[0]).toMatchObject({
+      model_name: 'sarimax_bau',
+      kpi_name: 'revenue_eur',
+      horizon_days: 7,
+      rmse: 142.31,
+      mape: 0.084,
+      mean_bias: 12.5,
+      direction_hit_rate: 0.71
+    });
+  });
+
+  it('null claims returns 401 and never touches supabase', async () => {
+    const state = freshState();
+    const res = await forecastQualityGET(mkEvent(mkLocalsUnauthed(state)));
+    expect(res.status).toBe(401);
+    expect(state.fromSpy).not.toHaveBeenCalled();
+  });
+
+  it('200 response carries Cache-Control: private, no-store', async () => {
+    const state = freshState({ forecast_quality: [] });
+    const res = await forecastQualityGET(mkEvent(mkLocalsAuthed(state)));
+    expect(res.headers.get('cache-control')).toBe('private, no-store');
+  });
+
+  it('supabase error surfaces as 500', async () => {
+    const state = freshState();
+    state.errors.set('forecast_quality', { message: 'boom' });
+    const res = await forecastQualityGET(mkEvent(mkLocalsAuthed(state)));
+    expect(res.status).toBe(500);
+  });
+
+  it('handler applies eq("evaluation_window", "last_7_days") so Phase 17 backtest rows are excluded', async () => {
+    // The mock records every call to .eq() — we assert the handler asked for the right filter.
+    const state = freshState({ forecast_quality: [qRow] });
+    await forecastQualityGET(mkEvent(mkLocalsAuthed(state)));
+    const call = state.queries[0].calls.find(c => c.method === 'eq' && (c.args[0] === 'evaluation_window'));
+    expect(call).toBeDefined();
+    expect(call?.args[1]).toBe('last_7_days');
+  });
+
+  it('returns empty array when no rows yet (D-07: 24h window after Phase 14 ships)', async () => {
+    const state = freshState({ forecast_quality: [] });
+    const res = await forecastQualityGET(mkEvent(mkLocalsAuthed(state)));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body).toEqual([]);
+  });
+});
