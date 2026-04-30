@@ -18,6 +18,7 @@
   import CalendarItemRevenueCard from '$lib/components/CalendarItemRevenueCard.svelte';
   import MdeCurveCard from '$lib/components/MdeCurveCard.svelte';
   import RepeaterCohortCountCard from '$lib/components/RepeaterCohortCountCard.svelte';
+  import RevenueForecastCard from '$lib/components/RevenueForecastCard.svelte';
   import LazyMount from '$lib/components/LazyMount.svelte';
   import { clientFetch } from '$lib/clientFetch';
   import {
@@ -90,6 +91,89 @@
         monthsOfHistory = Math.max(0, differenceInMonths(new Date(), parseISO(earliest.cohort_week)));
       }
     } catch (e) { console.error('[LazyMount /api/retention]', e); }
+  }
+
+  // Phase 15 D-01 / FUI-07: deferred client-fetches for the forecast card.
+  // Three endpoints (forecast / forecast-quality / campaign-uplift) all use
+  // locals.safeGetSession() + Cache-Control: private, no-store per Phase 11
+  // D-03. /api/forecast re-fires when horizon or granularity change so the
+  // server can re-resample the sample paths at the new grain.
+  type ForecastRow = {
+    target_date: string;
+    model_name: string;
+    yhat_mean: number;
+    yhat_lower: number;
+    yhat_upper: number;
+    horizon_days: number;
+  };
+  type ForecastEvent = {
+    type: 'campaign_start' | 'transit_strike' | 'school_holiday' | 'holiday' | 'recurring_event';
+    date: string;
+    label: string;
+    end_date?: string;
+  };
+  type ForecastPayload = {
+    rows: ForecastRow[];
+    actuals: { date: string; value: number }[];
+    events: ForecastEvent[];
+    last_run: string | null;
+  };
+  type QualityRow = {
+    model_name: string;
+    kpi_name: string;
+    horizon_days: number;
+    rmse: number;
+    mape: number;
+    mean_bias: number;
+    direction_hit_rate: number | null;
+    evaluated_at: string;
+  };
+  type UpliftPayload = {
+    campaign_start: string;
+    cumulative_deviation_eur: number;
+    as_of: string;
+  };
+
+  let forecastData = $state<ForecastPayload | null>(null);
+  let qualityData = $state<QualityRow[]>([]);
+  let campaignUpliftData = $state<UpliftPayload | null>(null);
+  let forecastHorizon = $state<7 | 35 | 120 | 365>(7);
+  let forecastGranularity = $state<'day' | 'week' | 'month'>('day');
+
+  async function loadForecastBundle() {
+    const horizon = forecastHorizon;
+    const granularity = forecastGranularity;
+    try {
+      const [f, q, u] = await Promise.all([
+        clientFetch<ForecastPayload>(`/api/forecast?horizon=${horizon}&granularity=${granularity}`),
+        clientFetch<QualityRow[]>('/api/forecast-quality'),
+        clientFetch<UpliftPayload>('/api/campaign-uplift')
+      ]);
+      forecastData = f;
+      qualityData = q;
+      campaignUpliftData = u;
+    } catch (e) {
+      console.error('[LazyMount /api/forecast bundle]', e);
+    }
+  }
+
+  // Re-fetch /api/forecast on horizon/granularity change. The first mount
+  // uses LazyMount.onvisible (which runs loadForecastBundle); this $effect
+  // skips the first run by checking that forecastData has been seeded.
+  $effect(() => {
+    if (forecastData === null) return;
+    void clientFetch<ForecastPayload>(
+      `/api/forecast?horizon=${forecastHorizon}&granularity=${forecastGranularity}`
+    ).then(f => { forecastData = f; })
+     .catch(e => console.error('[forecast horizon change]', e));
+  });
+
+  // Compute hours since last freshness ping for the stale-data badge.
+  // data.freshness is the existing FreshnessLabel input; reusing it keeps
+  // the badge consistent with the page-level "Last updated …" line.
+  function staleHours(iso: string | null): number {
+    if (!iso) return 0;
+    return Math.max(0, (Date.now() - new Date(iso).getTime()) / 3_600_000);
   }
 
   // Initialize store from SSR data on mount and when SSR data changes.
@@ -252,6 +336,23 @@
     {#if data.latestInsight}
       <InsightCard insight={data.latestInsight} isAdmin={data.isAdmin ?? false} />
     {/if}
+
+    <!-- Phase 15 D-01: RevenueForecastCard slots immediately after the
+         InsightCard narrative and before the KPI tiles. Owner mental model:
+         narrative → look-ahead forecast → look-back KPIs / calendar.
+         Deferred client-fetch via LazyMount per Phase 11 D-03. -->
+    <LazyMount minHeight="320px" onvisible={loadForecastBundle}>
+      {#snippet children()}
+        <RevenueForecastCard
+          forecastData={forecastData}
+          qualityData={qualityData}
+          campaignUpliftData={campaignUpliftData}
+          stalenessHours={staleHours(data.freshness)}
+          bind:horizon={forecastHorizon}
+          bind:granularity={forecastGranularity}
+        />
+      {/snippet}
+    </LazyMount>
 
     <!-- D-10 cards 4-5: Revenue + Transactions KPI tiles -->
     <div class="grid grid-cols-2 gap-4">
