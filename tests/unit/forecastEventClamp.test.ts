@@ -55,4 +55,34 @@ describe('clampEvents', () => {
     // String compare: first kept date should sort before last kept date.
     expect(dates[0] < dates[dates.length - 1]).toBe(true);
   });
+
+  // Dedupe: federal+Berlin holiday rows that share (type, date, label).
+  // Without this, EventMarker's keyed-each `(e.type + '|' + e.date)` would
+  // crash Svelte 5 with `each_key_duplicate` at runtime.
+  it('dedupes identical (type, date, label) tuples — federal+Berlin holiday overlap', () => {
+    const events: ForecastEvent[] = [
+      ev('holiday', '2026-05-01', 'Tag der Arbeit'),
+      ev('holiday', '2026-05-01', 'Tag der Arbeit') // duplicate (federal + BE row)
+    ];
+    const out = clampEvents(events, 50);
+    expect(out.length).toBe(1);
+    expect(out[0]).toEqual(ev('holiday', '2026-05-01', 'Tag der Arbeit'));
+  });
+
+  it('preserves events with same (type, date) but different labels', () => {
+    const events: ForecastEvent[] = [
+      ev('recurring_event', '2026-09-26', 'Berlin Marathon'),
+      ev('recurring_event', '2026-09-26', 'Festival of Lights')
+    ];
+    const out = clampEvents(events, 50);
+    expect(out.length).toBe(2);
+  });
+
+  it('dedupe runs before cap — 60 events with 20 duplicates collapse to 40 (no clamp)', () => {
+    const unique: ForecastEvent[] = Array.from({ length: 40 }, (_, i) =>
+      ev('holiday', `2026-05-${String(i + 1).padStart(2, '0')}`, `h${i}`));
+    const dupes: ForecastEvent[] = unique.slice(0, 20).map(e => ({ ...e })); // 20 exact dupes
+    const out = clampEvents([...unique, ...dupes], 50);
+    expect(out.length).toBe(40);
+  });
 });

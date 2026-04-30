@@ -29,11 +29,31 @@ export const EVENT_PRIORITY: Record<EventType, number> = {
   recurring_event: 1
 };
 
+// Dedupe events by (type, date, label). The /api/forecast handler queries
+// `holidays` with `subdiv_code.is.null OR subdiv_code.eq.BE`, which can return
+// two rows for the same calendar date when a federal holiday overlaps a Berlin
+// state observance (both labeled "Tag der Arbeit", "Karfreitag", etc).
+// Without dedupe, EventMarker's keyed-each `(e.type + '|' + e.date)` would
+// duplicate-key-crash Svelte 5 at runtime. Beyond the crash, the chart cannot
+// legibly render two markers stacked at one x — so dedupe is also a UX fix.
+function dedupe(events: readonly ForecastEvent[]): ForecastEvent[] {
+  const seen = new Set<string>();
+  const out: ForecastEvent[] = [];
+  for (const e of events) {
+    const key = `${e.type}|${e.date}|${e.label}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(e);
+  }
+  return out;
+}
+
 export function clampEvents(events: readonly ForecastEvent[], max = 50): ForecastEvent[] {
-  if (events.length <= max) return events.slice();
+  const deduped = dedupe(events);
+  if (deduped.length <= max) return deduped;
 
   // Sort: priority DESC, then date ASC (ties broken by earlier date kept).
-  const sorted = events.slice().sort((a, b) => {
+  const sorted = deduped.sort((a, b) => {
     const dp = EVENT_PRIORITY[b.type] - EVENT_PRIORITY[a.type];
     if (dp !== 0) return dp;
     return a.date.localeCompare(b.date);

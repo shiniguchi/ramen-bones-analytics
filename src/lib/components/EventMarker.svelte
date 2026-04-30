@@ -38,7 +38,7 @@
 </script>
 
 <!-- Layer 1: school_holiday backgrounds (rendered first so other markers sit on top) -->
-{#each events as e (e.type + '|' + e.date)}
+{#each events as e (e.type + '|' + e.date + '|' + e.label)}
   {#if e.type === 'school_holiday' && e.end_date}
     {@const x0 = x(e.date)}
     {@const x1 = x(e.end_date)}
@@ -58,7 +58,7 @@
 {/each}
 
 <!-- Layer 2: full-height vertical lines (campaign_start, holiday, recurring_event) -->
-{#each events as e (e.type + '|' + e.date)}
+{#each events as e (e.type + '|' + e.date + '|' + e.label)}
   {#if e.type === 'campaign_start'}
     <line
       data-event-type="campaign_start"
@@ -97,7 +97,7 @@
 {/each}
 
 <!-- Layer 3: transit_strike top bars -->
-{#each events as e (e.type + '|' + e.date)}
+{#each events as e (e.type + '|' + e.date + '|' + e.label)}
   {#if e.type === 'transit_strike'}
     <rect
       data-event-type="transit_strike"
