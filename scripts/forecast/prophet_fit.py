@@ -202,6 +202,10 @@ def fit_and_write(
         end_date=fit_end,
     )
 
+    # Align exog to history dates (kpi_daily_mv may have gaps for zero-tx days)
+    history_dates = set(history['date'])
+    X_fit = X_fit.loc[X_fit.index.isin(history_dates)]
+
     # 3. Build Prophet training DataFrame
     train_df = _build_prophet_df(history, X_fit)
 

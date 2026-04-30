@@ -201,6 +201,9 @@ def fit_and_write(
         end_date=fit_end,
     )
     X_fit = _drop_metadata_cols(X_fit_raw)
+    # Align exog to history dates (kpi_daily_mv may have gaps for zero-tx days)
+    history_dates = set(history['date'])
+    X_fit = X_fit.loc[X_fit.index.isin(history_dates)]
 
     # 3. Build prediction exog matrix (run_date+1 through run_date+HORIZON)
     pred_start = run_date + timedelta(days=1)
