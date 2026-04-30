@@ -224,12 +224,17 @@ def compute_and_upsert_climatology(client) -> None:
 def validate_no_large_gaps(client) -> bool:
     """Return True if no gap >MAX_GAP_DAYS exists in weather_daily date coverage.
 
-    Fetches all dates, sorts them, and checks consecutive differences.
+    Fetches all dates within the backfill range, sorts them, and checks
+    consecutive differences.
     """
     resp = (
         client.table("weather_daily")
         .select("date")
+        .eq("location", "berlin")
+        .gte("date", str(BACKFILL_START))
+        .lte("date", str(BACKFILL_END))
         .order("date")
+        .limit(10000)
         .execute()
     )
     rows = resp.data or []
