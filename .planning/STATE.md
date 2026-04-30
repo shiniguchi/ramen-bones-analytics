@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: External Data & Forecasting Foundation
-status: "Phase 15 context gathered"
-stopped_at: Phase 15 (Forecast Chart UI) context locked 2026-04-30 via auto-recs (13 decisions D-01..D-13 + 7 carry-forwards). Working on branch feature/phase-15-forecast-chart-ui in main repo. Ready for superpowers:writing-plans (or /gsd-plan-phase 15). Phase 14 shipped same day (PR #22 merged, 17 migrations on DEV, 5/5 models producing forecasts; forecast_quality populates after 2nd nightly run).
+status: "Phase 15 shipped (pending DEV deploy QA)"
+stopped_at: Phase 15 (Forecast Chart UI) shipped 2026-04-30. 8 plans executed in subagent-driven mode (15-01..15-07) plus inline (15-08) over one session. RevenueForecastCard composes HorizonToggle + ForecastLegend + EventMarker + ForecastHoverPopup; mounted at scroll position 6 between InsightCard and KPI tiles per D-01. Three deferred /api/* endpoints (forecast / forecast-quality / campaign-uplift) follow Phase 11 D-03 contract. Localhost gate captured render evidence (Forecast generating empty-state correct due to dev DB having no nightly forecast rows yet); full visual QA deferred to DEV deploy where the nightly cascade has populated forecast_daily.
 last_updated: "2026-04-30T00:00:00Z"
 progress:
   total_phases: 17
-  completed_phases: 14
-  total_plans: 64
+  completed_phases: 15
+  total_plans: 72
   completed_plans: 61
-  percent: 82
+  percent: 88
 ---
 
 # STATE: Ramen Bones Analytics
