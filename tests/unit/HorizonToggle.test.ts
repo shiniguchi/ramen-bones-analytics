@@ -2,10 +2,18 @@
 // tests/unit/HorizonToggle.test.ts
 // Phase 15 FUI-03 — 4-chip selector. Default 7d. Click emits both
 // onhorizonchange(horizon) and ongranularitychange(default-grain-for-horizon).
-import { describe, it, expect, beforeAll, vi } from 'vitest';
+import { describe, it, expect, beforeAll, afterEach, vi } from 'vitest';
 import '@testing-library/jest-dom/vitest';
-import { render, fireEvent } from '@testing-library/svelte';
+import { render, fireEvent, cleanup } from '@testing-library/svelte';
 import HorizonToggle from '../../src/lib/components/HorizonToggle.svelte';
+
+// Vitest config has no `globals: true`, so @testing-library/svelte's auto
+// afterEach cleanup is not registered. Call it explicitly so each test
+// renders a fresh DOM (otherwise multiple renders pile up and getByRole
+// finds duplicate matches).
+afterEach(() => {
+  cleanup();
+});
 
 beforeAll(() => {
   if (typeof window !== 'undefined' && !window.matchMedia) {
