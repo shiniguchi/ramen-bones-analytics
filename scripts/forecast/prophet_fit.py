@@ -1,12 +1,20 @@
-"""Phase 14: Prophet model fit and forecast writer.
+"""Phase 14 / 15-10: Prophet model fit and forecast writer.
 
 Subprocess entry point — run as:
     python -m scripts.forecast.prophet_fit
 
-Reads RESTAURANT_ID, KPI_NAME, RUN_DATE from env vars.
-Writes 365 rows to forecast_daily via chunked upsert (100 rows/chunk).
+Reads RESTAURANT_ID, KPI_NAME, RUN_DATE, GRANULARITY from env vars.
 
-Constraint C-04: yearly_seasonality MUST be False until history >= 730 days.
+15-10 changes:
+  - GRANULARITY env (day|week|month) selects native bucket cadence.
+  - Daily path keeps the original Prophet+exog setup (C-04: yearly_seasonality
+    stays False until 730 days of history).
+  - Weekly/monthly paths drop exog regressors (exog matrix is daily-shaped;
+    bucket-aggregating it is out of scope) and tune Prophet's seasonality
+    flags to the bucket cadence.
+
+Constraint C-04: yearly_seasonality MUST be False until history >= 730 days
+(daily) / 104 weeks / 24 months. Naive guard: count buckets, gate.
 """
 from __future__ import annotations
 import json
@@ -14,25 +22,62 @@ import os
 import sys
 import traceback
 from datetime import date, datetime, timedelta, timezone
+from typing import Optional
 
 import numpy as np
 import pandas as pd
+from dateutil.relativedelta import relativedelta
 from prophet import Prophet
 
 from scripts.forecast.db import make_client
 from scripts.forecast.exog import build_exog_matrix, EXOG_COLUMNS
 from scripts.forecast.closed_days import zero_closed_days
+from scripts.forecast.aggregation import bucket_to_weekly, bucket_to_monthly
 from scripts.forecast.sample_paths import paths_to_jsonb
 from scripts.external.pipeline_runs_writer import write_success, write_failure
 
 # --- Constants ---
 N_PATHS = 200
-HORIZON = 365
 STEP_NAME = 'forecast_prophet'
 CHUNK_SIZE = 100
 
+# 15-10: per-grain knobs (D-14).
+HORIZON_BY_GRAIN = {'day': 372, 'week': 57, 'month': 17}
+# Yearly seasonality requires ~2 full cycles; numbers in native buckets.
+YEARLY_THRESHOLD_BY_GRAIN = {'day': 730, 'week': 104, 'month': 24}
+
 # Regressor columns — weather_source is metadata, not a numeric regressor
 _REGRESSOR_COLS = [c for c in EXOG_COLUMNS if c != 'weather_source']
+
+
+def _train_end_for_grain(last_actual: date, granularity: str) -> date:
+    """Compute the grain-specific TRAIN_END cutoff (D-14)."""
+    if granularity == 'day':
+        return last_actual - timedelta(days=7)
+    if granularity == 'week':
+        return last_actual - timedelta(days=35)
+    if granularity == 'month':
+        anchor = last_actual - relativedelta(months=5)
+        first_of_anchor = anchor.replace(day=1)
+        end_of_anchor = (first_of_anchor + relativedelta(months=1)) - timedelta(days=1)
+        return end_of_anchor
+    raise ValueError(f'Unknown granularity: {granularity!r}')
+
+
+def _pred_dates_for_grain(*, run_date: date, granularity: str, horizon: int) -> list:
+    """Build native-cadence target_dates starting one bucket after run_date."""
+    if granularity == 'day':
+        return [run_date + timedelta(days=i + 1) for i in range(horizon)]
+    if granularity == 'week':
+        days_to_next_mon = (7 - run_date.weekday()) % 7
+        if days_to_next_mon == 0:
+            days_to_next_mon = 7
+        first_mon = run_date + timedelta(days=days_to_next_mon)
+        return [first_mon + timedelta(days=7 * i) for i in range(horizon)]
+    if granularity == 'month':
+        first = (run_date.replace(day=1) + relativedelta(months=1))
+        return [(first + relativedelta(months=i)) for i in range(horizon)]
+    raise ValueError(f'Unknown granularity: {granularity!r}')
 
 
 def _fetch_history(client, *, restaurant_id: str, kpi_name: str) -> pd.DataFrame:
@@ -83,52 +128,57 @@ def _fetch_shop_calendar(client, *, restaurant_id: str, start_date: date, end_da
     return df
 
 
-def _build_prophet_df(history: pd.DataFrame, X_fit: pd.DataFrame) -> pd.DataFrame:
-    """Build Prophet training DataFrame with ds, y, and regressor columns.
-
-    Prophet requires columns named 'ds' (datetime) and 'y' (target).
-    NaN in y is accepted by Prophet. Regressors must be non-NaN.
-    """
+def _build_prophet_df(history: pd.DataFrame, X_fit: Optional[pd.DataFrame]) -> pd.DataFrame:
+    """Build Prophet training DataFrame with ds, y, and (daily-only) regressor columns."""
     df = pd.DataFrame({
         'ds': pd.to_datetime(history['date']),
         'y': history['y'].values,
     })
-    # Attach regressor columns from exog matrix
-    X_reset = X_fit.reset_index(drop=True)
-    for col in _REGRESSOR_COLS:
-        if col in X_reset.columns:
-            df[col] = X_reset[col].values
+    if X_fit is not None:
+        X_reset = X_fit.reset_index(drop=True)
+        for col in _REGRESSOR_COLS:
+            if col in X_reset.columns:
+                df[col] = X_reset[col].values
     return df
 
 
-def _build_future_df(pred_dates: list, X_pred: pd.DataFrame) -> pd.DataFrame:
-    """Build Prophet future DataFrame with ds and regressor columns.
-
-    NaN in regressor columns is NOT allowed — asserted before use.
-    """
+def _build_future_df(pred_dates: list, X_pred: Optional[pd.DataFrame]) -> pd.DataFrame:
+    """Build Prophet future DataFrame with ds and (daily-only) regressor columns."""
     future = pd.DataFrame({'ds': pd.to_datetime(pred_dates)})
-    X_reset = X_pred.reset_index(drop=True)
-    for col in _REGRESSOR_COLS:
-        if col in X_reset.columns:
-            future[col] = X_reset[col].values
+    if X_pred is not None:
+        X_reset = X_pred.reset_index(drop=True)
+        for col in _REGRESSOR_COLS:
+            if col in X_reset.columns:
+                future[col] = X_reset[col].values
     return future
 
 
-def _fit_prophet(train_df: pd.DataFrame) -> Prophet:
-    """Fit Prophet model with weekly seasonality and regressors.
+def _fit_prophet(
+    train_df: pd.DataFrame,
+    *,
+    granularity: str,
+    use_regressors: bool,
+    n_buckets: int,
+) -> Prophet:
+    """Fit Prophet with grain-aware seasonality flags.
 
-    C-04: yearly_seasonality=False required until history >= 730 days.
+    C-04: yearly_seasonality stays False until 2 full yearly cycles of buckets
+    are present (730d / 104w / 24m). Weekly seasonality is meaningless when
+    each row IS a week or month bucket.
     """
+    yearly_ok = n_buckets >= YEARLY_THRESHOLD_BY_GRAIN[granularity]
+    weekly_seasonality = (granularity == 'day')
+
     m = Prophet(
-        yearly_seasonality=False,   # C-04: must stay False for short history
-        weekly_seasonality=True,
+        yearly_seasonality=yearly_ok,
+        weekly_seasonality=weekly_seasonality,
         daily_seasonality=False,
         uncertainty_samples=N_PATHS,
     )
-    # Add numeric regressors (exclude weather_source which is a metadata string)
-    for col in _REGRESSOR_COLS:
-        if col in train_df.columns:
-            m.add_regressor(col)
+    if use_regressors:
+        for col in _REGRESSOR_COLS:
+            if col in train_df.columns:
+                m.add_regressor(col)
     m.fit(train_df)
     return m
 
@@ -140,8 +190,9 @@ def _build_forecast_rows(
     restaurant_id: str,
     kpi_name: str,
     run_date: date,
+    granularity: str,
     exog_sig: dict,
-) -> list[dict]:
+) -> list:
     """Convert Prophet sample paths to forecast_daily row dicts.
 
     samples shape: (HORIZON, N_PATHS).
@@ -159,6 +210,7 @@ def _build_forecast_rows(
             'model_name': 'prophet',
             'run_date': str(run_date),
             'forecast_track': 'bau',
+            'granularity': granularity,
             'yhat': round(yhat, 4),
             'yhat_lower': round(yhat_lower, 4),
             'yhat_upper': round(yhat_upper, 4),
@@ -168,7 +220,7 @@ def _build_forecast_rows(
     return rows
 
 
-def _upsert_rows(client, rows: list[dict]) -> int:
+def _upsert_rows(client, rows: list) -> int:
     """Upsert rows in chunks of CHUNK_SIZE. Returns total count inserted/updated."""
     total = 0
     for start in range(0, len(rows), CHUNK_SIZE):
@@ -184,84 +236,124 @@ def fit_and_write(
     restaurant_id: str,
     kpi_name: str,
     run_date: date,
+    granularity: str = 'day',
 ) -> int:
-    """Core logic: fit Prophet, generate 200 sample paths, write 365 rows.
+    """Core logic: fit Prophet at the chosen grain, generate sample paths, write rows.
 
     Returns the number of rows written to forecast_daily.
     """
-    # 1. Fetch training history
+    horizon = HORIZON_BY_GRAIN[granularity]
+
+    # 1. Fetch training history (daily from kpi_daily_mv).
     history = _fetch_history(client, restaurant_id=restaurant_id, kpi_name=kpi_name)
-    fit_start = history['date'].iloc[0]
-    fit_end = history['date'].iloc[-1]
-
-    # 2. Build fit exog matrix
-    X_fit, exog_sig = build_exog_matrix(
-        client,
-        restaurant_id=restaurant_id,
-        start_date=fit_start,
-        end_date=fit_end,
+    last_actual = history['date'].iloc[-1]
+    train_end = _train_end_for_grain(last_actual, granularity)
+    print(
+        f'[prophet_fit] grain={granularity} last_actual={last_actual} '
+        f'train_end={train_end} horizon={horizon}'
     )
 
-    # Align exog to history dates (kpi_daily_mv may have gaps for zero-tx days)
-    history_dates = set(history['date'])
-    X_fit = X_fit.loc[X_fit.index.isin(history_dates)]
+    # 2. Truncate to <= train_end before bucketing.
+    history = history[history['date'] <= train_end].reset_index(drop=True)
+    if history.empty:
+        raise RuntimeError(f'Empty history after train_end cutoff {train_end}')
 
-    # 3. Build Prophet training DataFrame
-    train_df = _build_prophet_df(history, X_fit)
+    if granularity == 'day':
+        # 3a. Daily path keeps exog regressors.
+        fit_start = history['date'].iloc[0]
+        fit_end = history['date'].iloc[-1]
+        X_fit, exog_sig = build_exog_matrix(
+            client,
+            restaurant_id=restaurant_id,
+            start_date=fit_start,
+            end_date=fit_end,
+        )
+        history_dates = set(history['date'])
+        X_fit = X_fit.loc[X_fit.index.isin(history_dates)]
 
-    # 4. Build prediction range and exog matrix
-    pred_start = run_date + timedelta(days=1)
-    pred_end = run_date + timedelta(days=HORIZON)
-    pred_dates = [pred_start + timedelta(days=i) for i in range(HORIZON)]
+        train_df = _build_prophet_df(history, X_fit)
 
-    X_pred, _ = build_exog_matrix(
-        client,
-        restaurant_id=restaurant_id,
-        start_date=pred_start,
-        end_date=pred_end,
-    )
+        pred_dates = _pred_dates_for_grain(
+            run_date=run_date, granularity='day', horizon=horizon,
+        )
+        pred_start = pred_dates[0]
+        pred_end = pred_dates[-1]
+        X_pred, _ = build_exog_matrix(
+            client,
+            restaurant_id=restaurant_id,
+            start_date=pred_start,
+            end_date=pred_end,
+        )
+        future_df = _build_future_df(pred_dates, X_pred)
+        nan_count = future_df[[c for c in _REGRESSOR_COLS if c in future_df.columns]].isna().sum().sum()
+        assert nan_count == 0, f'NaN in future regressor columns: {nan_count} cells'
 
-    # 5. Build future DataFrame and validate no NaN in regressors
-    future_df = _build_future_df(pred_dates, X_pred)
-    nan_count = future_df[[c for c in _REGRESSOR_COLS if c in future_df.columns]].isna().sum().sum()
-    assert nan_count == 0, f'NaN in future regressor columns: {nan_count} cells'
+        n_buckets = len(history)
+        m = _fit_prophet(train_df, granularity='day', use_regressors=True, n_buckets=n_buckets)
+    else:
+        # 3b. Weekly/monthly: bucket then fit without regressors.
+        if granularity == 'week':
+            agg = bucket_to_weekly(history, value_col='y', date_col='date')
+            agg = agg.rename(columns={'week_start': 'ds'})
+        else:  # 'month'
+            agg = bucket_to_monthly(history, value_col='y', date_col='date')
+            agg = agg.rename(columns={'month_start': 'ds'})
+        if agg.empty:
+            raise RuntimeError(f'Empty aggregation for grain={granularity}')
 
-    # 6. Fit Prophet model
-    m = _fit_prophet(train_df)
-    print(f'[prophet_fit] Fitted Prophet for {kpi_name}')
+        train_df = pd.DataFrame({
+            'ds': pd.to_datetime(agg['ds']),
+            'y': agg['y'].astype(float).values,
+        })
 
-    # 7. Generate 200 sample paths via predictive_samples
-    # Prophet predictive_samples returns dict {'yhat': ndarray}
-    # Shape is (n_forecast_dates, n_samples) i.e. (HORIZON, N_PATHS)
+        n_buckets = len(train_df)
+        if n_buckets < 2:
+            raise RuntimeError(
+                f'Insufficient {granularity} history: {n_buckets} buckets'
+            )
+
+        pred_dates = _pred_dates_for_grain(
+            run_date=run_date, granularity=granularity, horizon=horizon,
+        )
+        future_df = _build_future_df(pred_dates, None)
+
+        m = _fit_prophet(train_df, granularity=granularity, use_regressors=False, n_buckets=n_buckets)
+        exog_sig = {'model': 'prophet', 'granularity': granularity, 'n_buckets': n_buckets}
+
+    print(f'[prophet_fit] Fitted Prophet for {kpi_name}/{granularity}')
+
+    # 4. Generate sample paths via predictive_samples.
     raw = m.predictive_samples(future_df)
-    samples = raw['yhat']  # shape: (HORIZON, N_PATHS) — no transpose needed
-    assert samples.shape == (HORIZON, N_PATHS), f'Unexpected samples shape: {samples.shape}'
+    samples = raw['yhat']  # shape: (HORIZON, N_PATHS)
+    assert samples.shape == (horizon, N_PATHS), f'Unexpected samples shape: {samples.shape}'
 
-    # 8. Build forecast rows
+    # 5. Build forecast rows.
     rows = _build_forecast_rows(
         samples=samples,
         pred_dates=pred_dates,
         restaurant_id=restaurant_id,
         kpi_name=kpi_name,
         run_date=run_date,
+        granularity=granularity,
         exog_sig=exog_sig,
     )
     preds_df = pd.DataFrame(rows)
     preds_df['target_date'] = pd.to_datetime(preds_df['target_date']).dt.date
 
-    # 9. Fetch shop calendar and zero closed days post-hoc
-    shop_cal = _fetch_shop_calendar(
-        client,
-        restaurant_id=restaurant_id,
-        start_date=pred_start,
-        end_date=pred_end,
-    )
-    preds_df = zero_closed_days(preds_df, shop_cal)
+    # 6. Closed-day post-hoc zeroing only at daily grain.
+    if granularity == 'day':
+        shop_cal = _fetch_shop_calendar(
+            client,
+            restaurant_id=restaurant_id,
+            start_date=pred_dates[0],
+            end_date=pred_dates[-1],
+        )
+        preds_df = zero_closed_days(preds_df, shop_cal)
 
-    # 10. Restore target_date to str for upsert
+    # 7. Restore target_date to str for upsert
     preds_df['target_date'] = preds_df['target_date'].astype(str)
 
-    # 11. Chunked upsert
+    # 8. Chunked upsert
     final_rows = preds_df.to_dict(orient='records')
     n = _upsert_rows(client, final_rows)
     return n
@@ -272,9 +364,13 @@ if __name__ == '__main__':
     restaurant_id = os.environ.get('RESTAURANT_ID', '').strip()
     kpi_name = os.environ.get('KPI_NAME', '').strip()
     run_date_str = os.environ.get('RUN_DATE', '').strip()
+    granularity = os.environ.get('GRANULARITY', 'day').strip() or 'day'
 
     if not restaurant_id or not kpi_name or not run_date_str:
         print('ERROR: RESTAURANT_ID, KPI_NAME, and RUN_DATE env vars are required', file=sys.stderr)
+        sys.exit(1)
+    if granularity not in HORIZON_BY_GRAIN:
+        print(f'ERROR: invalid GRANULARITY {granularity!r}; expected one of {list(HORIZON_BY_GRAIN)}', file=sys.stderr)
         sys.exit(1)
 
     run_date = date.fromisoformat(run_date_str)
@@ -282,7 +378,13 @@ if __name__ == '__main__':
     client = make_client()
 
     try:
-        n = fit_and_write(client, restaurant_id=restaurant_id, kpi_name=kpi_name, run_date=run_date)
+        n = fit_and_write(
+            client,
+            restaurant_id=restaurant_id,
+            kpi_name=kpi_name,
+            run_date=run_date,
+            granularity=granularity,
+        )
         write_success(
             client,
             step_name=STEP_NAME,
@@ -290,7 +392,7 @@ if __name__ == '__main__':
             row_count=n,
             restaurant_id=restaurant_id,
         )
-        print(f'[prophet_fit] Done: {n} rows written for {kpi_name}')
+        print(f'[prophet_fit] Done: {n} rows written for {kpi_name}/{granularity}')
         sys.exit(0)
     except Exception:
         err_msg = traceback.format_exc()

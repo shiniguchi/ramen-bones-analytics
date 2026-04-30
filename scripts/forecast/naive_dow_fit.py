@@ -1,16 +1,24 @@
-"""Phase 14: Naive day-of-week baseline model fit and forecast writer.
+"""Phase 14 / 15-10: Naive seasonal-mean baseline model fit and forecast writer.
 
 Subprocess entry point — run as:
     python -m scripts.forecast.naive_dow_fit
 
-Reads RESTAURANT_ID, KPI_NAME, RUN_DATE from env vars.
-Writes 365 rows to forecast_daily via chunked upsert (100 rows/chunk).
+Reads RESTAURANT_ID, KPI_NAME, RUN_DATE, GRANULARITY from env vars.
 
 Design decisions:
-  D-03: Uses open-day-only history.
+  D-03: Daily grain uses open-day-only history.
   No external library — pure numpy/pandas.
-  Point forecast: rolling mean of same-DoW values from history.
-  200 sample paths via bootstrap_from_residuals using same-DoW residuals (D-16).
+
+15-10: model_name stays 'naive_dow' (chart legend strings depend on this
+per Phase 15 v1's locked decisions) but the seasonal key swings with
+granularity:
+  day   -> day-of-week  (Mon..Sun, 7 keys)
+  week  -> ISO week-of-year (1..53, ~52 keys)
+  month -> month-of-year (1..12, 12 keys)
+Point forecast = mean of historical bucket values sharing the seasonal key.
+200 sample paths via bootstrap_from_residuals using same-key residuals
+(D-16). Daily grain still applies the closed-day post-hoc zero-out;
+week/month grains skip it (closed days are summed into bucket totals).
 """
 from __future__ import annotations
 import json
@@ -22,25 +30,72 @@ from collections import defaultdict
 
 import numpy as np
 import pandas as pd
+from dateutil.relativedelta import relativedelta
 
 from scripts.forecast.db import make_client
 from scripts.forecast.closed_days import zero_closed_days, filter_open_days
+from scripts.forecast.aggregation import bucket_to_weekly, bucket_to_monthly
 from scripts.forecast.sample_paths import bootstrap_from_residuals, paths_to_jsonb
 from scripts.external.pipeline_runs_writer import write_success, write_failure
 
 # --- Constants ---
 N_PATHS = 200
-HORIZON = 365
 STEP_NAME = 'forecast_naive_dow'
 CHUNK_SIZE = 100
 
+# 15-10: per-grain knobs (D-14).
+HORIZON_BY_GRAIN = {'day': 372, 'week': 57, 'month': 17}
+
+
+def _train_end_for_grain(last_actual: date, granularity: str) -> date:
+    """Compute the grain-specific TRAIN_END cutoff (D-14)."""
+    if granularity == 'day':
+        return last_actual - timedelta(days=7)
+    if granularity == 'week':
+        return last_actual - timedelta(days=35)
+    if granularity == 'month':
+        anchor = last_actual - relativedelta(months=5)
+        first_of_anchor = anchor.replace(day=1)
+        end_of_anchor = (first_of_anchor + relativedelta(months=1)) - timedelta(days=1)
+        return end_of_anchor
+    raise ValueError(f'Unknown granularity: {granularity!r}')
+
+
+def _pred_dates_for_grain(*, run_date: date, granularity: str, horizon: int) -> list:
+    """Build native-cadence target_dates starting one bucket after run_date."""
+    if granularity == 'day':
+        return [run_date + timedelta(days=i + 1) for i in range(horizon)]
+    if granularity == 'week':
+        days_to_next_mon = (7 - run_date.weekday()) % 7
+        if days_to_next_mon == 0:
+            days_to_next_mon = 7
+        first_mon = run_date + timedelta(days=days_to_next_mon)
+        return [first_mon + timedelta(days=7 * i) for i in range(horizon)]
+    if granularity == 'month':
+        first = (run_date.replace(day=1) + relativedelta(months=1))
+        return [(first + relativedelta(months=i)) for i in range(horizon)]
+    raise ValueError(f'Unknown granularity: {granularity!r}')
+
+
+def _seasonal_key(d: date, granularity: str) -> int:
+    """Return the seasonal grouping key for a date at the given grain.
+
+    day  : weekday() (Mon=0..Sun=6)
+    week : ISO week number (1..53)
+    month: calendar month (1..12)
+    """
+    if granularity == 'day':
+        return d.weekday()
+    if granularity == 'week':
+        # isocalendar() returns (year, week, weekday); we use week.
+        return d.isocalendar()[1]
+    if granularity == 'month':
+        return d.month
+    raise ValueError(f'Unknown granularity: {granularity!r}')
+
 
 def _fetch_history(client, *, restaurant_id: str, kpi_name: str) -> pd.DataFrame:
-    """Fetch kpi_daily_mv history and shop_calendar is_open for open-day filtering.
-
-    kpi_daily_mv has columns: business_date, revenue_cents, tx_count.
-    is_open comes from shop_calendar (not kpi_daily_mv).
-    """
+    """Fetch kpi_daily_mv history and shop_calendar is_open for open-day filtering."""
     resp = (
         client.table('kpi_daily_mv')
         .select('business_date,revenue_cents,tx_count')
@@ -53,14 +108,12 @@ def _fetch_history(client, *, restaurant_id: str, kpi_name: str) -> pd.DataFrame
     if not rows:
         raise RuntimeError(f'No history found for restaurant_id={restaurant_id}')
     df = pd.DataFrame(rows)
-    # Map actual MV columns to canonical names
     df.rename(columns={'business_date': 'date'}, inplace=True)
     df['date'] = pd.to_datetime(df['date']).dt.date
     df['revenue_eur'] = df['revenue_cents'] / 100.0
     df['invoice_count'] = df['tx_count'].astype(float)
     df = df.sort_values('date').reset_index(drop=True)
 
-    # Fetch is_open from shop_calendar (kpi_daily_mv does not have this column)
     cal_resp = (
         client.table('shop_calendar')
         .select('date,is_open')
@@ -77,7 +130,6 @@ def _fetch_history(client, *, restaurant_id: str, kpi_name: str) -> pd.DataFrame
         cal_lookup = dict(zip(cal_df['date'], cal_df['is_open']))
         df['is_open'] = [cal_lookup.get(d, True) for d in df['date']]
     else:
-        # Default: assume all days open if no shop_calendar data
         df['is_open'] = True
 
     if kpi_name not in df.columns:
@@ -103,29 +155,26 @@ def _fetch_shop_calendar(client, *, restaurant_id: str, start_date: date, end_da
     return df
 
 
-def _compute_dow_means(open_history: pd.DataFrame) -> dict:
-    """Compute the rolling mean y value per day-of-week (0=Mon, 6=Sun).
+def _seasonal_means_and_residuals(
+    *,
+    bucket_dates: list,
+    bucket_values: np.ndarray,
+    granularity: str,
+) -> tuple:
+    """Group bucket values by seasonal key and return (means, residuals).
 
-    Returns dict mapping dow -> mean_y.
+    means: dict {key -> mean_y}
+    residuals: dict {key -> array of y - mean_y}
     """
-    # Add weekday column to open history
-    open_history = open_history.copy()
-    open_history['dow'] = [d.weekday() for d in open_history['date']]
-    return open_history.groupby('dow')['y'].mean().to_dict()
-
-
-def _compute_dow_residuals(open_history: pd.DataFrame, dow_means: dict) -> dict:
-    """Compute per-DoW residuals for bootstrap sample path generation.
-
-    Returns dict mapping dow -> array of residuals.
-    """
-    open_history = open_history.copy()
-    open_history['dow'] = [d.weekday() for d in open_history['date']]
-    dow_residuals: dict = defaultdict(list)
-    for _, row in open_history.iterrows():
-        predicted = dow_means.get(row['dow'], row['y'])
-        dow_residuals[row['dow']].append(row['y'] - predicted)
-    return {dow: np.array(resids) for dow, resids in dow_residuals.items()}
+    keyed = defaultdict(list)
+    for d, v in zip(bucket_dates, bucket_values):
+        keyed[_seasonal_key(d, granularity)].append(float(v))
+    means = {k: float(np.mean(vs)) for k, vs in keyed.items()}
+    residuals = {
+        k: np.array([v - means[k] for v in vs], dtype=float)
+        for k, vs in keyed.items()
+    }
+    return means, residuals
 
 
 def _open_future_dates(shop_cal: pd.DataFrame, pred_dates: list) -> list:
@@ -135,7 +184,7 @@ def _open_future_dates(shop_cal: pd.DataFrame, pred_dates: list) -> list:
     return [d for d in pred_dates if d not in cal_dates or d in open_set]
 
 
-def _build_forecast_rows(
+def _build_forecast_rows_daily(
     *,
     samples: np.ndarray,
     open_dates: list,
@@ -143,8 +192,9 @@ def _build_forecast_rows(
     restaurant_id: str,
     kpi_name: str,
     run_date: date,
-) -> list[dict]:
-    """Map open-day samples to calendar forecast rows. Closed dates get yhat=0."""
+    granularity: str,
+) -> list:
+    """Daily-grain row builder. Closed dates get yhat=0 (zero_closed_days finalizes)."""
     open_date_idx = {d: i for i, d in enumerate(open_dates)}
 
     rows = []
@@ -169,17 +219,50 @@ def _build_forecast_rows(
             'model_name': 'naive_dow',
             'run_date': str(run_date),
             'forecast_track': 'bau',
+            'granularity': granularity,
             'yhat': round(yhat, 4),
             'yhat_lower': round(yhat_lower, 4),
             'yhat_upper': round(yhat_upper, 4),
             'yhat_samples': yhat_samples_json,
-            'exog_signature': json.dumps({'model': 'naive_dow'}),
+            'exog_signature': json.dumps({'model': 'naive_dow', 'granularity': granularity}),
         })
     return rows
 
 
-def _upsert_rows(client, rows: list[dict]) -> int:
-    """Upsert rows in chunks of CHUNK_SIZE. Returns total count inserted/updated."""
+def _build_forecast_rows_bucket(
+    *,
+    samples: np.ndarray,
+    pred_dates: list,
+    restaurant_id: str,
+    kpi_name: str,
+    run_date: date,
+    granularity: str,
+) -> list:
+    """Weekly/monthly row builder."""
+    rows = []
+    for i, target_date in enumerate(pred_dates):
+        path_values = samples[i]
+        yhat = float(np.mean(path_values))
+        yhat_lower = float(np.percentile(path_values, 10))
+        yhat_upper = float(np.percentile(path_values, 90))
+        rows.append({
+            'restaurant_id': restaurant_id,
+            'kpi_name': kpi_name,
+            'target_date': str(target_date),
+            'model_name': 'naive_dow',
+            'run_date': str(run_date),
+            'forecast_track': 'bau',
+            'granularity': granularity,
+            'yhat': round(yhat, 4),
+            'yhat_lower': round(yhat_lower, 4),
+            'yhat_upper': round(yhat_upper, 4),
+            'yhat_samples': paths_to_jsonb(samples, i),
+            'exog_signature': json.dumps({'model': 'naive_dow', 'granularity': granularity}),
+        })
+    return rows
+
+
+def _upsert_rows(client, rows: list) -> int:
     total = 0
     for start in range(0, len(rows), CHUNK_SIZE):
         chunk = rows[start:start + CHUNK_SIZE]
@@ -194,93 +277,156 @@ def fit_and_write(
     restaurant_id: str,
     kpi_name: str,
     run_date: date,
+    granularity: str = 'day',
 ) -> int:
-    """Core logic: compute DoW means, bootstrap 200 paths, write 365 rows.
+    """Compute seasonal means at the chosen grain, bootstrap paths, write rows."""
+    horizon = HORIZON_BY_GRAIN[granularity]
 
-    Returns the number of rows written to forecast_daily.
-    """
-    # 1. Fetch training history
+    # 1. Fetch training history.
     history = _fetch_history(client, restaurant_id=restaurant_id, kpi_name=kpi_name)
+    last_actual = history['date'].iloc[-1]
+    train_end = _train_end_for_grain(last_actual, granularity)
+    print(
+        f'[naive_dow_fit] grain={granularity} last_actual={last_actual} '
+        f'train_end={train_end} horizon={horizon}'
+    )
 
-    # 2. Filter to open days only (D-03)
-    open_history = filter_open_days(history)
-    if len(open_history) < 7:
-        raise RuntimeError(
-            f'Insufficient open-day history: {len(open_history)} rows (need >= 7)'
+    # 2. Truncate to <= train_end.
+    history = history[history['date'] <= train_end].reset_index(drop=True)
+    if history.empty:
+        raise RuntimeError(f'Empty history after train_end cutoff {train_end}')
+
+    if granularity == 'day':
+        # 3a. Open-day-only history feeds DoW means.
+        open_history = filter_open_days(history)
+        if len(open_history) < 7:
+            raise RuntimeError(
+                f'Insufficient open-day history: {len(open_history)} rows (need >= 7)'
+            )
+
+        bucket_dates = list(open_history['date'])
+        bucket_values = open_history['y'].values
+        means, residuals = _seasonal_means_and_residuals(
+            bucket_dates=bucket_dates,
+            bucket_values=bucket_values,
+            granularity='day',
+        )
+        print(f'[naive_dow_fit] DoW means computed for {kpi_name}: {means}')
+
+        all_pred_dates = _pred_dates_for_grain(
+            run_date=run_date, granularity='day', horizon=horizon,
+        )
+        shop_cal = _fetch_shop_calendar(
+            client,
+            restaurant_id=restaurant_id,
+            start_date=all_pred_dates[0],
+            end_date=all_pred_dates[-1],
+        )
+        open_future = _open_future_dates(shop_cal, all_pred_dates)
+        n_open = len(open_future)
+        if n_open == 0:
+            raise RuntimeError('No open days in forecast window — check shop_calendar')
+
+        global_mean = float(np.mean(list(means.values()))) if means else 0.0
+        point_forecast = np.array([
+            means.get(_seasonal_key(d, 'day'), global_mean) for d in open_future
+        ])
+        all_residuals = np.concatenate(list(residuals.values())) if residuals else np.array([0.0])
+
+        samples = bootstrap_from_residuals(
+            point_forecast=point_forecast,
+            residuals=all_residuals,
+            n_paths=N_PATHS,
+        )
+        assert samples.shape == (n_open, N_PATHS), f'Unexpected samples shape: {samples.shape}'
+
+        rows = _build_forecast_rows_daily(
+            samples=samples,
+            open_dates=open_future,
+            all_pred_dates=all_pred_dates,
+            restaurant_id=restaurant_id,
+            kpi_name=kpi_name,
+            run_date=run_date,
+            granularity='day',
+        )
+        preds_df = pd.DataFrame(rows)
+        preds_df['target_date'] = pd.to_datetime(preds_df['target_date']).dt.date
+        preds_df = zero_closed_days(preds_df, shop_cal)
+    else:
+        # 3b. Weekly/monthly: aggregate full series, then group by week-of-year
+        # or month-of-year.
+        if granularity == 'week':
+            agg = bucket_to_weekly(history, value_col='y', date_col='date')
+            agg = agg.rename(columns={'week_start': 'bucket_start'})
+        else:  # 'month'
+            agg = bucket_to_monthly(history, value_col='y', date_col='date')
+            agg = agg.rename(columns={'month_start': 'bucket_start'})
+        if agg.empty:
+            raise RuntimeError(f'Empty aggregation for grain={granularity}')
+
+        # bucket_start is a Timestamp; convert to date for _seasonal_key.
+        bucket_dates = [pd.Timestamp(b).date() for b in agg['bucket_start']]
+        bucket_values = agg['y'].astype(float).values
+        if len(bucket_values) < 2:
+            raise RuntimeError(
+                f'Insufficient {granularity} history: {len(bucket_values)} buckets'
+            )
+
+        means, residuals = _seasonal_means_and_residuals(
+            bucket_dates=bucket_dates,
+            bucket_values=bucket_values,
+            granularity=granularity,
+        )
+        print(f'[naive_dow_fit] {granularity} seasonal means for {kpi_name}: {len(means)} keys')
+
+        pred_dates = _pred_dates_for_grain(
+            run_date=run_date, granularity=granularity, horizon=horizon,
         )
 
-    # 3. Compute DoW means and residuals
-    dow_means = _compute_dow_means(open_history)
-    dow_residuals = _compute_dow_residuals(open_history, dow_means)
-    print(f'[naive_dow_fit] DoW means computed for {kpi_name}: {dow_means}')
+        global_mean = float(np.mean(list(means.values()))) if means else 0.0
+        point_forecast = np.array([
+            means.get(_seasonal_key(d, granularity), global_mean) for d in pred_dates
+        ])
+        all_residuals = np.concatenate(list(residuals.values())) if residuals else np.array([0.0])
 
-    # 4. Define prediction window
-    pred_start = run_date + timedelta(days=1)
-    pred_end = run_date + timedelta(days=HORIZON)
-    all_pred_dates = [pred_start + timedelta(days=i) for i in range(HORIZON)]
+        samples = bootstrap_from_residuals(
+            point_forecast=point_forecast,
+            residuals=all_residuals,
+            n_paths=N_PATHS,
+        )
+        assert samples.shape == (horizon, N_PATHS), f'Unexpected samples shape: {samples.shape}'
 
-    # 5. Fetch shop calendar and find open future dates
-    shop_cal = _fetch_shop_calendar(
-        client,
-        restaurant_id=restaurant_id,
-        start_date=pred_start,
-        end_date=pred_end,
-    )
-    open_future = _open_future_dates(shop_cal, all_pred_dates)
-    n_open = len(open_future)
-    if n_open == 0:
-        raise RuntimeError('No open days in forecast window — check shop_calendar')
+        rows = _build_forecast_rows_bucket(
+            samples=samples,
+            pred_dates=pred_dates,
+            restaurant_id=restaurant_id,
+            kpi_name=kpi_name,
+            run_date=run_date,
+            granularity=granularity,
+        )
+        preds_df = pd.DataFrame(rows)
+        preds_df['target_date'] = pd.to_datetime(preds_df['target_date']).dt.date
 
-    # 6. Compute point forecasts for each open future date
-    point_forecast = np.array([
-        dow_means.get(d.weekday(), np.mean(list(dow_means.values())))
-        for d in open_future
-    ])
-
-    # 7. Gather all residuals across all DoWs for bootstrap
-    #    Use same-DoW residuals where available, fall back to all-DoW pool
-    all_residuals = np.concatenate([r for r in dow_residuals.values()]) if dow_residuals else np.array([0.0])
-
-    # 8. Bootstrap 200 sample paths (D-16)
-    samples = bootstrap_from_residuals(
-        point_forecast=point_forecast,
-        residuals=all_residuals,
-        n_paths=N_PATHS,
-    )
-    assert samples.shape == (n_open, N_PATHS), f'Unexpected samples shape: {samples.shape}'
-
-    # 9. Build forecast rows
-    rows = _build_forecast_rows(
-        samples=samples,
-        open_dates=open_future,
-        all_pred_dates=all_pred_dates,
-        restaurant_id=restaurant_id,
-        kpi_name=kpi_name,
-        run_date=run_date,
-    )
-    preds_df = pd.DataFrame(rows)
-    preds_df['target_date'] = pd.to_datetime(preds_df['target_date']).dt.date
-
-    # 10. Zero closed days post-hoc (belt-and-suspenders)
-    preds_df = zero_closed_days(preds_df, shop_cal)
-
-    # 11. Restore target_date to str for upsert
+    # 4. Restore target_date to str for upsert
     preds_df['target_date'] = preds_df['target_date'].astype(str)
 
-    # 12. Chunked upsert
+    # 5. Chunked upsert
     final_rows = preds_df.to_dict(orient='records')
     n = _upsert_rows(client, final_rows)
     return n
 
 
 if __name__ == '__main__':
-    # Read env vars
     restaurant_id = os.environ.get('RESTAURANT_ID', '').strip()
     kpi_name = os.environ.get('KPI_NAME', '').strip()
     run_date_str = os.environ.get('RUN_DATE', '').strip()
+    granularity = os.environ.get('GRANULARITY', 'day').strip() or 'day'
 
     if not restaurant_id or not kpi_name or not run_date_str:
         print('ERROR: RESTAURANT_ID, KPI_NAME, and RUN_DATE env vars are required', file=sys.stderr)
+        sys.exit(1)
+    if granularity not in HORIZON_BY_GRAIN:
+        print(f'ERROR: invalid GRANULARITY {granularity!r}; expected one of {list(HORIZON_BY_GRAIN)}', file=sys.stderr)
         sys.exit(1)
 
     run_date = date.fromisoformat(run_date_str)
@@ -288,7 +434,13 @@ if __name__ == '__main__':
     client = make_client()
 
     try:
-        n = fit_and_write(client, restaurant_id=restaurant_id, kpi_name=kpi_name, run_date=run_date)
+        n = fit_and_write(
+            client,
+            restaurant_id=restaurant_id,
+            kpi_name=kpi_name,
+            run_date=run_date,
+            granularity=granularity,
+        )
         write_success(
             client,
             step_name=STEP_NAME,
@@ -296,7 +448,7 @@ if __name__ == '__main__':
             row_count=n,
             restaurant_id=restaurant_id,
         )
-        print(f'[naive_dow_fit] Done: {n} rows written for {kpi_name}')
+        print(f'[naive_dow_fit] Done: {n} rows written for {kpi_name}/{granularity}')
         sys.exit(0)
     except Exception:
         err_msg = traceback.format_exc()

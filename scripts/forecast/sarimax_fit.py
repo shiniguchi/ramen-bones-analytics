@@ -1,14 +1,21 @@
-"""Phase 14: SARIMAX model fit and forecast writer.
+"""Phase 14 / 15-10: SARIMAX model fit and forecast writer.
 
 Subprocess entry point — run as:
     python -m scripts.forecast.sarimax_fit
 
-Reads RESTAURANT_ID, KPI_NAME, RUN_DATE from env vars.
-Writes 365 rows to forecast_daily via chunked upsert (100 rows/chunk).
+Reads RESTAURANT_ID, KPI_NAME, RUN_DATE, GRANULARITY from env vars.
 
-Order strategy (autoplan E6):
-  Primary:  SARIMAX(1,0,1)(1,1,1,7)
-  Fallback: SARIMAX(1,0,1)(0,1,0,7)  — used on LinAlgError or NaN params
+15-10 changes:
+  - GRANULARITY env (day|week|month) selects native bucket cadence.
+  - TRAIN_END computed per grain so each native horizon ends at the same
+    real-world date target (D-14).
+  - Horizon, seasonal period, and aggregation step all swing with grain.
+  - Closed-days post-hoc zeroing only applies at daily grain.
+
+Order strategy (autoplan E6) per grain:
+  Daily:   SARIMAX(1,0,1)(1,1,1,7)   fallback (0,1,0,7)
+  Weekly:  SARIMAX(1,0,1)(1,1,1,52)  fallback (0,1,0,52)
+  Monthly: SARIMAX(1,0,1)(1,1,1,12)  fallback (0,1,0,12)
 """
 from __future__ import annotations
 import json
@@ -21,22 +28,54 @@ from typing import Optional
 import numpy as np
 import pandas as pd
 import statsmodels.api as sm
+from dateutil.relativedelta import relativedelta
 from numpy.linalg import LinAlgError
 
 from scripts.forecast.db import make_client
 from scripts.forecast.exog import build_exog_matrix, assert_exog_compatible, EXOG_COLUMNS
 from scripts.forecast.closed_days import zero_closed_days
+from scripts.forecast.aggregation import bucket_to_weekly, bucket_to_monthly
 from scripts.forecast.sample_paths import paths_to_jsonb
 from scripts.external.pipeline_runs_writer import write_success, write_failure
 
 # --- Constants ---
 PRIMARY_ORDER = (1, 0, 1)
-PRIMARY_SEASONAL = (1, 1, 1, 7)
-FALLBACK_SEASONAL = (0, 1, 0, 7)
 N_PATHS = 200
-HORIZON = 365
 STEP_NAME = 'forecast_sarimax'
 CHUNK_SIZE = 100
+
+# 15-10: per-grain knobs (D-14).
+HORIZON_BY_GRAIN = {'day': 372, 'week': 57, 'month': 17}
+SEASONAL_PERIOD_BY_GRAIN = {'day': 7, 'week': 52, 'month': 12}
+
+
+def _seasonal_orders(granularity: str) -> tuple:
+    """Return (primary, fallback) seasonal_order tuples for the given grain."""
+    period = SEASONAL_PERIOD_BY_GRAIN[granularity]
+    return (1, 1, 1, period), (0, 1, 0, period)
+
+
+def _train_end_for_grain(last_actual: date, granularity: str) -> date:
+    """Compute the grain-specific TRAIN_END cutoff.
+
+    Daily : last_actual - 7 days
+    Weekly: last_actual - 35 days (5 weeks back so week buckets are complete)
+    Monthly: end-of-month for (last_actual.month - 5 calendar months)
+    """
+    if granularity == 'day':
+        return last_actual - timedelta(days=7)
+    if granularity == 'week':
+        return last_actual - timedelta(days=35)
+    if granularity == 'month':
+        # "end of (last_actual minus 5 calendar months)".
+        # Step 1: subtract 5 months from last_actual to land somewhere in target month.
+        # Step 2: roll to the last day of THAT month.
+        anchor = last_actual - relativedelta(months=5)
+        first_of_anchor = anchor.replace(day=1)
+        # End of anchor month = (first of next month) - 1 day.
+        end_of_anchor = (first_of_anchor + relativedelta(months=1)) - timedelta(days=1)
+        return end_of_anchor
+    raise ValueError(f'Unknown granularity: {granularity!r}')
 
 
 def _fetch_history(client, *, restaurant_id: str, kpi_name: str) -> pd.DataFrame:
@@ -96,11 +135,13 @@ def _drop_metadata_cols(X: pd.DataFrame) -> pd.DataFrame:
     return X.drop(columns=drop_cols)
 
 
-def _fit_sarimax(y: np.ndarray, X_fit: pd.DataFrame) -> tuple:
+def _fit_sarimax(y: np.ndarray, X_fit: Optional[pd.DataFrame], granularity: str) -> tuple:
     """Fit SARIMAX with primary order, falling back on LinAlgError or NaN params.
 
-    Returns (result, order_used) where order_used is PRIMARY_SEASONAL or FALLBACK_SEASONAL.
+    Returns (result, order_used) where order_used is the seasonal_order tuple
+    actually picked. X_fit may be None for non-daily grains (no exog at week/month).
     """
+    primary_seasonal, fallback_seasonal = _seasonal_orders(granularity)
     # Shared model kwargs
     model_kwargs = dict(
         exog=X_fit,
@@ -112,20 +153,20 @@ def _fit_sarimax(y: np.ndarray, X_fit: pd.DataFrame) -> tuple:
 
     # Try primary seasonal order first
     try:
-        model = sm.tsa.SARIMAX(y, seasonal_order=PRIMARY_SEASONAL, **model_kwargs)
+        model = sm.tsa.SARIMAX(y, seasonal_order=primary_seasonal, **model_kwargs)
         result = model.fit(**fit_kwargs)
         if np.isnan(result.params).any():
             raise ValueError('NaN params in primary SARIMAX fit')
-        return result, PRIMARY_SEASONAL
+        return result, primary_seasonal
     except (LinAlgError, ValueError) as primary_err:
-        print(f'[sarimax_fit] Primary order {PRIMARY_SEASONAL} failed: {primary_err!r}; trying fallback {FALLBACK_SEASONAL}')
+        print(f'[sarimax_fit] Primary order {primary_seasonal} failed: {primary_err!r}; trying fallback {fallback_seasonal}')
 
     # Fallback to simpler seasonal order
-    model = sm.tsa.SARIMAX(y, seasonal_order=FALLBACK_SEASONAL, **model_kwargs)
+    model = sm.tsa.SARIMAX(y, seasonal_order=fallback_seasonal, **model_kwargs)
     result = model.fit(**fit_kwargs)
     if np.isnan(result.params).any():
         raise RuntimeError('NaN params in fallback SARIMAX fit — cannot produce forecast')
-    return result, FALLBACK_SEASONAL
+    return result, fallback_seasonal
 
 
 def _build_forecast_rows(
@@ -135,9 +176,10 @@ def _build_forecast_rows(
     restaurant_id: str,
     kpi_name: str,
     run_date: date,
+    granularity: str,
     exog_sig: dict,
     model_name: str = 'sarimax',
-) -> list[dict]:
+) -> list:
     """Convert sample paths to forecast_daily row dicts.
 
     samples must be a numpy ndarray of shape (HORIZON, N_PATHS).
@@ -157,6 +199,7 @@ def _build_forecast_rows(
             'model_name': model_name,
             'run_date': str(run_date),
             'forecast_track': 'bau',
+            'granularity': granularity,
             'yhat': round(yhat, 4),
             'yhat_lower': round(yhat_lower, 4),
             'yhat_upper': round(yhat_upper, 4),
@@ -166,7 +209,7 @@ def _build_forecast_rows(
     return rows
 
 
-def _upsert_rows(client, rows: list[dict]) -> int:
+def _upsert_rows(client, rows: list) -> int:
     """Upsert rows in chunks of CHUNK_SIZE. Returns total count inserted/updated."""
     total = 0
     for start in range(0, len(rows), CHUNK_SIZE):
@@ -176,92 +219,164 @@ def _upsert_rows(client, rows: list[dict]) -> int:
     return total
 
 
+def _pred_dates_for_grain(*, run_date: date, granularity: str, horizon: int) -> list:
+    """Build list of native-cadence target_dates starting one bucket after run_date.
+
+    Daily : run_date+1, +2, ... +HORIZON days
+    Weekly: next ISO Monday after run_date, then +7d steps
+    Monthly: first-of-month after run_date, then +1 month steps
+    """
+    if granularity == 'day':
+        return [run_date + timedelta(days=i + 1) for i in range(horizon)]
+    if granularity == 'week':
+        # ISO Monday of week strictly after run_date.
+        # weekday(): Mon=0..Sun=6. Days to next Monday = (7 - weekday) % 7, but
+        # if run_date itself is a Mon we still want NEXT Mon (not same day).
+        days_to_next_mon = (7 - run_date.weekday()) % 7
+        if days_to_next_mon == 0:
+            days_to_next_mon = 7
+        first_mon = run_date + timedelta(days=days_to_next_mon)
+        return [first_mon + timedelta(days=7 * i) for i in range(horizon)]
+    if granularity == 'month':
+        # First-of-month strictly after run_date.
+        first = (run_date.replace(day=1) + relativedelta(months=1))
+        return [(first + relativedelta(months=i)) for i in range(horizon)]
+    raise ValueError(f'Unknown granularity: {granularity!r}')
+
+
 def fit_and_write(
     client,
     *,
     restaurant_id: str,
     kpi_name: str,
     run_date: date,
+    granularity: str = 'day',
 ) -> int:
-    """Core logic: fit SARIMAX, generate 200 sample paths, write 365 rows.
+    """Core logic: fit SARIMAX, generate sample paths, write rows.
 
     Returns the number of rows written to forecast_daily.
     """
-    # 1. Fetch training history
+    horizon = HORIZON_BY_GRAIN[granularity]
+
+    # 1. Fetch training history (always daily from kpi_daily_mv).
     history = _fetch_history(client, restaurant_id=restaurant_id, kpi_name=kpi_name)
-    fit_start = history['date'].iloc[0]
-    fit_end = history['date'].iloc[-1]
-    y = history['y'].values
-
-    # 2. Build fit exog matrix
-    X_fit_raw, exog_sig = build_exog_matrix(
-        client,
-        restaurant_id=restaurant_id,
-        start_date=fit_start,
-        end_date=fit_end,
+    last_actual = history['date'].iloc[-1]
+    train_end = _train_end_for_grain(last_actual, granularity)
+    print(
+        f'[sarimax_fit] grain={granularity} last_actual={last_actual} '
+        f'train_end={train_end} horizon={horizon}'
     )
-    X_fit = _drop_metadata_cols(X_fit_raw)
-    # Align exog to history dates (kpi_daily_mv may have gaps for zero-tx days)
-    history_dates = set(history['date'])
-    X_fit = X_fit.loc[X_fit.index.isin(history_dates)]
 
-    # 3. Build prediction exog matrix (run_date+1 through run_date+HORIZON)
-    pred_start = run_date + timedelta(days=1)
-    pred_end = run_date + timedelta(days=HORIZON)
-    pred_dates = [pred_start + timedelta(days=i) for i in range(HORIZON)]
+    # 2. Reduce to <= train_end (daily) BEFORE bucketing for week/month grains.
+    history = history[history['date'] <= train_end].reset_index(drop=True)
+    if history.empty:
+        raise RuntimeError(f'Empty history after train_end cutoff {train_end}')
 
-    X_pred_raw, _ = build_exog_matrix(
-        client,
-        restaurant_id=restaurant_id,
-        start_date=pred_start,
-        end_date=pred_end,
-    )
-    X_pred = _drop_metadata_cols(X_pred_raw)
+    if granularity == 'day':
+        # 3a. Daily path keeps exog regressors and closed-day zeroing.
+        fit_start = history['date'].iloc[0]
+        fit_end = history['date'].iloc[-1]
+        y = history['y'].values
 
-    # 4. Validate column compatibility (autoplan E1)
-    assert_exog_compatible(X_fit, X_pred)
+        X_fit_raw, exog_sig = build_exog_matrix(
+            client,
+            restaurant_id=restaurant_id,
+            start_date=fit_start,
+            end_date=fit_end,
+        )
+        X_fit = _drop_metadata_cols(X_fit_raw)
+        # Align exog to history dates (kpi_daily_mv may have gaps for zero-tx days)
+        history_dates = set(history['date'])
+        X_fit = X_fit.loc[X_fit.index.isin(history_dates)]
 
-    # 5. Fit SARIMAX with fallback (autoplan E6)
-    result, seasonal_used = _fit_sarimax(y, X_fit)
-    print(f'[sarimax_fit] Fitted SARIMAX{PRIMARY_ORDER}x{seasonal_used} for {kpi_name}')
+        pred_dates = _pred_dates_for_grain(
+            run_date=run_date, granularity='day', horizon=horizon,
+        )
+        pred_start = pred_dates[0]
+        pred_end = pred_dates[-1]
+        X_pred_raw, _ = build_exog_matrix(
+            client,
+            restaurant_id=restaurant_id,
+            start_date=pred_start,
+            end_date=pred_end,
+        )
+        X_pred = _drop_metadata_cols(X_pred_raw)
+        assert_exog_compatible(X_fit, X_pred)
 
-    # 6. Generate 200 sample paths
-    # statsmodels simulate() returns a DataFrame; convert to numpy for consistent indexing
-    samples_raw = result.simulate(
-        nsimulations=HORIZON,
-        repetitions=N_PATHS,
-        anchor='end',
-        exog=X_pred,
-    )
+        result, seasonal_used = _fit_sarimax(y, X_fit, granularity)
+        print(f'[sarimax_fit] Fitted SARIMAX{PRIMARY_ORDER}x{seasonal_used} for {kpi_name}/{granularity}')
+
+        samples_raw = result.simulate(
+            nsimulations=horizon,
+            repetitions=N_PATHS,
+            anchor='end',
+            exog=X_pred,
+        )
+    else:
+        # 3b. Weekly/monthly: aggregate first, no exog (SARIMAX exog at higher
+        # grain mixes apples/oranges since most exog signals are calendar-day-level).
+        if granularity == 'week':
+            agg = bucket_to_weekly(history, value_col='y', date_col='date')
+            agg = agg.rename(columns={'week_start': 'bucket_start'})
+        else:  # 'month'
+            agg = bucket_to_monthly(history, value_col='y', date_col='date')
+            agg = agg.rename(columns={'month_start': 'bucket_start'})
+
+        if agg.empty:
+            raise RuntimeError(f'Empty aggregation for grain={granularity}')
+
+        y = agg['y'].astype(float).values
+        # Need at least 2 full seasonal cycles to fit.
+        period = SEASONAL_PERIOD_BY_GRAIN[granularity]
+        if len(y) < period * 2:
+            raise RuntimeError(
+                f'Insufficient {granularity} history: {len(y)} buckets (need >= {period * 2})'
+            )
+
+        result, seasonal_used = _fit_sarimax(y, None, granularity)
+        print(f'[sarimax_fit] Fitted SARIMAX{PRIMARY_ORDER}x{seasonal_used} for {kpi_name}/{granularity}')
+
+        pred_dates = _pred_dates_for_grain(
+            run_date=run_date, granularity=granularity, horizon=horizon,
+        )
+        samples_raw = result.simulate(
+            nsimulations=horizon,
+            repetitions=N_PATHS,
+            anchor='end',
+        )
+        exog_sig = {'model': 'sarimax', 'granularity': granularity, 'seasonal_period': period}
+
     samples = samples_raw.values if hasattr(samples_raw, 'values') else np.asarray(samples_raw)
-    # Expected shape: (nsimulations, repetitions) i.e. (HORIZON, N_PATHS)
-    assert samples.shape == (HORIZON, N_PATHS), f'Unexpected samples shape: {samples.shape}'
+    # Expected shape: (nsimulations, repetitions) i.e. (horizon, N_PATHS)
+    assert samples.shape == (horizon, N_PATHS), f'Unexpected samples shape: {samples.shape}'
 
-    # 7. Build forecast rows
+    # 4. Build forecast rows
     rows = _build_forecast_rows(
         samples=samples,
         pred_dates=pred_dates,
         restaurant_id=restaurant_id,
         kpi_name=kpi_name,
         run_date=run_date,
+        granularity=granularity,
         exog_sig=exog_sig,
     )
     preds_df = pd.DataFrame(rows)
     preds_df['target_date'] = pd.to_datetime(preds_df['target_date']).dt.date
 
-    # 8. Fetch shop calendar and zero closed days post-hoc
-    shop_cal = _fetch_shop_calendar(
-        client,
-        restaurant_id=restaurant_id,
-        start_date=pred_start,
-        end_date=pred_end,
-    )
-    preds_df = zero_closed_days(preds_df, shop_cal)
+    # 5. Closed-day post-hoc zeroing only applies at daily grain.
+    if granularity == 'day':
+        shop_cal = _fetch_shop_calendar(
+            client,
+            restaurant_id=restaurant_id,
+            start_date=pred_dates[0],
+            end_date=pred_dates[-1],
+        )
+        preds_df = zero_closed_days(preds_df, shop_cal)
 
-    # 9. Restore target_date to str for upsert
+    # 6. Restore target_date to str for upsert
     preds_df['target_date'] = preds_df['target_date'].astype(str)
 
-    # 10. Chunked upsert
+    # 7. Chunked upsert
     final_rows = preds_df.to_dict(orient='records')
     n = _upsert_rows(client, final_rows)
     return n
@@ -272,9 +387,13 @@ if __name__ == '__main__':
     restaurant_id = os.environ.get('RESTAURANT_ID', '').strip()
     kpi_name = os.environ.get('KPI_NAME', '').strip()
     run_date_str = os.environ.get('RUN_DATE', '').strip()
+    granularity = os.environ.get('GRANULARITY', 'day').strip() or 'day'
 
     if not restaurant_id or not kpi_name or not run_date_str:
         print('ERROR: RESTAURANT_ID, KPI_NAME, and RUN_DATE env vars are required', file=sys.stderr)
+        sys.exit(1)
+    if granularity not in HORIZON_BY_GRAIN:
+        print(f'ERROR: invalid GRANULARITY {granularity!r}; expected one of {list(HORIZON_BY_GRAIN)}', file=sys.stderr)
         sys.exit(1)
 
     run_date = date.fromisoformat(run_date_str)
@@ -282,7 +401,13 @@ if __name__ == '__main__':
     client = make_client()
 
     try:
-        n = fit_and_write(client, restaurant_id=restaurant_id, kpi_name=kpi_name, run_date=run_date)
+        n = fit_and_write(
+            client,
+            restaurant_id=restaurant_id,
+            kpi_name=kpi_name,
+            run_date=run_date,
+            granularity=granularity,
+        )
         write_success(
             client,
             step_name=STEP_NAME,
@@ -290,7 +415,7 @@ if __name__ == '__main__':
             row_count=n,
             restaurant_id=restaurant_id,
         )
-        print(f'[sarimax_fit] Done: {n} rows written for {kpi_name}')
+        print(f'[sarimax_fit] Done: {n} rows written for {kpi_name}/{granularity}')
         sys.exit(0)
     except Exception:
         err_msg = traceback.format_exc()
