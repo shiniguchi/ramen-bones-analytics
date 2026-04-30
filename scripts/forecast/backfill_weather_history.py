@@ -142,14 +142,15 @@ def upsert_weather_daily(client, rows: list[dict]) -> None:
 def compute_and_upsert_climatology(client) -> None:
     """Compute DoY norms from weather_daily and upsert into weather_climatology.
 
-    Averages temp_mean_c, precip_mm, sunshine_min per day-of-year (1–366)
-    across all historical rows where is_forecast=false.
+    Averages temp (from min/max), precip_mm, wind_kph per day-of-year (1-366).
+    weather_climatology columns: day_of_year, temp_mean_c, precip_mm,
+    wind_max_kmh, sample_years.
     """
-    # Fetch all historical rows
+    # Fetch all historical rows — actual weather_daily columns
     resp = (
         client.table("weather_daily")
-        .select("date,temp_mean_c,precip_mm,sunshine_min")
-        .eq("is_forecast", False)
+        .select("date,temp_min_c,temp_max_c,precip_mm,wind_kph")
+        .limit(10000)
         .execute()
     )
     rows = resp.data or []
@@ -161,53 +162,58 @@ def compute_and_upsert_climatology(client) -> None:
     doy_buckets: dict[int, dict] = {}
     for row in rows:
         day = date.fromisoformat(row["date"])
-        doy = day.timetuple().tm_yday  # 1–366
+        doy = day.timetuple().tm_yday  # 1-366
         if doy not in doy_buckets:
             doy_buckets[doy] = {
                 "temp_sum": 0.0,
                 "temp_count": 0,
                 "precip_sum": 0.0,
                 "precip_count": 0,
-                "sunshine_sum": 0.0,
-                "sunshine_count": 0,
+                "wind_sum": 0.0,
+                "wind_count": 0,
+                "years": set(),
             }
         b = doy_buckets[doy]
-        if row.get("temp_mean_c") is not None:
-            b["temp_sum"] += row["temp_mean_c"]
+        b["years"].add(day.year)
+        tmin = row.get("temp_min_c")
+        tmax = row.get("temp_max_c")
+        if tmin is not None and tmax is not None:
+            b["temp_sum"] += (tmin + tmax) / 2.0
             b["temp_count"] += 1
         if row.get("precip_mm") is not None:
             b["precip_sum"] += row["precip_mm"]
             b["precip_count"] += 1
-        if row.get("sunshine_min") is not None:
-            b["sunshine_sum"] += row["sunshine_min"]
-            b["sunshine_count"] += 1
+        if row.get("wind_kph") is not None:
+            b["wind_sum"] += row["wind_kph"]
+            b["wind_count"] += 1
 
-    # Build climatology rows
+    # Build climatology rows matching weather_climatology schema
     clim_rows = []
     for doy in sorted(doy_buckets.keys()):
         b = doy_buckets[doy]
         clim_rows.append(
             {
-                "doy": doy,
+                "day_of_year": doy,
                 "temp_mean_c": (
                     round(b["temp_sum"] / b["temp_count"], 3)
                     if b["temp_count"] > 0
-                    else None
+                    else 0.0
                 ),
                 "precip_mm": (
                     round(b["precip_sum"] / b["precip_count"], 3)
                     if b["precip_count"] > 0
-                    else None
+                    else 0.0
                 ),
-                "sunshine_min": (
-                    round(b["sunshine_sum"] / b["sunshine_count"], 1)
-                    if b["sunshine_count"] > 0
-                    else None
+                "wind_max_kmh": (
+                    round(b["wind_sum"] / b["wind_count"], 1)
+                    if b["wind_count"] > 0
+                    else 0.0
                 ),
+                "sample_years": len(b["years"]),
             }
         )
 
-    client.table("weather_climatology").upsert(clim_rows, on_conflict="doy").execute()
+    client.table("weather_climatology").upsert(clim_rows, on_conflict="day_of_year").execute()
     print(f"[backfill] upserted {len(clim_rows)} rows into weather_climatology")
 
 
