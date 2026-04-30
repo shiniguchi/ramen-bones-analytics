@@ -121,6 +121,16 @@ const en = {
   empty_cohort_avg_ltv_heading: 'Not enough history',
   empty_cohort_avg_ltv_body: 'Grouping charts need at least 5 customers per group.',
 
+  // --- Forecast empty states (Phase 15 FUI-08) ----------------------------
+  empty_forecast_loading_heading:        'Forecast generating',
+  empty_forecast_loading_body:           'Check back tomorrow — the first nightly run is still pending.',
+  empty_forecast_quality_empty_heading:  'Accuracy data builds after first nightly run',
+  empty_forecast_quality_empty_body:     'Forecast accuracy metrics need at least one completed nightly evaluation cycle.',
+  empty_forecast_stale_heading:          'Data ≥24h stale',
+  empty_forecast_stale_body:             'Last refresh: {ago}. The nightly cascade may have skipped a run.',
+  empty_forecast_uncalibrated_ci_heading:'Uncalibrated for 1yr horizon',
+  empty_forecast_uncalibrated_ci_body:   'Need ≥2 years of history before the 1yr confidence band is reliable.',
+
   // --- InsightCard footer + edit form ------------------------------------
   insight_week_ending: 'Week ending {date}',
   insight_refreshed_weekly: 'Refreshed weekly',
@@ -260,6 +270,16 @@ const de: Record<MessageKey, string> = {
   empty_cohort_avg_ltv_heading: 'Zu wenig Verlauf',
   empty_cohort_avg_ltv_body: 'Gruppierungen benötigen mindestens 5 Kunden pro Gruppe.',
 
+  // Forecast empty states (Phase 15 FUI-08) — placeholder copy mirrors EN
+  empty_forecast_loading_heading:        'Forecast generating',
+  empty_forecast_loading_body:           'Check back tomorrow — the first nightly run is still pending.',
+  empty_forecast_quality_empty_heading:  'Accuracy data builds after first nightly run',
+  empty_forecast_quality_empty_body:     'Forecast accuracy metrics need at least one completed nightly evaluation cycle.',
+  empty_forecast_stale_heading:          'Data ≥24h stale',
+  empty_forecast_stale_body:             'Last refresh: {ago}. The nightly cascade may have skipped a run.',
+  empty_forecast_uncalibrated_ci_heading:'Uncalibrated for 1yr horizon',
+  empty_forecast_uncalibrated_ci_body:   'Need ≥2 years of history before the 1yr confidence band is reliable.',
+
   insight_week_ending: 'Woche endend am {date}',
   insight_refreshed_weekly: 'Wöchentlich aktualisiert',
   insight_refreshed_with_last_run: 'Wöchentlich aktualisiert · zuletzt {date}',
@@ -394,6 +414,16 @@ const ja: Record<MessageKey, string> = {
   empty_cohort_revenue_body: 'グループ表示には1グループあたり5名以上必要です。',
   empty_cohort_avg_ltv_heading: '履歴が不足',
   empty_cohort_avg_ltv_body: 'グループ表示には1グループあたり5名以上必要です。',
+
+  // Forecast empty states (Phase 15 FUI-08) — placeholder copy mirrors EN
+  empty_forecast_loading_heading:        'Forecast generating',
+  empty_forecast_loading_body:           'Check back tomorrow — the first nightly run is still pending.',
+  empty_forecast_quality_empty_heading:  'Accuracy data builds after first nightly run',
+  empty_forecast_quality_empty_body:     'Forecast accuracy metrics need at least one completed nightly evaluation cycle.',
+  empty_forecast_stale_heading:          'Data ≥24h stale',
+  empty_forecast_stale_body:             'Last refresh: {ago}. The nightly cascade may have skipped a run.',
+  empty_forecast_uncalibrated_ci_heading:'Uncalibrated for 1yr horizon',
+  empty_forecast_uncalibrated_ci_body:   'Need ≥2 years of history before the 1yr confidence band is reliable.',
 
   insight_week_ending: '{date}終了週',
   insight_refreshed_weekly: '週次更新',
@@ -531,6 +561,16 @@ const es: Record<MessageKey, string> = {
   empty_cohort_avg_ltv_heading: 'Historial insuficiente',
   empty_cohort_avg_ltv_body: 'Los gráficos de cohorte necesitan al menos 5 clientes por grupo.',
 
+  // Forecast empty states (Phase 15 FUI-08) — placeholder copy mirrors EN
+  empty_forecast_loading_heading:        'Forecast generating',
+  empty_forecast_loading_body:           'Check back tomorrow — the first nightly run is still pending.',
+  empty_forecast_quality_empty_heading:  'Accuracy data builds after first nightly run',
+  empty_forecast_quality_empty_body:     'Forecast accuracy metrics need at least one completed nightly evaluation cycle.',
+  empty_forecast_stale_heading:          'Data ≥24h stale',
+  empty_forecast_stale_body:             'Last refresh: {ago}. The nightly cascade may have skipped a run.',
+  empty_forecast_uncalibrated_ci_heading:'Uncalibrated for 1yr horizon',
+  empty_forecast_uncalibrated_ci_body:   'Need ≥2 years of history before the 1yr confidence band is reliable.',
+
   insight_week_ending: 'Semana que termina el {date}',
   insight_refreshed_weekly: 'Actualizado semanalmente',
   insight_refreshed_with_last_run: 'Actualizado semanalmente · última ejecución {date}',
@@ -666,6 +706,16 @@ const fr: Record<MessageKey, string> = {
   empty_cohort_revenue_body: 'Les graphiques de cohorte nécessitent au moins 5 clients par groupe.',
   empty_cohort_avg_ltv_heading: 'Historique insuffisant',
   empty_cohort_avg_ltv_body: 'Les graphiques de cohorte nécessitent au moins 5 clients par groupe.',
+
+  // Forecast empty states (Phase 15 FUI-08) — placeholder copy mirrors EN
+  empty_forecast_loading_heading:        'Forecast generating',
+  empty_forecast_loading_body:           'Check back tomorrow — the first nightly run is still pending.',
+  empty_forecast_quality_empty_heading:  'Accuracy data builds after first nightly run',
+  empty_forecast_quality_empty_body:     'Forecast accuracy metrics need at least one completed nightly evaluation cycle.',
+  empty_forecast_stale_heading:          'Data ≥24h stale',
+  empty_forecast_stale_body:             'Last refresh: {ago}. The nightly cascade may have skipped a run.',
+  empty_forecast_uncalibrated_ci_heading:'Uncalibrated for 1yr horizon',
+  empty_forecast_uncalibrated_ci_body:   'Need ≥2 years of history before the 1yr confidence band is reliable.',
 
   insight_week_ending: 'Semaine se terminant le {date}',
   insight_refreshed_weekly: 'Actualisé chaque semaine',
