@@ -1,12 +1,17 @@
-"""Phase 14: run_all.py — nightly forecast pipeline orchestrator.
+"""Phase 14 / 15-10: run_all.py — nightly forecast pipeline orchestrator.
 
 Spawns each model as a subprocess (autoplan E2), threading Supabase credentials
-explicitly into subprocess env (autoplan E7). Iterates models x KPIs.
+explicitly into subprocess env (autoplan E7). Iterates models x KPIs x granularities.
+
+15-10 changes:
+  - Triple-nested loop adds GRANULARITY (day/week/month) per (model, KPI).
+  - GRANULARITY env var threads native bucket cadence into each *_fit subprocess.
+  - Freshness gate (D-16): abort cleanly if last_actual_date is stale (>8 days).
 
 After all models: calls refresh_forecast_mvs() RPC.
 
 Exit codes:
-  0  — at least one model/KPI combo succeeded
+  0  — at least one model/KPI/grain combo succeeded, OR clean abort on stale data
   1  — all combos failed OR weather_daily guard tripped
 
 CLI:
@@ -24,9 +29,16 @@ from typing import Optional
 
 from scripts.forecast.db import make_client
 from scripts.forecast.last_7_eval import evaluate_last_7
+from scripts.external.pipeline_runs_writer import write_failure
 
 DEFAULT_MODELS = 'sarimax,prophet,ets,theta,naive_dow'
 KPIS = ['revenue_eur', 'invoice_count']
+# 15-10: each model fits at 3 grains per refresh per KPI.
+GRANULARITIES = ['day', 'week', 'month']
+# Freshness gate threshold (D-16): if last_actual is stale by more than this,
+# abort run_all cleanly instead of fitting on stale data.
+FRESHNESS_GATE_DAYS = 8
+STEP_NAME = 'forecast_run_all'
 
 
 def _check_weather_guard(client) -> int:
@@ -44,15 +56,51 @@ def _get_restaurant_id(client) -> str:
     return rows[0]['id']
 
 
-def _build_subprocess_env(*, restaurant_id: str, kpi_name: str, run_date: str) -> dict:
+def _get_last_actual_date(client, *, restaurant_id: str) -> Optional[date]:
+    """Return max(business_date) from kpi_daily_mv for this restaurant, or None if empty.
+
+    Used by the freshness gate to abort cleanly when extractor is behind.
+    """
+    resp = (
+        client.table('kpi_daily_mv')
+        .select('business_date')
+        .eq('restaurant_id', restaurant_id)
+        .order('business_date', desc=True)
+        .limit(1)
+        .execute()
+    )
+    rows = resp.data or []
+    if not rows:
+        return None
+    raw = rows[0]['business_date']
+    # Supabase returns ISO date strings; coerce to date.
+    if isinstance(raw, str):
+        return date.fromisoformat(raw[:10])
+    if isinstance(raw, datetime):
+        return raw.date()
+    if isinstance(raw, date):
+        return raw
+    raise RuntimeError(f'Unexpected business_date type from kpi_daily_mv: {type(raw)!r}')
+
+
+def _build_subprocess_env(
+    *,
+    restaurant_id: str,
+    kpi_name: str,
+    run_date: str,
+    granularity: str,
+) -> dict:
     """Build env dict for subprocess: inherits current env + injects required vars.
 
     Explicitly threads SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY (autoplan E7).
+    15-10: also threads GRANULARITY so each *_fit picks the matching TRAIN_END,
+    horizon, seasonal period, and aggregation step.
     """
     env = os.environ.copy()
     env['RESTAURANT_ID'] = restaurant_id
     env['KPI_NAME'] = kpi_name
     env['RUN_DATE'] = run_date
+    env['GRANULARITY'] = granularity
     # Ensure Supabase credentials are present (E7: explicit threading, not implicit inheritance)
     for key in ('SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY'):
         if key not in env:
@@ -62,25 +110,36 @@ def _build_subprocess_env(*, restaurant_id: str, kpi_name: str, run_date: str) -
     return env
 
 
-def _run_model(*, model: str, restaurant_id: str, kpi_name: str, run_date: str) -> bool:
+def _run_model(
+    *,
+    model: str,
+    restaurant_id: str,
+    kpi_name: str,
+    run_date: str,
+    granularity: str,
+) -> bool:
     """Spawn a single model fit as a subprocess. Returns True on success (exit 0)."""
     env = _build_subprocess_env(
         restaurant_id=restaurant_id,
         kpi_name=kpi_name,
         run_date=run_date,
+        granularity=granularity,
     )
     cmd = [sys.executable, '-m', f'scripts.forecast.{model}_fit']
-    print(f'[run_all] Spawning: {" ".join(cmd)} KPI={kpi_name}')
+    print(f'[run_all] Spawning: {" ".join(cmd)} KPI={kpi_name} GRAIN={granularity}')
     result = subprocess.run(cmd, env=env, text=True, capture_output=True)
     if result.stdout:
         print(result.stdout, end='')
     if result.stderr:
         print(result.stderr, end='', file=sys.stderr)
     if result.returncode == 0:
-        print(f'[run_all] {model}/{kpi_name}: SUCCESS')
+        print(f'[run_all] {model}/{kpi_name}/{granularity}: SUCCESS')
         return True
     else:
-        print(f'[run_all] {model}/{kpi_name}: FAILED (exit {result.returncode})', file=sys.stderr)
+        print(
+            f'[run_all] {model}/{kpi_name}/{granularity}: FAILED (exit {result.returncode})',
+            file=sys.stderr,
+        )
         return False
 
 
@@ -116,6 +175,40 @@ def main(
     restaurant_id = _get_restaurant_id(client)
     print(f'[run_all] restaurant_id: {restaurant_id}')
 
+    # 15-10 freshness gate (D-16): if extractor is behind, abort cleanly.
+    # Writes a pipeline_runs failure row for triage but exits 0 — the workflow
+    # itself shouldn't fail when upstream data is just late.
+    last_actual = _get_last_actual_date(client, restaurant_id=restaurant_id)
+    if last_actual is None:
+        msg = 'kpi_daily_mv has no rows for restaurant — extractor never ran?'
+        print(f'[run_all] ABORT: {msg}', file=sys.stderr)
+        try:
+            write_failure(
+                client,
+                step_name=STEP_NAME,
+                started_at=datetime.now(timezone.utc),
+                error_msg=msg,
+                restaurant_id=restaurant_id,
+            )
+        except Exception as e:
+            print(f'[run_all] could not write failure row: {e}', file=sys.stderr)
+        return 0
+    days_since_last = (date.today() - last_actual).days
+    if days_since_last > FRESHNESS_GATE_DAYS:
+        msg = f'Stale data: last_actual={last_actual} stale by {days_since_last}d'
+        print(f'[run_all] ABORT: {msg}', file=sys.stderr)
+        try:
+            write_failure(
+                client,
+                step_name=STEP_NAME,
+                started_at=datetime.now(timezone.utc),
+                error_msg=msg,
+                restaurant_id=restaurant_id,
+            )
+        except Exception as e:
+            print(f'[run_all] could not write failure row: {e}', file=sys.stderr)
+        return 0
+
     # Resolve models list
     if not models:
         env_models = os.environ.get('FORECAST_ENABLED_MODELS', DEFAULT_MODELS)
@@ -126,27 +219,35 @@ def main(
         run_date = date.today() - timedelta(days=1)
     run_date_str = run_date.isoformat()
 
-    print(f'[run_all] models={models} kpis={KPIS} run_date={run_date_str}')
+    print(
+        f'[run_all] models={models} kpis={KPIS} grains={GRANULARITIES} '
+        f'run_date={run_date_str} last_actual={last_actual}'
+    )
 
-    # Iterate models x KPIs, spawning each as a subprocess
+    # Iterate models x KPIs x granularities, spawning each as a subprocess.
+    # 15-10: 5 models × 2 KPIs × 3 grains = 30 spawns/refresh on the full pipeline.
     successes = 0
     total = 0
     for model in models:
         for kpi in KPIS:
-            total += 1
-            ok = _run_model(
-                model=model,
-                restaurant_id=restaurant_id,
-                kpi_name=kpi,
-                run_date=run_date_str,
-            )
-            if ok:
-                successes += 1
+            for granularity in GRANULARITIES:
+                total += 1
+                ok = _run_model(
+                    model=model,
+                    restaurant_id=restaurant_id,
+                    kpi_name=kpi,
+                    run_date=run_date_str,
+                    granularity=granularity,
+                )
+                if ok:
+                    successes += 1
 
-    print(f'[run_all] Completed: {successes}/{total} model/KPI combos succeeded')
+    print(f'[run_all] Completed: {successes}/{total} model/KPI/grain combos succeeded')
 
     # Evaluate last-7-day forecast accuracy for each model/KPI
-    # Populates forecast_quality table for accuracy tracking
+    # Populates forecast_quality table for accuracy tracking.
+    # NOTE: eval still runs at daily grain only — week/month grain accuracy
+    # tracking is out of scope for 15-10 (would need separate eval window logic).
     if successes > 0:
         print('[run_all] Running last-7-day evaluation ...')
         for model in models:
