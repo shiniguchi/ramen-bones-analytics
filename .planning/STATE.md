@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: External Data & Forecasting Foundation
 status: "Phase 15 context gathered"
-stopped_at: Phase 15 (Forecast Chart UI) context locked 2026-04-30 via auto-recs (13 decisions D-01..D-13 + 7 carry-forwards). Worktree at .worktrees/phase-15-forecast-chart-ui on branch feature/phase-15-forecast-chart-ui. Ready for /gsd-plan-phase 15 (or optional /gsd-ui-phase 15 first per ROADMAP UI hint). Phase 14 shipped same day (PR #22 merged, 17 migrations on DEV, 5/5 models producing forecasts; forecast_quality populates after 2nd nightly run).
+stopped_at: Phase 15 (Forecast Chart UI) context locked 2026-04-30 via auto-recs (13 decisions D-01..D-13 + 7 carry-forwards). Working on branch feature/phase-15-forecast-chart-ui in main repo. Ready for superpowers:writing-plans (or /gsd-plan-phase 15). Phase 14 shipped same day (PR #22 merged, 17 migrations on DEV, 5/5 models producing forecasts; forecast_quality populates after 2nd nightly run).
 last_updated: "2026-04-30T00:00:00Z"
 progress:
   total_phases: 17
