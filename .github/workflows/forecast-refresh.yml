@@ -52,9 +52,12 @@ jobs:
           MODELS: ${{ inputs.models }}
         run: |
           set -euo pipefail
-          DATE_RE='^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
           ARGS=()
           if [ -n "${MODELS:-}" ]; then
+            if ! echo "$MODELS" | grep -qE '^[a-z_]+(,[a-z_]+)*$'; then
+              echo "ERROR: MODELS must be comma-separated lowercase identifiers" >&2
+              exit 1
+            fi
             ARGS+=("--models" "$MODELS")
           fi
           python -m scripts.forecast.run_all "${ARGS[@]}"
