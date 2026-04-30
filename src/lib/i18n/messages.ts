@@ -29,6 +29,16 @@ const en = {
   horizon_1yr:       '1yr',
   horizon_selector_aria: 'Forecast horizon selector',
 
+  // --- Forecast legend (Phase 15 D-04 / FUI-02) --------------------------
+  legend_aria:                  'Forecast model legend',
+  legend_model_sarimax_bau:     'SARIMAX',
+  legend_model_prophet:         'Prophet',
+  legend_model_ets:             'ETS',
+  legend_model_theta:           'Theta',
+  legend_model_naive_dow:       'Naive (DoW)',
+  legend_model_chronos:         'Chronos',
+  legend_model_neuralprophet:   'NeuralProphet',
+
   // --- KPI tiles (+page.svelte builds "Revenue · {range}") ---------------
   kpi_revenue: 'Revenue',
   kpi_transactions: 'Transactions',
@@ -191,6 +201,16 @@ const de: Record<MessageKey, string> = {
   horizon_1yr:       '1yr',
   horizon_selector_aria: 'Forecast horizon selector',
 
+  // Forecast legend (Phase 15 D-04 / FUI-02) — placeholder copy mirrors EN
+  legend_aria:                  'Forecast model legend',
+  legend_model_sarimax_bau:     'SARIMAX',
+  legend_model_prophet:         'Prophet',
+  legend_model_ets:             'ETS',
+  legend_model_theta:           'Theta',
+  legend_model_naive_dow:       'Naive (DoW)',
+  legend_model_chronos:         'Chronos',
+  legend_model_neuralprophet:   'NeuralProphet',
+
   kpi_revenue: 'Umsatz',
   kpi_transactions: 'Transaktionen',
   range_today: 'Heute',
@@ -344,6 +364,16 @@ const ja: Record<MessageKey, string> = {
   horizon_1yr:       '1yr',
   horizon_selector_aria: 'Forecast horizon selector',
 
+  // Forecast legend (Phase 15 D-04 / FUI-02) — placeholder copy mirrors EN
+  legend_aria:                  'Forecast model legend',
+  legend_model_sarimax_bau:     'SARIMAX',
+  legend_model_prophet:         'Prophet',
+  legend_model_ets:             'ETS',
+  legend_model_theta:           'Theta',
+  legend_model_naive_dow:       'Naive (DoW)',
+  legend_model_chronos:         'Chronos',
+  legend_model_neuralprophet:   'NeuralProphet',
+
   kpi_revenue: '売上',
   kpi_transactions: '取引件数',
   range_today: '本日',
@@ -495,6 +525,16 @@ const es: Record<MessageKey, string> = {
   horizon_4mo:       '4mo',
   horizon_1yr:       '1yr',
   horizon_selector_aria: 'Forecast horizon selector',
+
+  // Forecast legend (Phase 15 D-04 / FUI-02) — placeholder copy mirrors EN
+  legend_aria:                  'Forecast model legend',
+  legend_model_sarimax_bau:     'SARIMAX',
+  legend_model_prophet:         'Prophet',
+  legend_model_ets:             'ETS',
+  legend_model_theta:           'Theta',
+  legend_model_naive_dow:       'Naive (DoW)',
+  legend_model_chronos:         'Chronos',
+  legend_model_neuralprophet:   'NeuralProphet',
 
   kpi_revenue: 'Ingresos',
   kpi_transactions: 'Transacciones',
@@ -648,6 +688,16 @@ const fr: Record<MessageKey, string> = {
   horizon_4mo:       '4mo',
   horizon_1yr:       '1yr',
   horizon_selector_aria: 'Forecast horizon selector',
+
+  // Forecast legend (Phase 15 D-04 / FUI-02) — placeholder copy mirrors EN
+  legend_aria:                  'Forecast model legend',
+  legend_model_sarimax_bau:     'SARIMAX',
+  legend_model_prophet:         'Prophet',
+  legend_model_ets:             'ETS',
+  legend_model_theta:           'Theta',
+  legend_model_naive_dow:       'Naive (DoW)',
+  legend_model_chronos:         'Chronos',
+  legend_model_neuralprophet:   'NeuralProphet',
 
   kpi_revenue: "Chiffre d'affaires",
   kpi_transactions: 'Transactions',
