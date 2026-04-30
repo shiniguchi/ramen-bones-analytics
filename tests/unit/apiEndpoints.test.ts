@@ -601,3 +601,94 @@ describe('/api/forecast-quality', () => {
     expect(body).toEqual([]);
   });
 });
+
+// -------------------- /api/campaign-uplift --------------------
+import { GET as campaignUpliftGET } from '../../src/routes/api/campaign-uplift/+server';
+
+describe('/api/campaign-uplift', () => {
+  // forecast_with_actual_v rows since CAMPAIGN_START (2026-04-14).
+  // Σ(actual − yhat) = (1500-1400) + (1700-1600) + (1300-1500) = 0
+  const upliftRows = [
+    { target_date: '2026-04-14', model_name: 'sarimax_bau', kpi_name: 'revenue_eur',
+      forecast_track: 'bau', yhat: 1400, yhat_lower: 1300, yhat_upper: 1500, actual_value: 1500 },
+    { target_date: '2026-04-15', model_name: 'sarimax_bau', kpi_name: 'revenue_eur',
+      forecast_track: 'bau', yhat: 1600, yhat_lower: 1500, yhat_upper: 1700, actual_value: 1700 },
+    { target_date: '2026-04-16', model_name: 'sarimax_bau', kpi_name: 'revenue_eur',
+      forecast_track: 'bau', yhat: 1500, yhat_lower: 1400, yhat_upper: 1600, actual_value: 1300 }
+  ];
+
+  it('authenticated GET returns 200 with {campaign_start, cumulative_deviation_eur, as_of}', async () => {
+    const state = freshState({ forecast_with_actual_v: upliftRows });
+    const res = await campaignUpliftGET(mkEvent(mkLocalsAuthed(state)));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.campaign_start).toBe('2026-04-14');
+    expect(body.cumulative_deviation_eur).toBeCloseTo(0, 6);
+    expect(typeof body.as_of).toBe('string');
+  });
+
+  it('cumulative_deviation_eur sums (actual − yhat) across all rows since CAMPAIGN_START', async () => {
+    const state = freshState({
+      forecast_with_actual_v: [
+        { ...upliftRows[0], actual_value: 1500, yhat: 1400 }, // +100
+        { ...upliftRows[1], actual_value: 1500, yhat: 1700 }  // -200
+      ]
+    });
+    const res = await campaignUpliftGET(mkEvent(mkLocalsAuthed(state)));
+    const body = await res.json();
+    expect(body.cumulative_deviation_eur).toBeCloseTo(-100, 6);
+  });
+
+  it('rows where actual_value is null (future dates) are excluded from the sum', async () => {
+    const state = freshState({
+      forecast_with_actual_v: [
+        { ...upliftRows[0], actual_value: 1500, yhat: 1400 }, // +100
+        { ...upliftRows[1], actual_value: null,  yhat: 1700 } // skipped
+      ]
+    });
+    const res = await campaignUpliftGET(mkEvent(mkLocalsAuthed(state)));
+    const body = await res.json();
+    expect(body.cumulative_deviation_eur).toBeCloseTo(100, 6);
+  });
+
+  it('null claims returns 401 and never touches supabase', async () => {
+    const state = freshState();
+    const res = await campaignUpliftGET(mkEvent(mkLocalsUnauthed(state)));
+    expect(res.status).toBe(401);
+    expect(state.fromSpy).not.toHaveBeenCalled();
+  });
+
+  it('200 response carries Cache-Control: private, no-store', async () => {
+    const state = freshState({ forecast_with_actual_v: [] });
+    const res = await campaignUpliftGET(mkEvent(mkLocalsAuthed(state)));
+    expect(res.headers.get('cache-control')).toBe('private, no-store');
+  });
+
+  it('handler applies kpi_name=revenue_eur, forecast_track=bau, model_name=sarimax_bau, gte target_date', async () => {
+    const state = freshState({ forecast_with_actual_v: upliftRows });
+    await campaignUpliftGET(mkEvent(mkLocalsAuthed(state)));
+    const eqCalls = state.queries[0].calls.filter(c => c.method === 'eq');
+    const eqMap = Object.fromEntries(eqCalls.map(c => [c.args[0] as string, c.args[1]]));
+    expect(eqMap).toMatchObject({
+      kpi_name: 'revenue_eur',
+      forecast_track: 'bau',
+      model_name: 'sarimax_bau'
+    });
+    const gteCall = state.queries[0].calls.find(c => c.method === 'gte');
+    expect(gteCall?.args).toEqual(['target_date', '2026-04-14']);
+  });
+
+  it('zero rows since campaign-start returns 0 deviation, not null', async () => {
+    const state = freshState({ forecast_with_actual_v: [] });
+    const res = await campaignUpliftGET(mkEvent(mkLocalsAuthed(state)));
+    const body = await res.json();
+    expect(body.cumulative_deviation_eur).toBe(0);
+  });
+
+  it('supabase error surfaces as 500', async () => {
+    const state = freshState();
+    state.errors.set('forecast_with_actual_v', { message: 'boom' });
+    const res = await campaignUpliftGET(mkEvent(mkLocalsAuthed(state)));
+    expect(res.status).toBe(500);
+  });
+});
