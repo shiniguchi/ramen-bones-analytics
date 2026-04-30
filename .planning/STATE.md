@@ -2,8 +2,8 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: External Data & Forecasting Foundation
-status: "Phase 13 shipped — PR #17"
-stopped_at: Phase 13 (External Data Ingestion) shipped 2026-04-29 via PR #17. 41 commits, 52 files, +6892 lines. UAT 15/15 pass. Code review 25 findings all addressed. EXT-01..EXT-09 complete. 74 pytest + 43 vitest new tests.
+status: "Phase 14 context updated"
+stopped_at: Phase 14 (Forecasting Engine — BAU Track) context updated 2026-04-30. 18 decisions total (10 original + 8 new). New areas — MV refresh trigger (separate RPC + dual trigger), forecast_quality schema (4 metrics + evaluation_window PK), sample-path generation (native + bootstrap), exog assembly (shared module + internal blending). Ready for planning.
 last_updated: "2026-04-30T00:00:00Z"
 progress:
   total_phases: 17
@@ -15,7 +15,7 @@ progress:
 
 # STATE: Ramen Bones Analytics
 
-**Last updated:** 2026-04-29
+**Last updated:** 2026-04-30
 
 ## Project Reference
 
