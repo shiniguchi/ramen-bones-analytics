@@ -37,3 +37,27 @@ def test_bucket_to_weekly_excludes_partial_week():
     out = bucket_to_weekly(df, value_col='revenue_eur')
     assert len(out) == 1
     assert out.iloc[0]['week_start'] == pd.Timestamp('2026-04-13')  # Mon
+
+
+def test_bucket_to_weekly_accepts_date_col_override():
+    # 15-10: model fit scripts rename business_date -> date before calling
+    # the aggregation helpers, so the date_col override must work.
+    df = pd.DataFrame({
+        'date': pd.to_datetime(['2026-04-20', '2026-04-21']),
+        'revenue_eur': [100, 50],
+    })
+    out = bucket_to_weekly(df, value_col='revenue_eur', date_col='date')
+    assert len(out) == 1
+    assert out.iloc[0]['week_start'] == pd.Timestamp('2026-04-20')
+    assert out.iloc[0]['revenue_eur'] == 150
+
+
+def test_bucket_to_monthly_accepts_date_col_override():
+    df = pd.DataFrame({
+        'date': pd.to_datetime(['2026-04-15', '2026-04-30']),
+        'invoice_count': [3, 4],
+    })
+    out = bucket_to_monthly(df, value_col='invoice_count', date_col='date')
+    assert len(out) == 1
+    assert out.iloc[0]['month_start'] == pd.Timestamp('2026-04-01')
+    assert out.iloc[0]['invoice_count'] == 7
