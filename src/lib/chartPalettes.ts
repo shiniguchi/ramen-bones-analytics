@@ -37,3 +37,32 @@ export const COHORT_LINE_PALETTE: readonly string[] = [
   '#ea580c', '#ca8a04', '#16a34a', '#0d9488',
   '#7e22ce', '#be123c', '#4d7c0f', '#b45309'
 ];
+
+/**
+ * Phase 15 D-10: per-model line color for RevenueForecastCard.
+ *
+ * Categorical palette (no ranking implied — Phase 17 backtest gate is what
+ * promotes models). Slice [0..3] of schemeTableau10 for the four BAU "smart"
+ * models. naive_dow is the de-emphasized baseline drawn dashed in gray (same
+ * value as CASH_COLOR keeps "neutral / not-the-headline-series" visually
+ * consistent across the dashboard). Chronos + NeuralProphet pick up [5..6]
+ * for when Phase 14 D-09 feature flags flip on.
+ *
+ *   sarimax   = [0] blue
+ *   prophet       = [1] orange
+ *   ets           = [2] red
+ *   theta         = [3] teal — overlaps school-holiday background; OK because
+ *                   user opts theta IN; default state never renders both at once
+ *   naive_dow     = CASH_COLOR (#a1a1aa) — dashed stroke applied at <Spline> site
+ *   chronos       = [5]
+ *   neuralprophet = [6]
+ */
+export const FORECAST_MODEL_COLORS: Readonly<Record<string, string>> = {
+  sarimax:   schemeTableau10[0],
+  prophet:       schemeTableau10[1],
+  ets:           schemeTableau10[2],
+  theta:         schemeTableau10[3],
+  naive_dow:     CASH_COLOR,
+  chronos:       schemeTableau10[5],
+  neuralprophet: schemeTableau10[6]
+};

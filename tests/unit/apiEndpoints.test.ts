@@ -405,3 +405,290 @@ describe('/api/repeater-lifetime', () => {
     expect(state.fromSpy).not.toHaveBeenCalled();
   });
 });
+
+// -------------------- /api/forecast --------------------
+import { GET as forecastGET } from '../../src/routes/api/forecast/+server';
+
+describe('/api/forecast', () => {
+  const fcastRow = {
+    target_date: '2026-05-01',
+    model_name: 'sarimax',
+    yhat: 1234.56,
+    yhat_lower: 1100,
+    yhat_upper: 1380,
+    horizon_days: 1,
+    actual_value: null,
+    forecast_track: 'bau',
+    kpi_name: 'revenue_eur'
+  };
+  const holidayRow = { date: '2026-05-01', name: 'Tag der Arbeit', country_code: 'DE', subdiv_code: null };
+  const schoolRow  = { state_code: 'BE', block_name: 'Sommerferien', start_date: '2026-07-09', end_date: '2026-08-22', year: 2026 };
+  const recurRow   = { event_id: 'berlin-marathon-2026', name: 'Berlin Marathon', start_date: '2026-09-26', end_date: '2026-09-26', impact_estimate: 'high' };
+  const transitRow = { alert_id: 'a1', title: 'BVG Warnstreik', pub_date: '2026-05-02T06:00:00Z', matched_keyword: 'Warnstreik', source_url: 'https://x' };
+  const pipeRow    = { step_name: 'forecast_sarimax', status: 'success', finished_at: '2026-05-01T01:34:22Z' };
+
+  it('authenticated GET ?horizon=7&granularity=day returns 200 with rows + events + last_run', async () => {
+    const state = freshState({
+      forecast_with_actual_v: [fcastRow],
+      holidays: [holidayRow],
+      school_holidays: [schoolRow],
+      recurring_events: [recurRow],
+      transit_alerts: [transitRow],
+      pipeline_runs_status_v: [pipeRow]
+    });
+    const res = await forecastGET(mkEvent(mkLocalsAuthed(state), 'http://x/?horizon=7&granularity=day'));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(Array.isArray(body.rows)).toBe(true);
+    expect(Array.isArray(body.events)).toBe(true);
+    expect(typeof body.last_run).toBe('string');
+    expect(body.rows[0]).toMatchObject({
+      target_date: '2026-05-01',
+      model_name: 'sarimax',
+      yhat_mean: 1234.56,
+      yhat_lower: 1100,
+      yhat_upper: 1380,
+      horizon_days: 1
+    });
+  });
+
+  it('null claims returns 401 and never touches supabase', async () => {
+    const state = freshState();
+    const res = await forecastGET(mkEvent(mkLocalsUnauthed(state), 'http://x/?horizon=7&granularity=day'));
+    expect(res.status).toBe(401);
+    expect(state.fromSpy).not.toHaveBeenCalled();
+  });
+
+  it('200 response carries Cache-Control: private, no-store', async () => {
+    const state = freshState({
+      forecast_with_actual_v: [], holidays: [], school_holidays: [],
+      recurring_events: [], transit_alerts: [], pipeline_runs_status_v: []
+    });
+    const res = await forecastGET(mkEvent(mkLocalsAuthed(state), 'http://x/?horizon=7&granularity=day'));
+    expect(res.headers.get('cache-control')).toBe('private, no-store');
+  });
+
+  it('illegal combo (horizon=365 granularity=day) returns 400 and never touches supabase', async () => {
+    const state = freshState();
+    const res = await forecastGET(mkEvent(mkLocalsAuthed(state), 'http://x/?horizon=365&granularity=day'));
+    expect(res.status).toBe(400);
+    expect(state.fromSpy).not.toHaveBeenCalled();
+  });
+
+  it('missing horizon returns 400', async () => {
+    const state = freshState();
+    const res = await forecastGET(mkEvent(mkLocalsAuthed(state), 'http://x/'));
+    expect(res.status).toBe(400);
+  });
+
+  it('omitted granularity falls back to DEFAULT_GRANULARITY for the horizon', async () => {
+    const state = freshState({
+      forecast_with_actual_v: [fcastRow], holidays: [], school_holidays: [],
+      recurring_events: [], transit_alerts: [], pipeline_runs_status_v: [pipeRow]
+    });
+    const res = await forecastGET(mkEvent(mkLocalsAuthed(state), 'http://x/?horizon=7'));
+    expect(res.status).toBe(200);
+  });
+
+  it('events array carries holidays, school_holidays (start row), recurring, transit_strikes', async () => {
+    const state = freshState({
+      forecast_with_actual_v: [fcastRow],
+      holidays: [holidayRow],
+      school_holidays: [schoolRow],
+      recurring_events: [recurRow],
+      transit_alerts: [transitRow],
+      pipeline_runs_status_v: [pipeRow]
+    });
+    const res = await forecastGET(mkEvent(mkLocalsAuthed(state), 'http://x/?horizon=120&granularity=week'));
+    const body = await res.json();
+    const types = body.events.map((e: { type: string }) => e.type).sort();
+    expect(types).toContain('holiday');
+    expect(types).toContain('school_holiday');
+    expect(types).toContain('recurring_event');
+    expect(types).toContain('transit_strike');
+  });
+
+  it('last_run is the finished_at of the latest forecast_sarimax pipeline_runs row', async () => {
+    const state = freshState({
+      forecast_with_actual_v: [], holidays: [], school_holidays: [],
+      recurring_events: [], transit_alerts: [],
+      pipeline_runs_status_v: [
+        { step_name: 'forecast_sarimax', status: 'success', finished_at: '2026-04-30T01:00:00Z' },
+        { step_name: 'forecast_sarimax', status: 'success', finished_at: '2026-05-01T01:34:22Z' }
+      ]
+    });
+    const res = await forecastGET(mkEvent(mkLocalsAuthed(state), 'http://x/?horizon=7&granularity=day'));
+    const body = await res.json();
+    expect(body.last_run).toBe('2026-05-01T01:34:22Z');
+  });
+
+  it('supabase error on forecast_with_actual_v surfaces as 500', async () => {
+    const state = freshState();
+    state.errors.set('forecast_with_actual_v', { message: 'boom' });
+    const res = await forecastGET(mkEvent(mkLocalsAuthed(state), 'http://x/?horizon=7&granularity=day'));
+    expect(res.status).toBe(500);
+    expect(res.headers.get('cache-control')).toBe('private, no-store');
+  });
+});
+
+// -------------------- /api/forecast-quality --------------------
+import { GET as forecastQualityGET } from '../../src/routes/api/forecast-quality/+server';
+
+describe('/api/forecast-quality', () => {
+  const qRow = {
+    model_name: 'sarimax',
+    kpi_name: 'revenue_eur',
+    horizon_days: 7,
+    rmse: 142.31,
+    mape: 0.084,
+    mean_bias: 12.5,
+    direction_hit_rate: 0.71,
+    evaluated_at: '2026-04-30T01:35:00Z',
+    evaluation_window: 'last_7_days'
+  };
+
+  it('authenticated GET returns 200 + array of ForecastQualityRow filtered to last_7_days', async () => {
+    const state = freshState({ forecast_quality: [qRow] });
+    const res = await forecastQualityGET(mkEvent(mkLocalsAuthed(state)));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(Array.isArray(body)).toBe(true);
+    expect(body[0]).toMatchObject({
+      model_name: 'sarimax',
+      kpi_name: 'revenue_eur',
+      horizon_days: 7,
+      rmse: 142.31,
+      mape: 0.084,
+      mean_bias: 12.5,
+      direction_hit_rate: 0.71
+    });
+  });
+
+  it('null claims returns 401 and never touches supabase', async () => {
+    const state = freshState();
+    const res = await forecastQualityGET(mkEvent(mkLocalsUnauthed(state)));
+    expect(res.status).toBe(401);
+    expect(state.fromSpy).not.toHaveBeenCalled();
+  });
+
+  it('200 response carries Cache-Control: private, no-store', async () => {
+    const state = freshState({ forecast_quality: [] });
+    const res = await forecastQualityGET(mkEvent(mkLocalsAuthed(state)));
+    expect(res.headers.get('cache-control')).toBe('private, no-store');
+  });
+
+  it('supabase error surfaces as 500', async () => {
+    const state = freshState();
+    state.errors.set('forecast_quality', { message: 'boom' });
+    const res = await forecastQualityGET(mkEvent(mkLocalsAuthed(state)));
+    expect(res.status).toBe(500);
+  });
+
+  it('handler applies eq("evaluation_window", "last_7_days") so Phase 17 backtest rows are excluded', async () => {
+    // The mock records every call to .eq() — we assert the handler asked for the right filter.
+    const state = freshState({ forecast_quality: [qRow] });
+    await forecastQualityGET(mkEvent(mkLocalsAuthed(state)));
+    const call = state.queries[0].calls.find(c => c.method === 'eq' && (c.args[0] === 'evaluation_window'));
+    expect(call).toBeDefined();
+    expect(call?.args[1]).toBe('last_7_days');
+  });
+
+  it('returns empty array when no rows yet (D-07: 24h window after Phase 14 ships)', async () => {
+    const state = freshState({ forecast_quality: [] });
+    const res = await forecastQualityGET(mkEvent(mkLocalsAuthed(state)));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body).toEqual([]);
+  });
+});
+
+// -------------------- /api/campaign-uplift --------------------
+import { GET as campaignUpliftGET } from '../../src/routes/api/campaign-uplift/+server';
+
+describe('/api/campaign-uplift', () => {
+  // forecast_with_actual_v rows since CAMPAIGN_START (2026-04-14).
+  // Σ(actual − yhat) = (1500-1400) + (1700-1600) + (1300-1500) = 0
+  const upliftRows = [
+    { target_date: '2026-04-14', model_name: 'sarimax', kpi_name: 'revenue_eur',
+      forecast_track: 'bau', yhat: 1400, yhat_lower: 1300, yhat_upper: 1500, actual_value: 1500 },
+    { target_date: '2026-04-15', model_name: 'sarimax', kpi_name: 'revenue_eur',
+      forecast_track: 'bau', yhat: 1600, yhat_lower: 1500, yhat_upper: 1700, actual_value: 1700 },
+    { target_date: '2026-04-16', model_name: 'sarimax', kpi_name: 'revenue_eur',
+      forecast_track: 'bau', yhat: 1500, yhat_lower: 1400, yhat_upper: 1600, actual_value: 1300 }
+  ];
+
+  it('authenticated GET returns 200 with {campaign_start, cumulative_deviation_eur, as_of}', async () => {
+    const state = freshState({ forecast_with_actual_v: upliftRows });
+    const res = await campaignUpliftGET(mkEvent(mkLocalsAuthed(state)));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.campaign_start).toBe('2026-04-14');
+    expect(body.cumulative_deviation_eur).toBeCloseTo(0, 6);
+    expect(typeof body.as_of).toBe('string');
+  });
+
+  it('cumulative_deviation_eur sums (actual − yhat) across all rows since CAMPAIGN_START', async () => {
+    const state = freshState({
+      forecast_with_actual_v: [
+        { ...upliftRows[0], actual_value: 1500, yhat: 1400 }, // +100
+        { ...upliftRows[1], actual_value: 1500, yhat: 1700 }  // -200
+      ]
+    });
+    const res = await campaignUpliftGET(mkEvent(mkLocalsAuthed(state)));
+    const body = await res.json();
+    expect(body.cumulative_deviation_eur).toBeCloseTo(-100, 6);
+  });
+
+  it('rows where actual_value is null (future dates) are excluded from the sum', async () => {
+    const state = freshState({
+      forecast_with_actual_v: [
+        { ...upliftRows[0], actual_value: 1500, yhat: 1400 }, // +100
+        { ...upliftRows[1], actual_value: null,  yhat: 1700 } // skipped
+      ]
+    });
+    const res = await campaignUpliftGET(mkEvent(mkLocalsAuthed(state)));
+    const body = await res.json();
+    expect(body.cumulative_deviation_eur).toBeCloseTo(100, 6);
+  });
+
+  it('null claims returns 401 and never touches supabase', async () => {
+    const state = freshState();
+    const res = await campaignUpliftGET(mkEvent(mkLocalsUnauthed(state)));
+    expect(res.status).toBe(401);
+    expect(state.fromSpy).not.toHaveBeenCalled();
+  });
+
+  it('200 response carries Cache-Control: private, no-store', async () => {
+    const state = freshState({ forecast_with_actual_v: [] });
+    const res = await campaignUpliftGET(mkEvent(mkLocalsAuthed(state)));
+    expect(res.headers.get('cache-control')).toBe('private, no-store');
+  });
+
+  it('handler applies kpi_name=revenue_eur, forecast_track=bau, model_name=sarimax, gte target_date', async () => {
+    const state = freshState({ forecast_with_actual_v: upliftRows });
+    await campaignUpliftGET(mkEvent(mkLocalsAuthed(state)));
+    const eqCalls = state.queries[0].calls.filter(c => c.method === 'eq');
+    const eqMap = Object.fromEntries(eqCalls.map(c => [c.args[0] as string, c.args[1]]));
+    expect(eqMap).toMatchObject({
+      kpi_name: 'revenue_eur',
+      forecast_track: 'bau',
+      model_name: 'sarimax'
+    });
+    const gteCall = state.queries[0].calls.find(c => c.method === 'gte');
+    expect(gteCall?.args).toEqual(['target_date', '2026-04-14']);
+  });
+
+  it('zero rows since campaign-start returns 0 deviation, not null', async () => {
+    const state = freshState({ forecast_with_actual_v: [] });
+    const res = await campaignUpliftGET(mkEvent(mkLocalsAuthed(state)));
+    const body = await res.json();
+    expect(body.cumulative_deviation_eur).toBe(0);
+  });
+
+  it('supabase error surfaces as 500', async () => {
+    const state = freshState();
+    state.errors.set('forecast_with_actual_v', { message: 'boom' });
+    const res = await campaignUpliftGET(mkEvent(mkLocalsAuthed(state)));
+    expect(res.status).toBe(500);
+  });
+});
