@@ -6,12 +6,21 @@ from datetime import date, timedelta, datetime
 from typing import Dict, Set
 
 # Column order must stay stable — models depend on positional consistency (FCS-06)
+# Note: sunshine_hours dropped — weather_daily has cloud_cover, not sunshine_hours,
+# and converting cloud_cover to sunshine_hours is unreliable.
 EXOG_COLUMNS = [
-    'temp_mean_c', 'precip_mm', 'wind_max_kmh', 'sunshine_hours',
+    'temp_mean_c', 'precip_mm', 'wind_max_kmh',
     'is_holiday', 'is_school_holiday', 'is_event', 'is_strike', 'is_open',
 ]
 
-WEATHER_COLS = ['temp_mean_c', 'precip_mm', 'wind_max_kmh', 'sunshine_hours']
+# Canonical weather column names used in the exog matrix
+WEATHER_COLS = ['temp_mean_c', 'precip_mm', 'wind_max_kmh']
+
+# Mapping from weather_daily actual DB columns to canonical exog names:
+#   temp_min_c + temp_max_c -> temp_mean_c (average)
+#   precip_mm -> precip_mm (direct)
+#   wind_kph -> wind_max_kmh (rename, same unit approximation)
+# cloud_cover is available but not mapped — sunshine_hours dropped from exog
 
 
 def build_exog_matrix_from_data(
@@ -93,20 +102,26 @@ def build_exog_matrix(client, *, restaurant_id: str, start_date: date, end_date:
         d += timedelta(days=1)
 
     # Fetch weather from weather_daily (Bright Sky archive + forecast combined)
+    # Actual columns: date, location, temp_min_c, temp_max_c, precip_mm,
+    #                 wind_kph, cloud_cover, provider, fetched_at
     weather_resp = (
         client.table('weather_daily')
-        .select('*')
+        .select('date,temp_min_c,temp_max_c,precip_mm,wind_kph')
         .gte('date', str(start_date))
         .lte('date', str(end_date))
+        .limit(10000)
         .execute()
     )
     weather_df = (
         pd.DataFrame(weather_resp.data)
         if weather_resp.data
-        else pd.DataFrame(columns=['date'] + WEATHER_COLS + ['weather_source'])
+        else pd.DataFrame(columns=['date'] + WEATHER_COLS)
     )
     if not weather_df.empty and 'date' in weather_df.columns:
         weather_df['date'] = pd.to_datetime(weather_df['date']).dt.date
+        # Derive canonical exog columns from actual weather_daily columns
+        weather_df['temp_mean_c'] = (weather_df['temp_min_c'] + weather_df['temp_max_c']) / 2.0
+        weather_df['wind_max_kmh'] = weather_df['wind_kph']
 
     # Fetch tier-3 climatology norms
     clim_resp = client.table('weather_climatology').select('*').execute()
@@ -154,10 +169,8 @@ def build_exog_matrix(client, *, restaurant_id: str, start_date: date, end_date:
     )
 
     # Build signature for traceability (stored in forecast_daily.exog_signature)
-    source_counts: Dict = {}
-    if not weather_df.empty and 'weather_source' in weather_df.columns:
-        source_counts = weather_df['weather_source'].value_counts().to_dict()
-    exog_sig = {'sources': source_counts, 'columns': EXOG_COLUMNS, 'n_dates': len(dates)}
+    weather_rows = len(weather_df) if not weather_df.empty else 0
+    exog_sig = {'weather_rows': weather_rows, 'columns': EXOG_COLUMNS, 'n_dates': len(dates)}
 
     return df, exog_sig
 

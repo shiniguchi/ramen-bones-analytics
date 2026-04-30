@@ -11,8 +11,6 @@ def test_exog_columns_consistent():
         'temp_mean_c': [2.0, 3.0],
         'precip_mm': [0.0, 1.0],
         'wind_max_kmh': [15.0, 20.0],
-        'sunshine_hours': [3.0, 4.0],
-        'weather_source': ['archive', 'archive'],
     })
     holidays_set = set()
     school_set = set()
@@ -40,10 +38,8 @@ def test_exog_no_nan():
         'temp_mean_c': [np.nan],
         'precip_mm': [np.nan],
         'wind_max_kmh': [np.nan],
-        'sunshine_hours': [np.nan],
-        'weather_source': ['archive'],
     })
-    climatology = {(7, 1): {'temp_mean_c': 22.0, 'precip_mm': 1.5, 'wind_max_kmh': 12.0, 'sunshine_hours': 8.0}}
+    climatology = {(7, 1): {'temp_mean_c': 22.0, 'precip_mm': 1.5, 'wind_max_kmh': 12.0}}
     df = build_exog_matrix_from_data(
         dates=[date(2026, 7, 1)],
         weather_df=weather,
