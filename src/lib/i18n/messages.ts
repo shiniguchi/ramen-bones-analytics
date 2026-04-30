@@ -22,6 +22,13 @@ const en = {
   grain_month: 'Month',
   grain_selector_aria: 'Grain selector',
 
+  // --- Horizon toggle (Phase 15 FUI-03) ----------------------------------
+  horizon_7d:        '7d',
+  horizon_5w:        '5w',
+  horizon_4mo:       '4mo',
+  horizon_1yr:       '1yr',
+  horizon_selector_aria: 'Forecast horizon selector',
+
   // --- KPI tiles (+page.svelte builds "Revenue · {range}") ---------------
   kpi_revenue: 'Revenue',
   kpi_transactions: 'Transactions',
@@ -177,6 +184,13 @@ const de: Record<MessageKey, string> = {
   grain_month: 'Monat',
   grain_selector_aria: 'Zeitraster-Auswahl',
 
+  // Horizon toggle (Phase 15 FUI-03) — placeholder copy mirrors EN
+  horizon_7d:        '7d',
+  horizon_5w:        '5w',
+  horizon_4mo:       '4mo',
+  horizon_1yr:       '1yr',
+  horizon_selector_aria: 'Forecast horizon selector',
+
   kpi_revenue: 'Umsatz',
   kpi_transactions: 'Transaktionen',
   range_today: 'Heute',
@@ -323,6 +337,13 @@ const ja: Record<MessageKey, string> = {
   grain_month: '月',
   grain_selector_aria: '期間粒度の選択',
 
+  // Horizon toggle (Phase 15 FUI-03) — placeholder copy mirrors EN
+  horizon_7d:        '7d',
+  horizon_5w:        '5w',
+  horizon_4mo:       '4mo',
+  horizon_1yr:       '1yr',
+  horizon_selector_aria: 'Forecast horizon selector',
+
   kpi_revenue: '売上',
   kpi_transactions: '取引件数',
   range_today: '本日',
@@ -467,6 +488,13 @@ const es: Record<MessageKey, string> = {
   grain_week: 'Semana',
   grain_month: 'Mes',
   grain_selector_aria: 'Selector de granularidad',
+
+  // Horizon toggle (Phase 15 FUI-03) — placeholder copy mirrors EN
+  horizon_7d:        '7d',
+  horizon_5w:        '5w',
+  horizon_4mo:       '4mo',
+  horizon_1yr:       '1yr',
+  horizon_selector_aria: 'Forecast horizon selector',
 
   kpi_revenue: 'Ingresos',
   kpi_transactions: 'Transacciones',
@@ -613,6 +641,13 @@ const fr: Record<MessageKey, string> = {
   grain_week: 'Semaine',
   grain_month: 'Mois',
   grain_selector_aria: 'Sélecteur de granularité',
+
+  // Horizon toggle (Phase 15 FUI-03) — placeholder copy mirrors EN
+  horizon_7d:        '7d',
+  horizon_5w:        '5w',
+  horizon_4mo:       '4mo',
+  horizon_1yr:       '1yr',
+  horizon_selector_aria: 'Forecast horizon selector',
 
   kpi_revenue: "Chiffre d'affaires",
   kpi_transactions: 'Transactions',
