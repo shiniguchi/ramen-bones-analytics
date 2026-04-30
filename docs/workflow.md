@@ -1,149 +1,131 @@
 # Ramen Bones Analytics Development Workflow
 
 > **Canonical source of truth for feature development.**
-> Every agent rule file (CLAUDE.md, AGENTS.md, .claude/CLAUDE.md) points here.
-> Adapted from AiLine canonical workflow ([source](file:///Users/shiniguchi/development/AiLine/shared-docs/docs/workflow.md)) for solo-dev mode + SvelteKit + Cloudflare Pages + Supabase + single-repo.
+> Every agent rule file (CLAUDE.md, AGENTS.md) points here.
+> The `.claude/hooks/next-step-hint.js` Stop hook prints `→ Next:` after every turn on a `feature/phase-*` branch — you don't have to remember.
+> Solo-dev mode + SvelteKit + Cloudflare Pages + Supabase + single-repo. Adapted from the AiLine canonical workflow.
 
-## The 19-row sequence
+## The 5-step default sequence
 
-Run commands top-to-bottom. **No command auto-chains** — type each one yourself.
+Run top-to-bottom. **No command auto-chains** — type each one yourself.
 
-| # | Stage | Command | Description |
+| # | Stage | Command | Output |
 |---|---|---|---|
-| 1 | 1. STATE | `/gsd-new-milestone` | Only at start of new milestone — updates PROJECT.md |
-| 2 | 1. STATE | `/gsd-discuss-phase "<phase-name>"` | Creates CONTEXT.md — **set tier + flags in frontmatter** |
-| 3 | 1. STATE | `/gsd-research-phase <NN>` | Creates RESEARCH.md — technical approach |
-| 4 | 2. DESIGN | `/gstack-office-hours` | Creates DESIGN.md via 6 forcing questions (product reframe) |
-| 5 | 2. DESIGN | `/gstack-autoplan` | Runs CEO + design + eng + devex review — you approve taste calls |
-| 6 | 2. DESIGN | `/gstack-design-shotgun` | **If `frontend_heavy: true`** — visual variants, pick winner |
-| 7 | 2. DESIGN | `/gstack-design-html` | **If `frontend_heavy: true`** — production HTML mockups |
-| 8 | 3. BUILD | `superpowers:using-git-worktrees` | Creates worktree on `feature/phase-<NN>-<slug>` |
-| 9 | 3. BUILD | `superpowers:writing-plans` | Creates TDD plan at `docs/superpowers/plans/YYYY-MM-DD-<slug>.md` |
-| 10 | 3. BUILD | `superpowers:subagent-driven-development` | TDD execute — fresh subagent per task, 2-stage review, atomic commits |
-| 11 | 3. BUILD | `superpowers:finishing-a-development-branch` | Merges worktree back to phase branch |
-| 12 | 4. QA | `/qa-gate` | Security + visual + doc audit (mandatory) |
-| 13 | 4. QA | `git push origin <phase-branch>` then merge to `main` | Triggers GHA `deploy.yml` → Cloudflare Pages auto-deploy |
-| 14 | 4. QA | `/gstack-qa https://ramen-bones-analytics.pages.dev` | Live browser QA — auto-fixes bugs + writes regression tests |
-| 15 | 4. QA | `/gstack-review` | Pre-landing code review (SQL safety, RLS, trust boundaries) |
-| 16 | 4. QA | `/gstack-cso` | **If `security_sensitive: true`** — OWASP + STRIDE audit |
-| 17 | 5. SHIP | `/gsd-verify-work` | Creates UAT.md — you confirm on DEV via Chrome / Postgres MCP |
-| 18 | 5. SHIP | `/gsd-ship` | Opens PR → merges → updates state |
-| 19 | 6. CLOSE | `/gstack-retro` | Appends lessons to `.planning/LEARNINGS.md` |
+| 1 | STATE | `/gsd-discuss-phase "<phase-name>"` | `.planning/phases/NN-slug/CONTEXT.md` |
+| 2 | PLAN | `/gsd-plan-phase <NN>` | `NN-XX-PLAN.md` (one file per plan) |
+| 3 | BUILD | `/gsd-execute-phase <NN>` | `NN-XX-SUMMARY.md` per plan, atomic commits |
+| 4 | QA | **Epic-end QA block** (one batch — see below) | `UAT.md`, `VERIFICATION.md` |
+| 5 | SHIP | `/gsd-ship` | PR opened → merge to `main` triggers Cloudflare Pages auto-deploy |
 
-> **Solo-dev simplifications vs AiLine canonical:**
-> - Dropped row 14 (`/check-logs`) — KISS; check GHA logs / browser console reactively when something breaks.
-> - Dropped row 18 (`/gstack-codex`) — solo-dev mode; no second-opinion gate for DB schema or cross-repo changes.
-> - Single-repo, so no 9-repo sync logic in `/gsd-ship`.
+### Epic-end QA block (step 4)
 
-## Tier picker (set in step 2 CONTEXT.md frontmatter)
-
-```yaml
-tier: 2                       # 1=light, 2=default, 2F=frontend, 3=high-governance
-frontend_heavy: false         # triggers rows 6, 7
-security_sensitive: false     # triggers row 16
+```bash
+git push origin feature/phase-<NN>-<slug>
+gh pr create   # so reviewers can preview the diff before main triggers CF Pages
+```
+Then in Claude:
+```
+/qa-gate
+/gstack-qa https://ramen-bones-analytics.pages.dev   # live browser QA after merge to main
+.claude/scripts/validate-planning-docs.sh            # confirms STATE.md / ROADMAP.md match disk
 ```
 
-| Tier | 1-line definition | Which rows to run |
+Per-plan QA inside step 3 = **typecheck (`bun run check`) + unit tests (`bun test`) only**. No CF Pages deploy between plans (deploys are gated on `push to main` anyway). Heavy verification (browser MCP, SQL queries against Supabase) batches once at the end.
+
+### Planning docs gate (before step 5)
+
+ROADMAP.md and STATE.md must match disk artifacts before you ship. Three layers enforce this:
+
+1. **Validator** — `.claude/scripts/validate-planning-docs.sh` compares ROADMAP `[x]` count, STATE.md frontmatter (`progress.{total,completed}_{phases,plans}`), and `*-SUMMARY.md` on disk.
+2. **Stop hook** — `.claude/hooks/next-step-hint.js` calls the validator on QA + SHIP steps and prints `⚠️ Planning docs drift` warnings inline.
+3. **CI gate** — `.github/workflows/validate-planning.yml` blocks PR merge when drift exists on PRs touching `*-SUMMARY.md`, ROADMAP.md, or STATE.md. Cannot be bypassed.
+
+When drift is reported: edit `.planning/STATE.md` frontmatter (bump `progress.completed_phases`, `progress.completed_plans`, refresh `last_updated`), tick `[x]` for completed phases in `.planning/ROADMAP.md`, re-run the validator until clean.
+
+## TDD opt-in (replaces steps 2-3 when discipline pays off)
+
+For phases where typed code (analytics SQL/MV correctness, KPI math) or non-trivial refactor matters, swap GSD planning for Superpowers:
+
+```
+superpowers:using-git-worktrees       # creates feature/phase-NN-slug worktree
+superpowers:writing-plans              # TDD plan, bite-sized 2-5min steps
+superpowers:subagent-driven-development # fresh subagent per task, 2-stage review
+```
+
+**Save-path override (mandatory):** instruct Superpowers to save the plan to `.planning/phases/<NN>-<slug>/<NN>-XX-PLAN.md`, **not** `docs/superpowers/plans/`. This keeps `/gsd-ship` and the validator working against a single artifact location.
+
+You will hit Superpowers' brainstorming HARD-GATE on first invoke — accept the ~60s prompt; CONTEXT.md is the spec.
+
+## Trivial path
+
+Doc-only edit, comment, variable rename, config tweak → `/gsd-quick`. Skip the 5 steps.
+
+## Reach-for table
+
+The lookup table lives in **`.claude/reach-for.json`** — the Stop hook reads it on every turn end and surfaces matching rows after each step. Adding a new tool = appending one JSON object.
+
+| Signal observed | Reach for | After step |
 |---|---|---|
-| **1** | Doc-only, config, variable rename, comment edits | `/gsd-quick` only |
-| **2** | Default — backend/data feature, single concern (e.g., new SQL view, new ingest source) | Rows 1-5, 8-15, 17-19 |
-| **2F** | Frontend feature (touches `src/routes/**`, `src/lib/components/**`, `.svelte`, CSS) | Tier 2 + rows 6, 7 |
-| **3** | DB schema migration, RLS policy change, auth/session handling, payment/PII | Tier 2 + row 16 |
+| New mobile UI surface, no existing component to copy | `/gstack-design-shotgun` then `/gstack-design-html` | 1 |
+| Phase touches Supabase RLS, auth, secrets, SQL with user input | `/gstack-cso` | 4 |
+| DB migration (schema integrity is critical for cohort/LTV correctness) | `/gstack-codex` | 4 |
+| Pre-PR taste check (SQL safety, RLS, trust boundaries) | `/gstack-review` | 4 |
+| Bug appeared mid-build, root cause unclear | `superpowers:systematic-debugging` | any |
+| Doc-only / comment / variable rename | `/gsd-quick` | replaces all 5 steps |
+| Cohort / LTV / KPI math changed | manual: validate against v1 frozen baseline before deploy | 4 |
+| SvelteKit/Supabase/Cloudflare API question | Context7 MCP `query-docs` | any |
 
-**Pick by asking:** *does this touch UI?* → 2F. *does it change auth/RLS/migrations?* → 3. *is it trivial?* → 1. *otherwise* → 2.
+## Equivalences (override upstream framework defaults)
 
-## Rules
+- `/gsd-discuss-phase` satisfies `superpowers:writing-plans`'s brainstorming pre-gate (declared, not enforced — accept the prompt)
+- Skip `superpowers:brainstorming` as a separate step — CONTEXT.md is the spec
+- Skip `/gsd-plan-phase` only when the TDD opt-in path is chosen
+- `/gsd-ship`, never `/gstack-ship` — GSD owns the PR + UAT.md flow
+- Chrome MCP for browser work, never `/gstack-browse` (project override)
+- Worktree branches use `feature/phase-<NN>-<slug>` so the Stop hook recognises the branch (and matches CF Pages branch-deploy convention if you enable it)
 
-1. **No command auto-chains** — type each one.
-2. **Skip `/gsd-plan-phase` entirely** — Superpowers owns the implementation plan (row 9).
-3. **Skip `superpowers:brainstorming`** — `/gstack-office-hours` does that job (row 4).
-4. **`/gsd-ship`, never `/gstack-ship`** — GSD owns the merge + state-update logic.
-5. **Chrome MCP for browser work, never `/gstack-browse`** — project override (per `.claude/CLAUDE.md`).
-6. **Worktree branches use `feature/phase-<NN>-<slug>`** — keeps Superpowers happy and matches CF Pages branch-deploy convention.
-7. **Superpowers refuses `main`** — always work on a phase branch.
-8. **Localhost-first for UI changes** — Chrome MCP localhost:5173 BEFORE pushing; DEV (`pages.dev`) is for FINAL QA after merge to main, not for the per-edit feedback loop. (Enforced by `.claude/hooks/localhost-qa-gate.js`.)
+## Mapping to deploy infrastructure
+
+| Concept | Reality on this project |
+|---|---|
+| **DEV environment** | `https://ramen-bones-analytics.pages.dev` — Cloudflare Pages production deploy of `main` |
+| **Branch deploys** | Not enabled by default — `deploy.yml` only triggers on `push to main`. To enable preview deploys, extend `deploy.yml` to trigger on `feature/**` and pass `--branch=${{ github.ref_name }}` |
+| **Logs** | GHA workflow logs (`gh run view <id> --log-failed`); browser DevTools console for runtime; CF Pages dashboard for deployment history |
+| **Database** | Supabase (DEV + PROD). Use the configured Postgres MCP to query directly |
+
+## Stop hook contract
+
+`.claude/hooks/next-step-hint.js` fires on every assistant turn end. On a `feature/phase-*` branch it:
+
+1. Detects current step from `.planning/phases/<NN>-<slug>/` artifacts
+2. Loads `.claude/reach-for.json`, picks 1-2 rows matching the just-completed step
+3. Emits `→ Next: <command>` + `Reach-for: <signals>` to stdout
+4. At QA + SHIP steps, runs the validator and warns inline if planning docs drifted
+
+On any other branch (`main`, `docs/*`, `fix/*`) it stays silent so general chat sessions are not polluted.
 
 ## Artifact layout per phase
 
 ```
 .planning/phases/NN-<slug>/
-├── NN-CONTEXT.md          ← row 2 (GSD)
-├── NN-RESEARCH.md         ← row 3 (GSD)
-├── NN-DESIGN.md           ← rows 4, 5 (GStack)
-├── design/                ← rows 6, 7 (GStack, Tier 2F only) — *.html mockups
-├── NN-GOVERNANCE.md       ← rows 15, 16, 19 (GStack reviews + retro appended)
-├── NN-UAT.md              ← row 17 (GSD)
-├── NN-VERIFICATION.md     ← row 17 (GSD verifier)
-└── NN-SUMMARY.md          ← row 18 (GSD close — lists commits, links DESIGN + plan)
-
-docs/superpowers/plans/YYYY-MM-DD-<slug>.md   ← row 9 (Superpowers TDD plan)
-.planning/LEARNINGS.md                         ← row 19 (GStack /retro accumulator)
+├── CONTEXT.md        ← step 1
+├── NN-XX-PLAN.md     ← step 2 (one or more)
+├── NN-XX-SUMMARY.md  ← step 3 (per plan)
+├── UAT.md            ← step 4
+├── VERIFICATION.md   ← step 4
+└── SUMMARY.md        ← step 5 (ship close)
 ```
-
-## Framework roles (3-layer stack)
-
-| Layer | Framework | Job | Install |
-|---|---|---|---|
-| State + orchestration | **GSD** | `.planning/`, milestone/phase tracking, UAT, ship logistics, project state | global plugin (per-user) |
-| Product + design + review | **GStack** | `DESIGN.md`, HTML mockups, security/code audits, retros | symlink at `.claude/skills/gstack/` → `~/development/AiLine/shared-docs/.claude/skills/gstack/` (gitignored) |
-| TDD execution | **Superpowers** | `docs/superpowers/plans/`, subagent orchestration, atomic TDD commits | global plugin (per-user) |
-
-## Onboarding (first time on a fresh machine)
-
-```bash
-# 1. Install Superpowers plugin
-claude plugin install superpowers@claude-plugins-official
-
-# 2. Clone AiLine/shared-docs to the canonical path so the gstack symlink resolves
-git clone <ailine-shared-docs-repo> ~/development/AiLine/shared-docs
-
-# 3. Run gstack setup (registers all gstack-* skills + builds browse binary)
-cd .claude/skills/gstack && ./setup --prefix --host claude
-```
-
-Verify:
-```bash
-claude plugin list                 # superpowers enabled
-ls .claude/skills/gstack/SKILL.md  # exists (resolves through symlink)
-```
-
-## Update pattern
-
-| Framework | Update | Re-pin |
-|---|---|---|
-| GSD | `/gsd-update` | — |
-| GStack | `git -C ~/development/AiLine/shared-docs pull && /gstack-upgrade` | `(cd .claude/skills/gstack && git rev-parse HEAD) > .claude/GSTACK_SHA` |
-| Superpowers | `claude plugin update superpowers` | Edit `.claude/PLUGINS.md` with new version from `claude plugin list` |
-
-## Mapping to deploy infrastructure
-
-| Concept | Implementation |
-|---|---|
-| **DEV environment** | `https://ramen-bones-analytics.pages.dev` — Cloudflare Pages production deploy of `main` |
-| **Local dev** | `http://localhost:5173` — Vite dev server (`npm run dev`) |
-| **Branch previews** | Not enabled — `deploy.yml` only triggers on `push to main`. If you want preview deploys, extend `deploy.yml` to also trigger on `feature/**` and pass `--branch=${{ github.ref_name }}` |
-| **Logs** | GHA workflow logs (`gh run view <id> --log-failed`); browser DevTools console for runtime; CF Pages dashboard for deployment history |
-| **DB migrations** | `.github/workflows/migrations.yml` runs `supabase db push` against the project DB |
-| **CI guards** | `.github/workflows/guards.yml` runs `scripts/ci-guards.sh` (Guards 1–8) on every push + PR |
 
 ## Changelog
 
-Update this section whenever the workflow evolves. Top = newest.
+### 2026-04-30 — Workflow v2: 5-step default + Stop hook + planning-docs drift gate
 
-### 2026-04-28 — Initial canonical workflow for ramen-bones-analytics
-
-- Adapted from AiLine canonical 21-row sequence; dropped 2 rows for solo-dev mode
-- Locked the 3-layer stack: GSD (plugin) + GStack (symlink to AiLine/shared-docs) + Superpowers (plugin)
-- Documented the "skip `/gsd-plan-phase`" rule explicitly — Superpowers owns implementation plans
-- Documented localhost-first UI verification rule (project-specific override)
-- Mapped tier picker to ramen-bones-analytics realities (RLS / migrations → Tier 3, not multi-repo)
-
-### Template for future entries
-
-```
-### YYYY-MM-DD — <one-line summary>
-
-- What changed (rows added/removed/reordered)
-- Why (driver: incident, framework update, retro finding)
-- Impact (which tier(s) affected)
-```
+- **Retired the 19-row sequence** that was adapted from AiLine's old 21-row workflow. Same root cause as upstream — never adopted in practice. Replaced with 5-step default that matches actual shipping pattern (14 phases shipped to date with much lighter ceremony than the documented 19 rows).
+- GSD `/gsd-plan-phase` is the default planner.
+- Superpowers TDD path is **opt-in** — invoked by name, save-path overridden to `.planning/phases/`.
+- GStack moved to **opt-in via Reach-for table**; recommend disabling proactive nudges (`gstack-config set proactive false`).
+- Tier picker (1/2/2F/3) + CONTEXT frontmatter flags removed.
+- Per-task QA replaced by single epic-end gate.
+- **`.claude/hooks/next-step-hint.js`** Stop hook replaces the old "agent must remind you" rule — deterministic, not memory-dependent.
+- **`.claude/reach-for.json`** is the dynamic lookup table; markdown copy in this doc is for humans, JSON is for the hook.
+- **Planning-docs drift gate** added — `.claude/scripts/validate-planning-docs.sh`, Stop hook calls it at QA/SHIP, `.github/workflows/validate-planning.yml` enforces on PRs touching SUMMARY/ROADMAP/STATE.

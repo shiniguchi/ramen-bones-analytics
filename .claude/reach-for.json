@@ -1,0 +1,14 @@
+{
+  "_doc": "Data-driven reach-for table for Ramen Bones Analytics. Consumed by .claude/hooks/next-step-hint.js. Adding a new tool = appending one entry. after_step values: 1=discuss, 2=plan, 3=execute, 4=qa, 5=ship; null=any; 0=replaces full sequence (trivial path). Stack: SvelteKit + Cloudflare Pages + Supabase + Postgres RLS, solo-dev.",
+  "rows": [
+    { "signal": "frontend_new_surface", "command": "/gstack-design-shotgun", "after_step": 1, "note": "new mobile UI surface, no existing component to copy" },
+    { "signal": "frontend_implement_design", "command": "/gstack-design-html", "after_step": 1, "note": "after design picked, before plan step" },
+    { "signal": "rls_or_auth_or_secrets", "command": "/gstack-cso", "after_step": 4, "note": "phase touches Supabase RLS, auth, secrets, or SQL with user input — Postgres RLS is the trust boundary" },
+    { "signal": "db_migration", "command": "/gstack-codex", "after_step": 4, "note": "DB schema change — schema integrity is critical for cohort/LTV correctness" },
+    { "signal": "pre_pr_taste_check", "command": "/gstack-review", "after_step": 4, "note": "pre-landing diff review (SQL safety, RLS, trust boundaries)" },
+    { "signal": "stuck_root_cause_unclear", "command": "superpowers:systematic-debugging", "after_step": null, "note": "bug appeared mid-build, root cause unclear" },
+    { "signal": "doc_only_or_rename", "command": "/gsd-quick", "after_step": 0, "note": "doc-only / comment edit / variable rename — replaces full sequence" },
+    { "signal": "cohort_or_metric_change", "command": "manual: validate against historical cohort numbers before deploy", "after_step": 4, "note": "any change to cohort/LTV/KPI math must be checked against the v1 frozen baseline" },
+    { "signal": "library_or_sdk_question", "command": "Context7 MCP query-docs", "after_step": null, "note": "verify SvelteKit/Supabase/Cloudflare API behavior before coding" }
+  ]
+}

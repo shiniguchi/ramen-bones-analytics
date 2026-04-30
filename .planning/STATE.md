@@ -8,8 +8,8 @@ last_updated: "2026-04-30T00:00:00Z"
 progress:
   total_phases: 17
   completed_phases: 14
-  total_plans: 60
-  completed_plans: 60
+  total_plans: 64
+  completed_plans: 61
   percent: 82
 ---
 
