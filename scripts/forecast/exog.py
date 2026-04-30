@@ -134,17 +134,34 @@ def build_exog_matrix(client, *, restaurant_id: str, start_date: date, end_date:
     holidays_resp = client.table('holidays').select('date').execute()
     holidays_set = {date.fromisoformat(r['date']) for r in (holidays_resp.data or [])}
 
-    school_resp = client.table('school_holidays').select('date').execute()
-    school_set = {date.fromisoformat(r['date']) for r in (school_resp.data or [])}
+    # school_holidays stores date ranges (start_date, end_date), expand to individual dates
+    school_resp = client.table('school_holidays').select('start_date,end_date').execute()
+    school_set = set()
+    for r in (school_resp.data or []):
+        s = date.fromisoformat(r['start_date'])
+        e = date.fromisoformat(r['end_date'])
+        d = s
+        while d <= e:
+            school_set.add(d)
+            d += timedelta(days=1)
 
-    events_resp = client.table('recurring_events').select('event_date').execute()
-    events_set = {date.fromisoformat(r['event_date']) for r in (events_resp.data or [])}
+    # recurring_events stores date ranges (start_date, end_date), expand to individual dates
+    events_resp = client.table('recurring_events').select('start_date,end_date').execute()
+    events_set = set()
+    for r in (events_resp.data or []):
+        s = date.fromisoformat(r['start_date'])
+        e = date.fromisoformat(r['end_date'])
+        d = s
+        while d <= e:
+            events_set.add(d)
+            d += timedelta(days=1)
 
-    strikes_resp = client.table('transit_alerts').select('alert_date').execute()
+    # transit_alerts has pub_date and matched_keyword; infer strike from keyword
+    strikes_resp = client.table('transit_alerts').select('pub_date,matched_keyword').execute()
     strikes_set = {
-        date.fromisoformat(r['alert_date'])
+        date.fromisoformat(r['pub_date'][:10])
         for r in (strikes_resp.data or [])
-        if r.get('is_strike')
+        if r.get('matched_keyword', '').lower() in ('strike', 'streik')
     }
 
     shop_resp = (

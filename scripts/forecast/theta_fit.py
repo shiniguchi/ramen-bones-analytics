@@ -231,13 +231,12 @@ def fit_and_write(
     if n_open == 0:
         raise RuntimeError('No open days in forecast window — check shop_calendar')
 
-    # 6. Point forecast for n_open open days using StatsForecast predict
-    #    Returns DataFrame with columns: unique_id, ds, AutoTheta
-    pred_df = sf.predict(h=n_open)
+    # 6. Point forecast for n_open open days + fitted values for residuals
+    #    forecast(fitted=True) enables forecast_fitted_values() afterwards
+    pred_df = sf.forecast(h=n_open, fitted=True)
     point_forecast = pred_df['AutoTheta'].values  # shape: (n_open,)
 
     # 7. Compute in-sample residuals for bootstrap (D-16)
-    #    Use fitted values from the training pass to get residuals
     fitted_df = sf.forecast_fitted_values()
     fitted_vals = fitted_df['AutoTheta'].values
     residuals = y[:len(fitted_vals)] - fitted_vals
