@@ -227,11 +227,10 @@ def fit_and_write(
     print(f'[prophet_fit] Fitted Prophet for {kpi_name}')
 
     # 7. Generate 200 sample paths via predictive_samples
-    # Returns dict {'yhat': ndarray of shape (n_samples, n_forecast)}
+    # Prophet predictive_samples returns dict {'yhat': ndarray}
+    # Shape is (n_forecast_dates, n_samples) i.e. (HORIZON, N_PATHS)
     raw = m.predictive_samples(future_df)
-    yhat_samples = raw['yhat']  # shape: (N_PATHS, HORIZON)
-    # Transpose to (HORIZON, N_PATHS) for consistent indexing with sarimax
-    samples = yhat_samples.T
+    samples = raw['yhat']  # shape: (HORIZON, N_PATHS) — no transpose needed
     assert samples.shape == (HORIZON, N_PATHS), f'Unexpected samples shape: {samples.shape}'
 
     # 8. Build forecast rows

@@ -42,9 +42,8 @@ def test_prophet_predictive_samples_shape():
     h = 7
     future = pd.DataFrame({'ds': pd.date_range('2026-03-02', periods=h, freq='D')})
     raw = m.predictive_samples(future)
-    yhat = raw['yhat']  # shape: (n_samples, h)
-
-    # Transpose to (h, n_samples) for consistent shape with other models
-    samples = yhat.T
+    # Prophet predictive_samples returns (n_forecast_dates, n_samples)
+    # i.e. (h, n_samples) — no transpose needed
+    samples = raw['yhat']
     assert samples.shape == (h, 50)
     assert not np.isnan(samples).any()
