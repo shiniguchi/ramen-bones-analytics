@@ -36,19 +36,29 @@ _REGRESSOR_COLS = [c for c in EXOG_COLUMNS if c != 'weather_source']
 
 
 def _fetch_history(client, *, restaurant_id: str, kpi_name: str) -> pd.DataFrame:
-    """Fetch kpi_daily_mv history for the given restaurant and KPI."""
+    """Fetch kpi_daily_mv history for the given restaurant and KPI.
+
+    kpi_daily_mv has columns: restaurant_id, business_date, revenue_cents,
+    tx_count, avg_ticket_cents. We rename/derive to the canonical names
+    used by model code: date, revenue_eur, invoice_count.
+    """
     resp = (
         client.table('kpi_daily_mv')
-        .select('date,revenue_eur,invoice_count')
+        .select('business_date,revenue_cents,tx_count')
         .eq('restaurant_id', restaurant_id)
-        .order('date')
+        .order('business_date')
+        .limit(10000)
         .execute()
     )
     rows = resp.data or []
     if not rows:
         raise RuntimeError(f'No history found for restaurant_id={restaurant_id}')
     df = pd.DataFrame(rows)
+    # Map actual MV columns to canonical names
+    df.rename(columns={'business_date': 'date'}, inplace=True)
     df['date'] = pd.to_datetime(df['date']).dt.date
+    df['revenue_eur'] = df['revenue_cents'] / 100.0
+    df['invoice_count'] = df['tx_count'].astype(float)
     df = df.sort_values('date').reset_index(drop=True)
     if kpi_name not in df.columns:
         raise RuntimeError(f'KPI column {kpi_name!r} not in kpi_daily_mv response')

@@ -104,13 +104,15 @@ def evaluate_last_7(
     eval_start = eval_end - timedelta(days=6)
 
     # 1. Fetch actual values from kpi_daily_mv for the window
+    #    kpi_daily_mv columns: business_date, revenue_cents, tx_count
     resp = (
         client.table('kpi_daily_mv')
-        .select('date,' + kpi_name + ',is_open')
+        .select('business_date,revenue_cents,tx_count')
         .eq('restaurant_id', restaurant_id)
-        .gte('date', str(eval_start))
-        .lte('date', str(eval_end))
-        .order('date')
+        .gte('business_date', str(eval_start))
+        .lte('business_date', str(eval_end))
+        .order('business_date')
+        .limit(10000)
         .execute()
     )
     actual_rows = resp.data or []
@@ -118,8 +120,31 @@ def evaluate_last_7(
         raise RuntimeError(f'No actuals found for {restaurant_id} [{eval_start}–{eval_end}]')
 
     actual_df = pd.DataFrame(actual_rows)
+    actual_df.rename(columns={'business_date': 'date'}, inplace=True)
     actual_df['date'] = pd.to_datetime(actual_df['date']).dt.date
+    actual_df['revenue_eur'] = actual_df['revenue_cents'] / 100.0
+    actual_df['invoice_count'] = actual_df['tx_count'].astype(float)
     actual_df = actual_df.sort_values('date').reset_index(drop=True)
+
+    # Fetch is_open from shop_calendar (not on kpi_daily_mv)
+    cal_resp = (
+        client.table('shop_calendar')
+        .select('date,is_open')
+        .eq('restaurant_id', restaurant_id)
+        .gte('date', str(eval_start))
+        .lte('date', str(eval_end))
+        .limit(10000)
+        .execute()
+    )
+    cal_rows = cal_resp.data or []
+    if cal_rows:
+        cal_df = pd.DataFrame(cal_rows)
+        cal_df['date'] = pd.to_datetime(cal_df['date']).dt.date
+        cal_lookup = dict(zip(cal_df['date'], cal_df['is_open']))
+        actual_df['is_open'] = [cal_lookup.get(d, True) for d in actual_df['date']]
+    else:
+        actual_df['is_open'] = True
+
     actual_dates = list(actual_df['date'])
 
     # 2. Fetch prior-day forecasts for the same window
@@ -167,7 +192,7 @@ def evaluate_last_7(
     # 5. Compute horizon_reliability_cutoff = min(training_days * 0.2, 60)
     training_days_resp = (
         client.table('kpi_daily_mv')
-        .select('date', count='exact')
+        .select('business_date', count='exact')
         .eq('restaurant_id', restaurant_id)
         .execute()
     )

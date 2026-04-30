@@ -37,20 +37,50 @@ SEASON_LENGTH = 7  # weekly seasonality
 
 
 def _fetch_history(client, *, restaurant_id: str, kpi_name: str) -> pd.DataFrame:
-    """Fetch kpi_daily_mv history including is_open flag for open-day filtering."""
+    """Fetch kpi_daily_mv history and shop_calendar is_open for open-day filtering.
+
+    kpi_daily_mv has columns: business_date, revenue_cents, tx_count.
+    is_open comes from shop_calendar (not kpi_daily_mv).
+    """
     resp = (
         client.table('kpi_daily_mv')
-        .select('date,revenue_eur,invoice_count,is_open')
+        .select('business_date,revenue_cents,tx_count')
         .eq('restaurant_id', restaurant_id)
-        .order('date')
+        .order('business_date')
+        .limit(10000)
         .execute()
     )
     rows = resp.data or []
     if not rows:
         raise RuntimeError(f'No history found for restaurant_id={restaurant_id}')
     df = pd.DataFrame(rows)
+    # Map actual MV columns to canonical names
+    df.rename(columns={'business_date': 'date'}, inplace=True)
     df['date'] = pd.to_datetime(df['date']).dt.date
+    df['revenue_eur'] = df['revenue_cents'] / 100.0
+    df['invoice_count'] = df['tx_count'].astype(float)
     df = df.sort_values('date').reset_index(drop=True)
+
+    # Fetch is_open from shop_calendar (kpi_daily_mv does not have this column)
+    cal_resp = (
+        client.table('shop_calendar')
+        .select('date,is_open')
+        .eq('restaurant_id', restaurant_id)
+        .gte('date', str(df['date'].iloc[0]))
+        .lte('date', str(df['date'].iloc[-1]))
+        .limit(10000)
+        .execute()
+    )
+    cal_rows = cal_resp.data or []
+    if cal_rows:
+        cal_df = pd.DataFrame(cal_rows)
+        cal_df['date'] = pd.to_datetime(cal_df['date']).dt.date
+        cal_lookup = dict(zip(cal_df['date'], cal_df['is_open']))
+        df['is_open'] = [cal_lookup.get(d, True) for d in df['date']]
+    else:
+        # Default: assume all days open if no shop_calendar data
+        df['is_open'] = True
+
     if kpi_name not in df.columns:
         raise RuntimeError(f'KPI column {kpi_name!r} not in kpi_daily_mv response')
     df['y'] = df[kpi_name].astype(float)
