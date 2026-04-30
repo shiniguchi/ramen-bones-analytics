@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 // tests/unit/ForecastLegend.test.ts
-// Phase 15 D-04 / FUI-02 — chip row, default visibleModels = {sarimax_bau, naive_dow}.
+// Phase 15 D-04 / FUI-02 — chip row, default visibleModels = {sarimax, naive_dow}.
 // Disabled state for models not present in availableModels (feature-flag off).
 import { describe, it, expect, beforeAll, afterEach, vi } from 'vitest';
 import '@testing-library/jest-dom/vitest';
@@ -29,13 +29,13 @@ beforeAll(() => {
   }
 });
 
-const ALL_FIVE_BAU = ['sarimax_bau', 'prophet', 'ets', 'theta', 'naive_dow'];
+const ALL_FIVE_BAU = ['sarimax', 'prophet', 'ets', 'theta', 'naive_dow'];
 
 describe('ForecastLegend', () => {
   it('renders one chip per FORECAST_MODEL_COLORS palette entry', () => {
     const { getAllByRole } = render(ForecastLegend, {
       availableModels: ALL_FIVE_BAU,
-      visibleModels: new Set(['sarimax_bau', 'naive_dow']),
+      visibleModels: new Set(['sarimax', 'naive_dow']),
       ontoggle: () => {}
     });
     // 7 palette entries — 5 BAU + 2 feature-flagged
@@ -45,7 +45,7 @@ describe('ForecastLegend', () => {
   it('default visible chips render aria-pressed=true; hidden chips render aria-pressed=false', () => {
     const { getByRole } = render(ForecastLegend, {
       availableModels: ALL_FIVE_BAU,
-      visibleModels: new Set(['sarimax_bau', 'naive_dow']),
+      visibleModels: new Set(['sarimax', 'naive_dow']),
       ontoggle: () => {}
     });
     expect(getByRole('button', { name: /SARIMAX/ })).toHaveAttribute('aria-pressed', 'true');
@@ -59,7 +59,7 @@ describe('ForecastLegend', () => {
     const spy = vi.fn();
     const { getByRole } = render(ForecastLegend, {
       availableModels: ALL_FIVE_BAU,
-      visibleModels: new Set(['sarimax_bau', 'naive_dow']),
+      visibleModels: new Set(['sarimax', 'naive_dow']),
       ontoggle: spy
     });
     // Anchor regex — /Prophet/ alone matches both Prophet and NeuralProphet.
@@ -71,7 +71,7 @@ describe('ForecastLegend', () => {
     const spy = vi.fn();
     const { getByRole } = render(ForecastLegend, {
       availableModels: ALL_FIVE_BAU,    // chronos + neuralprophet absent
-      visibleModels: new Set(['sarimax_bau', 'naive_dow']),
+      visibleModels: new Set(['sarimax', 'naive_dow']),
       ontoggle: spy
     });
     const chronosChip = getByRole('button', { name: /Chronos/ });
@@ -83,7 +83,7 @@ describe('ForecastLegend', () => {
   it('disabled chips render at 40% opacity (className includes opacity-40)', () => {
     const { getByRole } = render(ForecastLegend, {
       availableModels: ALL_FIVE_BAU,
-      visibleModels: new Set(['sarimax_bau', 'naive_dow']),
+      visibleModels: new Set(['sarimax', 'naive_dow']),
       ontoggle: () => {}
     });
     const chronosChip = getByRole('button', { name: /Chronos/ });
@@ -93,14 +93,14 @@ describe('ForecastLegend', () => {
   it('chip dot color matches FORECAST_MODEL_COLORS for that model', () => {
     const { container } = render(ForecastLegend, {
       availableModels: ALL_FIVE_BAU,
-      visibleModels: new Set(['sarimax_bau']),
+      visibleModels: new Set(['sarimax']),
       ontoggle: () => {}
     });
     // SARIMAX dot uses inline style background-color = #4e79a7 (schemeTableau10[0]).
     // JSDOM normalises inline hex into rgb() form when it serialises style,
     // so accept either notation — the source-of-truth is the component's
     // string template; both representations are byte-equivalent CSS values.
-    const sarimaxBtn = container.querySelector('[data-model="sarimax_bau"]');
+    const sarimaxBtn = container.querySelector('[data-model="sarimax"]');
     const dot = sarimaxBtn?.querySelector('[data-testid="legend-dot"]');
     const style = dot?.getAttribute('style') ?? '';
     expect(style).toMatch(/#4e79a7|rgb\(\s*78\s*,\s*121\s*,\s*167\s*\)/i);
@@ -109,7 +109,7 @@ describe('ForecastLegend', () => {
   it('container is a horizontal-scroll row (overflow-x-auto)', () => {
     const { container } = render(ForecastLegend, {
       availableModels: ALL_FIVE_BAU,
-      visibleModels: new Set(['sarimax_bau']),
+      visibleModels: new Set(['sarimax']),
       ontoggle: () => {}
     });
     const row = container.querySelector('[data-testid="forecast-legend"]');

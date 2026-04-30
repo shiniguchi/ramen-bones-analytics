@@ -412,7 +412,7 @@ import { GET as forecastGET } from '../../src/routes/api/forecast/+server';
 describe('/api/forecast', () => {
   const fcastRow = {
     target_date: '2026-05-01',
-    model_name: 'sarimax_bau',
+    model_name: 'sarimax',
     yhat: 1234.56,
     yhat_lower: 1100,
     yhat_upper: 1380,
@@ -444,7 +444,7 @@ describe('/api/forecast', () => {
     expect(typeof body.last_run).toBe('string');
     expect(body.rows[0]).toMatchObject({
       target_date: '2026-05-01',
-      model_name: 'sarimax_bau',
+      model_name: 'sarimax',
       yhat_mean: 1234.56,
       yhat_lower: 1100,
       yhat_upper: 1380,
@@ -536,7 +536,7 @@ import { GET as forecastQualityGET } from '../../src/routes/api/forecast-quality
 
 describe('/api/forecast-quality', () => {
   const qRow = {
-    model_name: 'sarimax_bau',
+    model_name: 'sarimax',
     kpi_name: 'revenue_eur',
     horizon_days: 7,
     rmse: 142.31,
@@ -554,7 +554,7 @@ describe('/api/forecast-quality', () => {
     const body = await res.json();
     expect(Array.isArray(body)).toBe(true);
     expect(body[0]).toMatchObject({
-      model_name: 'sarimax_bau',
+      model_name: 'sarimax',
       kpi_name: 'revenue_eur',
       horizon_days: 7,
       rmse: 142.31,
@@ -609,11 +609,11 @@ describe('/api/campaign-uplift', () => {
   // forecast_with_actual_v rows since CAMPAIGN_START (2026-04-14).
   // Σ(actual − yhat) = (1500-1400) + (1700-1600) + (1300-1500) = 0
   const upliftRows = [
-    { target_date: '2026-04-14', model_name: 'sarimax_bau', kpi_name: 'revenue_eur',
+    { target_date: '2026-04-14', model_name: 'sarimax', kpi_name: 'revenue_eur',
       forecast_track: 'bau', yhat: 1400, yhat_lower: 1300, yhat_upper: 1500, actual_value: 1500 },
-    { target_date: '2026-04-15', model_name: 'sarimax_bau', kpi_name: 'revenue_eur',
+    { target_date: '2026-04-15', model_name: 'sarimax', kpi_name: 'revenue_eur',
       forecast_track: 'bau', yhat: 1600, yhat_lower: 1500, yhat_upper: 1700, actual_value: 1700 },
-    { target_date: '2026-04-16', model_name: 'sarimax_bau', kpi_name: 'revenue_eur',
+    { target_date: '2026-04-16', model_name: 'sarimax', kpi_name: 'revenue_eur',
       forecast_track: 'bau', yhat: 1500, yhat_lower: 1400, yhat_upper: 1600, actual_value: 1300 }
   ];
 
@@ -664,7 +664,7 @@ describe('/api/campaign-uplift', () => {
     expect(res.headers.get('cache-control')).toBe('private, no-store');
   });
 
-  it('handler applies kpi_name=revenue_eur, forecast_track=bau, model_name=sarimax_bau, gte target_date', async () => {
+  it('handler applies kpi_name=revenue_eur, forecast_track=bau, model_name=sarimax, gte target_date', async () => {
     const state = freshState({ forecast_with_actual_v: upliftRows });
     await campaignUpliftGET(mkEvent(mkLocalsAuthed(state)));
     const eqCalls = state.queries[0].calls.filter(c => c.method === 'eq');
@@ -672,7 +672,7 @@ describe('/api/campaign-uplift', () => {
     expect(eqMap).toMatchObject({
       kpi_name: 'revenue_eur',
       forecast_track: 'bau',
-      model_name: 'sarimax_bau'
+      model_name: 'sarimax'
     });
     const gteCall = state.queries[0].calls.find(c => c.method === 'gte');
     expect(gteCall?.args).toEqual(['target_date', '2026-04-14']);

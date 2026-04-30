@@ -9,7 +9,7 @@ import { describe, it, expect } from 'vitest';
 import { resampleByGranularity, type ForecastRowDaily, type ForecastRowOut } from '../../src/lib/forecastResampling';
 
 const sarimaxRow = (date: string, mean: number, lower: number, upper: number): ForecastRowDaily => ({
-  target_date: date, model_name: 'sarimax_bau',
+  target_date: date, model_name: 'sarimax',
   yhat_mean: mean, yhat_lower: lower, yhat_upper: upper, horizon_days: 1
 });
 
@@ -51,7 +51,7 @@ describe('resampleByGranularity', () => {
     const out = resampleByGranularity(rows, 'week');
     expect(out.length).toBe(2);
     const models = out.map(r => r.model_name).sort();
-    expect(models).toEqual(['prophet', 'sarimax_bau']);
+    expect(models).toEqual(['prophet', 'sarimax']);
   });
 
   it('week bucket on a Sunday rolls back to the prior Monday (ISO week start)', () => {

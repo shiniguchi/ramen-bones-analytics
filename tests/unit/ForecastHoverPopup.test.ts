@@ -31,7 +31,7 @@ beforeAll(() => {
 const QUALITY = new Map<string, {
   rmse: number; mape: number; mean_bias: number; direction_hit_rate: number | null;
 }>([
-  ['sarimax_bau|7', { rmse: 142.31, mape: 0.084, mean_bias: 12.5, direction_hit_rate: 0.71 }]
+  ['sarimax|7', { rmse: 142.31, mape: 0.084, mean_bias: 12.5, direction_hit_rate: 0.71 }]
 ]);
 
 describe('ForecastHoverPopup', () => {
@@ -39,7 +39,7 @@ describe('ForecastHoverPopup', () => {
     const { getByTestId } = render(ForecastHoverPopup, {
       hoveredRow: {
         target_date: '2026-05-08',
-        model_name: 'sarimax_bau',
+        model_name: 'sarimax',
         yhat_mean: 1234.56,
         yhat_lower: 1100,
         yhat_upper: 1380,
@@ -57,7 +57,7 @@ describe('ForecastHoverPopup', () => {
   it('renders horizon as "7 days from today"', () => {
     const { getByTestId } = render(ForecastHoverPopup, {
       hoveredRow: {
-        target_date: '2026-05-08', model_name: 'sarimax_bau',
+        target_date: '2026-05-08', model_name: 'sarimax',
         yhat_mean: 1234.56, yhat_lower: 1100, yhat_upper: 1380, horizon_days: 7
       },
       qualityByModelHorizon: QUALITY,
@@ -70,7 +70,7 @@ describe('ForecastHoverPopup', () => {
   it('renders horizon as "1 day from today" (singular) for horizon_days=1', () => {
     const { getByTestId } = render(ForecastHoverPopup, {
       hoveredRow: {
-        target_date: '2026-05-02', model_name: 'sarimax_bau',
+        target_date: '2026-05-02', model_name: 'sarimax',
         yhat_mean: 1234, yhat_lower: 1100, yhat_upper: 1380, horizon_days: 1
       },
       qualityByModelHorizon: QUALITY,
@@ -83,7 +83,7 @@ describe('ForecastHoverPopup', () => {
   it('renders 4 quality metrics when forecast_quality row exists for (model, horizon)', () => {
     const { getByTestId } = render(ForecastHoverPopup, {
       hoveredRow: {
-        target_date: '2026-05-08', model_name: 'sarimax_bau',
+        target_date: '2026-05-08', model_name: 'sarimax',
         yhat_mean: 1234.56, yhat_lower: 1100, yhat_upper: 1380, horizon_days: 7
       },
       qualityByModelHorizon: QUALITY,
@@ -102,7 +102,7 @@ describe('ForecastHoverPopup', () => {
         target_date: '2026-05-08', model_name: 'prophet',
         yhat_mean: 1100, yhat_lower: 980, yhat_upper: 1220, horizon_days: 7
       },
-      qualityByModelHorizon: QUALITY,   // only sarimax_bau|7 — prophet missing
+      qualityByModelHorizon: QUALITY,   // only sarimax|7 — prophet missing
       cumulativeDeviationEur: 0,
       lastRun: '2026-05-01T01:34:22Z'
     });
@@ -115,7 +115,7 @@ describe('ForecastHoverPopup', () => {
   it('renders cumulative deviation since campaign with EUR formatting', () => {
     const { getByTestId } = render(ForecastHoverPopup, {
       hoveredRow: {
-        target_date: '2026-05-08', model_name: 'sarimax_bau',
+        target_date: '2026-05-08', model_name: 'sarimax',
         yhat_mean: 1234, yhat_lower: 1100, yhat_upper: 1380, horizon_days: 7
       },
       qualityByModelHorizon: QUALITY,
@@ -128,7 +128,7 @@ describe('ForecastHoverPopup', () => {
   it('renders "Last refit {ago} ago" when lastRun present', () => {
     const { getByTestId } = render(ForecastHoverPopup, {
       hoveredRow: {
-        target_date: '2026-05-08', model_name: 'sarimax_bau',
+        target_date: '2026-05-08', model_name: 'sarimax',
         yhat_mean: 1234, yhat_lower: 1100, yhat_upper: 1380, horizon_days: 7
       },
       qualityByModelHorizon: QUALITY,
@@ -142,7 +142,7 @@ describe('ForecastHoverPopup', () => {
   it('omits the last-refit field when lastRun is null', () => {
     const { queryByTestId } = render(ForecastHoverPopup, {
       hoveredRow: {
-        target_date: '2026-05-08', model_name: 'sarimax_bau',
+        target_date: '2026-05-08', model_name: 'sarimax',
         yhat_mean: 1234, yhat_lower: 1380, yhat_upper: 1380, horizon_days: 7
       },
       qualityByModelHorizon: QUALITY,
@@ -155,7 +155,7 @@ describe('ForecastHoverPopup', () => {
   it('omits cumulative deviation field when cumulativeDeviationEur is null (endpoint failed)', () => {
     const { queryByTestId } = render(ForecastHoverPopup, {
       hoveredRow: {
-        target_date: '2026-05-08', model_name: 'sarimax_bau',
+        target_date: '2026-05-08', model_name: 'sarimax',
         yhat_mean: 1234, yhat_lower: 1100, yhat_upper: 1380, horizon_days: 7
       },
       qualityByModelHorizon: QUALITY,

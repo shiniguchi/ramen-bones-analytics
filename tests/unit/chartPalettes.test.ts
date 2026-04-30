@@ -38,13 +38,13 @@ describe('FORECAST_MODEL_COLORS (Phase 15 D-10)', () => {
       'naive_dow',
       'neuralprophet',
       'prophet',
-      'sarimax_bau',
+      'sarimax',
       'theta'
     ]);
   });
 
   it('first 4 BAU models use schemeTableau10[0..3] in the documented order', () => {
-    expect(FORECAST_MODEL_COLORS.sarimax_bau).toBe(schemeTableau10[0]);
+    expect(FORECAST_MODEL_COLORS.sarimax).toBe(schemeTableau10[0]);
     expect(FORECAST_MODEL_COLORS.prophet).toBe(schemeTableau10[1]);
     expect(FORECAST_MODEL_COLORS.ets).toBe(schemeTableau10[2]);
     expect(FORECAST_MODEL_COLORS.theta).toBe(schemeTableau10[3]);

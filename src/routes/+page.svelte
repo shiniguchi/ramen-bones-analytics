@@ -140,6 +140,16 @@
   let forecastHorizon = $state<7 | 35 | 120 | 365>(7);
   let forecastGranularity = $state<'day' | 'week' | 'month'>('day');
 
+  // Plain JS flag — NOT $state — so the $effect below doesn't track it as
+  // a reactive dep. With $state, writing forecastData inside the effect
+  // would re-fire the effect on its own write and burn an extra cache-hit
+  // fetch on first load (the second fetch is wasted; it returns the same
+  // payload from the in-memory cache and Svelte 5's reference-equality
+  // short-circuits the third). Keeping initialFetchDone non-reactive
+  // means the effect only runs when the user actually changes
+  // forecastHorizon or forecastGranularity.
+  let initialFetchDone = false;
+
   async function loadForecastBundle() {
     const horizon = forecastHorizon;
     const granularity = forecastGranularity;
@@ -152,20 +162,24 @@
       forecastData = f;
       qualityData = q;
       campaignUpliftData = u;
+      initialFetchDone = true;
     } catch (e) {
       console.error('[LazyMount /api/forecast bundle]', e);
     }
   }
 
-  // Re-fetch /api/forecast on horizon/granularity change. The first mount
-  // uses LazyMount.onvisible (which runs loadForecastBundle); this $effect
-  // skips the first run by checking that forecastData has been seeded.
+  // Re-fetch /api/forecast on horizon/granularity change. Tracks ONLY
+  // forecastHorizon + forecastGranularity. initialFetchDone is a plain
+  // let (not $state) so the effect does not depend on it; the LazyMount
+  // populates forecastData on first visibility, then this effect handles
+  // user-driven horizon/granularity changes.
   $effect(() => {
-    if (forecastData === null) return;
-    void clientFetch<ForecastPayload>(
-      `/api/forecast?horizon=${forecastHorizon}&granularity=${forecastGranularity}`
-    ).then(f => { forecastData = f; })
-     .catch(e => console.error('[forecast horizon change]', e));
+    const h = forecastHorizon;
+    const g = forecastGranularity;
+    if (!initialFetchDone) return;
+    void clientFetch<ForecastPayload>(`/api/forecast?horizon=${h}&granularity=${g}`)
+      .then(f => { forecastData = f; })
+      .catch(e => console.error('[forecast horizon change]', e));
   });
 
   // Compute hours since last freshness ping for the stale-data badge.

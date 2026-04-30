@@ -42,7 +42,7 @@ export const GET: RequestHandler = async ({ locals }) => {
         .select('target_date,yhat,actual_value')
         .eq('kpi_name', 'revenue_eur')
         .eq('forecast_track', 'bau')
-        .eq('model_name', 'sarimax_bau')
+        .eq('model_name', 'sarimax')
         .gte('target_date', campaignStartDate)
     );
 

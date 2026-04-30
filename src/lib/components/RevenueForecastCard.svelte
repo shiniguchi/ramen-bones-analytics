@@ -6,7 +6,7 @@
   //   description (1-line)
   //   HorizonToggle row
   //   <Chart> with:
-  //     • Area (CI band, sarimax_bau, 15% fill — D-02)
+  //     • Area (CI band, sarimax, 15% fill — D-02)
   //     • Spline (per-model lines, naive dashed gray — D-10)
   //     • Rule at today (gray-500 — D-03)
   //     • EventMarker layer (D-09)
@@ -93,7 +93,7 @@
   } = $props();
 
   // ----- Local UI state -----
-  let visibleModels = $state(new Set<string>(['sarimax_bau', 'naive_dow']));
+  let visibleModels = $state(new Set<string>(['sarimax', 'naive_dow']));
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let chartCtx = $state<any>();
 
@@ -127,9 +127,9 @@
     return map;
   });
 
-  // CI band: only the primary forecast (sarimax_bau) renders its band.
+  // CI band: only the primary forecast (sarimax) renders its band.
   // Other models' bands would create visual mush at 375px.
-  const PRIMARY_MODEL = 'sarimax_bau';
+  const PRIMARY_MODEL = 'sarimax';
   const bandRows = $derived(seriesByModel.get(PRIMARY_MODEL) ?? []);
 
   const xDomain = $derived.by((): [Date, Date] => {
@@ -234,7 +234,7 @@
           <Axis placement="left"   format={formatEURShort} grid />
           <Axis placement="bottom" format={(d: Date) => format(d, 'MMM d')} />
 
-          <!-- CI band (back layer) — sarimax_bau only -->
+          <!-- CI band (back layer) — sarimax only -->
           {#if bandRows.length > 0}
             <Area
               data={bandRows.map(r => ({ ...r, d: parseISO(r.target_date) }))}

@@ -37,8 +37,8 @@ beforeAll(() => {
 
 const FORECAST_PAYLOAD = {
   rows: [
-    { target_date: '2026-05-01', model_name: 'sarimax_bau', yhat_mean: 1234.56, yhat_lower: 1100, yhat_upper: 1380, horizon_days: 1 },
-    { target_date: '2026-05-02', model_name: 'sarimax_bau', yhat_mean: 1300,    yhat_lower: 1170, yhat_upper: 1430, horizon_days: 2 },
+    { target_date: '2026-05-01', model_name: 'sarimax', yhat_mean: 1234.56, yhat_lower: 1100, yhat_upper: 1380, horizon_days: 1 },
+    { target_date: '2026-05-02', model_name: 'sarimax', yhat_mean: 1300,    yhat_lower: 1170, yhat_upper: 1430, horizon_days: 2 },
     { target_date: '2026-05-01', model_name: 'naive_dow',   yhat_mean: 1200,    yhat_lower: 1200, yhat_upper: 1200, horizon_days: 1 },
     { target_date: '2026-05-02', model_name: 'naive_dow',   yhat_mean: 1250,    yhat_lower: 1250, yhat_upper: 1250, horizon_days: 2 }
   ],

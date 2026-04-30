@@ -11,7 +11,7 @@
   // adds modal-navigation state. Chip row is one tap away. Mirrors
   // HorizonToggle's segmented pattern.
   //
-  // Default visible state ({sarimax_bau, naive_dow}) is owned by the
+  // Default visible state ({sarimax, naive_dow}) is owned by the
   // parent (RevenueForecastCard in 15-08) — this component is purely
   // presentational + reactive to its props.
   import { page } from '$app/state';
@@ -31,7 +31,7 @@
   // Order chips per palette declaration order — keeps the eye stable
   // when the parent's availableModels list changes.
   const PALETTE_ORDER: Array<{ key: string; labelKey: MessageKey }> = [
-    { key: 'sarimax_bau',   labelKey: 'legend_model_sarimax_bau' },
+    { key: 'sarimax',   labelKey: 'legend_model_sarimax' },
     { key: 'prophet',       labelKey: 'legend_model_prophet' },
     { key: 'ets',           labelKey: 'legend_model_ets' },
     { key: 'theta',         labelKey: 'legend_model_theta' },

@@ -48,7 +48,7 @@ export const COHORT_LINE_PALETTE: readonly string[] = [
  * consistent across the dashboard). Chronos + NeuralProphet pick up [5..6]
  * for when Phase 14 D-09 feature flags flip on.
  *
- *   sarimax_bau   = [0] blue
+ *   sarimax   = [0] blue
  *   prophet       = [1] orange
  *   ets           = [2] red
  *   theta         = [3] teal — overlaps school-holiday background; OK because
@@ -58,7 +58,7 @@ export const COHORT_LINE_PALETTE: readonly string[] = [
  *   neuralprophet = [6]
  */
 export const FORECAST_MODEL_COLORS: Readonly<Record<string, string>> = {
-  sarimax_bau:   schemeTableau10[0],
+  sarimax:   schemeTableau10[0],
   prophet:       schemeTableau10[1],
   ets:           schemeTableau10[2],
   theta:         schemeTableau10[3],

@@ -31,7 +31,7 @@ const en = {
 
   // --- Forecast legend (Phase 15 D-04 / FUI-02) --------------------------
   legend_aria:                  'Forecast model legend',
-  legend_model_sarimax_bau:     'SARIMAX',
+  legend_model_sarimax:     'SARIMAX',
   legend_model_prophet:         'Prophet',
   legend_model_ets:             'ETS',
   legend_model_theta:           'Theta',
@@ -221,7 +221,7 @@ const de: Record<MessageKey, string> = {
 
   // Forecast legend (Phase 15 D-04 / FUI-02) — placeholder copy mirrors EN
   legend_aria:                  'Forecast model legend',
-  legend_model_sarimax_bau:     'SARIMAX',
+  legend_model_sarimax:     'SARIMAX',
   legend_model_prophet:         'Prophet',
   legend_model_ets:             'ETS',
   legend_model_theta:           'Theta',
@@ -402,7 +402,7 @@ const ja: Record<MessageKey, string> = {
 
   // Forecast legend (Phase 15 D-04 / FUI-02) — placeholder copy mirrors EN
   legend_aria:                  'Forecast model legend',
-  legend_model_sarimax_bau:     'SARIMAX',
+  legend_model_sarimax:     'SARIMAX',
   legend_model_prophet:         'Prophet',
   legend_model_ets:             'ETS',
   legend_model_theta:           'Theta',
@@ -582,7 +582,7 @@ const es: Record<MessageKey, string> = {
 
   // Forecast legend (Phase 15 D-04 / FUI-02) — placeholder copy mirrors EN
   legend_aria:                  'Forecast model legend',
-  legend_model_sarimax_bau:     'SARIMAX',
+  legend_model_sarimax:     'SARIMAX',
   legend_model_prophet:         'Prophet',
   legend_model_ets:             'ETS',
   legend_model_theta:           'Theta',
@@ -763,7 +763,7 @@ const fr: Record<MessageKey, string> = {
 
   // Forecast legend (Phase 15 D-04 / FUI-02) — placeholder copy mirrors EN
   legend_aria:                  'Forecast model legend',
-  legend_model_sarimax_bau:     'SARIMAX',
+  legend_model_sarimax:     'SARIMAX',
   legend_model_prophet:         'Prophet',
   legend_model_ets:             'ETS',
   legend_model_theta:           'Theta',
