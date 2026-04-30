@@ -145,4 +145,22 @@ describe('Phase 15-09: forecast_daily.granularity column', () => {
     expect(names).toContain('kpi_name');
     expect(names).toContain('target_date');
   });
+
+  it('backfill: pre-migration rows are labelled granularity=day', async () => {
+    // Plan 15-09 added the granularity column with DEFAULT 'day' before
+    // dropping the default. Any row that existed before migration 0057
+    // ran (i.e., run_date < 2026-05-01) MUST have been backfilled to 'day'.
+    // After a fresh `supabase db reset` the table may be empty — that's
+    // fine, the property holds vacuously. The point of this test is to
+    // catch a future regression where someone re-orders the migration
+    // steps (e.g., moves DROP DEFAULT before backfill).
+    const { data, error } = await admin
+      .from('forecast_daily')
+      .select('granularity, run_date')
+      .lt('run_date', '2026-05-01');
+    expect(error).toBeNull();
+    for (const row of data ?? []) {
+      expect(row.granularity).toBe('day');
+    }
+  });
 });
