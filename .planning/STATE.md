@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: External Data & Forecasting Foundation
-status: "Phase 14 context updated"
-stopped_at: Phase 14 (Forecasting Engine — BAU Track) context updated 2026-04-30. 18 decisions total (10 original + 8 new). New areas — MV refresh trigger (separate RPC + dual trigger), forecast_quality schema (4 metrics + evaluation_window PK), sample-path generation (native + bootstrap), exog assembly (shared module + internal blending). Ready for planning.
+status: "Phase 14 shipped"
+stopped_at: Phase 14 (Forecasting Engine — BAU Track) shipped 2026-04-30. PR #22 merged, 17 migrations applied to DEV, weather backfill complete (1622 rows + 365 climatology norms), GHA pipeline passing (5/5 models x 2 KPIs x 365 days). forecast_quality populates after 2nd nightly run. Ready for Phase 15 (Forecast Chart UI).
 last_updated: "2026-04-30T00:00:00Z"
 progress:
   total_phases: 17
-  completed_phases: 12
+  completed_phases: 14
   total_plans: 60
   completed_plans: 60
-  percent: 71
+  percent: 82
 ---
 
 # STATE: Ramen Bones Analytics
@@ -28,12 +28,13 @@ progress:
 ## Current Position
 
 Milestone: v1.3 (External Data & Forecasting Foundation)
-Phase: 13 (External Data Ingestion) — Shipped via PR #17
+Phase: 14 (Forecasting Engine — BAU Track) — Shipped via PR #22
 Plan: —
 
-- **Status:** Phase 13 shipped via [PR #17](https://github.com/shiniguchi/ramen-bones-analytics/pull/17). 41 commits, 52 files, +6892 lines. UAT 15/15, review 25/25 addressed. EXT-01..EXT-09 complete.
-- **Progress:** [███████░░░] 71% (13/17 phases shipped on merge; v1.0+v1.1+v1.2 done)
-- **Last activity:** 2026-04-30 — Phase 13 PR #17 merge conflicts resolved, ready for merge
+- **Status:** Phase 14 shipped via [PR #22](https://github.com/shiniguchi/ramen-bones-analytics/pull/22). 34 commits, 31 files, +2978 lines. Code review 15 findings (7 critical schema mismatches), all 12 in-scope fixed. UAT 12/12. 5/5 models producing 365-day forecasts on DEV.
+- **Phase 13:** Shipped via [PR #17](https://github.com/shiniguchi/ramen-bones-analytics/pull/17). 41 commits, 52 files, +6892 lines. EXT-01..EXT-09 complete.
+- **Progress:** [████████░░] 82% (14/17 phases shipped; v1.0+v1.1+v1.2+Phase 12-14 done)
+- **Last activity:** 2026-04-30 — Phase 14 merged, migrations applied, pipeline running on DEV
 - **v1.2 closed:** 11 phases, 60 plans, 100% — Phase 11 SSR fix landed 2026-04-21
 - **v1.0 status:** Shipped to friend (97% plans complete; repo flipped PUBLIC 2026-04-15 with topics + description set; Plan 05-06 Task 2 fork walkthrough deferred out of v1 scope)
 
@@ -42,7 +43,7 @@ Plan: —
 | Metric | Value |
 |--------|-------|
 | Phases planned | 17 (5 v1.0 + 2 v1.1 + 4 v1.2 + 6 v1.3) |
-| Phases complete | 12 (13 on PR #17 merge) |
+| Phases complete | 14 |
 | Requirements mapped | 113/113 (39 v1.0 + 14 v1.1 + 13 v1.2 + 47 v1.3) |
 | Plans executed | 60 |
 | Phase 01-foundation P05 | 5m | 2 tasks | 4 files |
@@ -211,7 +212,7 @@ Plan: —
 ### Open Todos
 
 - (v1.3) Confirm with friend in office hours: did she tell regulars about the 2026-04-14 campaign before launch? If yes, when? — drives Track-B `TRAIN_END` cutoff (default `−7d` per research synthesis)
-- (v1.3) Phase 14 — `yhat_samples` jsonb storage trajectory: TTL/janitor decision (~125 MB/year/tenant on 500 MB Supabase free tier) — defer to plan-phase
+- (v1.3, resolved) Phase 14 — `yhat_samples` janitor: weekly pg_cron NULLs older run_dates' samples, keeping only latest run per model (migration 0056)
 - (v1.3) Phase 13 — BVG RSS URL not yet end-to-end verified; CI step in 13's acceptance test
 - (v1.3) Phase 17 — Chronos GHA wall-time + HF cache hit rate not measured; watch-item for alerting
 - (v1.3) Phase 17 — NeuralProphet ≥5% RMSE-win promotion criterion; drop dep entirely after 4 weeks if no win
@@ -248,16 +249,14 @@ Plan: —
 
 ## Session Continuity
 
-**Next command:** `/gstack-review` against `main` from the phase branch (`feature/phase-13-external-data-ingestion`) — pre-landing diff review for SQL safety, RLS holes, trust boundaries. Then `/gstack-cso` (Tier 3 mandatory — 7 migrations + new RLS), then `/gsd-verify-work 13` (UAT on DEV), then `/gsd-ship`, then `/gstack-retro`. The 19-row workflow rows already executed are 1-3, 4, 8, 9, 10. Row 5 (`/gstack-autoplan`) was skipped. Row 12 (`/qa-gate`) believed run but no artifact in `~/.gstack/projects/...` — re-run if needed.
+**Next phase:** Phase 15 (Forecast Chart UI) — friend sees actual revenue + forecast + CI band on her phone at 375px.
 
-**Authoritative spec for v1.3:** `.planning/phases/12-forecasting-foundation/12-PROPOSAL.md` (1484-line driving artifact — verified data sources, schema sketches, GHA cron pattern, failure modes, backtest fairness rules, ITS validity audit). Note: §7 SQL sketches use `tenant_id`; codebase claim is `restaurant_id` — Phase 12 CI Guard 7 catches the rename.
+**Phase 14 shipped (2026-04-30):** PR #22 merged. 7 migrations (0050-0056) applied to DEV. Weather backfill complete (1,622 rows 2021-01-01 to 2025-06-10 + 365 climatology norms). GHA `forecast-refresh.yml` pipeline green: 5/5 models (SARIMAX, Prophet, ETS, Theta, Naive DoW) x 2 KPIs x 365 days = 3,650 rows in `forecast_daily`. `forecast_quality` populates after 2nd nightly run (evaluator needs prior forecasts to score against). Two post-merge hotfixes committed directly to main: (1) exog.py aligned with Phase 13 table schemas (school_holidays start_date/end_date ranges, recurring_events start_date/end_date, transit_alerts pub_date/matched_keyword); (2) exog matrix aligned to history dates for SARIMAX/Prophet (kpi_daily_mv has gaps for zero-tx days).
 
-**Phase 12 context (committed fded786):** `.planning/phases/12-forecasting-foundation/12-CONTEXT.md` — ratifies the three ROADMAP §SC4 mandates (D-01 anticipation cutoff −7d, D-02 brightsky production default, D-03 §7 rename rule) and locks 14 implementation decisions (D-04 audit script written fresh; D-05/D-06 audit scope + weekly cadence; D-07/D-08 `pipeline_runs` skeleton pulled forward from Phase 13 with non-tenant-scoped initial RLS; D-09/D-10/D-11 Guard 7 placement, scan paths, regex variants; D-12/D-13/D-14 final UTC schedule contract + ≥60-min cascade gap rule + Guard 8 enforcement). Discussion log at `12-DISCUSSION-LOG.md`.
+**Resume hint:** Phase 15 depends on Phase 14 schema (landed). Phase 16 depends on Phase 14 BAU forecast stability. Phase 17 has a hard dependency on ≥4 weeks of forecast-vs-actual history.
 
-**Resume hint:** v1.3 roadmap complete. 6 phases (12-17) map all 47 v1.3 requirements. Phase 12 (Foundation — Decisions & Guards) context locked 2026-04-28; planning + execution is a lightweight scripting effort (~1-2 days). Phase 13 (External Data Ingestion) is the first heavy migration phase (~2 weeks). Phase 14 ↔ 15 parallel-eligible after 14's schema lands (estimated 30-40% schedule compression). Phase 17 has a hard dependency on ≥4 weeks of forecast-vs-actual history; cold-start UI badge "BACKTEST PENDING" handles days 1-7.
-
-**Last session:** 2026-04-29 — STATE.md realignment after discovering Phase 13 implementation already done on phase branch
-**Stopped At:** Phase 13 implementation discovered complete on `feature/phase-13-external-data-ingestion` (24 commits ahead of main, head `c5be916`). Workflow rows 1-3, 4, 8, 9, 10 done; row 5 (`/gstack-autoplan`) skipped; rows 12, 15, 16, 17, 18, 19 outstanding. STATE.md previously claimed "context gathered, ready for /gsd-plan-phase 13" — that was a stale artifact from the discuss-phase session. Now realigned. Branch unmerged. Next: `/gstack-review` (row 15) → `/gstack-cso` (row 16, Tier 3 mandatory) → `/gsd-verify-work 13` (row 17) → `/gsd-ship` (row 18) → `/gstack-retro` (row 19).
+**Last session:** 2026-04-30 — Phase 14 end-to-end: office-hours → autoplan → plan → implement → code-review → fix → verify → merge → deploy → backfill → pipeline green
+**Stopped At:** Phase 14 complete. Ready for Phase 15 (Forecast Chart UI).
 
 ---
-*State initialized: 2026-04-13; v1.3 roadmap recorded: 2026-04-27; Phase 12 context: 2026-04-28; Phase 13 context: 2026-04-28; Phase 13 implementation complete: ≤2026-04-29; STATE.md realigned: 2026-04-29*
+*State initialized: 2026-04-13; v1.3 roadmap recorded: 2026-04-27; Phase 12 context: 2026-04-28; Phase 13 shipped: 2026-04-30 (PR #17); Phase 14 shipped: 2026-04-30 (PR #22); STATE.md updated: 2026-04-30*
