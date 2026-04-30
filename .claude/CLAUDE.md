@@ -2,13 +2,23 @@
 
 ## Development Workflow (canonical)
 
-**Every feature follows [`docs/workflow.md`](../docs/workflow.md)** — the 19-row command sequence integrating GSD + GStack + Superpowers, with a tier picker (1 / 2 / 2F / 3). Read it before any feature work.
+**Every feature follows [`docs/workflow.md`](../docs/workflow.md)** — 5-step default sequence (discuss → plan → execute → epic-end QA → ship), Reach-for table, planning-docs drift gate. Read it before any feature work. The Stop hook at `.claude/hooks/next-step-hint.js` prints `→ Next:` after every turn on a `feature/phase-*` branch — you don't need to remember.
 
 Quick rules (full list in `docs/workflow.md`):
-- **Skip `/gsd-plan-phase`** — Superpowers owns implementation plans (`superpowers:writing-plans`).
-- **Skip `superpowers:brainstorming`** — `/gstack-office-hours` does that job.
-- Phase work always on a `feature/phase-<NN>-<slug>` branch (Superpowers refuses `main`).
+- **GSD `/gsd-plan-phase` is the default planner.** Superpowers TDD path is opt-in (invoke by name) for typed-code / KPI-math / non-trivial-refactor phases — save plans to `.planning/phases/<NN>-<slug>/` (override Superpowers' default `docs/superpowers/plans/` location).
+- **GStack is opt-in via the Reach-for table only** — recommend disabling proactive nudges via `gstack-config set proactive false`.
+- Phase work always on a `feature/phase-<NN>-<slug>` branch — required for the Stop hook to recognise the branch and CF Pages branch-deploy convention.
 - Frameworks pinned in `.claude/PLUGINS.md`.
+
+## Planning-docs drift gate (mandatory before `/gsd-ship`)
+
+ROADMAP.md and STATE.md must match disk artifacts before any phase ships. Three layers enforce this:
+
+1. **Validator**: `.claude/scripts/validate-planning-docs.sh` — single source of truth
+2. **Stop hook**: calls the validator on QA + SHIP steps, prints `⚠️ Planning docs drift` warnings inline
+3. **CI**: `.github/workflows/validate-planning.yml` blocks PR merge when drift exists on PRs touching SUMMARY/ROADMAP/STATE
+
+When closing a phase, **always** update `.planning/STATE.md` frontmatter (`progress.completed_phases`, `progress.completed_plans`, `last_updated`) and tick `[x]` in `.planning/ROADMAP.md`. Run `.claude/scripts/validate-planning-docs.sh` to confirm.
 
 ## Default Environment: DEV
 

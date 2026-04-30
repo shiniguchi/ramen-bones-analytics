@@ -25,6 +25,11 @@
             "type": "command",
             "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/localhost-qa-gate.js\"",
             "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/next-step-hint.js\"",
+            "timeout": 5
           }
         ]
       }

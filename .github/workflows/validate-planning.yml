@@ -1,0 +1,38 @@
+name: Validate Planning Docs
+
+# Hard gate that prevents merging a phase whose ROADMAP.md / STATE.md drifted
+# from the .planning/phases/ artifacts. Triggered only on PRs that add or
+# modify a *-SUMMARY.md (the artifact that signals plan completion) — random
+# PRs touching unrelated code are not affected. Cannot be bypassed.
+#
+# The validator script is the single source of truth — same logic the
+# next-step-hint Stop hook calls locally.
+
+on:
+  pull_request:
+    paths:
+      - '.planning/phases/**/*-SUMMARY.md'
+      - '.planning/ROADMAP.md'
+      - '.planning/STATE.md'
+      - '.claude/scripts/validate-planning-docs.sh'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run planning-docs validator
+        run: |
+          chmod +x .claude/scripts/validate-planning-docs.sh
+          .claude/scripts/validate-planning-docs.sh --strict
+
+      - name: Drift hint on failure
+        if: failure()
+        run: |
+          echo ""
+          echo "Planning docs drifted from disk artifacts."
+          echo "Update .planning/STATE.md frontmatter and ROADMAP.md to match,"
+          echo "then bump last_updated. Re-run locally:"
+          echo "  .claude/scripts/validate-planning-docs.sh"
