@@ -23,6 +23,7 @@ from datetime import date, datetime, timedelta, timezone
 from typing import Optional
 
 from scripts.forecast.db import make_client
+from scripts.forecast.last_7_eval import evaluate_last_7
 
 DEFAULT_MODELS = 'sarimax,prophet,ets,theta,naive_dow'
 KPIS = ['revenue_eur', 'invoice_count']
@@ -143,6 +144,24 @@ def main(
                 successes += 1
 
     print(f'[run_all] Completed: {successes}/{total} model/KPI combos succeeded')
+
+    # Evaluate last-7-day forecast accuracy for each model/KPI
+    # Populates forecast_quality table for accuracy tracking
+    if successes > 0:
+        print('[run_all] Running last-7-day evaluation ...')
+        for model in models:
+            for kpi in KPIS:
+                try:
+                    evaluate_last_7(
+                        client,
+                        restaurant_id=restaurant_id,
+                        kpi_name=kpi,
+                        model_name=model,
+                    )
+                    print(f'[run_all] eval {model}/{kpi}: OK')
+                except Exception as e:
+                    # Eval failure is non-fatal — new forecasts are still valid
+                    print(f'[run_all] eval {model}/{kpi} failed: {e}', file=sys.stderr)
 
     # Always attempt MV refresh after all models
     _refresh_mvs(client)
