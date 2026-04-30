@@ -1,0 +1,63 @@
+name: Forecast Refresh
+on:
+  schedule:
+    - cron: '0 1 * * *'        # 01:00 UTC — C-02, Guard 8 cascade
+  workflow_dispatch:
+    inputs:
+      models:
+        description: 'Comma-separated model list (omit for all enabled)'
+        required: false
+        default: ''
+
+# Least-privilege: only checkout + run python, no repo writes needed.
+permissions:
+  contents: read
+
+# Single-flight: scheduled cron and manual workflow_dispatch must not race
+# against each other on the same DB rows.
+concurrency:
+  group: forecast-refresh
+  cancel-in-progress: false
+
+jobs:
+  forecast:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GITHUB_SHA: ${{ github.sha }}
+      FORECAST_ENABLED_MODELS: 'sarimax,prophet,ets,theta,naive_dow'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: scripts/forecast/requirements.txt
+      - name: Cache cmdstan binary
+        uses: actions/cache@v4
+        with:
+          path: ~/.cmdstan
+          key: cmdstan-${{ runner.os }}-${{ hashFiles('scripts/forecast/requirements.txt') }}
+      - name: Install deps
+        run: pip install -r scripts/forecast/requirements.txt
+      - name: Run forecast pipeline
+        # Inputs piped through env: vars (NOT direct ${{ }} in the script) so a
+        # malicious workflow_dispatch caller cannot inject shell metacharacters.
+        # Validate models input against a safe pattern before forwarding to argparse.
+        # Service-role key scoped to THIS step only — keeps it out of pip install
+        # and any future steps' environments.
+        env:
+          SUPABASE_URL: ${{ secrets.DEV_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.DEV_SUPABASE_SERVICE_ROLE_KEY }}
+          MODELS: ${{ inputs.models }}
+        run: |
+          set -euo pipefail
+          ARGS=()
+          if [ -n "${MODELS:-}" ]; then
+            if ! echo "$MODELS" | grep -qE '^[a-z_]+(,[a-z_]+)*$'; then
+              echo "ERROR: MODELS must be comma-separated lowercase identifiers" >&2
+              exit 1
+            fi
+            ARGS+=("--models" "$MODELS")
+          fi
+          python -m scripts.forecast.run_all "${ARGS[@]}"

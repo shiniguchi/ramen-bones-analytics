@@ -1,6 +1,6 @@
 # Phase 14: Forecasting Engine — BAU Track - Context
 
-**Gathered:** 2026-04-29
+**Gathered:** 2026-04-29, updated 2026-04-30
 **Status:** Ready for planning
 
 <domain>
@@ -16,8 +16,8 @@ Concrete deliverables:
 4. `forecast_with_actual_v` — RLS-scoped wrapper view joining forecast + actual KPIs; the only surface the SvelteKit app reads.
 5. Five model fits per night: SARIMAX (primary), Prophet (`yearly_seasonality=False`), ETS, Theta, Naive same-DoW. Chronos-Bolt-Tiny + NeuralProphet behind `FORECAST_ENABLED_MODELS` env var (off by default).
 6. `last_7_eval.py` — nightly evaluator scoring the last 7 actual days against each BAU model's prior forecast; writes to `forecast_quality`.
-7. `forecast-refresh.yml` GHA workflow at `0 1 * * *` UTC; writes `pipeline_runs` rows per model; failure surfaces stale-data badge.
-8. `pg_cron` `refresh_analytics_mvs()` extended to include `forecast_daily_mv` (03:00 UTC).
+7. `forecast-refresh.yml` GHA workflow at `0 1 * * *` UTC + ingest-triggered via `workflow_dispatch`; writes `pipeline_runs` rows per model; failure surfaces stale-data badge.
+8. `refresh_forecast_mvs()` — new RPC function that refreshes only `forecast_daily_mv`; called from `forecast-refresh.yml` after Python writes complete. Separate from `refresh_analytics_mvs()` (analytics MVs stay ingest-driven).
 9. One-time weather backfill from 2021-01-01 via Bright Sky for climatological norm computation.
 
 Out of scope: Track-B counterfactual fits (Phase 16), `campaign_calendar`/`campaign_uplift_v` tables (Phase 16), `baseline_items_v`/`revenue_comparable_eur` KPI (Phase 16), rolling-origin CV backtest gate (Phase 17), `feature_flags` DB table (Phase 17), UI (Phase 15).
@@ -58,16 +58,35 @@ Out of scope: Track-B counterfactual fits (Phase 16), `campaign_calendar`/`campa
 - **D-09 — Env var only for v1.** `FORECAST_ENABLED_MODELS='sarimax,prophet,ets,theta,naive_dow'` on `forecast-refresh.yml`. Adding a model = one workflow file edit + PR. No `feature_flags` DB table in Phase 14.
 - **D-10 — `feature_flags` table deferred to Phase 17.** Phase 17 creates it for the backtest promotion gate. Phase 15 UI reads env-var-controlled model availability from `forecast_daily_mv` (if a model has rows, the UI can show it).
 
+### MV Refresh Trigger (G-05)
+
+- **D-11 — Separate `refresh_forecast_mvs()` RPC, not extending `refresh_analytics_mvs()`.** New SQL function that only refreshes `forecast_daily_mv`. Called from `forecast-refresh.yml` via PostgREST RPC after Python writes complete. Analytics MVs stay on the ingest-driven trigger (`refresh_analytics_mvs()` via `scripts/ingest/refresh.ts`). Clean separation: each workflow refreshes only what it wrote.
+- **D-12 — Dual trigger: nightly cron + ingest-triggered.** `forecast-refresh.yml` fires on two triggers: (1) nightly cron at `0 1 * * *` UTC for weather-driven forecast updates, (2) `workflow_dispatch` triggered by ingest after Monday CSV upload so fresh forecasts are available within ~10 min of data upload — not 11h later at the next cron. Data arrives weekly on Mondays; the Monday forecast is the one the owner acts on.
+
+### `forecast_quality` Schema (G-06)
+
+- **D-13 — Full metric set: RMSE, MAPE, mean_bias, direction_hit_rate.** `last_7_eval.py` computes all four per model per KPI. `mean_bias` = average signed error (positive = overforecast). `direction_hit_rate` = % of days where forecast correctly predicted up/down vs prior day. All four are cheap to compute and Phase 15's `ForecastHoverPopup.svelte` consumes them.
+- **D-14 — `evaluation_window` discriminator in PK.** PK: `(restaurant_id, kpi_name, model_name, horizon_days, evaluation_window, evaluated_at)`. Phase 14 writes rows with `evaluation_window='last_7_days'`. Phase 17 adds `evaluation_window='rolling_origin_cv'` rows. One table, two evaluation types, no ALTER needed.
+
+### Sample-Path Generation (G-07)
+
+- **D-15 — Native simulation for SARIMAX and Prophet.** SARIMAX uses `model.simulate(nsimulations=365, repetitions=200)`. Prophet uses `uncertainty_samples=200`. These capture model-specific uncertainty structure (parameter uncertainty, seasonal variance). Best statistical quality.
+- **D-16 — Bootstrap residuals for ETS, Theta, and Naive DoW.** Fit model → compute in-sample residuals → sample 200 residual vectors with replacement → add to point forecast. Each path = point forecast + shuffled residual at each horizon step. Standard forecasting practice for models without native simulation.
+
+### Exog Assembly Module (G-08)
+
+- **D-17 — Shared `scripts/forecast/exog.py` module.** Single `build_exog_matrix(dates, restaurant_id, mode='fit'|'predict')` function returns a DataFrame with columns: `temp_mean`, `precip_mm`, `is_holiday`, `is_school_holiday`, `is_event`, `is_open`, `is_strike`. SARIMAX and Prophet select their columns from it. Adding a new regressor = one file change.
+- **D-18 — Internal 3-tier weather blending.** `build_exog_matrix()` handles the actual→forecast→climatology cascade internally. For each date: if actual weather exists in `weather_daily` → use it; elif Bright Sky forecast exists (≤14d out) → use it; else → climatological norm from `weather_climatology`. Caller just passes date range. `exog_signature` jsonb records which tier was used per-date segment.
+
 ### Claude's Discretion
 
 - Python project structure under `scripts/forecast/` — one file per model, shared helpers, orchestrator; mirrors `scripts/external/` pattern from Phase 13.
-- `forecast_quality` table exact column set beyond what PROPOSAL §7 + REQUIREMENTS specify (planner reconciles the §7 sketch with the hover-popup spec's bias + direction_hit_rate fields).
-- Migration numbering (continues after Phase 13's 0041-0047; planner picks the next available slot).
+- Migration numbering (continues after Phase 13's 0041-0049; planner picks the next available slot).
 - `weather_climatology` storage approach (dedicated lookup table vs inline SQL computation from `weather_daily`).
 - Exact SARIMAX order `(p,d,q)(P,D,Q,s)` — PROPOSAL suggests `(1,0,1)(1,1,1,7)` but planner/researcher may tune.
 - Exact Prophet `changepoint_prior_scale` and `seasonality_prior_scale` values.
 - Per-model error handling (try/except per model like Phase 13's per-source pattern; exit 0 if at least one model succeeds).
-- `forecast_quality.evaluation_window` column (not in §7 sketch but required by FCS-07) — planner adds it during schema reconciliation.
+- Exact `exog.py` column names and weather variable selection beyond the core set in D-17.
 
 </decisions>
 
@@ -79,7 +98,8 @@ Out of scope: Track-B counterfactual fits (Phase 16), `campaign_calendar`/`campa
 - **Per-model `step_name` in `pipeline_runs`:** `forecast_sarimax`, `forecast_prophet`, `forecast_ets`, `forecast_theta`, `forecast_naive_dow`, `forecast_eval_last7`. Deterministic, queryable downstream.
 - **Closed-day post-hoc zeroing is a shared utility** — all 5+ models go through the same `zero_closed_days(predictions, shop_calendar)` function. Single source of truth.
 - **Weather backfill is a one-time script** (`scripts/forecast/backfill_weather_history.py`), not part of the nightly cron. Run once after Phase 14 lands, before first forecast run.
-- **`pg_cron refresh_analytics_mvs()` re-registration:** Migration 0040 dropped the analytics cron. Phase 14 needs to re-register the job to include `forecast_daily_mv` in the refresh DAG at 03:00 UTC — or trigger MV refresh from the forecast GHA workflow via PostgREST RPC (matching the ingest-driven pattern from 0040). Planner picks the approach that aligns with the current trigger-based architecture.
+- **Monday ingest → forecast trigger:** After CSV upload on Mondays, the ingest workflow (or a post-ingest hook) fires `gh workflow run forecast-refresh.yml` via `workflow_dispatch`. This gives the owner fresh forecasts within ~10 min of uploading. The nightly cron covers the other 6 nights for weather-driven updates.
+- **`forecast_quality` contract for Phase 15:** 4 metrics per (model, kpi, horizon): `rmse`, `mape`, `mean_bias`, `direction_hit_rate`. Phase 15's `ForecastHoverPopup.svelte` reads these directly — no transformation needed.
 
 </specifics>
 
@@ -108,7 +128,8 @@ Out of scope: Track-B counterfactual fits (Phase 16), `campaign_calendar`/`campa
 - `supabase/migrations/0010_cohort_mv.sql` — canonical `auth.jwt()->>'restaurant_id'` RLS pattern
 - `supabase/migrations/0025_item_counts_daily_mv.sql` — latest `refresh_analytics_mvs()` definition (DAG ordering reference)
 - `supabase/migrations/0039_pipeline_runs_skeleton.sql` — Phase 12 skeleton; Phase 13 extends in 0046
-- `supabase/migrations/0040_drop_analytics_crons.sql` — dropped daily cron; ingest-driven refresh pattern; Phase 14 must decide whether to re-register pg_cron for forecast MV or use RPC trigger
+- `supabase/migrations/0040_drop_analytics_crons.sql` — dropped daily cron; ingest-driven refresh pattern; Phase 14 follows with separate `refresh_forecast_mvs()` RPC (D-11)
+- `scripts/ingest/refresh.ts` — ingest-driven RPC call pattern; Phase 14's Python orchestrator mirrors this with a PostgREST RPC call after model writes complete
 
 ### CI guards
 - `scripts/ci-guards.sh` Guards 1-8 — Guard 7 (`tenant_id` regression) + Guard 8 (cron schedule) both apply to Phase 14 migrations and workflows
@@ -131,7 +152,7 @@ Out of scope: Track-B counterfactual fits (Phase 16), `campaign_calendar`/`campa
 
 - **`scripts/external/pipeline_runs_writer.py`** (Phase 13) — shared helper for `pipeline_runs` row writes. Phase 14's forecast scripts reuse the same writer for `step_name='forecast_*'` rows.
 - **`scripts/external/db.py`** (Phase 13) — Supabase service-role client setup. Phase 14's `scripts/forecast/db.py` follows the same pattern (or imports directly).
-- **`supabase/migrations/0025_item_counts_daily_mv.sql`** — latest `refresh_analytics_mvs()` function body; Phase 14 extends it to include `forecast_daily_mv` in the DAG.
+- **`supabase/migrations/0025_item_counts_daily_mv.sql`** — latest `refresh_analytics_mvs()` function body; Phase 14 creates a separate `refresh_forecast_mvs()` function (D-11), NOT extending the existing one.
 - **`scripts/ci-guards/check-cron-schedule.py`** (Phase 12) — already has `forecast-refresh` in the cascade stage list; Phase 14's `forecast-refresh.yml` cron string must match.
 - **`config/shop_hours.yaml`** (Phase 13) — `shop_calendar` source; Phase 14 reads `shop_calendar` table for closed-day handling.
 - **Phase 13's `weather_daily` table** — source for both short-range weather forecasts and historical data for climatological norms.
@@ -143,11 +164,11 @@ Out of scope: Track-B counterfactual fits (Phase 16), `campaign_calendar`/`campa
 - **`pipeline_runs` as cascade freshness telemetry** — STATE §4. Every model fit writes one row.
 - **Per-source try/except → `pipeline_runs` row → continue** — Phase 13 failure isolation pattern. Phase 14's per-model fits mirror this.
 - **GHA workflow_dispatch for manual runs** — Phase 13's backfill input. Phase 14 adds `workflow_dispatch` with optional `models` input for selective re-runs.
-- **Ingest-driven MV refresh (migration 0040)** — daily pg_cron dropped; refresh triggered on-demand via PostgREST RPC. Phase 14 may follow this pattern for `forecast_daily_mv`.
+- **Ingest-driven MV refresh (migration 0040)** — daily pg_cron dropped; refresh triggered on-demand via PostgREST RPC. Phase 14 follows this pattern with a separate `refresh_forecast_mvs()` RPC (D-11).
 
 ### Integration Points
 
-- **`supabase/migrations/`** receives 3-4 new migrations: `forecast_daily`, `forecast_quality`, `forecast_daily_mv` + wrapper view, weather history backfill (optional migration or script).
+- **`supabase/migrations/`** receives 4-5 new migrations: `forecast_daily`, `forecast_quality`, `forecast_daily_mv` + wrapper view + `refresh_forecast_mvs()` RPC, weather history backfill (optional migration or script).
 - **`scripts/forecast/`** (new Python directory) — model fit scripts, orchestrator, evaluator.
 - **`.github/workflows/forecast-refresh.yml`** (new) — seventh GHA workflow in repo.
 - **`tests/external/` or `tests/forecast/`** (new) — unit tests for model fits, exog assembly, closed-day handling, sample-path generation.
@@ -174,4 +195,4 @@ Out of scope: Track-B counterfactual fits (Phase 16), `campaign_calendar`/`campa
 ---
 
 *Phase: 14-forecasting-engine-bau-track*
-*Context gathered: 2026-04-29*
+*Context gathered: 2026-04-29, updated 2026-04-30*

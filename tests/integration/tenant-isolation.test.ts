@@ -316,3 +316,194 @@ describe('EXT-08: pipeline_runs lockdown (REVIEW MS-2) — raw table is service-
     expect(row).toHaveProperty('upstream_freshness_h');
   });
 });
+
+// Phase 14 FCT-08: tenant isolation for forecast_daily, forecast_quality, and
+// forecast_with_actual_v. Both raw tables use RLS (restaurant_id = JWT claim)
+// plus REVOKE INSERT/UPDATE/DELETE from authenticated/anon. The wrapper view
+// enforces the same filter via a WHERE clause.
+describe('FCT-08: forecast table tenant isolation (Phase 14)', () => {
+  // Seed one forecast_daily row per tenant so both positive and negative
+  // checks are non-trivial (empty result would trivially pass the negative check).
+  const forecastDate = '2099-01-01';
+
+  beforeAll(async () => {
+    await admin.from('forecast_daily').insert([
+      {
+        restaurant_id: tenantA,
+        kpi_name: 'revenue_eur',
+        target_date: forecastDate,
+        model_name: 'test-model',
+        run_date: forecastDate,
+        forecast_track: 'bau',
+        yhat: 100.0,
+        yhat_lower: 80.0,
+        yhat_upper: 120.0,
+      },
+      {
+        restaurant_id: tenantB,
+        kpi_name: 'revenue_eur',
+        target_date: forecastDate,
+        model_name: 'test-model',
+        run_date: forecastDate,
+        forecast_track: 'bau',
+        yhat: 200.0,
+        yhat_lower: 160.0,
+        yhat_upper: 240.0,
+      },
+    ] as never);
+
+    await admin.from('forecast_quality').insert([
+      {
+        restaurant_id: tenantA,
+        kpi_name: 'revenue_eur',
+        model_name: 'test-model',
+        horizon_days: 1,
+        evaluation_window: 'last_7_days',
+        n_days: 7,
+        rmse: 10.0,
+        mape: 0.05,
+        mean_bias: 0.01,
+      },
+      {
+        restaurant_id: tenantB,
+        kpi_name: 'revenue_eur',
+        model_name: 'test-model',
+        horizon_days: 1,
+        evaluation_window: 'last_7_days',
+        n_days: 7,
+        rmse: 15.0,
+        mape: 0.07,
+        mean_bias: 0.02,
+      },
+    ] as never);
+  });
+
+  afterAll(async () => {
+    await admin.from('forecast_daily').delete()
+      .eq('target_date', forecastDate)
+      .eq('model_name', 'test-model');
+    await admin.from('forecast_quality').delete()
+      .eq('model_name', 'test-model')
+      .eq('evaluation_window', 'last_7_days');
+  });
+
+  // forecast_daily RLS — cross-tenant read isolation
+  it('forecast_daily: tenant A sees own rows and NEVER tenant B rows', async () => {
+    const c = tenantClient();
+    await c.auth.signInWithPassword({ email: emailA, password });
+    const { data, error } = await c
+      .from('forecast_daily')
+      .select('restaurant_id')
+      .eq('target_date', forecastDate)
+      .eq('model_name', 'test-model');
+    expect(error).toBeNull();
+    const rows = (data ?? []) as Array<{ restaurant_id: string }>;
+    // Positive: A can see its own forecast row.
+    expect(rows.some((r) => r.restaurant_id === tenantA)).toBe(true);
+    // Negative: A never sees B's row.
+    expect(rows.every((r) => r.restaurant_id !== tenantB)).toBe(true);
+  });
+
+  it('forecast_daily: tenant B sees own rows and NEVER tenant A rows — symmetric pair', async () => {
+    const c = tenantClient();
+    await c.auth.signInWithPassword({ email: emailB, password });
+    const { data, error } = await c
+      .from('forecast_daily')
+      .select('restaurant_id')
+      .eq('target_date', forecastDate)
+      .eq('model_name', 'test-model');
+    expect(error).toBeNull();
+    const rows = (data ?? []) as Array<{ restaurant_id: string }>;
+    expect(rows.some((r) => r.restaurant_id === tenantB)).toBe(true);
+    expect(rows.every((r) => r.restaurant_id !== tenantA)).toBe(true);
+  });
+
+  // forecast_quality RLS — cross-tenant read isolation
+  it('forecast_quality: tenant A sees own rows and NEVER tenant B rows', async () => {
+    const c = tenantClient();
+    await c.auth.signInWithPassword({ email: emailA, password });
+    const { data, error } = await c
+      .from('forecast_quality')
+      .select('restaurant_id')
+      .eq('model_name', 'test-model')
+      .eq('evaluation_window', 'last_7_days');
+    expect(error).toBeNull();
+    const rows = (data ?? []) as Array<{ restaurant_id: string }>;
+    expect(rows.some((r) => r.restaurant_id === tenantA)).toBe(true);
+    expect(rows.every((r) => r.restaurant_id !== tenantB)).toBe(true);
+  });
+
+  it('forecast_quality: tenant B sees own rows and NEVER tenant A rows — symmetric pair', async () => {
+    const c = tenantClient();
+    await c.auth.signInWithPassword({ email: emailB, password });
+    const { data, error } = await c
+      .from('forecast_quality')
+      .select('restaurant_id')
+      .eq('model_name', 'test-model')
+      .eq('evaluation_window', 'last_7_days');
+    expect(error).toBeNull();
+    const rows = (data ?? []) as Array<{ restaurant_id: string }>;
+    expect(rows.some((r) => r.restaurant_id === tenantB)).toBe(true);
+    expect(rows.every((r) => r.restaurant_id !== tenantA)).toBe(true);
+  });
+
+  // forecast_with_actual_v wrapper view — JWT-scoped WHERE clause
+  it('forecast_with_actual_v: tenant A only sees own restaurant_id', async () => {
+    const c = tenantClient();
+    await c.auth.signInWithPassword({ email: emailA, password });
+    const { data, error } = await c
+      .from('forecast_with_actual_v')
+      .select('restaurant_id');
+    expect(error).toBeNull();
+    const rows = (data ?? []) as Array<{ restaurant_id: string }>;
+    // Every row returned must belong to tenant A (view WHERE clause enforces this).
+    expect(rows.every((r) => r.restaurant_id === tenantA)).toBe(true);
+  });
+
+  it('forecast_with_actual_v: tenant B only sees own restaurant_id — symmetric pair', async () => {
+    const c = tenantClient();
+    await c.auth.signInWithPassword({ email: emailB, password });
+    const { data, error } = await c
+      .from('forecast_with_actual_v')
+      .select('restaurant_id');
+    expect(error).toBeNull();
+    const rows = (data ?? []) as Array<{ restaurant_id: string }>;
+    expect(rows.every((r) => r.restaurant_id === tenantB)).toBe(true);
+  });
+
+  // INSERT lockdown — authenticated role must be denied writes on both tables
+  it('forecast_daily: authenticated role INSERT is denied (service-role only)', async () => {
+    const c = tenantClient();
+    await c.auth.signInWithPassword({ email: emailA, password });
+    const { error } = await c.from('forecast_daily').insert({
+      restaurant_id: tenantA,
+      kpi_name: 'revenue_eur',
+      target_date: '2099-06-01',
+      model_name: 'rls-write-test',
+      run_date: '2099-06-01',
+      forecast_track: 'bau',
+      yhat: 1.0,
+      yhat_lower: 0.5,
+      yhat_upper: 1.5,
+    } as never);
+    // REVOKE INSERT means this must error — error≠null is unambiguous proof.
+    expect(error).not.toBeNull();
+  });
+
+  it('forecast_quality: authenticated role INSERT is denied (service-role only)', async () => {
+    const c = tenantClient();
+    await c.auth.signInWithPassword({ email: emailA, password });
+    const { error } = await c.from('forecast_quality').insert({
+      restaurant_id: tenantA,
+      kpi_name: 'revenue_eur',
+      model_name: 'rls-write-test',
+      horizon_days: 1,
+      evaluation_window: 'last_7_days',
+      n_days: 7,
+      rmse: 1.0,
+      mape: 0.01,
+      mean_bias: 0.0,
+    } as never);
+    expect(error).not.toBeNull();
+  });
+});
