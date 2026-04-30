@@ -42,7 +42,7 @@ A restaurant owner opens the site on their phone and makes a real business decis
 
 ### v1.3 External Data & Forecasting Foundation
 
-- [ ] **Phase 12: Foundation — Decisions & Guards** — ITS validity audit script + CI grep guard (`tenant_id` → `restaurant_id`) + UTC-anchored cron schedule contract
+- [x] **Phase 12: Foundation — Decisions & Guards** — ITS validity audit script + CI grep guard (`tenant_id` → `restaurant_id`) + UTC-anchored cron schedule contract
 - [x] **Phase 13: External Data Ingestion** — 5 ingest tables (weather/holidays/school/transit/events) + pipeline_runs + shop_calendar + GHA workflow + backfill from 2025-06-11
 - [x] **Phase 14: Forecasting Engine — BAU Track** — SARIMAX/Prophet/ETS/Theta/Naive nightly fits + sample-path resampling + last_7_eval + forecast_daily_mv
 - [ ] **Phase 15: Forecast Chart UI** — RevenueForecastCard + horizon/legend toggles + hover popup + event markers + 3 deferred `/api/*` endpoints + 375px QA
