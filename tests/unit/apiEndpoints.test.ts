@@ -405,3 +405,128 @@ describe('/api/repeater-lifetime', () => {
     expect(state.fromSpy).not.toHaveBeenCalled();
   });
 });
+
+// -------------------- /api/forecast --------------------
+import { GET as forecastGET } from '../../src/routes/api/forecast/+server';
+
+describe('/api/forecast', () => {
+  const fcastRow = {
+    target_date: '2026-05-01',
+    model_name: 'sarimax_bau',
+    yhat: 1234.56,
+    yhat_lower: 1100,
+    yhat_upper: 1380,
+    horizon_days: 1,
+    actual_value: null,
+    forecast_track: 'bau',
+    kpi_name: 'revenue_eur'
+  };
+  const holidayRow = { date: '2026-05-01', name: 'Tag der Arbeit', country_code: 'DE', subdiv_code: null };
+  const schoolRow  = { state_code: 'BE', block_name: 'Sommerferien', start_date: '2026-07-09', end_date: '2026-08-22', year: 2026 };
+  const recurRow   = { event_id: 'berlin-marathon-2026', name: 'Berlin Marathon', start_date: '2026-09-26', end_date: '2026-09-26', impact_estimate: 'high' };
+  const transitRow = { alert_id: 'a1', title: 'BVG Warnstreik', pub_date: '2026-05-02T06:00:00Z', matched_keyword: 'Warnstreik', source_url: 'https://x' };
+  const pipeRow    = { step_name: 'forecast_sarimax', status: 'success', finished_at: '2026-05-01T01:34:22Z' };
+
+  it('authenticated GET ?horizon=7&granularity=day returns 200 with rows + events + last_run', async () => {
+    const state = freshState({
+      forecast_with_actual_v: [fcastRow],
+      holidays: [holidayRow],
+      school_holidays: [schoolRow],
+      recurring_events: [recurRow],
+      transit_alerts: [transitRow],
+      pipeline_runs_status_v: [pipeRow]
+    });
+    const res = await forecastGET(mkEvent(mkLocalsAuthed(state), 'http://x/?horizon=7&granularity=day'));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(Array.isArray(body.rows)).toBe(true);
+    expect(Array.isArray(body.events)).toBe(true);
+    expect(typeof body.last_run).toBe('string');
+    expect(body.rows[0]).toMatchObject({
+      target_date: '2026-05-01',
+      model_name: 'sarimax_bau',
+      yhat_mean: 1234.56,
+      yhat_lower: 1100,
+      yhat_upper: 1380,
+      horizon_days: 1
+    });
+  });
+
+  it('null claims returns 401 and never touches supabase', async () => {
+    const state = freshState();
+    const res = await forecastGET(mkEvent(mkLocalsUnauthed(state), 'http://x/?horizon=7&granularity=day'));
+    expect(res.status).toBe(401);
+    expect(state.fromSpy).not.toHaveBeenCalled();
+  });
+
+  it('200 response carries Cache-Control: private, no-store', async () => {
+    const state = freshState({
+      forecast_with_actual_v: [], holidays: [], school_holidays: [],
+      recurring_events: [], transit_alerts: [], pipeline_runs_status_v: []
+    });
+    const res = await forecastGET(mkEvent(mkLocalsAuthed(state), 'http://x/?horizon=7&granularity=day'));
+    expect(res.headers.get('cache-control')).toBe('private, no-store');
+  });
+
+  it('illegal combo (horizon=365 granularity=day) returns 400 and never touches supabase', async () => {
+    const state = freshState();
+    const res = await forecastGET(mkEvent(mkLocalsAuthed(state), 'http://x/?horizon=365&granularity=day'));
+    expect(res.status).toBe(400);
+    expect(state.fromSpy).not.toHaveBeenCalled();
+  });
+
+  it('missing horizon returns 400', async () => {
+    const state = freshState();
+    const res = await forecastGET(mkEvent(mkLocalsAuthed(state), 'http://x/'));
+    expect(res.status).toBe(400);
+  });
+
+  it('omitted granularity falls back to DEFAULT_GRANULARITY for the horizon', async () => {
+    const state = freshState({
+      forecast_with_actual_v: [fcastRow], holidays: [], school_holidays: [],
+      recurring_events: [], transit_alerts: [], pipeline_runs_status_v: [pipeRow]
+    });
+    const res = await forecastGET(mkEvent(mkLocalsAuthed(state), 'http://x/?horizon=7'));
+    expect(res.status).toBe(200);
+  });
+
+  it('events array carries holidays, school_holidays (start row), recurring, transit_strikes', async () => {
+    const state = freshState({
+      forecast_with_actual_v: [fcastRow],
+      holidays: [holidayRow],
+      school_holidays: [schoolRow],
+      recurring_events: [recurRow],
+      transit_alerts: [transitRow],
+      pipeline_runs_status_v: [pipeRow]
+    });
+    const res = await forecastGET(mkEvent(mkLocalsAuthed(state), 'http://x/?horizon=120&granularity=week'));
+    const body = await res.json();
+    const types = body.events.map((e: { type: string }) => e.type).sort();
+    expect(types).toContain('holiday');
+    expect(types).toContain('school_holiday');
+    expect(types).toContain('recurring_event');
+    expect(types).toContain('transit_strike');
+  });
+
+  it('last_run is the finished_at of the latest forecast_sarimax pipeline_runs row', async () => {
+    const state = freshState({
+      forecast_with_actual_v: [], holidays: [], school_holidays: [],
+      recurring_events: [], transit_alerts: [],
+      pipeline_runs_status_v: [
+        { step_name: 'forecast_sarimax', status: 'success', finished_at: '2026-04-30T01:00:00Z' },
+        { step_name: 'forecast_sarimax', status: 'success', finished_at: '2026-05-01T01:34:22Z' }
+      ]
+    });
+    const res = await forecastGET(mkEvent(mkLocalsAuthed(state), 'http://x/?horizon=7&granularity=day'));
+    const body = await res.json();
+    expect(body.last_run).toBe('2026-05-01T01:34:22Z');
+  });
+
+  it('supabase error on forecast_with_actual_v surfaces as 500', async () => {
+    const state = freshState();
+    state.errors.set('forecast_with_actual_v', { message: 'boom' });
+    const res = await forecastGET(mkEvent(mkLocalsAuthed(state), 'http://x/?horizon=7&granularity=day'));
+    expect(res.status).toBe(500);
+    expect(res.headers.get('cache-control')).toBe('private, no-store');
+  });
+});
