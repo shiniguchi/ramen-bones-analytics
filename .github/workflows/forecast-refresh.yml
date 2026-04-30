@@ -1,7 +1,7 @@
 name: Forecast Refresh
 on:
   schedule:
-    - cron: '0 1 * * *'        # 01:00 UTC — C-02, Guard 8 cascade
+    - cron: '0 7 * * 1'        # Mondays 07:00 UTC (09:00 Berlin) — Phase 15-09 D-16 weekly cadence; preserves Guard 8 cascade
   workflow_dispatch:
     inputs:
       models:
