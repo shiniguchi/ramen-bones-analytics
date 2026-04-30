@@ -39,6 +39,18 @@ const en = {
   legend_model_chronos:         'Chronos',
   legend_model_neuralprophet:   'NeuralProphet',
 
+  // --- Forecast hover popup (Phase 15 FUI-04) ----------------------------
+  popup_forecast:                'Forecast',
+  popup_ci_95:                   '95% CI',
+  popup_horizon_days_one:        '{n} day from today',
+  popup_horizon_days_many:       '{n} days from today',
+  popup_rmse:                    'RMSE (last 7d)',
+  popup_mape:                    'MAPE (last 7d)',
+  popup_bias:                    'Bias (last 7d)',
+  popup_direction_hit:           'Direction hit rate',
+  popup_uplift_since_campaign:   'Δ since campaign',
+  popup_last_refit:              'Last refit {ago} ago',
+
   // --- KPI tiles (+page.svelte builds "Revenue · {range}") ---------------
   kpi_revenue: 'Revenue',
   kpi_transactions: 'Transactions',
@@ -211,6 +223,18 @@ const de: Record<MessageKey, string> = {
   legend_model_chronos:         'Chronos',
   legend_model_neuralprophet:   'NeuralProphet',
 
+  // Forecast hover popup (Phase 15 FUI-04) — placeholder copy mirrors EN
+  popup_forecast:                'Forecast',
+  popup_ci_95:                   '95% CI',
+  popup_horizon_days_one:        '{n} day from today',
+  popup_horizon_days_many:       '{n} days from today',
+  popup_rmse:                    'RMSE (last 7d)',
+  popup_mape:                    'MAPE (last 7d)',
+  popup_bias:                    'Bias (last 7d)',
+  popup_direction_hit:           'Direction hit rate',
+  popup_uplift_since_campaign:   'Δ since campaign',
+  popup_last_refit:              'Last refit {ago} ago',
+
   kpi_revenue: 'Umsatz',
   kpi_transactions: 'Transaktionen',
   range_today: 'Heute',
@@ -374,6 +398,18 @@ const ja: Record<MessageKey, string> = {
   legend_model_chronos:         'Chronos',
   legend_model_neuralprophet:   'NeuralProphet',
 
+  // Forecast hover popup (Phase 15 FUI-04) — placeholder copy mirrors EN
+  popup_forecast:                'Forecast',
+  popup_ci_95:                   '95% CI',
+  popup_horizon_days_one:        '{n} day from today',
+  popup_horizon_days_many:       '{n} days from today',
+  popup_rmse:                    'RMSE (last 7d)',
+  popup_mape:                    'MAPE (last 7d)',
+  popup_bias:                    'Bias (last 7d)',
+  popup_direction_hit:           'Direction hit rate',
+  popup_uplift_since_campaign:   'Δ since campaign',
+  popup_last_refit:              'Last refit {ago} ago',
+
   kpi_revenue: '売上',
   kpi_transactions: '取引件数',
   range_today: '本日',
@@ -535,6 +571,18 @@ const es: Record<MessageKey, string> = {
   legend_model_naive_dow:       'Naive (DoW)',
   legend_model_chronos:         'Chronos',
   legend_model_neuralprophet:   'NeuralProphet',
+
+  // Forecast hover popup (Phase 15 FUI-04) — placeholder copy mirrors EN
+  popup_forecast:                'Forecast',
+  popup_ci_95:                   '95% CI',
+  popup_horizon_days_one:        '{n} day from today',
+  popup_horizon_days_many:       '{n} days from today',
+  popup_rmse:                    'RMSE (last 7d)',
+  popup_mape:                    'MAPE (last 7d)',
+  popup_bias:                    'Bias (last 7d)',
+  popup_direction_hit:           'Direction hit rate',
+  popup_uplift_since_campaign:   'Δ since campaign',
+  popup_last_refit:              'Last refit {ago} ago',
 
   kpi_revenue: 'Ingresos',
   kpi_transactions: 'Transacciones',
@@ -698,6 +746,18 @@ const fr: Record<MessageKey, string> = {
   legend_model_naive_dow:       'Naive (DoW)',
   legend_model_chronos:         'Chronos',
   legend_model_neuralprophet:   'NeuralProphet',
+
+  // Forecast hover popup (Phase 15 FUI-04) — placeholder copy mirrors EN
+  popup_forecast:                'Forecast',
+  popup_ci_95:                   '95% CI',
+  popup_horizon_days_one:        '{n} day from today',
+  popup_horizon_days_many:       '{n} days from today',
+  popup_rmse:                    'RMSE (last 7d)',
+  popup_mape:                    'MAPE (last 7d)',
+  popup_bias:                    'Bias (last 7d)',
+  popup_direction_hit:           'Direction hit rate',
+  popup_uplift_since_campaign:   'Δ since campaign',
+  popup_last_refit:              'Last refit {ago} ago',
 
   kpi_revenue: "Chiffre d'affaires",
   kpi_transactions: 'Transactions',
