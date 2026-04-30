@@ -2,8 +2,8 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: External Data & Forecasting Foundation
-status: "Phase 14 shipped"
-stopped_at: Phase 14 (Forecasting Engine — BAU Track) shipped 2026-04-30. PR #22 merged, 17 migrations applied to DEV, weather backfill complete (1622 rows + 365 climatology norms), GHA pipeline passing (5/5 models x 2 KPIs x 365 days). forecast_quality populates after 2nd nightly run. Ready for Phase 15 (Forecast Chart UI).
+status: "Phase 15 context gathered"
+stopped_at: Phase 15 (Forecast Chart UI) context locked 2026-04-30 via auto-recs (13 decisions D-01..D-13 + 7 carry-forwards). Worktree at .worktrees/phase-15-forecast-chart-ui on branch feature/phase-15-forecast-chart-ui. Ready for /gsd-plan-phase 15 (or optional /gsd-ui-phase 15 first per ROADMAP UI hint). Phase 14 shipped same day (PR #22 merged, 17 migrations on DEV, 5/5 models producing forecasts; forecast_quality populates after 2nd nightly run).
 last_updated: "2026-04-30T00:00:00Z"
 progress:
   total_phases: 17
