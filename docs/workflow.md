@@ -42,6 +42,36 @@ ROADMAP.md and STATE.md must match disk artifacts before you ship. Three layers 
 
 When drift is reported: edit `.planning/STATE.md` frontmatter (bump `progress.completed_phases`, `progress.completed_plans`, refresh `last_updated`), tick `[x]` for completed phases in `.planning/ROADMAP.md`, re-run the validator until clean.
 
+## Recommended commands cheatsheet
+
+The Stop hook surfaces the next required command automatically — you don't memorize this table, you glance at `→ Next:` in your terminal. The cheatsheet is here so you can look up *all* the moving parts in one place.
+
+| Step | Command | What it does | Required? |
+|------|---------|--------------|-----------|
+| 1 | `git checkout -b feature/phase-NN-<slug>` | Phase branch — Stop hook needs this to fire | mandatory |
+| 2 | `/gsd-discuss-phase "<phase-name>"` | Interactive Q&A → CONTEXT.md (the spec) | mandatory |
+| 3 | `/gstack-design-shotgun` | Generate multiple UI variants, pick a winner | optional (frontend phase only) |
+| 4 | `/gstack-design-html` | Turn winning variant into production HTML mockup | optional (frontend phase only) |
+| 5a | `/gsd-plan-phase NN` | Break work into atomic PLAN.md files | mandatory (default planner) |
+| 5b | `superpowers:using-git-worktrees` | Create isolated worktree for TDD path | optional (TDD swap, replaces 5a) |
+| 5c | `superpowers:writing-plans` | Bite-sized 2-5min TDD plan per task | optional (TDD swap, replaces 5a) |
+| 6a | `/gsd-execute-phase NN` | Build with atomic commits per PLAN | mandatory (default executor) |
+| 6b | `superpowers:subagent-driven-development` | Fresh subagent per task, 2-stage review | optional (TDD swap, replaces 6a) |
+| 6c | `superpowers:systematic-debugging` | Hypothesis-driven root-cause investigation | optional (only when stuck mid-build) |
+| 7 | `git push origin feature/phase-NN-<slug>` then `gh pr create` | Push branch + open PR (CF Pages auto-deploys on merge to main) | mandatory |
+| 8 | `/qa-gate` | Security + visual + doc audit | mandatory |
+| 9 | `/gstack-qa https://ramen-bones-analytics.pages.dev` | Live browser QA — finds + fixes bugs | optional (frontend phase only, runs after merge) |
+| 10 | `/gstack-cso` | OWASP + STRIDE security audit | optional (only if RLS / auth / SQL with user input) |
+| 11 | `/gstack-codex` | Adversarial second-opinion code review | optional (only if DB migration) |
+| 12 | `/gstack-review` | Pre-landing diff review (SQL, RLS, trust boundaries) | optional (recommended, cheap) |
+| 13 | `superpowers:requesting-code-review` | Deeper code review against requirements | optional (deeper review than 12) |
+| 14 | `.claude/scripts/validate-planning-docs.sh` | Confirm STATE/ROADMAP match disk artifacts | mandatory |
+| 15 | edit `.planning/STATE.md` + `.planning/ROADMAP.md` | Bump frontmatter counts, tick `[x]` | mandatory |
+| 16 | `superpowers:finishing-a-development-branch` | Merge worktree back, clean up | optional (only if 5b worktree was used) |
+| 17 | `/gsd-ship` | Open PR, merge, create UAT.md | mandatory |
+
+**Pick one of (5a) or (5b+5c).** GSD by default; switch to Superpowers when analytics SQL/MV correctness or KPI math matters more than speed. Same for (6a) vs (6b).
+
 ## TDD opt-in (replaces steps 2-3 when discipline pays off)
 
 For phases where typed code (analytics SQL/MV correctness, KPI math) or non-trivial refactor matters, swap GSD planning for Superpowers:
