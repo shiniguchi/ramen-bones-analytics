@@ -56,6 +56,8 @@ SELECT
     END AS actual_value
 FROM public.forecast_daily_mv f
 LEFT JOIN public.kpi_daily_mv k
+    -- restaurant_id in JOIN predicate is load-bearing for RLS — do not remove.
+    -- kpi_daily_mv has no RLS of its own; tenant isolation depends on this.
     ON k.restaurant_id = f.restaurant_id
     AND k.business_date = f.target_date
 WHERE f.restaurant_id = (auth.jwt()->>'restaurant_id')::uuid;
