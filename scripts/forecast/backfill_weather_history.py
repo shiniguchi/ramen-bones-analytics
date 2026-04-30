@@ -70,6 +70,8 @@ def _fetch_month(client: httpx.Client, chunk_start: date, chunk_end: date) -> li
     hourly = payload.get("weather", [])
 
     # Aggregate hourly → daily
+    # weather_daily actual columns: date, location, temp_min_c, temp_max_c,
+    #   precip_mm, wind_kph, cloud_cover, provider
     daily: dict[str, dict] = {}
     for row in hourly:
         # timestamp format: "2021-01-01T00:00:00+01:00"
@@ -79,36 +81,47 @@ def _fetch_month(client: httpx.Client, chunk_start: date, chunk_end: date) -> li
         if day_str not in daily:
             daily[day_str] = {
                 "date": day_str,
-                "temp_sum": 0.0,
-                "temp_count": 0,
+                "temps": [],
                 "precip_sum": 0.0,
-                "sunshine_sum": 0.0,
+                "wind_speeds": [],
+                "cloud_covers": [],
             }
         d = daily[day_str]
         temp = row.get("temperature")
         if temp is not None:
-            d["temp_sum"] += temp
-            d["temp_count"] += 1
+            d["temps"].append(temp)
         precip = row.get("precipitation")
         if precip is not None:
             d["precip_sum"] += precip
-        sunshine = row.get("sunshine")
-        if sunshine is not None:
-            d["sunshine_sum"] += sunshine
+        wind = row.get("wind_speed")
+        if wind is not None:
+            d["wind_speeds"].append(wind)
+        cloud = row.get("cloud_cover")
+        if cloud is not None:
+            d["cloud_covers"].append(cloud)
 
-    # Build final row list
+    # Build final row list matching weather_daily schema
     rows = []
     for day_str, d in sorted(daily.items()):
-        temp_mean = (
-            round(d["temp_sum"] / d["temp_count"], 2) if d["temp_count"] > 0 else None
-        )
+        temps = d["temps"]
         rows.append(
             {
                 "date": day_str,
-                "temp_mean_c": temp_mean,
+                "location": "berlin",
+                "temp_min_c": round(min(temps), 2) if temps else None,
+                "temp_max_c": round(max(temps), 2) if temps else None,
                 "precip_mm": round(d["precip_sum"], 2),
-                "sunshine_min": round(d["sunshine_sum"], 1),
-                "is_forecast": False,
+                "wind_kph": (
+                    round(max(d["wind_speeds"]), 2)
+                    if d["wind_speeds"]
+                    else None
+                ),
+                "cloud_cover": (
+                    round(sum(d["cloud_covers"]) / len(d["cloud_covers"]), 1)
+                    if d["cloud_covers"]
+                    else None
+                ),
+                "provider": "brightsky",
             }
         )
     return rows
@@ -122,7 +135,7 @@ def upsert_weather_daily(client, rows: list[dict]) -> None:
     """Upsert a batch of rows into weather_daily."""
     if not rows:
         return
-    client.table("weather_daily").upsert(rows, on_conflict="date").execute()
+    client.table("weather_daily").upsert(rows, on_conflict="date,location").execute()
     print(f"[backfill] upserted {len(rows)} rows into weather_daily")
 
 
