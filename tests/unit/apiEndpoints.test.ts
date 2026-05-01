@@ -407,12 +407,17 @@ describe('/api/repeater-lifetime', () => {
 });
 
 // -------------------- /api/forecast --------------------
+// Phase 15 v2 D-14: endpoint queries native-grain rows from forecast_with_actual_v
+// (no resampling) and ships a backtest-window slice from kpi_daily_v alongside.
+// ?kpi= picks the KPI; ?granularity= picks the grain. Horizon is implicit in
+// the row set (one model run per grain per refresh).
 import { GET as forecastGET } from '../../src/routes/api/forecast/+server';
 
 describe('/api/forecast', () => {
   const fcastRow = {
     target_date: '2026-05-01',
     model_name: 'sarimax',
+    granularity: 'day',
     yhat: 1234.56,
     yhat_lower: 1100,
     yhat_upper: 1380,
@@ -421,27 +426,45 @@ describe('/api/forecast', () => {
     forecast_track: 'bau',
     kpi_name: 'revenue_eur'
   };
+  const fcastRowWithActual = {
+    ...fcastRow,
+    target_date: '2026-04-29',
+    actual_value: 1500
+  };
+  const fcastRowInvoiceCount = {
+    ...fcastRow,
+    yhat: 42,
+    yhat_lower: 35,
+    yhat_upper: 50,
+    kpi_name: 'invoice_count'
+  };
+  const fcastRowWeek = { ...fcastRow, target_date: '2026-04-27', granularity: 'week' };
+  const dailyKpiRow = { business_date: '2026-04-29', revenue_cents: 150000, tx_count: 42 };
   const holidayRow = { date: '2026-05-01', name: 'Tag der Arbeit', country_code: 'DE', subdiv_code: null };
   const schoolRow  = { state_code: 'BE', block_name: 'Sommerferien', start_date: '2026-07-09', end_date: '2026-08-22', year: 2026 };
   const recurRow   = { event_id: 'berlin-marathon-2026', name: 'Berlin Marathon', start_date: '2026-09-26', end_date: '2026-09-26', impact_estimate: 'high' };
   const transitRow = { alert_id: 'a1', title: 'BVG Warnstreik', pub_date: '2026-05-02T06:00:00Z', matched_keyword: 'Warnstreik', source_url: 'https://x' };
   const pipeRow    = { step_name: 'forecast_sarimax', status: 'success', finished_at: '2026-05-01T01:34:22Z' };
 
-  it('authenticated GET ?horizon=7&granularity=day returns 200 with rows + events + last_run', async () => {
+  it('authenticated GET ?granularity=day returns 200 with rows + actuals + events + last_run + kpi + granularity', async () => {
     const state = freshState({
       forecast_with_actual_v: [fcastRow],
+      kpi_daily_v: [dailyKpiRow],
       holidays: [holidayRow],
       school_holidays: [schoolRow],
       recurring_events: [recurRow],
       transit_alerts: [transitRow],
       pipeline_runs_status_v: [pipeRow]
     });
-    const res = await forecastGET(mkEvent(mkLocalsAuthed(state), 'http://x/?horizon=7&granularity=day'));
+    const res = await forecastGET(mkEvent(mkLocalsAuthed(state), 'http://x/?granularity=day'));
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(Array.isArray(body.rows)).toBe(true);
+    expect(Array.isArray(body.actuals)).toBe(true);
     expect(Array.isArray(body.events)).toBe(true);
     expect(typeof body.last_run).toBe('string');
+    expect(body.kpi).toBe('revenue_eur');
+    expect(body.granularity).toBe('day');
     expect(body.rows[0]).toMatchObject({
       target_date: '2026-05-01',
       model_name: 'sarimax',
@@ -450,56 +473,119 @@ describe('/api/forecast', () => {
       yhat_upper: 1380,
       horizon_days: 1
     });
+    // Forecast rows MUST NOT carry actual_value — the separate actuals[]
+    // array owns that data.
+    expect('actual_value' in body.rows[0]).toBe(false);
+    // No `horizon` field in the response (15-11 dropped horizon-clamp).
+    expect('horizon' in body).toBe(false);
+  });
+
+  it('?kpi=invoice_count filters forecast_with_actual_v on kpi_name="invoice_count"', async () => {
+    const state = freshState({
+      forecast_with_actual_v: [fcastRowInvoiceCount],
+      kpi_daily_v: [dailyKpiRow],
+      holidays: [], school_holidays: [], recurring_events: [], transit_alerts: [],
+      pipeline_runs_status_v: [pipeRow]
+    });
+    const res = await forecastGET(mkEvent(mkLocalsAuthed(state), 'http://x/?granularity=day&kpi=invoice_count'));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.kpi).toBe('invoice_count');
+    // Verify the eq('kpi_name', 'invoice_count') call landed on the forecast view.
+    const fcastQuery = state.queries.find((q) => q.table === 'forecast_with_actual_v');
+    expect(fcastQuery).toBeDefined();
+    const eqCalls = fcastQuery!.calls.filter((c) => c.method === 'eq');
+    const kpiEq = eqCalls.find((c) => c.args[0] === 'kpi_name');
+    expect(kpiEq?.args[1]).toBe('invoice_count');
+    // And actuals come from tx_count (not revenue_cents/100) for invoice_count.
+    expect(body.actuals[0]).toEqual({ date: '2026-04-29', value: 42 });
+  });
+
+  it('?granularity=week filters forecast_with_actual_v on granularity="week"', async () => {
+    const state = freshState({
+      forecast_with_actual_v: [fcastRowWeek],
+      kpi_daily_v: [dailyKpiRow],
+      holidays: [], school_holidays: [], recurring_events: [], transit_alerts: [],
+      pipeline_runs_status_v: [pipeRow]
+    });
+    const res = await forecastGET(mkEvent(mkLocalsAuthed(state), 'http://x/?granularity=week'));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.granularity).toBe('week');
+    const fcastQuery = state.queries.find((q) => q.table === 'forecast_with_actual_v');
+    const grainEq = fcastQuery!.calls.filter((c) => c.method === 'eq').find((c) => c.args[0] === 'granularity');
+    expect(grainEq?.args[1]).toBe('week');
+  });
+
+  it('queries kpi_daily_v for the backtest window with gte(business_date, btStart)', async () => {
+    const state = freshState({
+      forecast_with_actual_v: [fcastRowWithActual],
+      kpi_daily_v: [dailyKpiRow],
+      holidays: [], school_holidays: [], recurring_events: [], transit_alerts: [],
+      pipeline_runs_status_v: [pipeRow]
+    });
+    const res = await forecastGET(mkEvent(mkLocalsAuthed(state), 'http://x/?granularity=day'));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    // kpi_daily_v query fired with a gte on business_date.
+    const kpiQuery = state.queries.find((q) => q.table === 'kpi_daily_v');
+    expect(kpiQuery).toBeDefined();
+    const gteCall = kpiQuery!.calls.find((c) => c.method === 'gte' && c.args[0] === 'business_date');
+    expect(gteCall).toBeDefined();
+    // For day granularity anchored on 2026-04-29, btStart = 2026-04-22.
+    expect(gteCall!.args[1]).toBe('2026-04-22');
+    // Actuals shape: revenue_cents / 100 for revenue_eur.
+    expect(body.actuals[0]).toEqual({ date: '2026-04-29', value: 1500 });
   });
 
   it('null claims returns 401 and never touches supabase', async () => {
     const state = freshState();
-    const res = await forecastGET(mkEvent(mkLocalsUnauthed(state), 'http://x/?horizon=7&granularity=day'));
+    const res = await forecastGET(mkEvent(mkLocalsUnauthed(state), 'http://x/?granularity=day'));
     expect(res.status).toBe(401);
     expect(state.fromSpy).not.toHaveBeenCalled();
   });
 
   it('200 response carries Cache-Control: private, no-store', async () => {
     const state = freshState({
-      forecast_with_actual_v: [], holidays: [], school_holidays: [],
+      forecast_with_actual_v: [], kpi_daily_v: [], holidays: [], school_holidays: [],
       recurring_events: [], transit_alerts: [], pipeline_runs_status_v: []
     });
-    const res = await forecastGET(mkEvent(mkLocalsAuthed(state), 'http://x/?horizon=7&granularity=day'));
+    const res = await forecastGET(mkEvent(mkLocalsAuthed(state), 'http://x/?granularity=day'));
     expect(res.headers.get('cache-control')).toBe('private, no-store');
   });
 
-  it('illegal combo (horizon=365 granularity=day) returns 400 and never touches supabase', async () => {
+  it('missing granularity returns 400', async () => {
     const state = freshState();
-    const res = await forecastGET(mkEvent(mkLocalsAuthed(state), 'http://x/?horizon=365&granularity=day'));
+    const res = await forecastGET(mkEvent(mkLocalsAuthed(state), 'http://x/'));
     expect(res.status).toBe(400);
     expect(state.fromSpy).not.toHaveBeenCalled();
   });
 
-  it('missing horizon returns 400', async () => {
+  it('invalid granularity returns 400', async () => {
     const state = freshState();
-    const res = await forecastGET(mkEvent(mkLocalsAuthed(state), 'http://x/'));
+    const res = await forecastGET(mkEvent(mkLocalsAuthed(state), 'http://x/?granularity=hour'));
     expect(res.status).toBe(400);
+    expect(state.fromSpy).not.toHaveBeenCalled();
   });
 
-  it('omitted granularity falls back to DEFAULT_GRANULARITY for the horizon', async () => {
-    const state = freshState({
-      forecast_with_actual_v: [fcastRow], holidays: [], school_holidays: [],
-      recurring_events: [], transit_alerts: [], pipeline_runs_status_v: [pipeRow]
-    });
-    const res = await forecastGET(mkEvent(mkLocalsAuthed(state), 'http://x/?horizon=7'));
-    expect(res.status).toBe(200);
+  it('invalid kpi returns 400', async () => {
+    const state = freshState();
+    const res = await forecastGET(mkEvent(mkLocalsAuthed(state), 'http://x/?granularity=day&kpi=evil'));
+    expect(res.status).toBe(400);
+    expect(state.fromSpy).not.toHaveBeenCalled();
   });
 
   it('events array carries holidays, school_holidays (start row), recurring, transit_strikes', async () => {
     const state = freshState({
       forecast_with_actual_v: [fcastRow],
+      kpi_daily_v: [dailyKpiRow],
       holidays: [holidayRow],
       school_holidays: [schoolRow],
       recurring_events: [recurRow],
       transit_alerts: [transitRow],
       pipeline_runs_status_v: [pipeRow]
     });
-    const res = await forecastGET(mkEvent(mkLocalsAuthed(state), 'http://x/?horizon=120&granularity=week'));
+    const res = await forecastGET(mkEvent(mkLocalsAuthed(state), 'http://x/?granularity=week'));
     const body = await res.json();
     const types = body.events.map((e: { type: string }) => e.type).sort();
     expect(types).toContain('holiday');
@@ -510,14 +596,14 @@ describe('/api/forecast', () => {
 
   it('last_run is the finished_at of the latest forecast_sarimax pipeline_runs row', async () => {
     const state = freshState({
-      forecast_with_actual_v: [], holidays: [], school_holidays: [],
+      forecast_with_actual_v: [], kpi_daily_v: [], holidays: [], school_holidays: [],
       recurring_events: [], transit_alerts: [],
       pipeline_runs_status_v: [
         { step_name: 'forecast_sarimax', status: 'success', finished_at: '2026-04-30T01:00:00Z' },
         { step_name: 'forecast_sarimax', status: 'success', finished_at: '2026-05-01T01:34:22Z' }
       ]
     });
-    const res = await forecastGET(mkEvent(mkLocalsAuthed(state), 'http://x/?horizon=7&granularity=day'));
+    const res = await forecastGET(mkEvent(mkLocalsAuthed(state), 'http://x/?granularity=day'));
     const body = await res.json();
     expect(body.last_run).toBe('2026-05-01T01:34:22Z');
   });
@@ -525,7 +611,7 @@ describe('/api/forecast', () => {
   it('supabase error on forecast_with_actual_v surfaces as 500', async () => {
     const state = freshState();
     state.errors.set('forecast_with_actual_v', { message: 'boom' });
-    const res = await forecastGET(mkEvent(mkLocalsAuthed(state), 'http://x/?horizon=7&granularity=day'));
+    const res = await forecastGET(mkEvent(mkLocalsAuthed(state), 'http://x/?granularity=day'));
     expect(res.status).toBe(500);
     expect(res.headers.get('cache-control')).toBe('private, no-store');
   });
