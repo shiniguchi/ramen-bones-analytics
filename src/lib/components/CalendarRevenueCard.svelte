@@ -228,13 +228,21 @@
       lastAutoScrollGrain = grain;
       return;
     }
+    // Defer to next animation frame so scrollWidth reflects the post-render
+    // canvas (forecastData → totalSlots → chartW chain settles in one tick).
+    // Without RAF, the effect fires while scrollWidth still excludes the
+    // forecast zone, and todayPct × scrollWidth lands inside the bar zone.
+    const el = scrollerRef;
     const [domainStart, domainEnd] = chartXDomain;
-    const totalMs = domainEnd.getTime() - domainStart.getTime();
-    const todayMs = Date.now() - domainStart.getTime();
-    if (totalMs <= 0) return;
-    const todayPct = Math.max(0, Math.min(1, todayMs / totalMs));
-    const todayX = scrollerRef.scrollWidth * todayPct;
-    scrollerRef.scrollLeft = Math.max(0, todayX - scrollerRef.clientWidth * 0.6);
+    requestAnimationFrame(() => {
+      if (el.scrollLeft > 0) return;
+      const totalMs = domainEnd.getTime() - domainStart.getTime();
+      const todayMs = Date.now() - domainStart.getTime();
+      if (totalMs <= 0) return;
+      const todayPct = Math.max(0, Math.min(1, todayMs / totalMs));
+      const todayX = el.scrollWidth * todayPct;
+      el.scrollLeft = Math.max(0, todayX - el.clientWidth * 0.6);
+    });
     lastAutoScrollGrain = grain;
   });
 </script>
