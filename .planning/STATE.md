@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: External Data & Forecasting Foundation
-status: "Phase 15 v2 merged via PR #26 — ready for Phase 16"
-stopped_at: Phase 15 v2 (Forecast Backtest Overlay) merged on 2026-05-01. Plans 15-09 through 15-16 shipped; per-grain forecasts, RevenueForecastCard + InvoiceCountForecastCard + CalendarRevenueCard overlay live on DEV. Post-merge QA fixes (grain-aware empty-state copy, CalendarRevenueCard auto-scroll-to-today) included. Plan 15-17 (retire dedicated forecast cards) remains deferred per CONTEXT.md. Scheduled remote agent (trig_01DzJUc9HFAopRWP4tVD27vb) verifies week+month grain rows after Mon 2026-05-04 07:00 UTC forecast-refresh cron.
-last_updated: "2026-05-01T15:30:00Z"
+status: "Phase 16 context gathered — ready for /gsd-plan-phase 16"
+stopped_at: Phase 16 (ITS Uplift Attribution) context captured 2026-05-01 via /gsd-discuss-phase. All 4 gray-area defaults locked recs-first style (CampaignUpliftCard placement, EventMarker scope, revenue_comparable_eur exposure, off-week reminder). 13 NEW decisions + 13 carry-forwards from Phases 11/12/14/15. CONTEXT.md + DISCUSSION-LOG.md committed. Phase 15 v2 (Forecast Backtest Overlay) merged via PR #26 on 2026-05-01.
+last_updated: "2026-05-01T17:30:00Z"
 progress:
   total_phases: 17
   completed_phases: 15
@@ -28,13 +28,15 @@ progress:
 ## Current Position
 
 Milestone: v1.3 (External Data & Forecasting Foundation)
-Phase: 14 (Forecasting Engine — BAU Track) — Shipped via PR #22
+Phase: 16 (ITS Uplift Attribution) — Context gathered, ready to plan
 Plan: —
 
-- **Status:** Phase 14 shipped via [PR #22](https://github.com/shiniguchi/ramen-bones-analytics/pull/22). 34 commits, 31 files, +2978 lines. Code review 15 findings (7 critical schema mismatches), all 12 in-scope fixed. UAT 12/12. 5/5 models producing 365-day forecasts on DEV.
+- **Status:** Phase 16 context captured 2026-05-01 via /gsd-discuss-phase. CONTEXT.md + DISCUSSION-LOG.md committed. 13 NEW decisions (D-01..D-13) + 13 carry-forwards (C-01..C-13) from Phases 11/12/14/15. Next: `/gsd-plan-phase 16`.
+- **Phase 15:** v2 (Forecast Backtest Overlay) merged via PR #26 on 2026-05-01.
+- **Phase 14:** Shipped via [PR #22](https://github.com/shiniguchi/ramen-bones-analytics/pull/22). 34 commits, 31 files, +2978 lines. UAT 12/12. 5/5 models producing 365-day forecasts on DEV.
 - **Phase 13:** Shipped via [PR #17](https://github.com/shiniguchi/ramen-bones-analytics/pull/17). 41 commits, 52 files, +6892 lines. EXT-01..EXT-09 complete.
-- **Progress:** [████████░░] 82% (14/17 phases shipped; v1.0+v1.1+v1.2+Phase 12-14 done)
-- **Last activity:** 2026-04-30 — Phase 14 merged, migrations applied, pipeline running on DEV
+- **Progress:** [█████████░] 88% (15/17 phases shipped; v1.0+v1.1+v1.2+Phase 12-15 done)
+- **Last activity:** 2026-05-01 — Phase 16 CONTEXT.md captured, ready for planning
 - **v1.2 closed:** 11 phases, 60 plans, 100% — Phase 11 SSR fix landed 2026-04-21
 - **v1.0 status:** Shipped to friend (97% plans complete; repo flipped PUBLIC 2026-04-15 with topics + description set; Plan 05-06 Task 2 fork walkthrough deferred out of v1 scope)
 
