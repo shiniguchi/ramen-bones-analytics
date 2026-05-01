@@ -221,22 +221,26 @@
   let scrollerRef = $state<HTMLDivElement>();
   let lastSetScrollLeft = 0;
   $effect(() => {
-    // Depend on chartW (not just forecastData): chartW grows in stages on
-    // initial page load (chartData → forecastData → computeChartWidth).
-    // The first RAF fires with an incomplete scrollWidth and lands inside
-    // the bar zone; later chartW updates need to refine the position.
-    //
-    // Guard logic: lastSetScrollLeft tracks the value WE wrote. If the
-    // current scrollLeft differs, the user has scrolled and we stop. If
-    // it matches, we're free to move it again — covers both "haven't
-    // scrolled yet" (0 == 0) and "auto-positioned but canvas grew".
+    // Depend on chartW so we re-run when the canvas grows. Even after that
+    // signal arrives, the inner SVG dimensions take a frame or two to
+    // catch up — scrollWidth lags behind the chartW prop. Poll RAF until
+    // scrollWidth approximates chartW, then compute the position. Cap at
+    // ~10 frames so we never loop forever if the chart never reaches the
+    // expected width (e.g. SSR-only render with no client hydration).
     const w = chartW;
     if (!forecastData || !scrollerRef || w === 0) return;
     if (scrollerRef.scrollLeft !== lastSetScrollLeft) return;
     const el = scrollerRef;
     const [domainStart, domainEnd] = chartXDomain;
-    requestAnimationFrame(() => {
+    let attempts = 0;
+    const tryPosition = () => {
       if (el.scrollLeft !== lastSetScrollLeft) return;
+      // Wait for the SVG canvas to reach (close to) the computed chartW.
+      if (el.scrollWidth < w * 0.9 && attempts < 10) {
+        attempts++;
+        requestAnimationFrame(tryPosition);
+        return;
+      }
       const totalMs = domainEnd.getTime() - domainStart.getTime();
       const todayMs = Date.now() - domainStart.getTime();
       if (totalMs <= 0) return;
@@ -245,7 +249,8 @@
       const target = Math.max(0, todayX - el.clientWidth * 0.6);
       el.scrollLeft = target;
       lastSetScrollLeft = target;
-    });
+    };
+    requestAnimationFrame(tryPosition);
   });
 </script>
 
