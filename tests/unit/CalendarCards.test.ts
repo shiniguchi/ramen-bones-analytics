@@ -119,6 +119,77 @@ describe('CalendarRevenueCard (VA-04) source artifacts', () => {
   });
 });
 
+// Phase 15-12: Forecast overlay artifact assertions. Live-render assertions
+// can't run reliably in jsdom (LayerChart needs ResizeObserver / layout APIs);
+// the e2e suite (charts-all.spec.ts) covers the visual gate. These guard the
+// overlay's structural contract — toggling, data flow, scale alignment.
+describe('CalendarRevenueCard (15-12) forecast overlay artifacts', () => {
+  const src = fs.readFileSync(
+    path.join(process.cwd(), 'src/lib/components/CalendarRevenueCard.svelte'),
+    'utf8'
+  );
+
+  it('imports ForecastLegend + clientFetch + FORECAST_MODEL_COLORS', () => {
+    expect(src).toMatch(/import\s+ForecastLegend\b/);
+    expect(src).toMatch(/import\s*\{\s*clientFetch\s*\}/);
+    expect(src).toMatch(/FORECAST_MODEL_COLORS/);
+  });
+
+  it('fetches /api/forecast?kpi=revenue_eur&granularity=', () => {
+    expect(src).toMatch(/\/api\/forecast\?kpi=revenue_eur&granularity=/);
+  });
+
+  it('defaults visibleModels to {sarimax, naive_dow} (D-15)', () => {
+    expect(src).toMatch(/new\s+Set<string>\(\s*\[\s*['"]sarimax['"]\s*,\s*['"]naive_dow['"]\s*\]/);
+  });
+
+  it('toggleModel creates a NEW Set (Svelte 5 reactivity)', () => {
+    // Required so $derived chains re-run; mutating the existing Set fails silently.
+    expect(src).toMatch(/const\s+next\s*=\s*new\s+Set\(visibleModels\)/);
+  });
+
+  it('renders Area for CI band + Spline for line per visible model', () => {
+    expect(src).toMatch(/<Area\b[\s\S]*?y0=\{[\s\S]*?yhat_lower/);
+    expect(src).toMatch(/<Area\b[\s\S]*?y1=\{[\s\S]*?yhat_upper/);
+    expect(src).toMatch(/<Spline\b[\s\S]*?y=\{[\s\S]*?yhat_mean/);
+    // Both Area + Spline iterate seriesByModel — toggling drops both layers
+    // for that model (Option B per D-17).
+    expect(src).toMatch(/seriesByModel\.entries\(\)[\s\S]*?<Area/);
+    expect(src).toMatch(/seriesByModel\.entries\(\)[\s\S]*?<Spline[\s\S]*?yhat_mean/);
+  });
+
+  it('uses scaleTime + xInterval for time-axis bars', () => {
+    expect(src).toMatch(/scaleTime\s*\(\s*\)/);
+    expect(src).toMatch(/xInterval=\{xInterval\}/);
+    expect(src).toMatch(/timeDay/);
+    expect(src).toMatch(/timeMonday/);
+    expect(src).toMatch(/timeMonth/);
+  });
+
+  it('extends xDomain to today + 365d for forecast horizon', () => {
+    expect(src).toMatch(/addDays\(\s*new\s+Date\(\)\s*,\s*365\s*\)/);
+  });
+
+  it('naive_dow renders dashed at stroke-width=1', () => {
+    expect(src).toMatch(/isNaive\s*\?\s*1\s*:\s*2/);
+    expect(src).toMatch(/isNaive\s*\?\s*['"]4 4['"]/);
+  });
+
+  it('CI band uses fillOpacity 0.06 (back layer mush prevention)', () => {
+    expect(src).toMatch(/fillOpacity=\{?0\.06\}?/);
+  });
+
+  it('renders ForecastLegend chip row when forecastData present', () => {
+    expect(src).toMatch(
+      /<ForecastLegend\s+\{availableModels\}\s+\{visibleModels\}\s+ontoggle=\{toggleModel\}/
+    );
+  });
+
+  it('lastFetchedGrain guard prevents reactive loops', () => {
+    expect(src).toMatch(/lastFetchedGrain/);
+  });
+});
+
 describe('CalendarCountsCard (VA-05) source artifacts', () => {
   const src = fs.readFileSync(
     path.join(process.cwd(), 'src/lib/components/CalendarCountsCard.svelte'),
