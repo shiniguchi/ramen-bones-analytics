@@ -239,7 +239,7 @@
   {#if getFiltered().length === 0}
     <EmptyState card="calendar-revenue" />
   {:else}
-    <div bind:clientWidth={cardW} class="mt-4 h-64 overflow-x-auto overscroll-x-contain chart-touch-safe">
+    <div bind:this={scrollerRef} bind:clientWidth={cardW} class="mt-4 h-64 overflow-x-auto overscroll-x-contain chart-touch-safe">
       <Chart
         bind:context={chartCtx}
         data={chartData}
