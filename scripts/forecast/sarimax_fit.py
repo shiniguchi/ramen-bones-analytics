@@ -22,13 +22,12 @@ import json
 import os
 import sys
 import traceback
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, timezone
 from typing import Optional
 
 import numpy as np
 import pandas as pd
 import statsmodels.api as sm
-from dateutil.relativedelta import relativedelta
 from numpy.linalg import LinAlgError
 
 from scripts.forecast.db import make_client
@@ -36,6 +35,12 @@ from scripts.forecast.exog import build_exog_matrix, assert_exog_compatible, EXO
 from scripts.forecast.closed_days import zero_closed_days
 from scripts.forecast.aggregation import bucket_to_weekly, bucket_to_monthly
 from scripts.forecast.sample_paths import paths_to_jsonb
+from scripts.forecast.grain_helpers import (
+    HORIZON_BY_GRAIN,
+    parse_granularity_env,
+    pred_dates_for_grain,
+    train_end_for_grain,
+)
 from scripts.external.pipeline_runs_writer import write_success, write_failure
 
 # --- Constants ---
@@ -44,8 +49,7 @@ N_PATHS = 200
 STEP_NAME = 'forecast_sarimax'
 CHUNK_SIZE = 100
 
-# 15-10: per-grain knobs (D-14).
-HORIZON_BY_GRAIN = {'day': 372, 'week': 57, 'month': 17}
+# 15-10: per-grain knob (D-14). HORIZON_BY_GRAIN now lives in grain_helpers.
 SEASONAL_PERIOD_BY_GRAIN = {'day': 7, 'week': 52, 'month': 12}
 
 
@@ -61,29 +65,6 @@ def _seasonal_orders(granularity: str) -> tuple:
     """
     period = SEASONAL_PERIOD_BY_GRAIN[granularity]
     return (1, 1, 1, period), (0, 1, 0, period)
-
-
-def _train_end_for_grain(last_actual: date, granularity: str) -> date:
-    """Compute the grain-specific TRAIN_END cutoff.
-
-    Daily : last_actual - 7 days
-    Weekly: last_actual - 35 days (5 weeks back so week buckets are complete)
-    Monthly: end-of-month for (last_actual.month - 5 calendar months)
-    """
-    if granularity == 'day':
-        return last_actual - timedelta(days=7)
-    if granularity == 'week':
-        return last_actual - timedelta(days=35)
-    if granularity == 'month':
-        # "end of (last_actual minus 5 calendar months)".
-        # Step 1: subtract 5 months from last_actual to land somewhere in target month.
-        # Step 2: roll to the last day of THAT month.
-        anchor = last_actual - relativedelta(months=5)
-        first_of_anchor = anchor.replace(day=1)
-        # End of anchor month = (first of next month) - 1 day.
-        end_of_anchor = (first_of_anchor + relativedelta(months=1)) - timedelta(days=1)
-        return end_of_anchor
-    raise ValueError(f'Unknown granularity: {granularity!r}')
 
 
 def _fetch_history(client, *, restaurant_id: str, kpi_name: str) -> pd.DataFrame:
@@ -227,31 +208,6 @@ def _upsert_rows(client, rows: list) -> int:
     return total
 
 
-def _pred_dates_for_grain(*, run_date: date, granularity: str, horizon: int) -> list:
-    """Build list of native-cadence target_dates starting one bucket after run_date.
-
-    Daily : run_date+1, +2, ... +HORIZON days
-    Weekly: next ISO Monday after run_date, then +7d steps
-    Monthly: first-of-month after run_date, then +1 month steps
-    """
-    if granularity == 'day':
-        return [run_date + timedelta(days=i + 1) for i in range(horizon)]
-    if granularity == 'week':
-        # ISO Monday of week strictly after run_date.
-        # weekday(): Mon=0..Sun=6. Days to next Monday = (7 - weekday) % 7, but
-        # if run_date itself is a Mon we still want NEXT Mon (not same day).
-        days_to_next_mon = (7 - run_date.weekday()) % 7
-        if days_to_next_mon == 0:
-            days_to_next_mon = 7
-        first_mon = run_date + timedelta(days=days_to_next_mon)
-        return [first_mon + timedelta(days=7 * i) for i in range(horizon)]
-    if granularity == 'month':
-        # First-of-month strictly after run_date.
-        first = (run_date.replace(day=1) + relativedelta(months=1))
-        return [(first + relativedelta(months=i)) for i in range(horizon)]
-    raise ValueError(f'Unknown granularity: {granularity!r}')
-
-
 def fit_and_write(
     client,
     *,
@@ -269,7 +225,7 @@ def fit_and_write(
     # 1. Fetch training history (always daily from kpi_daily_mv).
     history = _fetch_history(client, restaurant_id=restaurant_id, kpi_name=kpi_name)
     last_actual = history['date'].iloc[-1]
-    train_end = _train_end_for_grain(last_actual, granularity)
+    train_end = train_end_for_grain(last_actual, granularity)
     print(
         f'[sarimax_fit] grain={granularity} last_actual={last_actual} '
         f'train_end={train_end} horizon={horizon}'
@@ -297,7 +253,7 @@ def fit_and_write(
         history_dates = set(history['date'])
         X_fit = X_fit.loc[X_fit.index.isin(history_dates)]
 
-        pred_dates = _pred_dates_for_grain(
+        pred_dates = pred_dates_for_grain(
             run_date=run_date, granularity='day', horizon=horizon,
         )
         pred_start = pred_dates[0]
@@ -344,7 +300,7 @@ def fit_and_write(
         result, seasonal_used = _fit_sarimax(y, None, granularity)
         print(f'[sarimax_fit] Fitted SARIMAX{PRIMARY_ORDER}x{seasonal_used} for {kpi_name}/{granularity}')
 
-        pred_dates = _pred_dates_for_grain(
+        pred_dates = pred_dates_for_grain(
             run_date=run_date, granularity=granularity, horizon=horizon,
         )
         samples_raw = result.simulate(
@@ -395,13 +351,14 @@ if __name__ == '__main__':
     restaurant_id = os.environ.get('RESTAURANT_ID', '').strip()
     kpi_name = os.environ.get('KPI_NAME', '').strip()
     run_date_str = os.environ.get('RUN_DATE', '').strip()
-    granularity = os.environ.get('GRANULARITY', 'day').strip() or 'day'
 
     if not restaurant_id or not kpi_name or not run_date_str:
         print('ERROR: RESTAURANT_ID, KPI_NAME, and RUN_DATE env vars are required', file=sys.stderr)
         sys.exit(1)
-    if granularity not in HORIZON_BY_GRAIN:
-        print(f'ERROR: invalid GRANULARITY {granularity!r}; expected one of {list(HORIZON_BY_GRAIN)}', file=sys.stderr)
+    try:
+        granularity = parse_granularity_env(os.environ.get('GRANULARITY'))
+    except ValueError as e:
+        print(f'ERROR: {e}', file=sys.stderr)
         sys.exit(1)
 
     run_date = date.fromisoformat(run_date_str)
