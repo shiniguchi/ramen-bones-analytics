@@ -2,25 +2,25 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: External Data & Forecasting Foundation
-status: "Phase 16 context gathered — ready for /gsd-plan-phase 16"
-stopped_at: Phase 16 (ITS Uplift Attribution) context captured 2026-05-01 via /gsd-discuss-phase. All 4 gray-area defaults locked recs-first style (CampaignUpliftCard placement, EventMarker scope, revenue_comparable_eur exposure, off-week reminder). 13 NEW decisions + 13 carry-forwards from Phases 11/12/14/15. CONTEXT.md + DISCUSSION-LOG.md committed. Phase 15 v2 (Forecast Backtest Overlay) merged via PR #26 on 2026-05-01.
-last_updated: "2026-05-01T17:30:00Z"
+status: "Phase 16 planned — ready for /gsd-execute-phase 16"
+stopped_at: Phase 16 (ITS Uplift Attribution) planned 2026-05-02 via /gsd-plan-phase. 13 PLAN.md files in 4 waves; checker passed iteration 3 with 0 blockers. RESEARCH.md + PATTERNS.md + VALIDATION.md (nyquist_compliant: true) all committed. Wave 1 ends with [BLOCKING] supabase db push (Plan 04); Wave 2 with another db push (Plan 07 carries DB CHECK constraint for T-16-05).
+last_updated: "2026-05-02T00:00:00Z"
 progress:
   total_phases: 17
   completed_phases: 15
-  total_plans: 73
+  total_plans: 86
   completed_plans: 61
   percent: 95
 ---
 
 # STATE: Ramen Bones Analytics
 
-**Last updated:** 2026-04-30
+**Last updated:** 2026-05-02
 
 ## Project Reference
 
 - **Core Value:** A restaurant owner opens the site on their phone and makes a real business decision from the numbers they see.
-- **Current Focus:** Phase 13 — External Data Ingestion (shipped, PR #17 open)
+- **Current Focus:** Phase 16 — ITS Uplift Attribution (planned, ready to execute)
 - **Timeline:** Slow and deliberate — understand data first, ship one layer at a time
 - **Granularity:** standard
 - **Tenants in v1:** 1 (architecture multi-tenant-ready)
@@ -28,10 +28,10 @@ progress:
 ## Current Position
 
 Milestone: v1.3 (External Data & Forecasting Foundation)
-Phase: 16 (ITS Uplift Attribution) — Context gathered, ready to plan
-Plan: —
+Phase: 16 (ITS Uplift Attribution) — Planned, ready to execute
+Plan: 13 plans in 4 waves (Wave 1: 01–04 schema + db push · Wave 2: 05–07 Track-B Python + view + db push · Wave 3: 08–10 API + UI + EventMarker · Wave 4: 11–13 hardening)
 
-- **Status:** Phase 16 context captured 2026-05-01 via /gsd-discuss-phase. CONTEXT.md + DISCUSSION-LOG.md committed. 13 NEW decisions (D-01..D-13) + 13 carry-forwards (C-01..C-13) from Phases 11/12/14/15. Next: `/gsd-plan-phase 16`.
+- **Status:** Phase 16 planned 2026-05-02 via /gsd-plan-phase. 13 PLAN.md files (3949 lines). Plan-checker iteration 3: 0 blockers, 2 acceptable warnings. Coverage: UPL-01..07 all covered, T-16-01..07 all mitigated, D-01..D-13 + C-01..C-13 all traceable. Next: `/gsd-execute-phase 16`.
 - **Phase 15:** v2 (Forecast Backtest Overlay) merged via PR #26 on 2026-05-01.
 - **Phase 14:** Shipped via [PR #22](https://github.com/shiniguchi/ramen-bones-analytics/pull/22). 34 commits, 31 files, +2978 lines. UAT 12/12. 5/5 models producing 365-day forecasts on DEV.
 - **Phase 13:** Shipped via [PR #17](https://github.com/shiniguchi/ramen-bones-analytics/pull/17). 41 commits, 52 files, +6892 lines. EXT-01..EXT-09 complete.

@@ -2,8 +2,9 @@
 phase: 16
 slug: its-uplift-attribution
 status: draft
-nyquist_compliant: false
+nyquist_compliant: true
 wave_0_complete: false
+# Note: Wave 0 stubs are CREATED INLINE by RED-phase tasks in plans 02, 04, 06, 09; no pre-stage step required. wave_0_complete will flip true once Wave 1 begins.
 created: 2026-05-01
 ---
 
@@ -59,6 +60,8 @@ created: 2026-05-01
 | 16-11-02 | 11 | 4 | — | T-16-06 (`2026-04-14` literal in src/) | CI guard 10 fails when test fixture writes the literal under `src/` | unit | `bash scripts/ci-guards.sh && bash tests/ci-guards/test_guard_10.sh` | ❌ W0 | ⬜ pending |
 | 16-12-01 | 12 | 4 | UPL-02 | — | `tests/forecast/cutoff_sensitivity.md` exists with 5 models × 3 cutoffs (-14d/-7d/-1d) populated, sensitivity ratio in `[0.8, 1.25]` for at least sarimax/prophet | manual | `bash tests/forecast/check_cutoff_sensitivity.sh` | ❌ W0 | ⬜ pending |
 | 16-13-01 | 13 | 4 | UPL-02, UPL-04, UPL-07 | — | `forecast-refresh.yml` workflow has Track-B fit step + `cumulative_uplift.py` step; runs in <5min on ubuntu-latest | manual | `gh workflow run forecast-refresh.yml --ref feature/phase-16-its-uplift-attribution` then check logs | ❌ W0 | ⬜ pending |
+| 16-06-04 | 06 | 2 | UPL-04 | — | per-day rows: count matches window length | unit | `pytest tests/forecast/test_cumulative_uplift.py::test_per_day_rows_count_matches_window_length -x` | ❌ W0 | ⬜ pending |
+| 16-09-04 | 09 | 3 | UPL-06 | — | sparkline renders ≥7 data points on fixture | manual | Chrome MCP localhost:5173 with friend-owner fixture (>=7d since 2026-04-14) | ❌ W0 | ⬜ pending |
 
 > **Threat refs (T-16-XX) link to PLAN.md `<threat_model>` blocks. Planner must populate the threat block; checker verifies cross-reference.**
 
@@ -105,4 +108,4 @@ Tests below MUST exist as stubs before Wave 1 begins (per Nyquist contract). Stu
 - [ ] Feedback latency < 30s per quick run
 - [ ] `nyquist_compliant: true` set in frontmatter once planner has filled all task rows
 
-**Approval:** pending
+**Approval:** signed-off — 2026-05-01 (planner-self)

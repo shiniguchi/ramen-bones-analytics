@@ -294,7 +294,32 @@ Plans:
   4. `campaign_uplift_v` exposes per-campaign-window `Σ(actual − Track-B)` with 95% Monte Carlo CI from 1000 sample paths AND a `naive_dow_uplift_eur` cross-check column (sanity check against trend-extrapolation false positives in the declining 10-month pre-period); cumulative-since-launch shown as a running total per `(campaign, model)`
   5. `CampaignUpliftCard.svelte` renders the per-campaign cumulative uplift on the dashboard at 375px; explicitly displays "CI overlaps zero — no detectable lift" when 95% CI includes 0; never reports a single-point estimate without its CI band; tap-to-pin tooltip explains the 7-day anticipation buffer in plain language
   6. `cumulative_uplift.py` runs nightly after Track-B forecast completes; quarterly off-week reminder fires from a `feature_flags` table on 2026-10-15 (~6 months post-campaign) to re-anchor the counterfactual; `EventMarker.svelte` overlays campaign-start markers on `RevenueForecastCard.svelte` from Phase 15
-**Plans**: TBD
+**Plans:** 13 plans in 4 waves
+Plans:
+  **Wave 1 — Schema (parallel-safe; closes with [BLOCKING] supabase db push)**
+  - [ ] 16-01-PLAN.md — campaign_calendar migration + 2026-04-14 seed
+  - [ ] 16-02-PLAN.md — baseline_items_v migration (TDD — first-seen ≥7d derivation)
+  - [ ] 16-03-PLAN.md — kpi_daily_with_comparable_v migration (revenue_comparable_eur)
+  - [ ] 16-04-PLAN.md — feature_flags + pipeline_runs.fit_train_end migrations + db push (BLOCKING)
+  **Wave 2 *(blocked on Wave 1 completion)* — Track-B Python pipeline (closes with [BLOCKING] db push for migration 0062 + DB CHECK)**
+  - [ ] 16-05-PLAN.md — counterfactual_fit.py + run_all.py --track flag (Track-B fits)
+  - [ ] 16-06-PLAN.md — cumulative_uplift.py — bootstrap CI math + per-day rows for sparkline (TDD)
+  - [ ] 16-07-PLAN.md — campaign_uplift_v + campaign_uplift_daily_v + DB CHECK constraint + Wave-2 db push
+  **Wave 3 *(blocked on Wave 2 completion)* — API + UI (closes with localhost-first Chrome MCP gates)**
+  - [ ] 16-08-PLAN.md — /api/campaign-uplift extended payload (daily[] array) + /api/forecast events campaign_start source
+  - [ ] 16-09-PLAN.md — CampaignUpliftCard.svelte + dashboard slot + retire CAMPAIGN_START
+  - [ ] 16-10-PLAN.md — EventMarker campaign_start E2E + Phase 15 forecast cards smoke test
+  **Wave 4 *(blocked on Wave 3 completion)* — Hardening**
+  - [ ] 16-11-PLAN.md — CI Guard 9 (raw-revenue Track-B) + Guard 10 (2026-04-14 literal) + red-team fixtures
+  - [ ] 16-12-PLAN.md — tests/forecast/cutoff_sensitivity.md log + check_cutoff_sensitivity.sh
+  - [ ] 16-13-PLAN.md — forecast-refresh.yml workflow extension + DEV smoke test
+
+  **Cross-cutting constraints (must_haves.truths shared across plans):**
+  - `auth.jwt()->>'restaurant_id'` RLS filter on every new table/view (Plans 01, 02, 03, 04, 07)
+  - `pipeline_runs.fit_train_end < min(campaign_calendar.start_date) − 7 days` for every `forecast_track='cf'` row (Plans 04, 05, 11)
+  - Track-B fits read `kpi_daily_with_comparable_v.revenue_comparable_eur`, NEVER raw `revenue_eur` — DB CHECK + grep Guard 9 (Plans 05, 07, 11)
+  - Server-side aggregation only — `yhat_samples` arrays NEVER leave the API boundary (Plans 06, 08)
+  - Localhost-first Chrome MCP verification BEFORE any DEV deploy QA on UI plans (Plans 09, 10)
 **UI hint**: yes
 
 ### Phase 17: Backtest Gate & Quality Monitoring
@@ -329,7 +354,7 @@ Plans:
 | 13. External Data Ingestion | v1.3 | 0/? | Not started | — |
 | 14. Forecasting Engine — BAU Track | v1.3 | 0/? | Not started | — |
 | 15. Forecast Chart UI | v1.3 | 0/? | Not started | — |
-| 16. ITS Uplift Attribution | v1.3 | 0/? | Not started | — |
+| 16. ITS Uplift Attribution | v1.3 | 0/13 | Planned | — |
 | 17. Backtest Gate & Quality Monitoring | v1.3 | 0/? | Not started | — |
 
 ## Coverage Summary

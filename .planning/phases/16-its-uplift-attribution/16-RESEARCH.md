@@ -1169,7 +1169,7 @@ SELECT count(*) FROM campaign_uplift_v;
 
 ---
 
-## Open Questions for Planner
+## Open Questions for Planner (RESOLVED)
 
 > Only items that genuinely require a planning-time choice. Everything else is locked.
 
@@ -1177,21 +1177,25 @@ SELECT count(*) FROM campaign_uplift_v;
    - What we know: CONTEXT.md Claude's discretion explicitly defers this to the planner.
    - What's unclear: Direct view performance under the bootstrap CI computation (joining `forecast_daily.yhat_samples` 200 paths × N days × 5 models × 1 campaign).
    - Recommendation: Start with a `campaign_uplift` table populated by `cumulative_uplift.py` + a thin `campaign_uplift_v` wrapper view (auth.jwt() filter only). The CI math runs once nightly in Python; the wrapper view returns pre-computed rows fast. View-only would re-run the bootstrap on every page load — too slow. **Strongly recommend table+wrapper.**
+   - **RESOLVED:** Backing table `campaign_uplift` + thin wrapper view `campaign_uplift_v` (headline rows: `window_kind ∈ {'campaign_window','cumulative_since_launch'}`) + sister wrapper view `campaign_uplift_daily_v` (per-day rows: `window_kind='per_day'`, powers the D-11 sparkline). Same backing table — separated by `window_kind` filter in each view. See Plan 07.
 
 2. **Guard 9 primary enforcement — DB CHECK constraint vs grep?**
    - What we know: §6 — DB constraint is mathematically airtight.
    - What's unclear: Is the planner OK adding a CHECK constraint that touches the existing `forecast_daily` table (Phase 14 migration 0050)?
    - Recommendation: Add CHECK constraint as a migration in this phase (e.g., 0058 first migration). Keep the grep guard as secondary lint for code-review feedback. Both are belts-and-suspenders.
+   - **RESOLVED:** Both — DB CHECK constraint on `forecast_daily` (primary, see Plan 07); grep guard in `scripts/ci-guards.sh` (secondary lint, see Plan 11). Belt-and-suspenders per RESEARCH §6.
 
 3. **`fit_track_b()` per-model implementation — function vs `track` parameter?**
    - What we know: CONTEXT.md D-06 says "each model gets a `fit_track_b()` function." Phase 14 existing code has a single `fit()` orchestration in `scripts/forecast/run_all.py:_build_subprocess_env`.
    - What's unclear: Whether the cleanest pattern is a parallel `fit_track_b()` function per model OR adding a `track` env var (similar to `GRANULARITY`) to the existing entry point.
    - Recommendation: **Track env var pattern**. Mirrors `GRANULARITY` injection in `_build_subprocess_env`. Less code duplication; same `pipeline_runs.step_name='cf_<model>'` discrimination via a single env-var-aware fit function. Matches Phase 14 KISS pattern.
+   - **RESOLVED:** Python kwarg on `fit_and_write(..., track: str = 'bau', train_end: date | None = None)` rather than env-var injection. Justification: direct unit testing is simpler than mocking environment, and per-call test isolation is easier. Acknowledged divergence from this section's recommendation. See Plan 05 Task 4.
 
 4. **`offweek_reminder` schema column for the date check?**
    - What we know: CONTEXT.md D-10 says seed `(restaurant_id, 'offweek_reminder', false, 'fire on 2026-10-15...')`. The "2026-10-15" date currently lives in the description string.
    - What's unclear: Does the schema add a typed `remind_on_or_after_date date NULL` column?
    - Recommendation: **Add the typed column.** Indexed date comparison is faster and unambiguous; description column reverts to free-text human-readable note. `feature_flags(restaurant_id, flag_key, enabled, remind_on_or_after_date, description, updated_at)`.
+   - **RESOLVED:** Typed `remind_on_or_after_date date` column rather than parsing description string. See Plan 04 Task 2.
 
 ---
 
