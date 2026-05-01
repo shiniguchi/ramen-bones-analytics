@@ -45,7 +45,7 @@ A restaurant owner opens the site on their phone and makes a real business decis
 - [x] **Phase 12: Foundation — Decisions & Guards** — ITS validity audit script + CI grep guard (`tenant_id` → `restaurant_id`) + UTC-anchored cron schedule contract
 - [x] **Phase 13: External Data Ingestion** — 5 ingest tables (weather/holidays/school/transit/events) + pipeline_runs + shop_calendar + GHA workflow + backfill from 2025-06-11
 - [x] **Phase 14: Forecasting Engine — BAU Track** — SARIMAX/Prophet/ETS/Theta/Naive nightly fits + sample-path resampling + last_7_eval + forecast_daily_mv
-- [ ] **Phase 15: Forecast Chart UI** — RevenueForecastCard + horizon/legend toggles + hover popup + event markers + 3 deferred `/api/*` endpoints + 375px QA
+- [~] **Phase 15: Forecast Chart UI** — v2 (Forecast Backtest Overlay) impl 15-09..15-15 complete on branch `feature/phase-15-forecast-backtest-overlay`; 15-16 (DEV deploy + PR) pending user authorization; 15-17 (retire dedicated cards) deferred
 - [ ] **Phase 16: ITS Uplift Attribution** — campaign_calendar + Track-B counterfactual fit + campaign_uplift_v + CampaignUpliftCard with honest "CI overlaps zero" labeling
 - [ ] **Phase 17: Backtest Gate & Quality Monitoring** — rolling-origin CV at 4 horizons + ConformalIntervals + ≥10% RMSE promotion gate + freshness-SLO badges + ACCURACY-LOG
 

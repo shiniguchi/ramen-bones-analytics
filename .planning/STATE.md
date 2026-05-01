@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: External Data & Forecasting Foundation
-status: "Phase 14 shipped"
-stopped_at: Phase 14 (Forecasting Engine — BAU Track) shipped 2026-04-30. PR #22 merged, 17 migrations applied to DEV, weather backfill complete (1622 rows + 365 climatology norms), GHA pipeline passing (5/5 models x 2 KPIs x 365 days). forecast_quality populates after 2nd nightly run. Ready for Phase 15 (Forecast Chart UI).
-last_updated: "2026-04-30T00:00:00Z"
+status: "Phase 15 v2 implementation complete (DEV deploy + PR pending user authorization)"
+stopped_at: Phase 15 v2 (Forecast Backtest Overlay) plans 15-09 through 15-15 implemented locally on branch feature/phase-15-forecast-backtest-overlay. 19 commits, all unit tests pass, svelte-check clean at 6-error baseline. Migration 0057 (granularity column) applied locally. Plan 15-16 partial — STATE/ROADMAP closure done; localhost gate deferred (no Phase 14 forecast seed data on local DB causes /api/forecast 500 on cold start); DEV deploy + PR creation paused for user authorization. Plan 15-17 (retire dedicated forecast cards) remains deferred per CONTEXT.md.
+last_updated: "2026-05-01T00:00:00Z"
 progress:
   total_phases: 17
   completed_phases: 14
-  total_plans: 64
+  total_plans: 73
   completed_plans: 61
-  percent: 82
+  percent: 84
 ---
 
 # STATE: Ramen Bones Analytics
