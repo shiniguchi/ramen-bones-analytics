@@ -50,7 +50,15 @@ SEASONAL_PERIOD_BY_GRAIN = {'day': 7, 'week': 52, 'month': 12}
 
 
 def _seasonal_orders(granularity: str) -> tuple:
-    """Return (primary, fallback) seasonal_order tuples for the given grain."""
+    """Return (primary, fallback) seasonal_order tuples for the given grain.
+
+    Note: order kept identical (1,1,1)/(0,1,0) across all grains per D-14
+    escalation note — only the seasonal *period* swings (7/52/12). At month
+    grain with ~24 monthly observations needed before seasonal_period*2 fires,
+    SARIMAX(1,1,1)(1,1,1,12) is on the edge of over-parameterization for new
+    restaurants. Phase 17 backtest gate is expected to revisit this if
+    weekly/monthly residuals show clear under/over-fit.
+    """
     period = SEASONAL_PERIOD_BY_GRAIN[granularity]
     return (1, 1, 1, period), (0, 1, 0, period)
 

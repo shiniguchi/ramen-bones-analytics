@@ -195,6 +195,11 @@ def main(
         return 0
     days_since_last = (date.today() - last_actual).days
     if days_since_last > FRESHNESS_GATE_DAYS:
+        # D-16 freshness gate: clean abort (return 0), not pipeline failure.
+        # pipeline_runs_writer only exposes success|fallback|failure; we use
+        # write_failure here for triage signal but the workflow exit is 0 so
+        # GHA stays green. Filter pipeline_runs by step_name='forecast_run_all'
+        # + error_msg starting with 'Stale data' to find these cases.
         msg = f'Stale data: last_actual={last_actual} stale by {days_since_last}d'
         print(f'[run_all] ABORT: {msg}', file=sys.stderr)
         try:
@@ -247,7 +252,8 @@ def main(
     # Evaluate last-7-day forecast accuracy for each model/KPI
     # Populates forecast_quality table for accuracy tracking.
     # NOTE: eval still runs at daily grain only — week/month grain accuracy
-    # tracking is out of scope for 15-10 (would need separate eval window logic).
+    # tracking is out of scope for 15-10. TODO: Phase 17 (backtest gate) is
+    # the planned home for grain-specific evaluation windows.
     if successes > 0:
         print('[run_all] Running last-7-day evaluation ...')
         for model in models:
