@@ -2,6 +2,7 @@ name: DB Migrations (DEV)
 on:
   push:
     branches: [main]
+  workflow_dispatch:
 jobs:
   push:
     runs-on: ubuntu-latest
