@@ -22,13 +22,6 @@ const en = {
   grain_month: 'Month',
   grain_selector_aria: 'Grain selector',
 
-  // --- Horizon toggle (Phase 15 FUI-03) ----------------------------------
-  horizon_7d:        '7d',
-  horizon_5w:        '5w',
-  horizon_4mo:       '4mo',
-  horizon_1yr:       '1yr',
-  horizon_selector_aria: 'Forecast horizon selector',
-
   // --- Forecast legend (Phase 15 D-04 / FUI-02) --------------------------
   legend_aria:                  'Forecast model legend',
   legend_model_sarimax:     'SARIMAX',
@@ -212,13 +205,6 @@ const de: Record<MessageKey, string> = {
   grain_month: 'Monat',
   grain_selector_aria: 'Zeitraster-Auswahl',
 
-  // Horizon toggle (Phase 15 FUI-03) — placeholder copy mirrors EN
-  horizon_7d:        '7d',
-  horizon_5w:        '5w',
-  horizon_4mo:       '4mo',
-  horizon_1yr:       '1yr',
-  horizon_selector_aria: 'Forecast horizon selector',
-
   // Forecast legend (Phase 15 D-04 / FUI-02) — placeholder copy mirrors EN
   legend_aria:                  'Forecast model legend',
   legend_model_sarimax:     'SARIMAX',
@@ -393,13 +379,6 @@ const ja: Record<MessageKey, string> = {
   grain_month: '月',
   grain_selector_aria: '期間粒度の選択',
 
-  // Horizon toggle (Phase 15 FUI-03) — placeholder copy mirrors EN
-  horizon_7d:        '7d',
-  horizon_5w:        '5w',
-  horizon_4mo:       '4mo',
-  horizon_1yr:       '1yr',
-  horizon_selector_aria: 'Forecast horizon selector',
-
   // Forecast legend (Phase 15 D-04 / FUI-02) — placeholder copy mirrors EN
   legend_aria:                  'Forecast model legend',
   legend_model_sarimax:     'SARIMAX',
@@ -572,13 +551,6 @@ const es: Record<MessageKey, string> = {
   grain_week: 'Semana',
   grain_month: 'Mes',
   grain_selector_aria: 'Selector de granularidad',
-
-  // Horizon toggle (Phase 15 FUI-03) — placeholder copy mirrors EN
-  horizon_7d:        '7d',
-  horizon_5w:        '5w',
-  horizon_4mo:       '4mo',
-  horizon_1yr:       '1yr',
-  horizon_selector_aria: 'Forecast horizon selector',
 
   // Forecast legend (Phase 15 D-04 / FUI-02) — placeholder copy mirrors EN
   legend_aria:                  'Forecast model legend',
@@ -753,13 +725,6 @@ const fr: Record<MessageKey, string> = {
   grain_week: 'Semaine',
   grain_month: 'Mois',
   grain_selector_aria: 'Sélecteur de granularité',
-
-  // Horizon toggle (Phase 15 FUI-03) — placeholder copy mirrors EN
-  horizon_7d:        '7d',
-  horizon_5w:        '5w',
-  horizon_4mo:       '4mo',
-  horizon_1yr:       '1yr',
-  horizon_selector_aria: 'Forecast horizon selector',
 
   // Forecast legend (Phase 15 D-04 / FUI-02) — placeholder copy mirrors EN
   legend_aria:                  'Forecast model legend',
