@@ -211,21 +211,29 @@
   // + 365d forecast horizon) and the forecast lines render off-screen — users
   // had to scroll right ~16x to discover them. We position today at ~60% of the
   // visible viewport: most of the visible area shows recent past, with the
-  // near-future forecast hinted on the right edge. Skip if the user has already
-  // scrolled (scrollLeft > 0).
+  // near-future forecast hinted on the right edge.
+  //
+  // Compute todayX from the chartXDomain proportion directly rather than via
+  // chartCtx.xScale — xScale can be stale when the effect fires (xInterval +
+  // forecast-extended domain interplay) and returns a position that doesn't
+  // match the actual SVG path coords. Pure date math is deterministic.
+  // Skip if the user has already scrolled (scrollLeft > 0).
   let scrollerRef = $state<HTMLDivElement>();
   let lastAutoScrollGrain: string | null = null;
   $effect(() => {
     const grain = getFilters().grain;
-    if (!forecastData || !chartCtx || !scrollerRef) return;
+    if (!forecastData || !scrollerRef) return;
     if (lastAutoScrollGrain === grain) return;
     if (scrollerRef.scrollLeft > 0) {
-      // User has manually scrolled — don't override their position. Mark this
-      // grain as "handled" so a later forecastData change doesn't snap them.
       lastAutoScrollGrain = grain;
       return;
     }
-    const todayX = chartCtx.xScale(new Date()) ?? 0;
+    const [domainStart, domainEnd] = chartXDomain;
+    const totalMs = domainEnd.getTime() - domainStart.getTime();
+    const todayMs = Date.now() - domainStart.getTime();
+    if (totalMs <= 0) return;
+    const todayPct = Math.max(0, Math.min(1, todayMs / totalMs));
+    const todayX = scrollerRef.scrollWidth * todayPct;
     scrollerRef.scrollLeft = Math.max(0, todayX - scrollerRef.clientWidth * 0.6);
     lastAutoScrollGrain = grain;
   });
