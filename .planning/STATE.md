@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: External Data & Forecasting Foundation
-status: "Phase 15 v2 implementation complete (DEV deploy + PR pending user authorization)"
-stopped_at: Phase 15 v2 (Forecast Backtest Overlay) plans 15-09 through 15-15 implemented locally on branch feature/phase-15-forecast-backtest-overlay. 19 commits, all unit tests pass, svelte-check clean at 6-error baseline. Migration 0057 (granularity column) applied locally. Plan 15-16 partial — STATE/ROADMAP closure done; localhost gate deferred (no Phase 14 forecast seed data on local DB causes /api/forecast 500 on cold start); DEV deploy + PR creation paused for user authorization. Plan 15-17 (retire dedicated forecast cards) remains deferred per CONTEXT.md.
-last_updated: "2026-05-01T00:00:00Z"
+status: "Phase 15 v2 merged via PR #26 — ready for Phase 16"
+stopped_at: Phase 15 v2 (Forecast Backtest Overlay) merged on 2026-05-01. Plans 15-09 through 15-16 shipped; per-grain forecasts, RevenueForecastCard + InvoiceCountForecastCard + CalendarRevenueCard overlay live on DEV. Post-merge QA fixes (grain-aware empty-state copy, CalendarRevenueCard auto-scroll-to-today) included. Plan 15-17 (retire dedicated forecast cards) remains deferred per CONTEXT.md. Scheduled remote agent (trig_01DzJUc9HFAopRWP4tVD27vb) verifies week+month grain rows after Mon 2026-05-04 07:00 UTC forecast-refresh cron.
+last_updated: "2026-05-01T15:30:00Z"
 progress:
   total_phases: 17
-  completed_phases: 14
+  completed_phases: 15
   total_plans: 73
   completed_plans: 61
-  percent: 84
+  percent: 95
 ---
 
 # STATE: Ramen Bones Analytics
