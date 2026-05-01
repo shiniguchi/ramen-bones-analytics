@@ -219,37 +219,33 @@
   // match the actual SVG path coords. Pure date math is deterministic.
   // Skip if the user has already scrolled (scrollLeft > 0).
   let scrollerRef = $state<HTMLDivElement>();
-  let lastAutoScrollGrain: string | null = null;
+  let lastSetScrollLeft = 0;
   $effect(() => {
-    const grain = getFilters().grain;
-    // Depend on chartW (not just forecastData): chartW only reaches its final
-    // value once chartData + forecastData both populate AND the derived
-    // computeChartWidth runs. On INITIAL page load, forecastData arrives
-    // before chartW finishes growing — the effect would fire with a stale
-    // scrollWidth that doesn't include the forecast zone, snapping into the
-    // bar zone instead of the bar/forecast boundary. Reading chartW here
-    // makes the effect re-run when the canvas actually grows.
+    // Depend on chartW (not just forecastData): chartW grows in stages on
+    // initial page load (chartData → forecastData → computeChartWidth).
+    // The first RAF fires with an incomplete scrollWidth and lands inside
+    // the bar zone; later chartW updates need to refine the position.
+    //
+    // Guard logic: lastSetScrollLeft tracks the value WE wrote. If the
+    // current scrollLeft differs, the user has scrolled and we stop. If
+    // it matches, we're free to move it again — covers both "haven't
+    // scrolled yet" (0 == 0) and "auto-positioned but canvas grew".
     const w = chartW;
     if (!forecastData || !scrollerRef || w === 0) return;
-    if (lastAutoScrollGrain === grain) return;
-    if (scrollerRef.scrollLeft > 0) {
-      lastAutoScrollGrain = grain;
-      return;
-    }
+    if (scrollerRef.scrollLeft !== lastSetScrollLeft) return;
     const el = scrollerRef;
     const [domainStart, domainEnd] = chartXDomain;
-    // Still RAF-defer: chartW updates the prop but the actual scrollWidth
-    // measurement lags one frame behind the layout.
     requestAnimationFrame(() => {
-      if (el.scrollLeft > 0) return;
+      if (el.scrollLeft !== lastSetScrollLeft) return;
       const totalMs = domainEnd.getTime() - domainStart.getTime();
       const todayMs = Date.now() - domainStart.getTime();
       if (totalMs <= 0) return;
       const todayPct = Math.max(0, Math.min(1, todayMs / totalMs));
       const todayX = el.scrollWidth * todayPct;
-      el.scrollLeft = Math.max(0, todayX - el.clientWidth * 0.6);
+      const target = Math.max(0, todayX - el.clientWidth * 0.6);
+      el.scrollLeft = target;
+      lastSetScrollLeft = target;
     });
-    lastAutoScrollGrain = grain;
   });
 </script>
 
