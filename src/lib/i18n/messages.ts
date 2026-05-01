@@ -50,6 +50,10 @@ const en = {
   forecast_uncalibrated_badge:   'Uncalibrated CI',
   forecast_today_label:          'Today',
 
+  // --- Invoice count forecast card (Phase 15-15 / D-18) -------------------
+  invoice_forecast_card_title:       'Invoice count forecast',
+  invoice_forecast_card_description: 'Tomorrow through next year — actual transactions vs. forecast.',
+
   // --- KPI tiles (+page.svelte builds "Revenue · {range}") ---------------
   kpi_revenue: 'Revenue',
   kpi_transactions: 'Transactions',
@@ -233,6 +237,10 @@ const de: Record<MessageKey, string> = {
   forecast_uncalibrated_badge:   'Uncalibrated CI',
   forecast_today_label:          'Today',
 
+  // --- Invoice count forecast card (Phase 15-15 / D-18) -------------------
+  invoice_forecast_card_title:       'Transaktionsanzahl-Prognose',
+  invoice_forecast_card_description: 'Morgen bis nächstes Jahr — tatsächliche Transaktionen vs. Prognose.',
+
   kpi_revenue: 'Umsatz',
   kpi_transactions: 'Transaktionen',
   range_today: 'Heute',
@@ -407,6 +415,10 @@ const ja: Record<MessageKey, string> = {
   forecast_uncalibrated_badge:   'Uncalibrated CI',
   forecast_today_label:          'Today',
 
+  // --- Invoice count forecast card (Phase 15-15 / D-18) -------------------
+  invoice_forecast_card_title:       '取引件数の予測',
+  invoice_forecast_card_description: '明日から1年後まで — 実際の取引件数と予測の比較。',
+
   kpi_revenue: '売上',
   kpi_transactions: '取引件数',
   range_today: '本日',
@@ -579,6 +591,10 @@ const es: Record<MessageKey, string> = {
   forecast_card_description:     'Tomorrow through next year — actuals vs. SARIMAX BAU.',
   forecast_uncalibrated_badge:   'Uncalibrated CI',
   forecast_today_label:          'Today',
+
+  // --- Invoice count forecast card (Phase 15-15 / D-18) -------------------
+  invoice_forecast_card_title:       'Pronóstico de transacciones',
+  invoice_forecast_card_description: 'De mañana hasta el próximo año — transacciones reales vs. pronóstico.',
 
   kpi_revenue: 'Ingresos',
   kpi_transactions: 'Transacciones',
@@ -753,6 +769,10 @@ const fr: Record<MessageKey, string> = {
   forecast_card_description:     'Tomorrow through next year — actuals vs. SARIMAX BAU.',
   forecast_uncalibrated_badge:   'Uncalibrated CI',
   forecast_today_label:          'Today',
+
+  // --- Invoice count forecast card (Phase 15-15 / D-18) -------------------
+  invoice_forecast_card_title:       'Prévision du nombre de transactions',
+  invoice_forecast_card_description: "De demain à l'année prochaine — transactions réelles vs. prévision.",
 
   kpi_revenue: "Chiffre d'affaires",
   kpi_transactions: 'Transactions',
