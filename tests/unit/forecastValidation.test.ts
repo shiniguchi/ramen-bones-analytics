@@ -1,17 +1,17 @@
 // tests/unit/forecastValidation.test.ts
-// Phase 15 D-11 — validate ?horizon= + ?granularity= against the clamp matrix:
-//   7d  → day
-//   5w  → day | week
-//   4mo → week | month
-//   1yr → month
+// Phase 15 v2 D-14 — parser tests only.
+//
+// Plan 15-11 dropped the horizon × granularity clamp matrix (forecast is
+// fitted natively per grain by 15-10), so isValidCombo /
+// DEFAULT_GRANULARITY / the Horizon type were removed. The remaining
+// surface — parseHorizon + parseGranularity + HORIZON_DAYS / GRANULARITIES
+// constants — is what the new endpoint and HorizonToggle consume.
 import { describe, it, expect } from 'vitest';
 import {
   parseHorizon,
   parseGranularity,
-  isValidCombo,
-  type Horizon,
-  type Granularity,
-  HORIZON_DAYS
+  HORIZON_DAYS,
+  GRANULARITIES
 } from '../../src/lib/forecastValidation';
 
 describe('parseHorizon', () => {
@@ -35,29 +35,11 @@ describe('parseGranularity', () => {
   });
 });
 
-describe('isValidCombo (D-11 clamp matrix)', () => {
-  const valid: Array<[Horizon, Granularity]> = [
-    [7, 'day'],
-    [35, 'day'], [35, 'week'],
-    [120, 'week'], [120, 'month'],
-    [365, 'month']
-  ];
-  const invalid: Array<[Horizon, Granularity]> = [
-    [7, 'week'], [7, 'month'],
-    [35, 'month'],
-    [120, 'day'],
-    [365, 'day'], [365, 'week']
-  ];
-  it.each(valid)('accepts horizon=%i granularity=%s', (h, g) => {
-    expect(isValidCombo(h, g)).toBe(true);
-  });
-  it.each(invalid)('rejects horizon=%i granularity=%s', (h, g) => {
-    expect(isValidCombo(h, g)).toBe(false);
-  });
-});
-
-describe('HORIZON_DAYS constants', () => {
-  it('exposes 7/35/120/365 (FUI-03)', () => {
+describe('constants', () => {
+  it('HORIZON_DAYS exposes 7/35/120/365 (FUI-03)', () => {
     expect(HORIZON_DAYS).toEqual([7, 35, 120, 365]);
+  });
+  it('GRANULARITIES exposes day/week/month', () => {
+    expect(GRANULARITIES).toEqual(['day', 'week', 'month']);
   });
 });
