@@ -222,18 +222,24 @@
   let lastAutoScrollGrain: string | null = null;
   $effect(() => {
     const grain = getFilters().grain;
-    if (!forecastData || !scrollerRef) return;
+    // Depend on chartW (not just forecastData): chartW only reaches its final
+    // value once chartData + forecastData both populate AND the derived
+    // computeChartWidth runs. On INITIAL page load, forecastData arrives
+    // before chartW finishes growing — the effect would fire with a stale
+    // scrollWidth that doesn't include the forecast zone, snapping into the
+    // bar zone instead of the bar/forecast boundary. Reading chartW here
+    // makes the effect re-run when the canvas actually grows.
+    const w = chartW;
+    if (!forecastData || !scrollerRef || w === 0) return;
     if (lastAutoScrollGrain === grain) return;
     if (scrollerRef.scrollLeft > 0) {
       lastAutoScrollGrain = grain;
       return;
     }
-    // Defer to next animation frame so scrollWidth reflects the post-render
-    // canvas (forecastData → totalSlots → chartW chain settles in one tick).
-    // Without RAF, the effect fires while scrollWidth still excludes the
-    // forecast zone, and todayPct × scrollWidth lands inside the bar zone.
     const el = scrollerRef;
     const [domainStart, domainEnd] = chartXDomain;
+    // Still RAF-defer: chartW updates the prop but the actual scrollWidth
+    // measurement lags one frame behind the layout.
     requestAnimationFrame(() => {
       if (el.scrollLeft > 0) return;
       const totalMs = domainEnd.getTime() - domainStart.getTime();
