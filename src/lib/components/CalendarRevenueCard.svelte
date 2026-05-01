@@ -221,30 +221,39 @@
   let scrollerRef = $state<HTMLDivElement>();
   let lastSetScrollLeft = 0;
   $effect(() => {
-    // Depend on chartW so we re-run when the canvas grows. Even after that
-    // signal arrives, the inner SVG dimensions take a frame or two to
-    // catch up — scrollWidth lags behind the chartW prop. Poll RAF until
-    // scrollWidth approximates chartW, then compute the position. Cap at
-    // ~10 frames so we never loop forever if the chart never reaches the
-    // expected width (e.g. SSR-only render with no client hydration).
+    // Position the scroll container so today's edge (= where actuals end
+    // and the forecast tail begins) sits at ~60% of the viewport width.
+    // Without this, the chart canvas can be 19k+ px wide (year of bars +
+    // 365d forecast) and forecast lines render off-screen by default.
+    //
+    // Use bucket-count proportion rather than date math: chartData.length
+    // is the historical bar count, fcDates.size is the forecast count.
+    // Today is exactly at the boundary, so todayPct = bars / (bars+forecast).
+    // This is robust to chartXDomain reactivity timing — both counts come
+    // from the same Svelte tick that built the chart.
+    //
+    // Depend on chartW so we re-run when the canvas grows; the chart's
+    // inner SVG dimensions lag chartW by 1-2 frames, so poll RAF until
+    // scrollWidth catches up. lastSetScrollLeft tracks our own writes so
+    // user-scrolling stops auto-positioning but layout-driven width
+    // changes don't.
     const w = chartW;
     if (!forecastData || !scrollerRef || w === 0) return;
     if (scrollerRef.scrollLeft !== lastSetScrollLeft) return;
     const el = scrollerRef;
-    const [domainStart, domainEnd] = chartXDomain;
+    const histBuckets = chartData.length;
+    const fcBuckets = new Set((forecastData.rows ?? []).map((r) => r.target_date)).size;
+    const total = histBuckets + fcBuckets;
+    if (total === 0) return;
+    const todayPct = histBuckets / total;
     let attempts = 0;
     const tryPosition = () => {
       if (el.scrollLeft !== lastSetScrollLeft) return;
-      // Wait for the SVG canvas to reach (close to) the computed chartW.
-      if (el.scrollWidth < w * 0.9 && attempts < 10) {
+      if (el.scrollWidth < w * 0.9 && attempts < 30) {
         attempts++;
         requestAnimationFrame(tryPosition);
         return;
       }
-      const totalMs = domainEnd.getTime() - domainStart.getTime();
-      const todayMs = Date.now() - domainStart.getTime();
-      if (totalMs <= 0) return;
-      const todayPct = Math.max(0, Math.min(1, todayMs / totalMs));
       const todayX = el.scrollWidth * todayPct;
       const target = Math.max(0, todayX - el.clientWidth * 0.6);
       el.scrollLeft = target;
