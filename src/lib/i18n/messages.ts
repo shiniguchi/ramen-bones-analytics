@@ -162,6 +162,8 @@ const en = {
   empty_forecast_stale_body:             'Last refresh: {ago}. The nightly cascade may have skipped a run.',
   empty_forecast_uncalibrated_ci_heading:'Uncalibrated for 1yr horizon',
   empty_forecast_uncalibrated_ci_body:   'Need ≥2 years of history before the 1yr confidence band is reliable.',
+  empty_forecast_grain_pending_heading:  'Forecast not ready at this grain',
+  empty_forecast_grain_pending_body:     'Switch to 日 (day) — daily forecasts are live. Week and month forecasts populate on the next refresh.',
 
   // --- InsightCard footer + edit form ------------------------------------
   insight_week_ending: 'Week ending {date}',
@@ -343,6 +345,8 @@ const de: Record<MessageKey, string> = {
   empty_forecast_stale_body:             'Last refresh: {ago}. The nightly cascade may have skipped a run.',
   empty_forecast_uncalibrated_ci_heading:'Uncalibrated for 1yr horizon',
   empty_forecast_uncalibrated_ci_body:   'Need ≥2 years of history before the 1yr confidence band is reliable.',
+  empty_forecast_grain_pending_heading:  'Forecast not ready at this grain',
+  empty_forecast_grain_pending_body:     'Switch to 日 (day) — daily forecasts are live. Week and month forecasts populate on the next refresh.',
 
   insight_week_ending: 'Woche endend am {date}',
   insight_refreshed_weekly: 'Wöchentlich aktualisiert',
@@ -520,6 +524,8 @@ const ja: Record<MessageKey, string> = {
   empty_forecast_stale_body:             'Last refresh: {ago}. The nightly cascade may have skipped a run.',
   empty_forecast_uncalibrated_ci_heading:'Uncalibrated for 1yr horizon',
   empty_forecast_uncalibrated_ci_body:   'Need ≥2 years of history before the 1yr confidence band is reliable.',
+  empty_forecast_grain_pending_heading:  'この粒度の予測は準備中です',
+  empty_forecast_grain_pending_body:     '「日」に切り替えると日次の予測を確認できます。週次・月次は次回更新で生成されます。',
 
   insight_week_ending: '{date}終了週',
   insight_refreshed_weekly: '週次更新',
@@ -698,6 +704,8 @@ const es: Record<MessageKey, string> = {
   empty_forecast_stale_body:             'Last refresh: {ago}. The nightly cascade may have skipped a run.',
   empty_forecast_uncalibrated_ci_heading:'Uncalibrated for 1yr horizon',
   empty_forecast_uncalibrated_ci_body:   'Need ≥2 years of history before the 1yr confidence band is reliable.',
+  empty_forecast_grain_pending_heading:  'Forecast not ready at this grain',
+  empty_forecast_grain_pending_body:     'Switch to 日 (day) — daily forecasts are live. Week and month forecasts populate on the next refresh.',
 
   insight_week_ending: 'Semana que termina el {date}',
   insight_refreshed_weekly: 'Actualizado semanalmente',
@@ -876,6 +884,8 @@ const fr: Record<MessageKey, string> = {
   empty_forecast_stale_body:             'Last refresh: {ago}. The nightly cascade may have skipped a run.',
   empty_forecast_uncalibrated_ci_heading:'Uncalibrated for 1yr horizon',
   empty_forecast_uncalibrated_ci_body:   'Need ≥2 years of history before the 1yr confidence band is reliable.',
+  empty_forecast_grain_pending_heading:  'Forecast not ready at this grain',
+  empty_forecast_grain_pending_body:     'Switch to 日 (day) — daily forecasts are live. Week and month forecasts populate on the next refresh.',
 
   insight_week_ending: 'Semaine se terminant le {date}',
   insight_refreshed_weekly: 'Actualisé chaque semaine',

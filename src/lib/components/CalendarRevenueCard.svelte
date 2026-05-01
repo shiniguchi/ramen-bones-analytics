@@ -205,6 +205,30 @@
   const chartW = $derived(computeChartWidth(totalSlots, cardW));
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let chartCtx = $state<any>();
+
+  // Auto-scroll to "today" so the forecast tail is visible on first render.
+  // Without this, the chart canvas can be 19k+ px wide (year of historical bars
+  // + 365d forecast horizon) and the forecast lines render off-screen — users
+  // had to scroll right ~16x to discover them. We position today at ~60% of the
+  // visible viewport: most of the visible area shows recent past, with the
+  // near-future forecast hinted on the right edge. Skip if the user has already
+  // scrolled (scrollLeft > 0).
+  let scrollerRef = $state<HTMLDivElement>();
+  let lastAutoScrollGrain: string | null = null;
+  $effect(() => {
+    const grain = getFilters().grain;
+    if (!forecastData || !chartCtx || !scrollerRef) return;
+    if (lastAutoScrollGrain === grain) return;
+    if (scrollerRef.scrollLeft > 0) {
+      // User has manually scrolled — don't override their position. Mark this
+      // grain as "handled" so a later forecastData change doesn't snap them.
+      lastAutoScrollGrain = grain;
+      return;
+    }
+    const todayX = chartCtx.xScale(new Date()) ?? 0;
+    scrollerRef.scrollLeft = Math.max(0, todayX - scrollerRef.clientWidth * 0.6);
+    lastAutoScrollGrain = grain;
+  });
 </script>
 
 <div data-testid="calendar-revenue-card" class="rounded-xl border border-zinc-200 bg-white p-4">

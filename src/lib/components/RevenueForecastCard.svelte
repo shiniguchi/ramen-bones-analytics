@@ -54,6 +54,12 @@
       .catch(e => console.error('[RevenueForecastCard]', e));
   });
 
+  // Empty-state variant selector. Day-grain empty = pre-first-run; week/month
+  // empty = day works but new per-grain pipeline hasn't fired yet (Phase 15-10).
+  const emptyCard = $derived(
+    getFilters().grain === 'day' ? 'forecast-loading' : 'forecast-grain-pending'
+  );
+
   function toggleModel(m: string) {
     const next = new Set(visibleModels);
     next.has(m) ? next.delete(m) : next.add(m);
@@ -106,7 +112,7 @@
   <p class="mt-1 text-xs text-zinc-500 text-balance">{t(page.data.locale, 'forecast_card_description')}</p>
 
   {#if rows.length === 0}
-    <EmptyState card="forecast-loading" />
+    <EmptyState card={emptyCard} />
   {:else}
     <div class="mt-4 h-64 chart-touch-safe">
       <Chart
