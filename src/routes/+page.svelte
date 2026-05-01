@@ -18,6 +18,8 @@
   import CalendarItemRevenueCard from '$lib/components/CalendarItemRevenueCard.svelte';
   import MdeCurveCard from '$lib/components/MdeCurveCard.svelte';
   import RepeaterCohortCountCard from '$lib/components/RepeaterCohortCountCard.svelte';
+  import RevenueForecastCard from '$lib/components/RevenueForecastCard.svelte';
+  import InvoiceCountForecastCard from '$lib/components/InvoiceCountForecastCard.svelte';
   import LazyMount from '$lib/components/LazyMount.svelte';
   import { clientFetch } from '$lib/clientFetch';
   import {
@@ -91,6 +93,14 @@
       }
     } catch (e) { console.error('[LazyMount /api/retention]', e); }
   }
+
+  // Phase 15-14: RevenueForecastCard self-fetches /api/forecast on grain
+  // change via getFilters().grain. The page no longer holds horizon /
+  // granularity state, no longer bundles forecast / quality / uplift
+  // payloads, and no longer needs the LazyMount-onvisible loader for them.
+  // The card's internal $effect runs on first render once the fragment
+  // mounts under LazyMount. The stale-data badge that consumed
+  // staleHours(data.freshness) was also dropped along with the prop.
 
   // Initialize store from SSR data on mount and when SSR data changes.
   $effect(() => {
@@ -252,6 +262,28 @@
     {#if data.latestInsight}
       <InsightCard insight={data.latestInsight} isAdmin={data.isAdmin ?? false} />
     {/if}
+
+    <!-- Phase 15 D-01: RevenueForecastCard slots immediately after the
+         InsightCard narrative and before the KPI tiles. Owner mental model:
+         narrative → look-ahead forecast → look-back KPIs / calendar.
+         Phase 15-14: card self-fetches /api/forecast on grain change via
+         getFilters().grain — no horizon/granularity props, no LazyMount
+         data-loader callback. The LazyMount wrapper still defers DOM mount
+         until the card scrolls into view. -->
+    <LazyMount minHeight="320px">
+      {#snippet children()}
+        <RevenueForecastCard />
+      {/snippet}
+    </LazyMount>
+
+    <!-- Phase 15-15 / D-18: InvoiceCountForecastCard mirrors the revenue card
+         for the invoice_count KPI. Self-fetches /api/forecast?kpi=invoice_count
+         on grain change. LazyMount only defers DOM mount until in-view. -->
+    <LazyMount minHeight="320px">
+      {#snippet children()}
+        <InvoiceCountForecastCard />
+      {/snippet}
+    </LazyMount>
 
     <!-- D-10 cards 4-5: Revenue + Transactions KPI tiles -->
     <div class="grid grid-cols-2 gap-4">

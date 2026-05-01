@@ -22,6 +22,38 @@ const en = {
   grain_month: 'Month',
   grain_selector_aria: 'Grain selector',
 
+  // --- Forecast legend (Phase 15 D-04 / FUI-02) --------------------------
+  legend_aria:                  'Forecast model legend',
+  legend_model_sarimax:     'SARIMAX',
+  legend_model_prophet:         'Prophet',
+  legend_model_ets:             'ETS',
+  legend_model_theta:           'Theta',
+  legend_model_naive_dow:       'Naive (DoW)',
+  legend_model_chronos:         'Chronos',
+  legend_model_neuralprophet:   'NeuralProphet',
+
+  // --- Forecast hover popup (Phase 15 FUI-04) ----------------------------
+  popup_forecast:                'Forecast',
+  popup_ci_95:                   '95% CI',
+  popup_horizon_days_one:        '{n} day from today',
+  popup_horizon_days_many:       '{n} days from today',
+  popup_rmse:                    'RMSE (last 7d)',
+  popup_mape:                    'MAPE (last 7d)',
+  popup_bias:                    'Bias (last 7d)',
+  popup_direction_hit:           'Direction hit rate',
+  popup_uplift_since_campaign:   'Δ since campaign',
+  popup_last_refit:              'Last refit {ago} ago',
+
+  // --- Forecast card title + badges (Phase 15 D-01 / FUI-08) -------------
+  forecast_card_title:           'Revenue forecast',
+  forecast_card_description:     'Tomorrow through next year — actuals vs. SARIMAX BAU.',
+  forecast_uncalibrated_badge:   'Uncalibrated CI',
+  forecast_today_label:          'Today',
+
+  // --- Invoice count forecast card (Phase 15-15 / D-18) -------------------
+  invoice_forecast_card_title:       'Invoice count forecast',
+  invoice_forecast_card_description: 'Tomorrow through next year — actual transactions vs. forecast.',
+
   // --- KPI tiles (+page.svelte builds "Revenue · {range}") ---------------
   kpi_revenue: 'Revenue',
   kpi_transactions: 'Transactions',
@@ -121,6 +153,18 @@ const en = {
   empty_cohort_avg_ltv_heading: 'Not enough history',
   empty_cohort_avg_ltv_body: 'Grouping charts need at least 5 customers per group.',
 
+  // --- Forecast empty states (Phase 15 FUI-08) ----------------------------
+  empty_forecast_loading_heading:        'Forecast generating',
+  empty_forecast_loading_body:           'Check back tomorrow — the first nightly run is still pending.',
+  empty_forecast_quality_empty_heading:  'Accuracy data builds after first nightly run',
+  empty_forecast_quality_empty_body:     'Forecast accuracy metrics need at least one completed nightly evaluation cycle.',
+  empty_forecast_stale_heading:          'Data ≥24h stale',
+  empty_forecast_stale_body:             'Last refresh: {ago}. The nightly cascade may have skipped a run.',
+  empty_forecast_uncalibrated_ci_heading:'Uncalibrated for 1yr horizon',
+  empty_forecast_uncalibrated_ci_body:   'Need ≥2 years of history before the 1yr confidence band is reliable.',
+  empty_forecast_grain_pending_heading:  'Forecast not ready at this grain',
+  empty_forecast_grain_pending_body:     'Switch to 日 (day) — daily forecasts are live. Week and month forecasts populate on the next refresh.',
+
   // --- InsightCard footer + edit form ------------------------------------
   insight_week_ending: 'Week ending {date}',
   insight_refreshed_weekly: 'Refreshed weekly',
@@ -166,6 +210,38 @@ const de: Record<MessageKey, string> = {
   grain_week: 'Woche',
   grain_month: 'Monat',
   grain_selector_aria: 'Zeitraster-Auswahl',
+
+  // Forecast legend (Phase 15 D-04 / FUI-02) — placeholder copy mirrors EN
+  legend_aria:                  'Forecast model legend',
+  legend_model_sarimax:     'SARIMAX',
+  legend_model_prophet:         'Prophet',
+  legend_model_ets:             'ETS',
+  legend_model_theta:           'Theta',
+  legend_model_naive_dow:       'Naive (DoW)',
+  legend_model_chronos:         'Chronos',
+  legend_model_neuralprophet:   'NeuralProphet',
+
+  // Forecast hover popup (Phase 15 FUI-04) — placeholder copy mirrors EN
+  popup_forecast:                'Forecast',
+  popup_ci_95:                   '95% CI',
+  popup_horizon_days_one:        '{n} day from today',
+  popup_horizon_days_many:       '{n} days from today',
+  popup_rmse:                    'RMSE (last 7d)',
+  popup_mape:                    'MAPE (last 7d)',
+  popup_bias:                    'Bias (last 7d)',
+  popup_direction_hit:           'Direction hit rate',
+  popup_uplift_since_campaign:   'Δ since campaign',
+  popup_last_refit:              'Last refit {ago} ago',
+
+  // --- Forecast card title + badges (Phase 15 D-01 / FUI-08) -------------
+  forecast_card_title:           'Revenue forecast',
+  forecast_card_description:     'Tomorrow through next year — actuals vs. SARIMAX BAU.',
+  forecast_uncalibrated_badge:   'Uncalibrated CI',
+  forecast_today_label:          'Today',
+
+  // --- Invoice count forecast card (Phase 15-15 / D-18) -------------------
+  invoice_forecast_card_title:       'Transaktionsanzahl-Prognose',
+  invoice_forecast_card_description: 'Morgen bis nächstes Jahr — tatsächliche Transaktionen vs. Prognose.',
 
   kpi_revenue: 'Umsatz',
   kpi_transactions: 'Transaktionen',
@@ -260,6 +336,18 @@ const de: Record<MessageKey, string> = {
   empty_cohort_avg_ltv_heading: 'Zu wenig Verlauf',
   empty_cohort_avg_ltv_body: 'Gruppierungen benötigen mindestens 5 Kunden pro Gruppe.',
 
+  // Forecast empty states (Phase 15 FUI-08) — placeholder copy mirrors EN
+  empty_forecast_loading_heading:        'Forecast generating',
+  empty_forecast_loading_body:           'Check back tomorrow — the first nightly run is still pending.',
+  empty_forecast_quality_empty_heading:  'Accuracy data builds after first nightly run',
+  empty_forecast_quality_empty_body:     'Forecast accuracy metrics need at least one completed nightly evaluation cycle.',
+  empty_forecast_stale_heading:          'Data ≥24h stale',
+  empty_forecast_stale_body:             'Last refresh: {ago}. The nightly cascade may have skipped a run.',
+  empty_forecast_uncalibrated_ci_heading:'Uncalibrated for 1yr horizon',
+  empty_forecast_uncalibrated_ci_body:   'Need ≥2 years of history before the 1yr confidence band is reliable.',
+  empty_forecast_grain_pending_heading:  'Forecast not ready at this grain',
+  empty_forecast_grain_pending_body:     'Switch to 日 (day) — daily forecasts are live. Week and month forecasts populate on the next refresh.',
+
   insight_week_ending: 'Woche endend am {date}',
   insight_refreshed_weekly: 'Wöchentlich aktualisiert',
   insight_refreshed_with_last_run: 'Wöchentlich aktualisiert · zuletzt {date}',
@@ -302,6 +390,38 @@ const ja: Record<MessageKey, string> = {
   grain_week: '週',
   grain_month: '月',
   grain_selector_aria: '期間粒度の選択',
+
+  // Forecast legend (Phase 15 D-04 / FUI-02) — placeholder copy mirrors EN
+  legend_aria:                  'Forecast model legend',
+  legend_model_sarimax:     'SARIMAX',
+  legend_model_prophet:         'Prophet',
+  legend_model_ets:             'ETS',
+  legend_model_theta:           'Theta',
+  legend_model_naive_dow:       'Naive (DoW)',
+  legend_model_chronos:         'Chronos',
+  legend_model_neuralprophet:   'NeuralProphet',
+
+  // Forecast hover popup (Phase 15 FUI-04) — placeholder copy mirrors EN
+  popup_forecast:                'Forecast',
+  popup_ci_95:                   '95% CI',
+  popup_horizon_days_one:        '{n} day from today',
+  popup_horizon_days_many:       '{n} days from today',
+  popup_rmse:                    'RMSE (last 7d)',
+  popup_mape:                    'MAPE (last 7d)',
+  popup_bias:                    'Bias (last 7d)',
+  popup_direction_hit:           'Direction hit rate',
+  popup_uplift_since_campaign:   'Δ since campaign',
+  popup_last_refit:              'Last refit {ago} ago',
+
+  // --- Forecast card title + badges (Phase 15 D-01 / FUI-08) -------------
+  forecast_card_title:           'Revenue forecast',
+  forecast_card_description:     'Tomorrow through next year — actuals vs. SARIMAX BAU.',
+  forecast_uncalibrated_badge:   'Uncalibrated CI',
+  forecast_today_label:          'Today',
+
+  // --- Invoice count forecast card (Phase 15-15 / D-18) -------------------
+  invoice_forecast_card_title:       '取引件数の予測',
+  invoice_forecast_card_description: '明日から1年後まで — 実際の取引件数と予測の比較。',
 
   kpi_revenue: '売上',
   kpi_transactions: '取引件数',
@@ -395,6 +515,18 @@ const ja: Record<MessageKey, string> = {
   empty_cohort_avg_ltv_heading: '履歴が不足',
   empty_cohort_avg_ltv_body: 'グループ表示には1グループあたり5名以上必要です。',
 
+  // Forecast empty states (Phase 15 FUI-08) — placeholder copy mirrors EN
+  empty_forecast_loading_heading:        'Forecast generating',
+  empty_forecast_loading_body:           'Check back tomorrow — the first nightly run is still pending.',
+  empty_forecast_quality_empty_heading:  'Accuracy data builds after first nightly run',
+  empty_forecast_quality_empty_body:     'Forecast accuracy metrics need at least one completed nightly evaluation cycle.',
+  empty_forecast_stale_heading:          'Data ≥24h stale',
+  empty_forecast_stale_body:             'Last refresh: {ago}. The nightly cascade may have skipped a run.',
+  empty_forecast_uncalibrated_ci_heading:'Uncalibrated for 1yr horizon',
+  empty_forecast_uncalibrated_ci_body:   'Need ≥2 years of history before the 1yr confidence band is reliable.',
+  empty_forecast_grain_pending_heading:  'この粒度の予測は準備中です',
+  empty_forecast_grain_pending_body:     '「日」に切り替えると日次の予測を確認できます。週次・月次は次回更新で生成されます。',
+
   insight_week_ending: '{date}終了週',
   insight_refreshed_weekly: '週次更新',
   insight_refreshed_with_last_run: '週次更新 · 最終実行 {date}',
@@ -437,6 +569,38 @@ const es: Record<MessageKey, string> = {
   grain_week: 'Semana',
   grain_month: 'Mes',
   grain_selector_aria: 'Selector de granularidad',
+
+  // Forecast legend (Phase 15 D-04 / FUI-02) — placeholder copy mirrors EN
+  legend_aria:                  'Forecast model legend',
+  legend_model_sarimax:     'SARIMAX',
+  legend_model_prophet:         'Prophet',
+  legend_model_ets:             'ETS',
+  legend_model_theta:           'Theta',
+  legend_model_naive_dow:       'Naive (DoW)',
+  legend_model_chronos:         'Chronos',
+  legend_model_neuralprophet:   'NeuralProphet',
+
+  // Forecast hover popup (Phase 15 FUI-04) — placeholder copy mirrors EN
+  popup_forecast:                'Forecast',
+  popup_ci_95:                   '95% CI',
+  popup_horizon_days_one:        '{n} day from today',
+  popup_horizon_days_many:       '{n} days from today',
+  popup_rmse:                    'RMSE (last 7d)',
+  popup_mape:                    'MAPE (last 7d)',
+  popup_bias:                    'Bias (last 7d)',
+  popup_direction_hit:           'Direction hit rate',
+  popup_uplift_since_campaign:   'Δ since campaign',
+  popup_last_refit:              'Last refit {ago} ago',
+
+  // --- Forecast card title + badges (Phase 15 D-01 / FUI-08) -------------
+  forecast_card_title:           'Revenue forecast',
+  forecast_card_description:     'Tomorrow through next year — actuals vs. SARIMAX BAU.',
+  forecast_uncalibrated_badge:   'Uncalibrated CI',
+  forecast_today_label:          'Today',
+
+  // --- Invoice count forecast card (Phase 15-15 / D-18) -------------------
+  invoice_forecast_card_title:       'Pronóstico de transacciones',
+  invoice_forecast_card_description: 'De mañana hasta el próximo año — transacciones reales vs. pronóstico.',
 
   kpi_revenue: 'Ingresos',
   kpi_transactions: 'Transacciones',
@@ -531,6 +695,18 @@ const es: Record<MessageKey, string> = {
   empty_cohort_avg_ltv_heading: 'Historial insuficiente',
   empty_cohort_avg_ltv_body: 'Los gráficos de cohorte necesitan al menos 5 clientes por grupo.',
 
+  // Forecast empty states (Phase 15 FUI-08) — placeholder copy mirrors EN
+  empty_forecast_loading_heading:        'Forecast generating',
+  empty_forecast_loading_body:           'Check back tomorrow — the first nightly run is still pending.',
+  empty_forecast_quality_empty_heading:  'Accuracy data builds after first nightly run',
+  empty_forecast_quality_empty_body:     'Forecast accuracy metrics need at least one completed nightly evaluation cycle.',
+  empty_forecast_stale_heading:          'Data ≥24h stale',
+  empty_forecast_stale_body:             'Last refresh: {ago}. The nightly cascade may have skipped a run.',
+  empty_forecast_uncalibrated_ci_heading:'Uncalibrated for 1yr horizon',
+  empty_forecast_uncalibrated_ci_body:   'Need ≥2 years of history before the 1yr confidence band is reliable.',
+  empty_forecast_grain_pending_heading:  'Forecast not ready at this grain',
+  empty_forecast_grain_pending_body:     'Switch to 日 (day) — daily forecasts are live. Week and month forecasts populate on the next refresh.',
+
   insight_week_ending: 'Semana que termina el {date}',
   insight_refreshed_weekly: 'Actualizado semanalmente',
   insight_refreshed_with_last_run: 'Actualizado semanalmente · última ejecución {date}',
@@ -573,6 +749,38 @@ const fr: Record<MessageKey, string> = {
   grain_week: 'Semaine',
   grain_month: 'Mois',
   grain_selector_aria: 'Sélecteur de granularité',
+
+  // Forecast legend (Phase 15 D-04 / FUI-02) — placeholder copy mirrors EN
+  legend_aria:                  'Forecast model legend',
+  legend_model_sarimax:     'SARIMAX',
+  legend_model_prophet:         'Prophet',
+  legend_model_ets:             'ETS',
+  legend_model_theta:           'Theta',
+  legend_model_naive_dow:       'Naive (DoW)',
+  legend_model_chronos:         'Chronos',
+  legend_model_neuralprophet:   'NeuralProphet',
+
+  // Forecast hover popup (Phase 15 FUI-04) — placeholder copy mirrors EN
+  popup_forecast:                'Forecast',
+  popup_ci_95:                   '95% CI',
+  popup_horizon_days_one:        '{n} day from today',
+  popup_horizon_days_many:       '{n} days from today',
+  popup_rmse:                    'RMSE (last 7d)',
+  popup_mape:                    'MAPE (last 7d)',
+  popup_bias:                    'Bias (last 7d)',
+  popup_direction_hit:           'Direction hit rate',
+  popup_uplift_since_campaign:   'Δ since campaign',
+  popup_last_refit:              'Last refit {ago} ago',
+
+  // --- Forecast card title + badges (Phase 15 D-01 / FUI-08) -------------
+  forecast_card_title:           'Revenue forecast',
+  forecast_card_description:     'Tomorrow through next year — actuals vs. SARIMAX BAU.',
+  forecast_uncalibrated_badge:   'Uncalibrated CI',
+  forecast_today_label:          'Today',
+
+  // --- Invoice count forecast card (Phase 15-15 / D-18) -------------------
+  invoice_forecast_card_title:       'Prévision du nombre de transactions',
+  invoice_forecast_card_description: "De demain à l'année prochaine — transactions réelles vs. prévision.",
 
   kpi_revenue: "Chiffre d'affaires",
   kpi_transactions: 'Transactions',
@@ -666,6 +874,18 @@ const fr: Record<MessageKey, string> = {
   empty_cohort_revenue_body: 'Les graphiques de cohorte nécessitent au moins 5 clients par groupe.',
   empty_cohort_avg_ltv_heading: 'Historique insuffisant',
   empty_cohort_avg_ltv_body: 'Les graphiques de cohorte nécessitent au moins 5 clients par groupe.',
+
+  // Forecast empty states (Phase 15 FUI-08) — placeholder copy mirrors EN
+  empty_forecast_loading_heading:        'Forecast generating',
+  empty_forecast_loading_body:           'Check back tomorrow — the first nightly run is still pending.',
+  empty_forecast_quality_empty_heading:  'Accuracy data builds after first nightly run',
+  empty_forecast_quality_empty_body:     'Forecast accuracy metrics need at least one completed nightly evaluation cycle.',
+  empty_forecast_stale_heading:          'Data ≥24h stale',
+  empty_forecast_stale_body:             'Last refresh: {ago}. The nightly cascade may have skipped a run.',
+  empty_forecast_uncalibrated_ci_heading:'Uncalibrated for 1yr horizon',
+  empty_forecast_uncalibrated_ci_body:   'Need ≥2 years of history before the 1yr confidence band is reliable.',
+  empty_forecast_grain_pending_heading:  'Forecast not ready at this grain',
+  empty_forecast_grain_pending_body:     'Switch to 日 (day) — daily forecasts are live. Week and month forecasts populate on the next refresh.',
 
   insight_week_ending: 'Semaine se terminant le {date}',
   insight_refreshed_weekly: 'Actualisé chaque semaine',

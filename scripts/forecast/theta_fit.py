@@ -1,22 +1,26 @@
-"""Phase 14: AutoTheta model fit and forecast writer.
+"""Phase 14 / 15-10: AutoTheta model fit and forecast writer.
 
 Subprocess entry point — run as:
     python -m scripts.forecast.theta_fit
 
-Reads RESTAURANT_ID, KPI_NAME, RUN_DATE from env vars.
-Writes 365 rows to forecast_daily via chunked upsert (100 rows/chunk).
+Reads RESTAURANT_ID, KPI_NAME, RUN_DATE, GRANULARITY from env vars.
 
 Design decisions:
-  D-03: Train on open-day-only series.
-  D-16: Bootstrap residuals for 200 sample paths (no native simulate in StatsForecast).
+  D-03: Daily grain trains on open-day-only series. Weekly/monthly grains
+        aggregate the full daily history (closed days roll into bucket sums).
+  D-16: Bootstrap residuals for 200 sample paths (no native simulate in
+        StatsForecast).
   No exog — Theta is purely univariate.
+
+15-10: GRANULARITY env (day|week|month) selects native bucket cadence,
+TRAIN_END (D-14), horizon, and season_length.
 """
 from __future__ import annotations
 import json
 import os
 import sys
 import traceback
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, timezone
 
 import numpy as np
 import pandas as pd
@@ -25,23 +29,27 @@ from statsforecast.models import AutoTheta
 
 from scripts.forecast.db import make_client
 from scripts.forecast.closed_days import zero_closed_days, filter_open_days
+from scripts.forecast.aggregation import bucket_to_weekly, bucket_to_monthly
 from scripts.forecast.sample_paths import bootstrap_from_residuals, paths_to_jsonb
+from scripts.forecast.grain_helpers import (
+    HORIZON_BY_GRAIN,
+    parse_granularity_env,
+    pred_dates_for_grain,
+    train_end_for_grain,
+)
 from scripts.external.pipeline_runs_writer import write_success, write_failure
 
 # --- Constants ---
 N_PATHS = 200
-HORIZON = 365
 STEP_NAME = 'forecast_theta'
 CHUNK_SIZE = 100
-SEASON_LENGTH = 7  # weekly seasonality
+
+# 15-10: per-grain knob (D-14). HORIZON_BY_GRAIN now lives in grain_helpers.
+SEASON_LENGTH_BY_GRAIN = {'day': 7, 'week': 52, 'month': 12}
 
 
 def _fetch_history(client, *, restaurant_id: str, kpi_name: str) -> pd.DataFrame:
-    """Fetch kpi_daily_mv history and shop_calendar is_open for open-day filtering.
-
-    kpi_daily_mv has columns: business_date, revenue_cents, tx_count.
-    is_open comes from shop_calendar (not kpi_daily_mv).
-    """
+    """Fetch kpi_daily_mv history and shop_calendar is_open for open-day filtering."""
     resp = (
         client.table('kpi_daily_mv')
         .select('business_date,revenue_cents,tx_count')
@@ -54,14 +62,12 @@ def _fetch_history(client, *, restaurant_id: str, kpi_name: str) -> pd.DataFrame
     if not rows:
         raise RuntimeError(f'No history found for restaurant_id={restaurant_id}')
     df = pd.DataFrame(rows)
-    # Map actual MV columns to canonical names
     df.rename(columns={'business_date': 'date'}, inplace=True)
     df['date'] = pd.to_datetime(df['date']).dt.date
     df['revenue_eur'] = df['revenue_cents'] / 100.0
     df['invoice_count'] = df['tx_count'].astype(float)
     df = df.sort_values('date').reset_index(drop=True)
 
-    # Fetch is_open from shop_calendar (kpi_daily_mv does not have this column)
     cal_resp = (
         client.table('shop_calendar')
         .select('date,is_open')
@@ -78,7 +84,6 @@ def _fetch_history(client, *, restaurant_id: str, kpi_name: str) -> pd.DataFrame
         cal_lookup = dict(zip(cal_df['date'], cal_df['is_open']))
         df['is_open'] = [cal_lookup.get(d, True) for d in df['date']]
     else:
-        # Default: assume all days open if no shop_calendar data
         df['is_open'] = True
 
     if kpi_name not in df.columns:
@@ -104,16 +109,17 @@ def _fetch_shop_calendar(client, *, restaurant_id: str, start_date: date, end_da
     return df
 
 
-def _fit_theta(y: np.ndarray) -> tuple:
-    """Fit AutoTheta on open-day series.
+def _fit_theta(y: np.ndarray, *, season_length: int) -> tuple:
+    """Fit AutoTheta on a 1-D series.
 
     StatsForecast expects a DataFrame with columns: unique_id, ds, y.
-    freq=1 means integer-indexed (step = one open day).
+    freq=1 means integer-indexed (step = one bucket; we don't expose calendar
+    dates to StatsForecast since open-day filtering / bucket cadence already
+    aligns rows).
 
-    Returns (fitted StatsForecast object, in-sample fitted values for residual computation).
+    Returns (fitted StatsForecast object, training DataFrame).
     """
     n = len(y)
-    # Build integer time index (open-day index, not calendar dates)
     train_df = pd.DataFrame({
         'unique_id': ['ts'] * n,
         'ds': np.arange(n),
@@ -121,7 +127,7 @@ def _fit_theta(y: np.ndarray) -> tuple:
     })
 
     sf = StatsForecast(
-        models=[AutoTheta(season_length=SEASON_LENGTH)],
+        models=[AutoTheta(season_length=season_length)],
         freq=1,
     )
     sf.fit(train_df)
@@ -135,7 +141,7 @@ def _open_future_dates(shop_cal: pd.DataFrame, pred_dates: list) -> list:
     return [d for d in pred_dates if d not in cal_dates or d in open_set]
 
 
-def _build_forecast_rows(
+def _build_forecast_rows_daily(
     *,
     samples: np.ndarray,
     open_dates: list,
@@ -143,8 +149,10 @@ def _build_forecast_rows(
     restaurant_id: str,
     kpi_name: str,
     run_date: date,
-) -> list[dict]:
-    """Map open-day samples to calendar forecast rows. Closed dates get yhat=0."""
+    granularity: str,
+    season_length: int,
+) -> list:
+    """Daily-grain row builder. Closed dates get yhat=0 (fixed up by zero_closed_days)."""
     open_date_idx = {d: i for i, d in enumerate(open_dates)}
 
     rows = []
@@ -169,17 +177,51 @@ def _build_forecast_rows(
             'model_name': 'theta',
             'run_date': str(run_date),
             'forecast_track': 'bau',
+            'granularity': granularity,
             'yhat': round(yhat, 4),
             'yhat_lower': round(yhat_lower, 4),
             'yhat_upper': round(yhat_upper, 4),
             'yhat_samples': yhat_samples_json,
-            'exog_signature': json.dumps({'model': 'theta', 'season_length': SEASON_LENGTH}),
+            'exog_signature': json.dumps({'model': 'theta', 'season_length': season_length}),
         })
     return rows
 
 
-def _upsert_rows(client, rows: list[dict]) -> int:
-    """Upsert rows in chunks of CHUNK_SIZE. Returns total count inserted/updated."""
+def _build_forecast_rows_bucket(
+    *,
+    samples: np.ndarray,
+    pred_dates: list,
+    restaurant_id: str,
+    kpi_name: str,
+    run_date: date,
+    granularity: str,
+    season_length: int,
+) -> list:
+    """Weekly/monthly row builder."""
+    rows = []
+    for i, target_date in enumerate(pred_dates):
+        path_values = samples[i]
+        yhat = float(np.mean(path_values))
+        yhat_lower = float(np.percentile(path_values, 10))
+        yhat_upper = float(np.percentile(path_values, 90))
+        rows.append({
+            'restaurant_id': restaurant_id,
+            'kpi_name': kpi_name,
+            'target_date': str(target_date),
+            'model_name': 'theta',
+            'run_date': str(run_date),
+            'forecast_track': 'bau',
+            'granularity': granularity,
+            'yhat': round(yhat, 4),
+            'yhat_lower': round(yhat_lower, 4),
+            'yhat_upper': round(yhat_upper, 4),
+            'yhat_samples': paths_to_jsonb(samples, i),
+            'exog_signature': json.dumps({'model': 'theta', 'season_length': season_length}),
+        })
+    return rows
+
+
+def _upsert_rows(client, rows: list) -> int:
     total = 0
     for start in range(0, len(rows), CHUNK_SIZE):
         chunk = rows[start:start + CHUNK_SIZE]
@@ -194,88 +236,140 @@ def fit_and_write(
     restaurant_id: str,
     kpi_name: str,
     run_date: date,
+    granularity: str = 'day',
 ) -> int:
-    """Core logic: fit AutoTheta on open days, bootstrap 200 paths, write 365 rows.
+    """Core logic: fit AutoTheta at the chosen grain, bootstrap paths, write rows."""
+    horizon = HORIZON_BY_GRAIN[granularity]
+    season_length = SEASON_LENGTH_BY_GRAIN[granularity]
 
-    Returns the number of rows written to forecast_daily.
-    """
-    # 1. Fetch training history
+    # 1. Fetch training history.
     history = _fetch_history(client, restaurant_id=restaurant_id, kpi_name=kpi_name)
+    last_actual = history['date'].iloc[-1]
+    train_end = train_end_for_grain(last_actual, granularity)
+    print(
+        f'[theta_fit] grain={granularity} last_actual={last_actual} '
+        f'train_end={train_end} horizon={horizon} season_length={season_length}'
+    )
 
-    # 2. Filter to open days only (D-03)
-    open_history = filter_open_days(history)
-    if len(open_history) < SEASON_LENGTH * 2:
-        raise RuntimeError(
-            f'Insufficient open-day history: {len(open_history)} rows (need >= {SEASON_LENGTH * 2})'
+    # 2. Truncate to <= train_end.
+    history = history[history['date'] <= train_end].reset_index(drop=True)
+    if history.empty:
+        raise RuntimeError(f'Empty history after train_end cutoff {train_end}')
+
+    if granularity == 'day':
+        # 3a. Daily path: open-day-only fit + closed-day post-hoc zeroing.
+        open_history = filter_open_days(history)
+        if len(open_history) < season_length * 2:
+            raise RuntimeError(
+                f'Insufficient open-day history: {len(open_history)} rows (need >= {season_length * 2})'
+            )
+        y = open_history['y'].values
+
+        sf, _ = _fit_theta(y, season_length=season_length)
+        print(f'[theta_fit] Fitted AutoTheta for {kpi_name}/day on {len(y)} open-day observations')
+
+        all_pred_dates = pred_dates_for_grain(
+            run_date=run_date, granularity='day', horizon=horizon,
         )
-    y = open_history['y'].values
+        shop_cal = _fetch_shop_calendar(
+            client,
+            restaurant_id=restaurant_id,
+            start_date=all_pred_dates[0],
+            end_date=all_pred_dates[-1],
+        )
+        open_future = _open_future_dates(shop_cal, all_pred_dates)
+        n_open = len(open_future)
+        if n_open == 0:
+            raise RuntimeError('No open days in forecast window — check shop_calendar')
 
-    # 3. Fit AutoTheta model
-    sf, train_df = _fit_theta(y)
-    print(f'[theta_fit] Fitted AutoTheta for {kpi_name} on {len(y)} open-day observations')
+        pred_df = sf.forecast(h=n_open, fitted=True)
+        point_forecast = pred_df['AutoTheta'].values
 
-    # 4. Define prediction window
-    pred_start = run_date + timedelta(days=1)
-    pred_end = run_date + timedelta(days=HORIZON)
-    all_pred_dates = [pred_start + timedelta(days=i) for i in range(HORIZON)]
+        fitted_df = sf.forecast_fitted_values()
+        fitted_vals = fitted_df['AutoTheta'].values
+        residuals = y[:len(fitted_vals)] - fitted_vals
+        residuals = residuals[~np.isnan(residuals)]
 
-    # 5. Fetch shop calendar and find open future dates
-    shop_cal = _fetch_shop_calendar(
-        client,
-        restaurant_id=restaurant_id,
-        start_date=pred_start,
-        end_date=pred_end,
-    )
-    open_future = _open_future_dates(shop_cal, all_pred_dates)
-    n_open = len(open_future)
-    if n_open == 0:
-        raise RuntimeError('No open days in forecast window — check shop_calendar')
+        samples = bootstrap_from_residuals(
+            point_forecast=point_forecast,
+            residuals=residuals,
+            n_paths=N_PATHS,
+        )
+        assert samples.shape == (n_open, N_PATHS), f'Unexpected samples shape: {samples.shape}'
 
-    # 6. Point forecast for n_open open days + fitted values for residuals
-    #    forecast(fitted=True) enables forecast_fitted_values() afterwards
-    pred_df = sf.forecast(h=n_open, fitted=True)
-    point_forecast = pred_df['AutoTheta'].values  # shape: (n_open,)
+        rows = _build_forecast_rows_daily(
+            samples=samples,
+            open_dates=open_future,
+            all_pred_dates=all_pred_dates,
+            restaurant_id=restaurant_id,
+            kpi_name=kpi_name,
+            run_date=run_date,
+            granularity='day',
+            season_length=season_length,
+        )
+        preds_df = pd.DataFrame(rows)
+        preds_df['target_date'] = pd.to_datetime(preds_df['target_date']).dt.date
+        preds_df = zero_closed_days(preds_df, shop_cal)
+    else:
+        # 3b. Weekly/monthly: aggregate full series, fit on bucket counts.
+        if granularity == 'week':
+            agg = bucket_to_weekly(history, value_col='y', date_col='date')
+            agg = agg.rename(columns={'week_start': 'bucket_start'})
+        else:  # 'month'
+            agg = bucket_to_monthly(history, value_col='y', date_col='date')
+            agg = agg.rename(columns={'month_start': 'bucket_start'})
+        if agg.empty:
+            raise RuntimeError(f'Empty aggregation for grain={granularity}')
 
-    # 7. Compute in-sample residuals for bootstrap (D-16)
-    fitted_df = sf.forecast_fitted_values()
-    fitted_vals = fitted_df['AutoTheta'].values
-    residuals = y[:len(fitted_vals)] - fitted_vals
-    residuals = residuals[~np.isnan(residuals)]  # strip NaN warm-up period
+        y = agg['y'].astype(float).values
+        if len(y) < season_length * 2:
+            raise RuntimeError(
+                f'Insufficient {granularity} history: {len(y)} buckets (need >= {season_length * 2})'
+            )
 
-    # 8. Bootstrap 200 sample paths from residuals (D-16)
-    samples = bootstrap_from_residuals(
-        point_forecast=point_forecast,
-        residuals=residuals,
-        n_paths=N_PATHS,
-    )
-    assert samples.shape == (n_open, N_PATHS), f'Unexpected samples shape: {samples.shape}'
+        sf, _ = _fit_theta(y, season_length=season_length)
+        print(f'[theta_fit] Fitted AutoTheta for {kpi_name}/{granularity} on {len(y)} buckets')
 
-    # 9. Build forecast rows
-    rows = _build_forecast_rows(
-        samples=samples,
-        open_dates=open_future,
-        all_pred_dates=all_pred_dates,
-        restaurant_id=restaurant_id,
-        kpi_name=kpi_name,
-        run_date=run_date,
-    )
-    preds_df = pd.DataFrame(rows)
-    preds_df['target_date'] = pd.to_datetime(preds_df['target_date']).dt.date
+        pred_dates = pred_dates_for_grain(
+            run_date=run_date, granularity=granularity, horizon=horizon,
+        )
+        pred_df = sf.forecast(h=horizon, fitted=True)
+        point_forecast = pred_df['AutoTheta'].values
 
-    # 10. Zero closed days post-hoc (belt-and-suspenders)
-    preds_df = zero_closed_days(preds_df, shop_cal)
+        fitted_df = sf.forecast_fitted_values()
+        fitted_vals = fitted_df['AutoTheta'].values
+        residuals = y[:len(fitted_vals)] - fitted_vals
+        residuals = residuals[~np.isnan(residuals)]
 
-    # 11. Restore target_date to str for upsert
+        samples = bootstrap_from_residuals(
+            point_forecast=point_forecast,
+            residuals=residuals,
+            n_paths=N_PATHS,
+        )
+        assert samples.shape == (horizon, N_PATHS), f'Unexpected samples shape: {samples.shape}'
+
+        rows = _build_forecast_rows_bucket(
+            samples=samples,
+            pred_dates=pred_dates,
+            restaurant_id=restaurant_id,
+            kpi_name=kpi_name,
+            run_date=run_date,
+            granularity=granularity,
+            season_length=season_length,
+        )
+        preds_df = pd.DataFrame(rows)
+        preds_df['target_date'] = pd.to_datetime(preds_df['target_date']).dt.date
+
+    # 4. Restore target_date to str for upsert
     preds_df['target_date'] = preds_df['target_date'].astype(str)
 
-    # 12. Chunked upsert
+    # 5. Chunked upsert
     final_rows = preds_df.to_dict(orient='records')
     n = _upsert_rows(client, final_rows)
     return n
 
 
 if __name__ == '__main__':
-    # Read env vars
     restaurant_id = os.environ.get('RESTAURANT_ID', '').strip()
     kpi_name = os.environ.get('KPI_NAME', '').strip()
     run_date_str = os.environ.get('RUN_DATE', '').strip()
@@ -283,13 +377,24 @@ if __name__ == '__main__':
     if not restaurant_id or not kpi_name or not run_date_str:
         print('ERROR: RESTAURANT_ID, KPI_NAME, and RUN_DATE env vars are required', file=sys.stderr)
         sys.exit(1)
+    try:
+        granularity = parse_granularity_env(os.environ.get('GRANULARITY'))
+    except ValueError as e:
+        print(f'ERROR: {e}', file=sys.stderr)
+        sys.exit(1)
 
     run_date = date.fromisoformat(run_date_str)
     started_at = datetime.now(timezone.utc)
     client = make_client()
 
     try:
-        n = fit_and_write(client, restaurant_id=restaurant_id, kpi_name=kpi_name, run_date=run_date)
+        n = fit_and_write(
+            client,
+            restaurant_id=restaurant_id,
+            kpi_name=kpi_name,
+            run_date=run_date,
+            granularity=granularity,
+        )
         write_success(
             client,
             step_name=STEP_NAME,
@@ -297,7 +402,7 @@ if __name__ == '__main__':
             row_count=n,
             restaurant_id=restaurant_id,
         )
-        print(f'[theta_fit] Done: {n} rows written for {kpi_name}')
+        print(f'[theta_fit] Done: {n} rows written for {kpi_name}/{granularity}')
         sys.exit(0)
     except Exception:
         err_msg = traceback.format_exc()

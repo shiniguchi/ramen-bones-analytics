@@ -19,7 +19,14 @@ export const emptyStates = {
 
   // quick-260424-mdc: MDE curve needs ≥ 7 baseline days to draw.
   // Heading reuses the card title; body carries the why.
-  'mde-curve':        { headingKey: 'mde_title',                       bodyKey: 'mde_empty' }
+  'mde-curve':        { headingKey: 'mde_title',                       bodyKey: 'mde_empty' },
+
+  // Phase 15 FUI-08
+  'forecast-loading':         { headingKey: 'empty_forecast_loading_heading',         bodyKey: 'empty_forecast_loading_body' },
+  'forecast-quality-empty':   { headingKey: 'empty_forecast_quality_empty_heading',   bodyKey: 'empty_forecast_quality_empty_body' },
+  'forecast-stale':           { headingKey: 'empty_forecast_stale_heading',           bodyKey: 'empty_forecast_stale_body' },
+  'forecast-uncalibrated-ci': { headingKey: 'empty_forecast_uncalibrated_ci_heading', bodyKey: 'empty_forecast_uncalibrated_ci_body' },
+  'forecast-grain-pending':   { headingKey: 'empty_forecast_grain_pending_heading',   bodyKey: 'empty_forecast_grain_pending_body' }
 } as const satisfies Record<string, { headingKey: MessageKey; bodyKey: MessageKey }>;
 
 export type EmptyCard = keyof typeof emptyStates;
