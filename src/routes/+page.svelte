@@ -19,6 +19,7 @@
   import MdeCurveCard from '$lib/components/MdeCurveCard.svelte';
   import RepeaterCohortCountCard from '$lib/components/RepeaterCohortCountCard.svelte';
   import RevenueForecastCard from '$lib/components/RevenueForecastCard.svelte';
+  import InvoiceCountForecastCard from '$lib/components/InvoiceCountForecastCard.svelte';
   import LazyMount from '$lib/components/LazyMount.svelte';
   import { clientFetch } from '$lib/clientFetch';
   import {
@@ -272,6 +273,15 @@
     <LazyMount minHeight="320px">
       {#snippet children()}
         <RevenueForecastCard />
+      {/snippet}
+    </LazyMount>
+
+    <!-- Phase 15-15 / D-18: InvoiceCountForecastCard mirrors the revenue card
+         for the invoice_count KPI. Self-fetches /api/forecast?kpi=invoice_count
+         on grain change. LazyMount only defers DOM mount until in-view. -->
+    <LazyMount minHeight="320px">
+      {#snippet children()}
+        <InvoiceCountForecastCard />
       {/snippet}
     </LazyMount>
 
