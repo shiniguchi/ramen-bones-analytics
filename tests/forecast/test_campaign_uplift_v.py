@@ -58,17 +58,11 @@ from datetime import date, datetime, timezone
 import pytest
 
 
-# Module-level skip — flipped to active after Plan 07 Task 3 db push.
-# Remove this marker when migration 0062 is on DEV; the per-test runtime
-# `pytest.skip(...)` calls inside `_supabase_client()` then handle the
-# "no env vars in CI" path.
-pytestmark = pytest.mark.skip(
-    reason=(
-        "RED: migration 0062 (campaign_uplift backing table + view + CHECK "
-        "constraint) not yet on DEV. Plan 07 Task 3 lands the supabase db "
-        "push; after that, remove this module-level skip and re-run."
-    )
-)
+# Module-level skip removed 2026-05-02 after Plan 07 Task 3 db push.
+# Migration 0064 (campaign_uplift backing table + 2 wrapper views + CHECK
+# constraints) is now on DEV. Per-test runtime `pytest.skip(...)` calls
+# inside `_supabase_client()` handle the "no env vars in CI" path; tests
+# run only when SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY are set.
 
 # Friend-owner campaign — seeded in migration 0058. Re-stated here so the
 # tests are readable without cross-referencing the migration.
