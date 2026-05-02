@@ -14,7 +14,7 @@ The full traceback lives in the GHA workflow log; pipeline_runs is
 the human-triage breadcrumb, not the system-of-record for stack traces.
 """
 from __future__ import annotations
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from typing import Optional
 import os
 
@@ -48,8 +48,15 @@ def write_success(
     upstream_freshness_h: Optional[float] = None,
     restaurant_id: Optional[str] = None,
     commit_sha: Optional[str] = None,
+    fit_train_end: Optional[date] = None,
 ) -> None:
-    """Insert a 'success' row."""
+    """Insert a 'success' row.
+
+    Phase 16 D-05: fit_train_end is the per-fit cutoff for Track-B (CF) fits.
+    BAU rows leave it NULL; CF rows populate it (= min(campaign_start) - 7d
+    by default). PostgREST tolerates the field on schemas without the column
+    (pre-migration 0063); after Plan 04 db push, the column is real.
+    """
     payload = {
         'step_name': step_name,
         'started_at': started_at.isoformat(),
@@ -61,6 +68,7 @@ def write_success(
         'restaurant_id': restaurant_id,
         'commit_sha': commit_sha or _commit_sha(),
     }
+    payload['fit_train_end'] = fit_train_end.isoformat() if fit_train_end else None
     res = client.table('pipeline_runs').insert(payload).execute()
     if getattr(res, 'error', None):
         raise RuntimeError(f'pipeline_runs insert (success) failed: {res.error}')
@@ -76,6 +84,7 @@ def write_fallback(
     upstream_freshness_h: Optional[float] = None,
     restaurant_id: Optional[str] = None,
     commit_sha: Optional[str] = None,
+    fit_train_end: Optional[date] = None,
 ) -> None:
     """Insert a 'fallback' row — primary source failed but cascade may continue."""
     payload = {
@@ -89,6 +98,7 @@ def write_fallback(
         'restaurant_id': restaurant_id,
         'commit_sha': commit_sha or _commit_sha(),
     }
+    payload['fit_train_end'] = fit_train_end.isoformat() if fit_train_end else None
     res = client.table('pipeline_runs').insert(payload).execute()
     if getattr(res, 'error', None):
         raise RuntimeError(f'pipeline_runs insert (fallback) failed: {res.error}')
@@ -102,6 +112,7 @@ def write_failure(
     error_msg: str,
     restaurant_id: Optional[str] = None,
     commit_sha: Optional[str] = None,
+    fit_train_end: Optional[date] = None,
 ) -> None:
     """Insert a 'failure' row — this source's data is missing this run."""
     payload = {
@@ -115,6 +126,7 @@ def write_failure(
         'restaurant_id': restaurant_id,
         'commit_sha': commit_sha or _commit_sha(),
     }
+    payload['fit_train_end'] = fit_train_end.isoformat() if fit_train_end else None
     res = client.table('pipeline_runs').insert(payload).execute()
     if getattr(res, 'error', None):
         raise RuntimeError(f'pipeline_runs insert (failure) failed: {res.error}')
