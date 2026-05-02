@@ -294,7 +294,7 @@ Plans:
   4. `campaign_uplift_v` exposes per-campaign-window `Σ(actual − Track-B)` with 95% Monte Carlo CI from 1000 sample paths AND a `naive_dow_uplift_eur` cross-check column (sanity check against trend-extrapolation false positives in the declining 10-month pre-period); cumulative-since-launch shown as a running total per `(campaign, model)`
   5. `CampaignUpliftCard.svelte` renders the per-campaign cumulative uplift on the dashboard at 375px; explicitly displays "CI overlaps zero — no detectable lift" when 95% CI includes 0; never reports a single-point estimate without its CI band; tap-to-pin tooltip explains the 7-day anticipation buffer in plain language
   6. `cumulative_uplift.py` runs nightly after Track-B forecast completes; quarterly off-week reminder fires from a `feature_flags` table on 2026-10-15 (~6 months post-campaign) to re-anchor the counterfactual; `EventMarker.svelte` overlays campaign-start markers on `RevenueForecastCard.svelte` from Phase 15
-**Plans:** 6/13 plans executed
+**Plans:** 7/13 plans executed
 Plans:
   **Wave 1 — Schema (parallel-safe; closes with [BLOCKING] supabase db push) ✓ complete 2026-05-02**
   - [x] 16-01-PLAN.md — campaign_calendar migration + 2026-04-14 seed
@@ -304,7 +304,7 @@ Plans:
   **Wave 2 *(blocked on Wave 1 completion)* — Track-B Python pipeline (closes with [BLOCKING] db push for migration 0062 + DB CHECK)**
   - [x] 16-05-PLAN.md — counterfactual_fit.py + run_all.py --track flag (Track-B fits)
   - [x] 16-06-PLAN.md — cumulative_uplift.py — bootstrap CI math + per-day rows for sparkline (TDD)
-  - [ ] 16-07-PLAN.md — campaign_uplift_v + campaign_uplift_daily_v + DB CHECK constraint + Wave-2 db push
+  - [x] 16-07-PLAN.md — campaign_uplift_v + campaign_uplift_daily_v + DB CHECK constraint + Wave-2 db push
   **Wave 3 *(blocked on Wave 2 completion)* — API + UI (closes with localhost-first Chrome MCP gates)**
   - [ ] 16-08-PLAN.md — /api/campaign-uplift extended payload (daily[] array) + /api/forecast events campaign_start source
   - [ ] 16-09-PLAN.md — CampaignUpliftCard.svelte + dashboard slot + retire CAMPAIGN_START
@@ -354,7 +354,7 @@ Plans:
 | 13. External Data Ingestion | v1.3 | 0/? | Not started | — |
 | 14. Forecasting Engine — BAU Track | v1.3 | 0/? | Not started | — |
 | 15. Forecast Chart UI | v1.3 | 0/? | Not started | — |
-| 16. ITS Uplift Attribution | v1.3 | 6/13 | In Progress|  |
+| 16. ITS Uplift Attribution | v1.3 | 7/13 | In Progress|  |
 | 17. Backtest Gate & Quality Monitoring | v1.3 | 0/? | Not started | — |
 
 ## Coverage Summary

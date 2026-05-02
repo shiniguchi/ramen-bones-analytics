@@ -394,8 +394,8 @@ Each requirement maps to exactly one roadmap phase.
 | UPL-01 | Phase 16 — ITS Uplift Attribution | Pending | — |
 | UPL-02 | Phase 16 — ITS Uplift Attribution | Pending | — |
 | UPL-03 | Phase 16 — ITS Uplift Attribution | Pending | — |
-| UPL-04 | Phase 16 — ITS Uplift Attribution | Pending | — |
-| UPL-05 | Phase 16 — ITS Uplift Attribution | Pending | — |
+| UPL-04 | Phase 16 — ITS Uplift Attribution | Partial | Plan 16-07 (DDL + 2 wrapper views on DEV; UI surfacing in Plan 16-09) |
+| UPL-05 | Phase 16 — ITS Uplift Attribution | Partial | Plan 16-07 (naive_dow_uplift_eur column live on DEV in campaign_uplift_v; populated by Plan 16-06 cumulative_uplift.py nightly) |
 | UPL-06 | Phase 16 — ITS Uplift Attribution | Pending | — |
 | UPL-07 | Phase 16 — ITS Uplift Attribution | Pending | — |
 | BCK-01 | Phase 17 — Backtest Gate & Quality Monitoring | Pending | — |
