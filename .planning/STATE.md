@@ -2,15 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: External Data & Forecasting Foundation
-status: "Phase 16 Wave 1 complete (4/13 plans) — ready for /gsd-execute-phase 16 --wave 2"
-stopped_at: Phase 16 Wave 1 landed on DEV. Plans 01-04 complete; migrations 0058 (campaign_calendar), 0059 (baseline_items_v), 0060 (kpi_daily_with_comparable_v), 0061 (feature_flags), 0063 (pipeline_runs.fit_train_end) pushed via gh workflow run migrations.yml (run 25247440165, 15s). All 5 sanity probes PASS. Two schema deviations from the plan-spec gap (stg_orderbird_order_items has no occurred_at column) auto-resolved by mirroring the canonical 0025 transactions-join pattern in Plans 02 and 03. Plan 04 includes 4 RED tests for offweek_reminder atomic-fire-once (T-16-02). Slot 0062 reserved for Plan 07 in Wave 2.
-last_updated: "2026-05-02T08:10:00Z"
+status: executing
+stopped_at: Phase 14 complete. Ready for Phase 15 (Forecast Chart UI).
+last_updated: "2026-05-02T08:07:42.348Z"
+last_activity: 2026-05-02
 progress:
   total_phases: 17
-  completed_phases: 15
+  completed_phases: 11
   total_plans: 86
   completed_plans: 65
-  percent: 95
+  percent: 76
 ---
 
 # STATE: Ramen Bones Analytics
@@ -20,7 +21,7 @@ progress:
 ## Project Reference
 
 - **Core Value:** A restaurant owner opens the site on their phone and makes a real business decision from the numbers they see.
-- **Current Focus:** Phase 16 — ITS Uplift Attribution (Wave 1 complete, Wave 2 next)
+- **Current Focus:** Phase 16 — ITS Uplift Attribution
 - **Timeline:** Slow and deliberate — understand data first, ship one layer at a time
 - **Granularity:** standard
 - **Tenants in v1:** 1 (architecture multi-tenant-ready)
@@ -28,15 +29,15 @@ progress:
 ## Current Position
 
 Milestone: v1.3 (External Data & Forecasting Foundation)
-Phase: 16 (ITS Uplift Attribution) — Wave 1 complete (4/13 plans), Wave 2 pending
-Plan: 13 plans in 4 waves (Wave 1 ✓ schema + db push · Wave 2 Track-B Python + view + db push · Wave 3 API + UI + EventMarker · Wave 4 hardening)
+Phase: 16 (ITS Uplift Attribution) — EXECUTING
+Plan: 1 of 13
 
-- **Status:** Phase 16 Wave 1 (Plans 01-04) landed on DEV 2026-05-02 via gh workflow run migrations.yml (run 25247440165). 5 migrations applied (0058-0061, 0063); slot 0062 reserved for Plan 07. All 5 DEV sanity probes PASS. Next: `/gsd-execute-phase 16 --wave 2` (Plans 05-07: counterfactual_fit.py, cumulative_uplift.py TDD bootstrap CI, campaign_uplift_v + DB CHECK + Wave-2 db push).
+- **Status:** Executing Phase 16
 - **Phase 15:** v2 (Forecast Backtest Overlay) merged via PR #26 on 2026-05-01.
 - **Phase 14:** Shipped via [PR #22](https://github.com/shiniguchi/ramen-bones-analytics/pull/22). 34 commits, 31 files, +2978 lines. UAT 12/12. 5/5 models producing 365-day forecasts on DEV.
 - **Phase 13:** Shipped via [PR #17](https://github.com/shiniguchi/ramen-bones-analytics/pull/17). 41 commits, 52 files, +6892 lines. EXT-01..EXT-09 complete.
 - **Progress:** [█████████░] 88% (15/17 phases shipped; v1.0+v1.1+v1.2+Phase 12-15 done)
-- **Last activity:** 2026-05-01 — Phase 16 CONTEXT.md captured, ready for planning
+- **Last activity:** 2026-05-02
 - **v1.2 closed:** 11 phases, 60 plans, 100% — Phase 11 SSR fix landed 2026-04-21
 - **v1.0 status:** Shipped to friend (97% plans complete; repo flipped PUBLIC 2026-04-15 with topics + description set; Plan 05-06 Task 2 fork walkthrough deferred out of v1 scope)
 
