@@ -317,6 +317,82 @@ describe('EXT-08: pipeline_runs lockdown (REVIEW MS-2) — raw table is service-
   });
 });
 
+// Phase 16 UPL-01 / T-16-01: campaign_calendar tenant isolation.
+// Tenant-scoped table with RLS (restaurant_id = JWT claim) and REVOKE
+// INSERT/UPDATE/DELETE from authenticated/anon (service_role only).
+// Verified per project_silent_error_isolation.md: assertion queries use
+// auth'd JWT (tenantClient + signIn), service-role only inside beforeAll/
+// afterAll for setup/teardown.
+describe('campaign_calendar RLS', () => {
+  // Use a campaign_id prefix so cleanup is precise and doesn't collide
+  // with the migration-seeded 'friend-owner-2026-04-14' row.
+  const stamp = `iso-camp-${Date.now()}`;
+  const campA = `${stamp}-A`;
+  const campB = `${stamp}-B`;
+  const campDate = '2099-04-14';
+
+  beforeAll(async () => {
+    await admin.from('campaign_calendar').insert([
+      {
+        campaign_id: campA,
+        restaurant_id: tenantA,
+        start_date: campDate,
+        end_date: campDate,
+        name: 'iso test A',
+        channel: 'instagram',
+      },
+      {
+        campaign_id: campB,
+        restaurant_id: tenantB,
+        start_date: campDate,
+        end_date: campDate,
+        name: 'iso test B',
+        channel: 'instagram',
+      },
+    ] as never);
+  });
+
+  afterAll(async () => {
+    await admin.from('campaign_calendar').delete().in('campaign_id', [campA, campB]);
+  });
+
+  it('campaign_calendar: anon JWT returns 0 rows', async () => {
+    const c = tenantClient();
+    // No sign-in — anon JWT, no restaurant_id claim. RLS filters everything.
+    const { data } = await c.from('campaign_calendar').select('*');
+    expect((data ?? []).length).toBe(0);
+  });
+
+  it('campaign_calendar: tenant A cannot SELECT tenant B campaign rows', async () => {
+    const c = tenantClient();
+    await c.auth.signInWithPassword({ email: emailA, password });
+    const { data, error } = await c
+      .from('campaign_calendar')
+      .select('campaign_id, restaurant_id')
+      .eq('start_date', campDate);
+    expect(error).toBeNull();
+    const rows = (data ?? []) as Array<{ campaign_id: string; restaurant_id: string }>;
+    // Negative: A never sees B's row.
+    expect(rows.every((r) => r.restaurant_id !== tenantB)).toBe(true);
+    expect(rows.every((r) => r.campaign_id !== campB)).toBe(true);
+  });
+
+  it('campaign_calendar: tenant A SELECT only returns own restaurant_id rows', async () => {
+    const c = tenantClient();
+    await c.auth.signInWithPassword({ email: emailA, password });
+    const { data, error } = await c
+      .from('campaign_calendar')
+      .select('campaign_id, restaurant_id')
+      .eq('start_date', campDate);
+    expect(error).toBeNull();
+    const rows = (data ?? []) as Array<{ campaign_id: string; restaurant_id: string }>;
+    // Positive: A sees its own seeded row (proves JWT claim is read).
+    expect(rows.some((r) => r.campaign_id === campA)).toBe(true);
+    // Every returned row belongs to tenant A — RLS scoping holds.
+    expect(rows.every((r) => r.restaurant_id === tenantA)).toBe(true);
+  });
+});
+
 // Phase 14 FCT-08: tenant isolation for forecast_daily, forecast_quality, and
 // forecast_with_actual_v. Both raw tables use RLS (restaurant_id = JWT claim)
 // plus REVOKE INSERT/UPDATE/DELETE from authenticated/anon. The wrapper view
