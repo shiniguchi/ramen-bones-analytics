@@ -21,6 +21,7 @@ import os
 import sys
 import traceback
 from datetime import date, datetime, timezone
+from typing import Optional
 
 import numpy as np
 import pandas as pd
@@ -92,6 +93,67 @@ def _fetch_history(client, *, restaurant_id: str, kpi_name: str) -> pd.DataFrame
     return df
 
 
+def _load_comparable_history(
+    client,
+    *,
+    restaurant_id: str,
+    kpi_name: str,
+    train_end: date,
+) -> pd.DataFrame:
+    """Phase 16 Track-B: source from kpi_daily_with_comparable_v capped at train_end.
+
+    Per Guard 9 / D-04 — CF must NEVER read from kpi_daily_mv.revenue_cents.
+    """
+    col_map = {
+        'revenue_comparable_eur': 'revenue_comparable_eur',
+        'invoice_count': 'tx_count',
+    }
+    if kpi_name not in col_map:
+        raise RuntimeError(
+            f"CF kpi_name must be one of {list(col_map)}; got {kpi_name!r}. "
+            "Forbidden kpi_name='revenue_eur' on a Track-B fit (Guard 9)."
+        )
+    col = col_map[kpi_name]
+    resp = (
+        client.table('kpi_daily_with_comparable_v')
+        .select(f'business_date,{col}')
+        .eq('restaurant_id', restaurant_id)
+        .lte('business_date', train_end.isoformat())
+        .order('business_date')
+        .limit(10000)
+        .execute()
+    )
+    rows = resp.data or []
+    if not rows:
+        raise RuntimeError(
+            f'No CF history from kpi_daily_with_comparable_v for {restaurant_id}/{kpi_name} '
+            f'<= {train_end}'
+        )
+    df = pd.DataFrame(rows)
+    df.rename(columns={'business_date': 'date'}, inplace=True)
+    df['date'] = pd.to_datetime(df['date']).dt.date
+    df = df.sort_values('date').reset_index(drop=True)
+    df['y'] = df[col].astype(float)
+    cal_resp = (
+        client.table('shop_calendar')
+        .select('date,is_open')
+        .eq('restaurant_id', restaurant_id)
+        .gte('date', str(df['date'].iloc[0]))
+        .lte('date', str(df['date'].iloc[-1]))
+        .limit(10000)
+        .execute()
+    )
+    cal_rows = cal_resp.data or []
+    if cal_rows:
+        cal_df = pd.DataFrame(cal_rows)
+        cal_df['date'] = pd.to_datetime(cal_df['date']).dt.date
+        cal_lookup = dict(zip(cal_df['date'], cal_df['is_open']))
+        df['is_open'] = [cal_lookup.get(d, True) for d in df['date']]
+    else:
+        df['is_open'] = True
+    return df
+
+
 def _fetch_shop_calendar(client, *, restaurant_id: str, start_date: date, end_date: date) -> pd.DataFrame:
     """Fetch shop_calendar rows for the forecast window."""
     resp = (
@@ -151,6 +213,7 @@ def _build_forecast_rows_daily(
     run_date: date,
     granularity: str,
     season_length: int,
+    track: str = 'bau',
 ) -> list:
     """Daily-grain row builder. Closed dates get yhat=0 (fixed up by zero_closed_days)."""
     open_date_idx = {d: i for i, d in enumerate(open_dates)}
@@ -176,7 +239,7 @@ def _build_forecast_rows_daily(
             'target_date': str(target_date),
             'model_name': 'theta',
             'run_date': str(run_date),
-            'forecast_track': 'bau',
+            'forecast_track': track,
             'granularity': granularity,
             'yhat': round(yhat, 4),
             'yhat_lower': round(yhat_lower, 4),
@@ -196,6 +259,7 @@ def _build_forecast_rows_bucket(
     run_date: date,
     granularity: str,
     season_length: int,
+    track: str = 'bau',
 ) -> list:
     """Weekly/monthly row builder."""
     rows = []
@@ -210,7 +274,7 @@ def _build_forecast_rows_bucket(
             'target_date': str(target_date),
             'model_name': 'theta',
             'run_date': str(run_date),
-            'forecast_track': 'bau',
+            'forecast_track': track,
             'granularity': granularity,
             'yhat': round(yhat, 4),
             'yhat_lower': round(yhat_lower, 4),
@@ -237,22 +301,41 @@ def fit_and_write(
     kpi_name: str,
     run_date: date,
     granularity: str = 'day',
+    track: str = 'bau',
+    train_end: Optional[date] = None,
 ) -> int:
-    """Core logic: fit AutoTheta at the chosen grain, bootstrap paths, write rows."""
+    """Core logic: fit AutoTheta at the chosen grain, bootstrap paths, write rows.
+
+    Phase 16 D-04 / D-07: when track='cf', source from kpi_daily_with_comparable_v
+    (NEVER kpi_daily_mv); cap history at train_end; granularity must be 'day';
+    kpi_name must be 'revenue_comparable_eur' or 'invoice_count' (Guard 9).
+    """
     horizon = HORIZON_BY_GRAIN[granularity]
     season_length = SEASON_LENGTH_BY_GRAIN[granularity]
 
-    # 1. Fetch training history.
-    history = _fetch_history(client, restaurant_id=restaurant_id, kpi_name=kpi_name)
-    last_actual = history['date'].iloc[-1]
-    train_end = train_end_for_grain(last_actual, granularity)
-    print(
-        f'[theta_fit] grain={granularity} last_actual={last_actual} '
-        f'train_end={train_end} horizon={horizon} season_length={season_length}'
-    )
+    if track == 'cf':
+        assert granularity == 'day', f"CF fits require granularity='day', got {granularity}"
+        assert train_end is not None, "CF fits require train_end (min(campaign_start)-7d)"
+        history = _load_comparable_history(
+            client, restaurant_id=restaurant_id, kpi_name=kpi_name, train_end=train_end,
+        )
+        last_actual = history['date'].iloc[-1]
+        print(
+            f'[theta_fit] grain={granularity} TRACK=cf last_actual={last_actual} '
+            f'train_end={train_end} horizon={horizon} season_length={season_length}'
+        )
+    else:
+        # 1. Fetch training history (BAU path: kpi_daily_mv).
+        history = _fetch_history(client, restaurant_id=restaurant_id, kpi_name=kpi_name)
+        last_actual = history['date'].iloc[-1]
+        train_end = train_end_for_grain(last_actual, granularity)
+        print(
+            f'[theta_fit] grain={granularity} last_actual={last_actual} '
+            f'train_end={train_end} horizon={horizon} season_length={season_length}'
+        )
 
-    # 2. Truncate to <= train_end.
-    history = history[history['date'] <= train_end].reset_index(drop=True)
+        # 2. Truncate to <= train_end.
+        history = history[history['date'] <= train_end].reset_index(drop=True)
     if history.empty:
         raise RuntimeError(f'Empty history after train_end cutoff {train_end}')
 
@@ -306,6 +389,7 @@ def fit_and_write(
             run_date=run_date,
             granularity='day',
             season_length=season_length,
+            track=track,
         )
         preds_df = pd.DataFrame(rows)
         preds_df['target_date'] = pd.to_datetime(preds_df['target_date']).dt.date
@@ -356,6 +440,7 @@ def fit_and_write(
             run_date=run_date,
             granularity=granularity,
             season_length=season_length,
+            track=track,
         )
         preds_df = pd.DataFrame(rows)
         preds_df['target_date'] = pd.to_datetime(preds_df['target_date']).dt.date
