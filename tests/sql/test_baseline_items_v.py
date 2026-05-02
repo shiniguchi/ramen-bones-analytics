@@ -3,8 +3,9 @@
 Wave 0 stubs (RED): assert the contract that
 `public.baseline_items_v` exposes only items first seen >= 7 days BEFORE the
 tenant's earliest `campaign_calendar.start_date`. Full DB integration runs
-after Plan 04 db-push; until then every test is `@pytest.mark.skip`'d so CI
-collects the symbols without dialing the DB.
+after Plan 04 db-push; until then `_supabase_client()` calls `pytest.skip`
+at runtime when SUPABASE_URL / SERVICE_ROLE_KEY env vars are absent (CI
+default), so the suite stays green without dialing the DB.
 
 Behavior matrix (CONTEXT.md D-02; CONTEXT.md `<deferred>` excludes list):
 
@@ -48,11 +49,10 @@ ITEM_LAUNCH_POST = "Hell beer"  # first seen 2026-04-20 -> EXCLUDED
 CAMPAIGN_START = date(2026, 4, 14)
 
 
-# Module-level skip — the migration (0059) exists but `supabase db push`
-# happens in Plan 04. Until then every test would fail on "view does not
-# exist". Plan 02 acceptance criterion: tests are RED (skip-marked) and
-# pytest can collect 7 functions.
-pytestmark = pytest.mark.skip(reason="RED: 0059_baseline_items_v.sql not yet pushed to DEV (Plan 04 cascade)")
+# NB: Migration 0059 ships in Plan 02 but `supabase db push` happens in
+# Plan 04. Tests below skip at runtime via `_supabase_client()` when env
+# vars are absent (typical in CI without Supabase secrets); they GREEN
+# automatically after the Plan 04 cascade pushes the view to DEV.
 
 
 def _supabase_client():
