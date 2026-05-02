@@ -80,7 +80,6 @@ def synthetic_uplift_window():
 
 # ---- Tests.
 
-@pytest.mark.skip(reason=_SKIP_REASON)
 def test_ci_coverage():
     """Statistical 95% coverage: across 100 sims with TRUE uplift = 1500,
     at least 90/100 of the bootstrap CIs contain 1500.
@@ -116,7 +115,6 @@ def test_ci_coverage():
     )
 
 
-@pytest.mark.skip(reason=_SKIP_REASON)
 def test_bootstrap_consistency(synthetic_uplift_window):
     """Determinism + saturation:
       (a) same seed → identical CI bounds across two calls
@@ -166,7 +164,6 @@ def test_bootstrap_consistency(synthetic_uplift_window):
     )
 
 
-@pytest.mark.skip(reason=_SKIP_REASON)
 def test_bootstrap_one_path_per_resample():
     """D-08 textbook form: ONE path index per resample (not a 200-path
     bootstrap mean). Mock `rng.integers(0, P)` to return a known sequence
@@ -230,7 +227,6 @@ def test_bootstrap_one_path_per_resample():
     assert "n_days" in result
 
 
-@pytest.mark.skip(reason=_SKIP_REASON)
 def test_naive_dow_present():
     """Every campaign-window row written must have `naive_dow_uplift_eur`
     populated (not NULL) when naive_dow CF rows exist for the window.
@@ -278,7 +274,6 @@ def test_naive_dow_present():
     )
 
 
-@pytest.mark.skip(reason=_SKIP_REASON)
 def test_skip_empty_window():
     """When no actuals exist in a window (e.g., future-only window),
     `compute_uplift_for_window` returns None — caller must NOT write a row.
@@ -311,7 +306,6 @@ def test_skip_empty_window():
     )
 
 
-@pytest.mark.skip(reason=_SKIP_REASON)
 def test_two_window_kinds_per_campaign_per_model():
     """For each (campaign, model) pair, exactly two rows are upserted:
     `window_kind='campaign_window'` and `window_kind='cumulative_since_launch'`.
@@ -319,7 +313,15 @@ def test_two_window_kinds_per_campaign_per_model():
     from scripts.forecast import cumulative_uplift as mod
 
     # Capture all upsert payloads to campaign_uplift table.
-    upserted_rows: list[dict] = []
+    upserted_rows: list = []
+
+    def _resp(*, data=None):
+        """Build a SimpleNamespace-style supabase response: data + error=None.
+
+        Critical: error must be None (not a MagicMock auto-attr) so the
+        production code's `getattr(res, 'error', None)` short-circuits.
+        """
+        return types.SimpleNamespace(data=(data if data is not None else []), error=None)
 
     def _table_router(name):
         m = MagicMock(name=f"chain[{name}]")
@@ -342,9 +344,9 @@ def test_two_window_kinds_per_campaign_per_model():
         m.upsert.side_effect = _upsert
 
         if name == "restaurants":
-            m.execute.return_value = MagicMock(data=[{"id": "rest-1"}])
+            m.execute.return_value = _resp(data=[{"id": "rest-1"}])
         elif name == "campaign_calendar":
-            m.execute.return_value = MagicMock(data=[{
+            m.execute.return_value = _resp(data=[{
                 "campaign_id": "friend-owner-2026-04-14",
                 "restaurant_id": "rest-1",
                 "start_date": "2026-04-14",
@@ -354,24 +356,26 @@ def test_two_window_kinds_per_campaign_per_model():
             }])
         elif name == "pipeline_runs":
             # All cf_<model> rows succeeded for this run_date.
-            m.execute.return_value = MagicMock(data=[{"status": "success"}])
+            m.execute.return_value = _resp(data=[{"status": "success"}])
         elif name == "forecast_with_actual_v":
             # Provide enough rows to compute both window_kinds.
-            m.execute.return_value = MagicMock(data=[
+            m.execute.return_value = _resp(data=[
                 {"target_date": "2026-04-14", "actual_value": 600.0, "yhat": 500.0},
                 {"target_date": "2026-04-15", "actual_value": 610.0, "yhat": 505.0},
             ])
         elif name == "forecast_daily":
             # Provide 200-path yhat_samples for the same dates.
             base_paths = [500.0] * 200
-            m.execute.return_value = MagicMock(data=[
+            m.execute.return_value = _resp(data=[
                 {"target_date": "2026-04-14", "yhat_samples": base_paths},
                 {"target_date": "2026-04-15", "yhat_samples": base_paths},
             ])
         elif name == "feature_flags":
-            m.execute.return_value = MagicMock(data=[])
+            m.execute.return_value = _resp(data=[])
+        elif name == "campaign_uplift":
+            m.execute.return_value = _resp(data=[])
         else:
-            m.execute.return_value = MagicMock(data=[])
+            m.execute.return_value = _resp(data=[])
         return m
 
     client = MagicMock(name="supabase_client")
