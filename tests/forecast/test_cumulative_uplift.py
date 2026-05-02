@@ -407,3 +407,132 @@ def test_two_window_kinds_per_campaign_per_model():
         assert kinds == {"campaign_window", "cumulative_since_launch"}, (
             f"Model {model_name!r}: expected both window kinds, got {kinds}"
         )
+
+
+# ---------------------------------------------------------------------------
+# Task 4: per-day rolling cumulative rows for the D-11 sparkline.
+# ---------------------------------------------------------------------------
+
+def test_per_day_rows_count_matches_window_length():
+    """For an N-day campaign window with 1 model, exactly N rows are produced
+    with `window_kind='per_day'` per (restaurant_id, campaign_id, model_name).
+    """
+    from scripts.forecast.cumulative_uplift import compute_per_day_uplift_rows
+
+    n_days = 7
+    n_paths = 200
+    rng = np.random.default_rng(0)
+    paths = rng.normal(loc=500.0, scale=10.0, size=(n_days, n_paths))
+    actual_values = np.full(n_days, 550.0)
+    target_dates = [date(2026, 4, 14) + timedelta(days=i) for i in range(n_days)]
+
+    rows = compute_per_day_uplift_rows(
+        restaurant_id="rest-1",
+        campaign_id="friend-owner-2026-04-14",
+        model_name="sarimax",
+        actual_values=actual_values,
+        yhat_samples_per_day=paths.tolist(),
+        target_dates=target_dates,
+    )
+
+    assert len(rows) == n_days, (
+        f"Expected exactly {n_days} per-day rows, got {len(rows)}"
+    )
+    # Every row must have window_kind='per_day' and matching identifiers.
+    for i, row in enumerate(rows):
+        assert row["window_kind"] == "per_day"
+        assert row["restaurant_id"] == "rest-1"
+        assert row["campaign_id"] == "friend-owner-2026-04-14"
+        assert row["model_name"] == "sarimax"
+        assert row["n_days"] == i + 1
+        assert row["as_of_date"] == target_dates[i].isoformat()
+        # naive_dow_uplift_eur is per-window only — None on per-day rows.
+        assert row["naive_dow_uplift_eur"] is None
+
+
+def test_per_day_cumulative_monotone_for_constant_uplift():
+    """When `actual − path_mean ≈ 50` for every day (constructed by drawing
+    paths from N(base, 10) and setting actual=base+50), the per-day point
+    estimate `cumulative_uplift_eur` should be approximately `50 * (i+1)` —
+    monotone-increasing and roughly linear.
+    """
+    from scripts.forecast.cumulative_uplift import compute_per_day_uplift_rows
+
+    n_days = 10
+    n_paths = 200
+    base = 500.0
+    rng = np.random.default_rng(123)
+    paths = rng.normal(loc=base, scale=10.0, size=(n_days, n_paths))
+    actual_values = np.full(n_days, base + 50.0)
+    target_dates = [date(2026, 4, 14) + timedelta(days=i) for i in range(n_days)]
+
+    rows = compute_per_day_uplift_rows(
+        restaurant_id="rest-1",
+        campaign_id="c1",
+        model_name="sarimax",
+        actual_values=actual_values,
+        yhat_samples_per_day=paths.tolist(),
+        target_dates=target_dates,
+    )
+
+    # Day i estimate should be approximately 50 * (i+1) since we constructed
+    # actual − path_mean ≈ 50 per day. Allow up to 10 EUR drift per day from
+    # path-mean noise (σ=10 / sqrt(200) ≈ 0.7 per day → ~7 over 10 days).
+    for i, row in enumerate(rows):
+        expected = 50.0 * (i + 1)
+        actual_estimate = row["cumulative_uplift_eur"]
+        assert abs(actual_estimate - expected) < 10.0, (
+            f"Day {i}: expected ≈{expected}, got {actual_estimate} "
+            f"(drift > 10 EUR — path-mean estimator broken?)"
+        )
+
+    # Monotonicity: each running sum must exceed the previous (uplift is
+    # positive every day in this fixture).
+    for i in range(1, len(rows)):
+        assert rows[i]["cumulative_uplift_eur"] > rows[i - 1]["cumulative_uplift_eur"], (
+            f"Monotonicity violated at day {i}: "
+            f"prev={rows[i - 1]['cumulative_uplift_eur']}, "
+            f"curr={rows[i]['cumulative_uplift_eur']}"
+        )
+
+
+def test_per_day_ci_truncates_at_day_i():
+    """Assert the per-day CI for day i is computed against `actual_values[:i+1]`
+    (NOT the full window). Patch `bootstrap_uplift_ci` and inspect call args.
+    """
+    from scripts.forecast import cumulative_uplift as mod
+
+    n_days = 5
+    n_paths = 200
+    rng = np.random.default_rng(0)
+    paths = rng.normal(loc=500.0, scale=10.0, size=(n_days, n_paths))
+    actual_values = np.array([550.0, 555.0, 545.0, 560.0, 540.0])
+    target_dates = [date(2026, 4, 14) + timedelta(days=i) for i in range(n_days)]
+
+    # Capture the actual_values arg passed to bootstrap_uplift_ci on each call.
+    captured_lengths = []
+
+    real_fn = mod.bootstrap_uplift_ci
+
+    def _capturing(*args, **kwargs):
+        actual = kwargs.get("actual_values")
+        captured_lengths.append(len(actual))
+        # Run the real function so the row gets meaningful values.
+        return real_fn(*args, **kwargs)
+
+    with patch.object(mod, "bootstrap_uplift_ci", side_effect=_capturing):
+        rows = mod.compute_per_day_uplift_rows(
+            restaurant_id="rest-1",
+            campaign_id="c1",
+            model_name="sarimax",
+            actual_values=actual_values,
+            yhat_samples_per_day=paths.tolist(),
+            target_dates=target_dates,
+        )
+
+    # Expect exactly N calls to bootstrap_uplift_ci, with lengths 1..N.
+    assert captured_lengths == [1, 2, 3, 4, 5], (
+        f"CI must truncate at day i (slice [:i+1]); got call-arg lengths "
+        f"{captured_lengths}, expected [1, 2, 3, 4, 5]"
+    )
+    assert len(rows) == n_days
