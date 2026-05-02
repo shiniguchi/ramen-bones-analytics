@@ -29,6 +29,7 @@ from typing import Optional
 
 from scripts.forecast.db import make_client
 from scripts.forecast.last_7_eval import evaluate_last_7
+from scripts.forecast import counterfactual_fit
 from scripts.external.pipeline_runs_writer import write_failure
 
 DEFAULT_MODELS = 'sarimax,prophet,ets,theta,naive_dow'
@@ -157,8 +158,17 @@ def main(
     *,
     models: Optional[list] = None,
     run_date: Optional[date] = None,
+    track: str = 'both',
+    train_end_offset: int = -7,
 ) -> int:
-    """Core orchestration logic. Returns 0 on partial/full success, 1 on total failure."""
+    """Core orchestration logic. Returns 0 on partial/full success, 1 on total failure.
+
+    Phase 16 D-06: ``track`` selects which pass(es) to run.
+        'bau'  — Phase 14 BAU loop only (5 models x 2 KPIs x 3 grains = 30 spawns)
+        'cf'   — Phase 16 Track-B counterfactual only (5 models x 1 grain x 2 KPIs = 10)
+        'both' — BAU then CF (default)
+    ``train_end_offset`` is forwarded to counterfactual_fit (default -7d per C-04).
+    """
     client = make_client()
 
     # Weather guard — abort immediately if no weather data at all
@@ -233,21 +243,42 @@ def main(
     # 15-10: 5 models × 2 KPIs × 3 grains = 30 spawns/refresh on the full pipeline.
     successes = 0
     total = 0
-    for model in models:
-        for kpi in KPIS:
-            for granularity in GRANULARITIES:
-                total += 1
-                ok = _run_model(
-                    model=model,
-                    restaurant_id=restaurant_id,
-                    kpi_name=kpi,
-                    run_date=run_date_str,
-                    granularity=granularity,
-                )
-                if ok:
-                    successes += 1
+    if track in ('bau', 'both'):
+        for model in models:
+            for kpi in KPIS:
+                for granularity in GRANULARITIES:
+                    total += 1
+                    ok = _run_model(
+                        model=model,
+                        restaurant_id=restaurant_id,
+                        kpi_name=kpi,
+                        run_date=run_date_str,
+                        granularity=granularity,
+                    )
+                    if ok:
+                        successes += 1
 
-    print(f'[run_all] Completed: {successes}/{total} model/KPI/grain combos succeeded')
+        print(f'[run_all] BAU done: {successes}/{total} model/KPI/grain combos succeeded')
+
+    # Phase 16 D-06: Track-B (counterfactual) pass — 5 models x 1 grain ('day') x 2 KPIs.
+    # In-process call (no subprocess) — keeps per-model failure isolated via
+    # counterfactual_fit's try/except wrapper around each fit_one_model call.
+    if track in ('cf', 'both'):
+        cf_result = counterfactual_fit.main_cf(
+            client=client,
+            restaurant_id=restaurant_id,
+            models=models,
+            run_date=run_date,
+            train_end_offset=train_end_offset,
+        )
+        total += cf_result['attempted']
+        successes += cf_result['succeeded']
+        print(
+            f"[run_all] CF done: {cf_result['succeeded']}/{cf_result['attempted']} "
+            f'cf_<model>/KPI combos succeeded'
+        )
+
+    print(f'[run_all] Completed: {successes}/{total} combos succeeded total')
 
     # Evaluate last-7-day forecast accuracy for each model/KPI
     # Populates forecast_quality table for accuracy tracking.
@@ -289,6 +320,21 @@ if __name__ == '__main__':
         help='YYYY-MM-DD; defaults to yesterday',
         default=None,
     )
+    parser.add_argument(
+        '--track',
+        choices=['bau', 'cf', 'both'],
+        default='both',
+        help='Forecast track. bau=Phase 14 BAU only; cf=Phase 16 counterfactual '
+             'Track-B only; both=run BAU then CF (default).',
+    )
+    parser.add_argument(
+        '--train-end-offset',
+        type=int,
+        default=-7,
+        help='Days before earliest campaign_calendar.start_date to use as '
+             'TRAIN_END for CF fits (default -7 per Phase 12 D-01 / C-04). '
+             'Used by tests/forecast/cutoff_sensitivity.md (-14, -7, -1).',
+    )
     args = parser.parse_args()
 
     selected_models = None
@@ -299,4 +345,9 @@ if __name__ == '__main__':
     if args.run_date:
         selected_run_date = date.fromisoformat(args.run_date)
 
-    sys.exit(main(models=selected_models, run_date=selected_run_date))
+    sys.exit(main(
+        models=selected_models,
+        run_date=selected_run_date,
+        track=args.track,
+        train_end_offset=args.train_end_offset,
+    ))
