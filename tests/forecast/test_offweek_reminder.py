@@ -1,4 +1,4 @@
-"""Phase 16 UPL-07 RED stubs: atomic-fire-once contract for offweek_reminder.
+"""Phase 16 UPL-07: atomic-fire-once contract for offweek_reminder.
 
 Mitigates T-16-02: two concurrent GHA cron runs must NOT double-fire the
 offweek reminder. The contract is an atomic Postgres UPDATE on
@@ -7,9 +7,8 @@ remind_on_or_after_date<=today). Postgres serializes UPDATEs on the same row
 at REPEATABLE READ; only one of two simultaneous runs sees `enabled=false`
 and writes the row. The other receives 0 rows updated and skips the reminder.
 
-These tests are RED: scripts/forecast/cumulative_uplift.py does not yet exist
-(it lands in Plan 06). All four are skip-marked until the helper module
-appears; Plan 06's GREEN pass will remove the skip markers.
+GREEN pass (Plan 06 Task 3): cumulative_uplift.py now exports
+check_offweek_reminder; all four tests are unskipped here.
 
 Mocking strategy mirrors scripts/forecast/tests/test_run_all_grain_loop.py:
 build a MagicMock supabase client whose
@@ -18,16 +17,19 @@ chain returns a configurable Mock(data=[...]) per test.
 """
 from __future__ import annotations
 
+import sys
+import types
 from datetime import date
 from unittest.mock import MagicMock
 
-import pytest
-
-# Skip-reason shared across all four tests (RED — Plan 06 implements helper).
-_SKIP_REASON = (
-    "RED: cumulative_uplift.py not yet implemented (Plan 06). "
-    "Plan 06 GREEN pass will import check_offweek_reminder and unskip these."
-)
+# Stub the supabase package so the import chain in cumulative_uplift.py
+# resolves on machines without supabase-py installed (mirrors
+# scripts/forecast/tests/test_run_all_grain_loop.py).
+if "supabase" not in sys.modules:
+    _supabase_stub = types.ModuleType("supabase")
+    _supabase_stub.create_client = lambda *a, **kw: None  # type: ignore[attr-defined]
+    _supabase_stub.Client = type("Client", (), {})  # type: ignore[attr-defined]
+    sys.modules["supabase"] = _supabase_stub
 
 
 def _build_mock_client(*, update_returns_rows: int):
@@ -56,7 +58,6 @@ def _build_mock_client(*, update_returns_rows: int):
     return client, chain
 
 
-@pytest.mark.skip(reason=_SKIP_REASON)
 def test_reminder_fires_once_when_enabled_false_and_date_reached():
     """When today >= remind_on_or_after_date and enabled=false, the atomic
     UPDATE returns 1 row and write_reminder is invoked exactly once."""
@@ -83,7 +84,6 @@ def test_reminder_fires_once_when_enabled_false_and_date_reached():
     assert write_reminder.call_count == 1
 
 
-@pytest.mark.skip(reason=_SKIP_REASON)
 def test_reminder_skip_when_already_fired():
     """When the atomic UPDATE returns 0 rows (race already lost — another
     concurrent run won the row), write_reminder is NOT called and no
@@ -103,7 +103,6 @@ def test_reminder_skip_when_already_fired():
     assert write_reminder.call_count == 0
 
 
-@pytest.mark.skip(reason=_SKIP_REASON)
 def test_reminder_skip_when_date_in_future():
     """When today < remind_on_or_after_date, the UPDATE filter
     `lte('remind_on_or_after_date', today)` returns 0 rows by definition.
@@ -123,7 +122,6 @@ def test_reminder_skip_when_date_in_future():
     assert write_reminder.call_count == 0
 
 
-@pytest.mark.skip(reason=_SKIP_REASON)
 def test_reminder_atomic_under_concurrent_runs():
     """Simulate two concurrent GHA cron runs: the first UPDATE returns 1 row
     (won the race), the second returns 0 rows (lost the race). Across both
