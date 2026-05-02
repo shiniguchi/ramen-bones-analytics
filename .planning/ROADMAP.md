@@ -296,11 +296,11 @@ Plans:
   6. `cumulative_uplift.py` runs nightly after Track-B forecast completes; quarterly off-week reminder fires from a `feature_flags` table on 2026-10-15 (~6 months post-campaign) to re-anchor the counterfactual; `EventMarker.svelte` overlays campaign-start markers on `RevenueForecastCard.svelte` from Phase 15
 **Plans:** 13 plans in 4 waves
 Plans:
-  **Wave 1 — Schema (parallel-safe; closes with [BLOCKING] supabase db push)**
-  - [ ] 16-01-PLAN.md — campaign_calendar migration + 2026-04-14 seed
-  - [ ] 16-02-PLAN.md — baseline_items_v migration (TDD — first-seen ≥7d derivation)
-  - [ ] 16-03-PLAN.md — kpi_daily_with_comparable_v migration (revenue_comparable_eur)
-  - [ ] 16-04-PLAN.md — feature_flags + pipeline_runs.fit_train_end migrations + db push (BLOCKING)
+  **Wave 1 — Schema (parallel-safe; closes with [BLOCKING] supabase db push) ✓ complete 2026-05-02**
+  - [x] 16-01-PLAN.md — campaign_calendar migration + 2026-04-14 seed
+  - [x] 16-02-PLAN.md — baseline_items_v migration (TDD — first-seen ≥7d derivation)
+  - [x] 16-03-PLAN.md — kpi_daily_with_comparable_v migration (revenue_comparable_eur)
+  - [x] 16-04-PLAN.md — feature_flags + pipeline_runs.fit_train_end migrations + db push (BLOCKING)
   **Wave 2 *(blocked on Wave 1 completion)* — Track-B Python pipeline (closes with [BLOCKING] db push for migration 0062 + DB CHECK)**
   - [ ] 16-05-PLAN.md — counterfactual_fit.py + run_all.py --track flag (Track-B fits)
   - [ ] 16-06-PLAN.md — cumulative_uplift.py — bootstrap CI math + per-day rows for sparkline (TDD)

@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: External Data & Forecasting Foundation
-status: "Phase 16 planned — ready for /gsd-execute-phase 16"
-stopped_at: Phase 16 (ITS Uplift Attribution) planned 2026-05-02 via /gsd-plan-phase. 13 PLAN.md files in 4 waves; checker passed iteration 3 with 0 blockers. RESEARCH.md + PATTERNS.md + VALIDATION.md (nyquist_compliant: true) all committed. Wave 1 ends with [BLOCKING] supabase db push (Plan 04); Wave 2 with another db push (Plan 07 carries DB CHECK constraint for T-16-05).
-last_updated: "2026-05-02T00:00:00Z"
+status: "Phase 16 Wave 1 complete (4/13 plans) — ready for /gsd-execute-phase 16 --wave 2"
+stopped_at: Phase 16 Wave 1 landed on DEV. Plans 01-04 complete; migrations 0058 (campaign_calendar), 0059 (baseline_items_v), 0060 (kpi_daily_with_comparable_v), 0061 (feature_flags), 0063 (pipeline_runs.fit_train_end) pushed via gh workflow run migrations.yml (run 25247440165, 15s). All 5 sanity probes PASS. Two schema deviations from the plan-spec gap (stg_orderbird_order_items has no occurred_at column) auto-resolved by mirroring the canonical 0025 transactions-join pattern in Plans 02 and 03. Plan 04 includes 4 RED tests for offweek_reminder atomic-fire-once (T-16-02). Slot 0062 reserved for Plan 07 in Wave 2.
+last_updated: "2026-05-02T08:10:00Z"
 progress:
   total_phases: 17
   completed_phases: 15
   total_plans: 86
-  completed_plans: 61
+  completed_plans: 65
   percent: 95
 ---
 
@@ -20,7 +20,7 @@ progress:
 ## Project Reference
 
 - **Core Value:** A restaurant owner opens the site on their phone and makes a real business decision from the numbers they see.
-- **Current Focus:** Phase 16 — ITS Uplift Attribution (planned, ready to execute)
+- **Current Focus:** Phase 16 — ITS Uplift Attribution (Wave 1 complete, Wave 2 next)
 - **Timeline:** Slow and deliberate — understand data first, ship one layer at a time
 - **Granularity:** standard
 - **Tenants in v1:** 1 (architecture multi-tenant-ready)
@@ -28,10 +28,10 @@ progress:
 ## Current Position
 
 Milestone: v1.3 (External Data & Forecasting Foundation)
-Phase: 16 (ITS Uplift Attribution) — Planned, ready to execute
-Plan: 13 plans in 4 waves (Wave 1: 01–04 schema + db push · Wave 2: 05–07 Track-B Python + view + db push · Wave 3: 08–10 API + UI + EventMarker · Wave 4: 11–13 hardening)
+Phase: 16 (ITS Uplift Attribution) — Wave 1 complete (4/13 plans), Wave 2 pending
+Plan: 13 plans in 4 waves (Wave 1 ✓ schema + db push · Wave 2 Track-B Python + view + db push · Wave 3 API + UI + EventMarker · Wave 4 hardening)
 
-- **Status:** Phase 16 planned 2026-05-02 via /gsd-plan-phase. 13 PLAN.md files (3949 lines). Plan-checker iteration 3: 0 blockers, 2 acceptable warnings. Coverage: UPL-01..07 all covered, T-16-01..07 all mitigated, D-01..D-13 + C-01..C-13 all traceable. Next: `/gsd-execute-phase 16`.
+- **Status:** Phase 16 Wave 1 (Plans 01-04) landed on DEV 2026-05-02 via gh workflow run migrations.yml (run 25247440165). 5 migrations applied (0058-0061, 0063); slot 0062 reserved for Plan 07. All 5 DEV sanity probes PASS. Next: `/gsd-execute-phase 16 --wave 2` (Plans 05-07: counterfactual_fit.py, cumulative_uplift.py TDD bootstrap CI, campaign_uplift_v + DB CHECK + Wave-2 db push).
 - **Phase 15:** v2 (Forecast Backtest Overlay) merged via PR #26 on 2026-05-01.
 - **Phase 14:** Shipped via [PR #22](https://github.com/shiniguchi/ramen-bones-analytics/pull/22). 34 commits, 31 files, +2978 lines. UAT 12/12. 5/5 models producing 365-day forecasts on DEV.
 - **Phase 13:** Shipped via [PR #17](https://github.com/shiniguchi/ramen-bones-analytics/pull/17). 41 commits, 52 files, +6892 lines. EXT-01..EXT-09 complete.
