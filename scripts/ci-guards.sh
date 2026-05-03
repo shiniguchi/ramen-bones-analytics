@@ -147,16 +147,18 @@ if [ -d scripts/forecast ]; then
       continue
     fi
     # awk windowing: detect co-occurrence of cf marker and revenue_eur within 50 lines.
-    # Resets the partner zone after a successful pair check so a later co-occurrence
-    # is detected on its own merits, not paired with a long-stale earlier sighting.
+    # `hit` is sticky — set on first match; END block exits with that flag so
+    # END's exit does not clobber the rule-block's signal.
     awk '
+        BEGIN { hit = 0 }
         /forecast_track[^=]*=[^=]*['"'"'"]cf['"'"'"]/ { cf_zone=NR }
         /kpi_name[^=]*=[^=]*['"'"'"]revenue_eur['"'"'"]/ { rev_zone=NR }
         cf_zone && rev_zone && (NR - cf_zone < 50) && (NR - rev_zone < 50) {
             printf "%s:%d: revenue_eur+forecast_track=cf co-occurrence\n", FILENAME, NR
+            hit = 1
             exit 1
         }
-        END { exit 0 }
+        END { exit hit }
     ' "$f"
     if [ $? -ne 0 ]; then
       GUARD9_FAIL=1
