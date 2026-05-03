@@ -319,8 +319,13 @@ def fit_and_write(
         history_dates = set(history['date'])
         X_fit = X_fit.loc[X_fit.index.isin(history_dates)]
 
+        # Phase 16 D-07 / 16-12 follow-up: CF fits anchor pred_dates on train_end
+        # (the simulate(anchor='end') already anchors the SARIMAX forward path on
+        # the last training observation; the date labels must match). BAU keeps
+        # run_date anchor — its history runs through last_actual ≈ run_date.
+        pred_anchor = train_end if track == 'cf' else run_date
         pred_dates = pred_dates_for_grain(
-            run_date=run_date, granularity='day', horizon=horizon,
+            run_date=pred_anchor, granularity='day', horizon=horizon,
         )
         pred_start = pred_dates[0]
         pred_end = pred_dates[-1]

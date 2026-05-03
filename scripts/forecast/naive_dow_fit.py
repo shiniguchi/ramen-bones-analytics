@@ -381,8 +381,12 @@ def fit_and_write(
         )
         print(f'[naive_dow_fit] DoW means computed for {kpi_name}: {means}')
 
+        # Phase 16 D-07 / 16-12 follow-up: CF fits anchor pred_dates on train_end
+        # (DoW means are timeless, but date labels must align with the post-
+        # train_end counterfactual window). BAU unchanged.
+        pred_anchor = train_end if track == 'cf' else run_date
         all_pred_dates = pred_dates_for_grain(
-            run_date=run_date, granularity='day', horizon=horizon,
+            run_date=pred_anchor, granularity='day', horizon=horizon,
         )
         shop_cal = _fetch_shop_calendar(
             client,
