@@ -147,7 +147,26 @@
     Could not load uplift.
   </div>
 {:else if !data || data.campaigns.length === 0 || !headline}
-  <!-- Empty state per RESEARCH §4 — no campaigns, hide entirely. -->
+  <!-- RESEARCH §4 "CF still computing" empty-state.
+       v1 always has the seeded campaign_calendar row, so an empty
+       campaign_uplift_v on the API side means the counterfactual fits
+       have not landed yet — show the "first CI lands tomorrow" copy
+       instead of hiding the slot (matches sibling card convention; a
+       blank gap on the dashboard reads as broken UI). The hard "no
+       campaigns at all + no calendar row" case is theoretical for v1
+       and would still hit this same shell — acceptable per spec. -->
+  <div class="rounded-2xl border border-zinc-200 bg-white p-4" data-testid="campaign-uplift-card">
+    <h2 class="text-base font-semibold text-zinc-900 mb-1">
+      {#if data?.campaign_start}
+        Did the {format(parseISO(data.campaign_start), 'MMM d, yyyy')} campaign work?
+      {:else}
+        Campaign uplift
+      {/if}
+    </h2>
+    <p class="text-sm text-zinc-500" data-testid="cf-computing">
+      Counterfactual is computing — first CI lands tomorrow morning.
+    </p>
+  </div>
 {:else}
   <div
     class="rounded-2xl border border-zinc-200 bg-white p-4"

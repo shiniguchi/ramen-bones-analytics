@@ -227,19 +227,20 @@ describe('CampaignUpliftCard', () => {
     expect(src).toMatch(/touchEvents:\s*['"]auto['"]/);
   });
 
-  it('hides itself when campaigns array is empty', async () => {
+  it('shows CF computing message when campaigns array is empty (RESEARCH §4 empty-state)', async () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (clientFetchSpy as any).__activeFixture.current = FIXTURE_EMPTY;
     const { container } = render(CampaignUpliftCard);
     await flush();
-    // Either the testid is absent OR the container renders without the hero copy.
+    // Per RESEARCH §4: when campaigns:[] (CF still computing), the card frame
+    // remains visible with a helpful message — not hidden — so users don't
+    // see a confusing blank gap. Sibling cards follow the same convention.
     const card = container.querySelector('[data-testid="campaign-uplift-card"]');
-    // Empty state: hide entirely (no hero/sparkline visible)
-    if (card) {
-      expect(card.textContent ?? '').not.toMatch(/Cumulative uplift|CI overlaps zero/);
-    } else {
-      expect(card).toBeNull();
-    }
+    expect(card).not.toBeNull();
+    const cfMsg = container.querySelector('[data-testid="cf-computing"]');
+    expect(cfMsg?.textContent ?? '').toMatch(/Counterfactual is computing/);
+    // Empty state must NOT show the hero number or honest-CI label.
+    expect(card!.textContent ?? '').not.toMatch(/Cumulative uplift|CI overlaps zero/);
   });
 
   it('shows skeleton during fetch (animate-pulse before resolve)', () => {
