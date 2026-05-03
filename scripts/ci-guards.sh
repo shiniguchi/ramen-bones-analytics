@@ -129,6 +129,73 @@ if ! python3 "$(dirname "$0")/ci-guards/check-cron-schedule.py"; then
   fail=1
 fi
 
+# Guard 9 (Phase 16 D-04 / UPL-03 / SC#3 / RESEARCH §6):
+# Forbid Track-B fits on raw revenue_eur. CF (forecast_track='cf') must always
+# source from kpi_daily_with_comparable_v.revenue_comparable_eur. This is a
+# secondary lint; the PRIMARY enforcement is the DB CHECK constraint
+# forecast_daily_cf_not_raw_revenue (migration 0062 / Plan 07).
+#
+# Heuristic: scan scripts/forecast/*.py for any line that mentions both
+# forecast_track='cf' AND kpi_name='revenue_eur' within a 50-line window.
+# False positives can be silenced via a per-file '# noqa: guard9' comment.
+echo "=== Guard 9: raw-revenue Track-B regression ==="
+GUARD9_FAIL=0
+if [ -d scripts/forecast ]; then
+  while IFS= read -r f; do
+    # Skip files that explicitly opt out via a single '# noqa: guard9' line
+    if grep -qE '^[[:space:]]*#[[:space:]]*noqa:[[:space:]]*guard9' "$f"; then
+      continue
+    fi
+    # awk windowing: detect co-occurrence of cf marker and revenue_eur within 50 lines.
+    # Resets the partner zone after a successful pair check so a later co-occurrence
+    # is detected on its own merits, not paired with a long-stale earlier sighting.
+    awk '
+        /forecast_track[^=]*=[^=]*['"'"'"]cf['"'"'"]/ { cf_zone=NR }
+        /kpi_name[^=]*=[^=]*['"'"'"]revenue_eur['"'"'"]/ { rev_zone=NR }
+        cf_zone && rev_zone && (NR - cf_zone < 50) && (NR - rev_zone < 50) {
+            printf "%s:%d: revenue_eur+forecast_track=cf co-occurrence\n", FILENAME, NR
+            exit 1
+        }
+        END { exit 0 }
+    ' "$f"
+    if [ $? -ne 0 ]; then
+      GUARD9_FAIL=1
+    fi
+  done < <(find scripts/forecast -maxdepth 1 -name '*.py' -type f)
+fi
+if [ "$GUARD9_FAIL" -ne 0 ]; then
+  echo "::error::Guard 9 FAILED: scripts/forecast/ writes Track-B (forecast_track='cf') against raw revenue_eur. Use kpi_daily_with_comparable_v.revenue_comparable_eur instead. (DB CHECK constraint forecast_daily_cf_not_raw_revenue is the primary enforcement; this lint is secondary.)"
+  fail=1
+fi
+
+# Guard 10 (Phase 16 / D-12 / Plan 09 retirement):
+# Forbid the 2026-04-14 literal anywhere under src/. Single allowed source of
+# truth is the campaign_calendar table (seeded in supabase/migrations/0058).
+# Plan 09 retired src/lib/forecastConfig.ts CAMPAIGN_START; Guard 10 prevents
+# reappearance.
+#
+# Exclusions:
+#   1. src/lib/e2eChartFixtures.ts — entire file is dead-code-in-prod E2E
+#      fixture data (gated by E2E_FIXTURES=1 env var); fixtures legitimately
+#      use 2026-04-14 as a sample business_date.
+#   2. Per-line '// noqa: guard10' comment — opt-out for inline E2E fixture
+#      blocks (see src/routes/+page.server.ts lines under E2E_FIXTURES gate).
+echo "=== Guard 10: 2026-04-14 literal forbidden in src/ ==="
+if [ -d src ]; then
+  GUARD10_HITS=$(
+    grep -rnE "2026-?04-?14|April[[:space:]]+14[,]?[[:space:]]+2026" \
+         --exclude='e2eChartFixtures.ts' \
+         src/ 2>/dev/null \
+    | grep -v 'noqa:[[:space:]]*guard10' \
+    || true
+  )
+  if [ -n "$GUARD10_HITS" ]; then
+    echo "$GUARD10_HITS"
+    echo "::error::Guard 10 FAILED: src/ contains 2026-04-14 literal. The campaign date must come from /api/campaign-uplift (campaign_calendar is the single source of truth). Delete the literal, or annotate the line with '// noqa: guard10' if it is a dead-code-in-prod E2E fixture."
+    fail=1
+  fi
+fi
+
 if [ "$fail" -eq 0 ]; then
   echo "All CI guards passed."
 fi
