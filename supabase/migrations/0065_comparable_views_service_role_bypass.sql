@@ -75,9 +75,17 @@
 -- Part A: forecast_with_actual_v (originally migration 0054).
 -- ---------------------------------------------------------------------------
 
+-- Live DEV column list (verified 2026-05-03 via REST OpenAPI introspection):
+--   restaurant_id, kpi_name, target_date, model_name, granularity,
+--   forecast_track, run_date, yhat, yhat_lower, yhat_upper, horizon_days,
+--   exog_signature, actual_value
+-- The `granularity` column was added by migration 0057 (Phase 15 D-15) and
+-- MUST be preserved here — `CREATE OR REPLACE VIEW` requires the new
+-- definition to be a strict superset of the existing column list.
+
 CREATE OR REPLACE VIEW public.forecast_with_actual_v AS
 SELECT
-    f.restaurant_id, f.kpi_name, f.target_date, f.model_name, f.forecast_track,
+    f.restaurant_id, f.kpi_name, f.target_date, f.model_name, f.granularity, f.forecast_track,
     f.run_date, f.yhat, f.yhat_lower, f.yhat_upper, f.horizon_days, f.exog_signature,
     CASE f.kpi_name
         WHEN 'revenue_eur' THEN k.revenue_cents / 100.0
