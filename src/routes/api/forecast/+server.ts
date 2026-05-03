@@ -15,13 +15,15 @@
 //   pipeline_runs_status_v applies its own caller-JWT row filter (Phase 13
 //   migration 0049).
 // Cache-Control: private, no-store — prevents CDN cross-tenant leakage.
-// CF Pages 50-subrequest budget: 7 parallel Supabase queries — well under cap.
+// CF Pages 50-subrequest budget: 8 parallel Supabase queries — well under cap.
 import type { RequestHandler } from './$types';
 import { json } from '@sveltejs/kit';
 import { fetchAll } from '$lib/supabasePagination';
 import { parseGranularity, type Granularity } from '$lib/forecastValidation';
 import { clampEvents, type ForecastEvent } from '$lib/forecastEventClamp';
 import { format, subDays, subMonths, startOfWeek, startOfMonth } from 'date-fns';
+
+type CampaignRow = { campaign_id: string; start_date: string; name: string | null };
 
 const KPIS = ['revenue_eur', 'invoice_count'] as const;
 type Kpi = typeof KPIS[number];
@@ -85,7 +87,11 @@ export const GET: RequestHandler = async ({ locals, url }) => {
     // trims to 50 anyway.
     const eventsEnd = format(subDays(today, -365), 'yyyy-MM-dd');
 
-    const [forecastRows, holidayRows, schoolRows, recurRows, transitRows, pipelineRows] = await Promise.all([
+    // Phase 16 D-12: campaign_calendar window — 90d back to eventsEnd. Pre-filter
+    // before clampEvents to keep payload bounded; clampEvents priority 5 still trims.
+    const campaignsStart = format(subDays(today, 90), 'yyyy-MM-dd');
+
+    const [forecastRows, holidayRows, schoolRows, recurRows, transitRows, pipelineRows, campaignRows] = await Promise.all([
       fetchAll<ForecastViewRow>(() =>
         locals.supabase
           .from('forecast_with_actual_v')
@@ -131,6 +137,13 @@ export const GET: RequestHandler = async ({ locals, url }) => {
           .select('step_name,status,finished_at')
           .eq('status', 'success')
           .order('finished_at', { ascending: false })
+      ),
+      fetchAll<CampaignRow>(() =>
+        locals.supabase
+          .from('campaign_calendar')
+          .select('campaign_id,start_date,name')
+          .gte('start_date', campaignsStart)
+          .lte('start_date', eventsEnd)
       )
     ]);
 
@@ -160,12 +173,15 @@ export const GET: RequestHandler = async ({ locals, url }) => {
       value: kpi === 'revenue_eur' ? r.revenue_cents / 100 : r.tx_count
     }));
 
-    // Sibling events array — preserved verbatim from v1.
+    // Sibling events array — Phase 16 D-12 adds 5th source (campaign_start).
+    // EventMarker.svelte already supports campaign_start (red 3px line, C-09).
+    // clampEvents priority 5 already covers campaign_start (Phase 15 carry-forward).
     const events: ForecastEvent[] = [
-      ...holidayRows.map((h) => ({ type: 'holiday' as const,         date: h.date,       label: h.name })),
-      ...schoolRows .map((s) => ({ type: 'school_holiday' as const,  date: s.start_date, label: s.block_name, end_date: s.end_date })),
-      ...recurRows  .map((r) => ({ type: 'recurring_event' as const, date: r.start_date, label: r.name })),
-      ...transitRows.map((t) => ({ type: 'transit_strike' as const,  date: t.pub_date.slice(0, 10), label: t.title }))
+      ...holidayRows .map((h) => ({ type: 'holiday' as const,         date: h.date,       label: h.name })),
+      ...schoolRows  .map((s) => ({ type: 'school_holiday' as const,  date: s.start_date, label: s.block_name, end_date: s.end_date })),
+      ...recurRows   .map((r) => ({ type: 'recurring_event' as const, date: r.start_date, label: r.name })),
+      ...transitRows .map((t) => ({ type: 'transit_strike' as const,  date: t.pub_date.slice(0, 10), label: t.title })),
+      ...campaignRows.map((c) => ({ type: 'campaign_start' as const,  date: c.start_date, label: c.name ?? c.campaign_id }))
     ];
 
     // Latest forecast pipeline run feeds last_run — preserved from v1.
