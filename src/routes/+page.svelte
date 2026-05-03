@@ -20,6 +20,7 @@
   import RepeaterCohortCountCard from '$lib/components/RepeaterCohortCountCard.svelte';
   import RevenueForecastCard from '$lib/components/RevenueForecastCard.svelte';
   import InvoiceCountForecastCard from '$lib/components/InvoiceCountForecastCard.svelte';
+  import CampaignUpliftCard from '$lib/components/CampaignUpliftCard.svelte';
   import LazyMount from '$lib/components/LazyMount.svelte';
   import { clientFetch } from '$lib/clientFetch';
   import {
@@ -282,6 +283,15 @@
     <LazyMount minHeight="320px">
       {#snippet children()}
         <InvoiceCountForecastCard />
+      {/snippet}
+    </LazyMount>
+
+    <!-- Phase 16 D-11: CampaignUpliftCard. Slots between InvoiceCountForecastCard
+         and the KPI tiles per CONTEXT.md placement decision. The card self-fetches
+         /api/campaign-uplift on mount and hides itself when no campaigns exist. -->
+    <LazyMount minHeight="180px">
+      {#snippet children()}
+        <CampaignUpliftCard />
       {/snippet}
     </LazyMount>
 
