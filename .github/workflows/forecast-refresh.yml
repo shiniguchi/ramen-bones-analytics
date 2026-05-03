@@ -46,6 +46,8 @@ jobs:
         # Validate models input against a safe pattern before forwarding to argparse.
         # Service-role key scoped to THIS step only — keeps it out of pip install
         # and any future steps' environments.
+        # Phase 16 D-06: run_all.py defaults to --track=both → BAU + CF fits in
+        # one invocation. No YAML change needed for CF orchestration itself.
         env:
           SUPABASE_URL: ${{ secrets.DEV_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.DEV_SUPABASE_SERVICE_ROLE_KEY }}
@@ -61,3 +63,30 @@ jobs:
             ARGS+=("--models" "$MODELS")
           fi
           python -m scripts.forecast.run_all "${ARGS[@]}"
+
+      - name: Run cumulative uplift
+        # Phase 16 (UPL-04 / UPL-07): aggregates Track-B forecasts into
+        # campaign_uplift_v + fires off-week reminder via atomic UPDATE on
+        # feature_flags. Runs AFTER BAU+CF fits, BEFORE the final MV refresh
+        # so the campaign_uplift backing table is populated when MVs rebuild.
+        env:
+          SUPABASE_URL: ${{ secrets.DEV_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.DEV_SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          set -euo pipefail
+          python -m scripts.forecast.cumulative_uplift
+
+      - name: Refresh forecast MVs
+        # Phase 16: explicit MV refresh AFTER cumulative_uplift so any MV-backed
+        # view (campaign_uplift_v wrapper) sees freshly upserted backing rows.
+        # The RPC is idempotent — calling it again after run_all is safe.
+        env:
+          SUPABASE_URL: ${{ secrets.DEV_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.DEV_SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          set -euo pipefail
+          python -c "
+          from scripts.forecast.db import make_client
+          c = make_client()
+          c.rpc('refresh_forecast_mvs', {}).execute()
+          "
