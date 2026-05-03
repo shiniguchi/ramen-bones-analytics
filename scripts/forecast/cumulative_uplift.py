@@ -492,19 +492,29 @@ def _list_campaigns(client, *, restaurant_id: str) -> list:
 def _successful_cf_models(client, *, run_date: date) -> list:
     """Per RESEARCH §5: build SUCCESSFUL_CF_MODELS list from pipeline_runs.
 
-    A cf_<model> row with status='success' on this run_date passes through.
-    Failures (e.g., SARIMAX LinAlgError fallback that propagated) are
-    excluded — partial-fit resilience per UPL-07.
+    A cf_<model> row with status='success' whose `started_at` falls on this
+    run_date (UTC) passes through. Failures (e.g., SARIMAX LinAlgError
+    fallback that propagated) are excluded — partial-fit resilience per
+    UPL-07.
+
+    Plan 16-12 fix (Rule 3 — blocking bug): pipeline_runs has no `run_date`
+    column; the schema uses `started_at` (timestamptz). Probe via
+    `started_at >= run_date 00:00 AND started_at < (run_date+1) 00:00`.
     """
+    from datetime import timedelta
+
+    start_iso = f"{run_date.isoformat()}T00:00:00+00:00"
+    end_iso = f"{(run_date + timedelta(days=1)).isoformat()}T00:00:00+00:00"
     succeeded = []
     for model in ALL_CF_MODELS:
         try:
             resp = (
                 client.table("pipeline_runs")
-                .select("status")
+                .select("status,started_at")
                 .eq("step_name", f"cf_{model}")
-                .eq("run_date", run_date.isoformat())
-                .order("finished_at", desc=True)
+                .gte("started_at", start_iso)
+                .lt("started_at", end_iso)
+                .order("started_at", desc=True)
                 .limit(1)
                 .execute()
             )
