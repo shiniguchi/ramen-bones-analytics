@@ -4,19 +4,19 @@ milestone: v1.3
 milestone_name: External Data & Forecasting Foundation
 status: executing
 stopped_at: Phase 14 complete. Ready for Phase 15 (Forecast Chart UI).
-last_updated: "2026-05-02T08:55:13.670Z"
-last_activity: 2026-05-02
+last_updated: "2026-05-03T22:30:00.000Z"
+last_activity: 2026-05-03
 progress:
   total_phases: 17
-  completed_phases: 11
+  completed_phases: 15
   total_plans: 86
-  completed_plans: 68
-  percent: 79
+  completed_plans: 71
+  percent: 83
 ---
 
 # STATE: Ramen Bones Analytics
 
-**Last updated:** 2026-05-02
+**Last updated:** 2026-05-03
 
 ## Project Reference
 
@@ -30,7 +30,7 @@ progress:
 
 Milestone: v1.3 (External Data & Forecasting Foundation)
 Phase: 16 (ITS Uplift Attribution) — EXECUTING
-Plan: 7 of 13 complete (campaign_uplift_v on DEV)
+Plan: 10 of 13 complete (Wave 3 done — API + CampaignUpliftCard + E2E spec landed; visual gates deferred to DEV)
 
 - **Status:** Executing Phase 16
 - **Phase 15:** v2 (Forecast Backtest Overlay) merged via PR #26 on 2026-05-01.
