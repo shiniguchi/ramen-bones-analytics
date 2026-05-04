@@ -47,7 +47,7 @@ A restaurant owner opens the site on their phone and makes a real business decis
 - [x] **Phase 14: Forecasting Engine — BAU Track** — SARIMAX/Prophet/ETS/Theta/Naive nightly fits + sample-path resampling + last_7_eval + forecast_daily_mv
 - [x] **Phase 15: Forecast Chart UI** — v2 (Forecast Backtest Overlay) merged via PR #26 on 2026-05-01. Plans 15-09..15-16 shipped; per-grain forecasts, RevenueForecastCard + InvoiceCountForecastCard + CalendarRevenueCard overlay. Post-merge QA fixes: grain-aware empty-state copy and CalendarRevenueCard auto-scroll-to-today. Plan 15-17 (retire dedicated cards) remains deferred
 - [x] **Phase 16: ITS Uplift Attribution** — campaign_calendar + Track-B counterfactual fit + campaign_uplift_v + CampaignUpliftCard with honest "CI overlaps zero" labeling
-- [ ] **Phase 16.1: Friend-Persona UX Polish (INSERTED, EXPANDED 2026-05-04)** — past-forecast continuity on Calendar* cards + Forecast cards via pipeline windowing fix anchored on last complete period (day=start-of-CW17, week=last 5 CWs, month=last 4 calendar months); Forecast cards horizontal-scroll parity; Calendar* tooltip shows per-model forecast values; CampaignUpliftCard plain-language regime + supportive labels. Backend pipeline + UI. Owner-blocking for friend-persona acceptance.
+- [x] **Phase 16.1: Friend-Persona UX Polish (INSERTED, EXPANDED 2026-05-04)** — past-forecast continuity on Calendar* cards + Forecast cards via pipeline windowing fix anchored on last complete period (day=start-of-CW17, week=last 5 CWs, month=last 4 calendar months); Forecast cards horizontal-scroll parity; Calendar* tooltip shows per-model forecast values; CampaignUpliftCard plain-language regime + supportive labels. Backend pipeline + UI. Owner-blocking for friend-persona acceptance. **5/5 plans implementation done 2026-05-04; phase-final QA (Chrome MCP at localhost ja+en × 4 cards × 3 grains) pending.**
 - [ ] **Phase 17: Backtest Gate & Quality Monitoring** — rolling-origin CV at 4 horizons + ConformalIntervals + ≥10% RMSE promotion gate + freshness-SLO badges + ACCURACY-LOG
 
 ## Phase Details
@@ -346,7 +346,7 @@ Plans:
   **Wave 2 (UI — depends on 16.1-04 + 16.1-02; parallel within wave)**
   - [x] 16.1-01-PLAN.md (DONE 2026-05-04) — Calendar* past-forecast overlay (CalendarRevenueCard + CalendarCountsCard split-Spline past/future + continuous CI band) + Tooltip.Root expansion with per-visible-model rows (D-16). Re-applied stashed scaffold via `git stash pop` (clean). Tasks 1-5 shipped (1567a59 / 0918ecc / 644e8a5 / 0695056 / 151b5c6); Task 6 Chrome MCP gate auto-approved per workflow.auto_advance=true and folded into phase-final QA.
   - [x] 16.1-03-PLAN.md (DONE 2026-05-04) — CampaignUpliftCard tier-aware plain-language hero (3 maturity tiers × CI matrix → 7 i18n keys; D-05..D-11) + plain secondary line + inline "How is this calculated? ›" disclosure trigger + collapsible panel (statistical detail / anticipation note / divergence warning) + 4 D-18 supportive labels (subtitle / sparkline Y label above-Chart / X caption / baseline legend chip). Locale-aware date via Intl.DateTimeFormat. 4 new i18n keys × 5 locales. Tasks 1-3 shipped (4bdabf7 / 6d518c8 / 8cb008c); Task 4 Chrome MCP gate auto-approved per workflow.auto_advance=true and folded into phase-final QA.
-  - [ ] 16.1-05-PLAN.md (PLANNED) — RevenueForecastCard + InvoiceCountForecastCard horizontal-scroll parity (D-17) + past/future Spline split. Lifts `CalendarRevenueCard.svelte:270-305` wrapper verbatim. Localhost-first Chrome MCP gate ja+en.
+  - [x] 16.1-05-PLAN.md (DONE 2026-05-04) — RevenueForecastCard + InvoiceCountForecastCard horizontal-scroll parity (D-17) + past/future Spline split shipped. Lifts `CalendarRevenueCard.svelte:194-263` wrapper verbatim — `bind:this={scrollerRef}` + `bind:clientWidth={cardW}` + `width={chartW}` + scroll-to-today RAF lands today at ~60% viewport on first paint (`todayPct = pastBuckets / totalSlots`). Past Spline (faded solid `stroke-opacity={0.7}`) + future Spline (dashed `'4 4'`); `curve={curveMonotoneX}` preserved on both branches per cards' pre-existing styling. CI Area band continuous (`fillOpacity={0.06}`). xDomain UNCHANGED — data-driven `[parseISO(allDates[0]), parseISO(allDates[allDates.length-1])]` auto-picks-up windowed leftmost target_date post-D-15 because there are no bars to define a competing anchor (intentional architectural difference from Calendar* cards). D-16 tooltip extension OUT OF SCOPE (Forecast cards delegate to `<ForecastHoverPopup>`). C-02/C-03 invariants preserved. Tasks 1+2 shipped (ab43c28 / ed8bf22); Task 3 Chrome MCP gate auto-approved per workflow.auto_advance=true and folded into phase-final QA.
 **UI hint**: yes
 
 ### Phase 17: Backtest Gate & Quality Monitoring
@@ -382,7 +382,7 @@ Plans:
 | 14. Forecasting Engine — BAU Track | v1.3 | 0/? | Not started | — |
 | 15. Forecast Chart UI | v1.3 | 0/? | Not started | — |
 | 16. ITS Uplift Attribution | v1.3 | 13/13 | Pending Verification|  |
-| 16.1. Friend-Persona UX Polish (INSERTED, EXPANDED) | v1.3 | 4/5 | In Progress|  |
+| 16.1. Friend-Persona UX Polish (INSERTED, EXPANDED) | v1.3 | 5/5 | Pending Verification | 2026-05-04 |
 | 17. Backtest Gate & Quality Monitoring | v1.3 | 0/? | Not started | — |
 
 ## Coverage Summary

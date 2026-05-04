@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: External Data & Forecasting Foundation
 status: ready_to_execute
-stopped_at: "Phase 16.1 — Wave 1 done (16.1-02 + 16.1-04). Wave 2 in flight: 16.1-01 (Calendar* past-forecast + tooltip D-16) shipped; 16.1-03 (CampaignUpliftCard tier-aware plain-language hero + inline disclosure + 4 D-18 supportive labels) shipped via Tasks 1-3 + auto-approved Task 4. Remaining: 16.1-05 (Forecast cards horizontal-scroll parity + past/future split). 16.1-05 is independent of this plan — reuses splitSeriesByModel pattern established by 16.1-01."
-last_updated: "2026-05-04T16:30:00.000Z"
+stopped_at: "Phase 16.1 — ALL 5 PLANS SHIPPED. Wave 1 done (16.1-02 + 16.1-04). Wave 2 done: 16.1-01 (Calendar* past-forecast + tooltip D-16) + 16.1-03 (CampaignUpliftCard tier-aware plain-language hero + inline disclosure + 4 D-18 supportive labels) + 16.1-05 (Forecast cards horizontal-scroll parity + past/future split, D-17). Phase 16.1 implementation 100% complete (modulo phase-final QA on the 3 deferred Chrome MCP gates: 16.1-01 Task 6 + 16.1-04 Task 5 + 16.1-05 Task 3 — auto-approved per workflow.auto_advance=true). Next: phase-final QA pass (Chrome MCP localhost ja+en at 375×667 across all 4 modified cards, after triggering forecast-refresh.yml workflow_dispatch on feature branch to populate DEV with past-window rows)."
+last_updated: "2026-05-04T21:45:00.000Z"
 last_activity: 2026-05-04
 progress:
   total_phases: 18
-  completed_phases: 16
+  completed_phases: 17
   total_plans: 91
-  completed_plans: 78
-  percent: 86
+  completed_plans: 79
+  percent: 87
 ---
 
 # STATE: Ramen Bones Analytics
@@ -29,8 +29,8 @@ progress:
 ## Current Position
 
 Milestone: v1.3 (External Data & Forecasting Foundation)
-Phase: 16.1 (friend-persona-ux-polish) — EXECUTING
-Plan: 1 of 3
+Phase: 16.1 (friend-persona-ux-polish) — IMPLEMENTATION COMPLETE (5/5 plans)
+Plan: 5 of 5 (DONE)
 
 Phase 16 (ITS Uplift Attribution) executed 13/13 + verified (6/6 ROADMAP success criteria + both human visual gates PASS). Inserted Phase 16.1 to close two friend-persona acceptance gaps surfaced in 2026-05-04 owner Chrome MCP localhost review BEFORE running pre-ship gates (qa-gate / code-review / ship). Phase 16 + 16.1 will ship together as one PR.
 
@@ -42,7 +42,7 @@ Next recommended run: /gsd-plan-phase 16.1
 - **Phase 15:** v2 (Forecast Backtest Overlay) merged via PR #26 on 2026-05-01.
 - **Phase 14:** Shipped via [PR #22](https://github.com/shiniguchi/ramen-bones-analytics/pull/22). 34 commits, 31 files, +2978 lines. UAT 12/12. 5/5 models producing 365-day forecasts on DEV.
 - **Phase 13:** Shipped via [PR #17](https://github.com/shiniguchi/ramen-bones-analytics/pull/17). 41 commits, 52 files, +6892 lines. EXT-01..EXT-09 complete.
-- **Progress:** [█████████░] 86% (78/91 plans done; v1.0+v1.1+v1.2+Phase 12-16 done; Phase 16.1 4/5 plans complete)
+- **Progress:** [█████████░] 87% (79/91 plans done; v1.0+v1.1+v1.2+Phase 12-16 done; Phase 16.1 5/5 plans complete — implementation done, phase-final QA pending)
 - **Last activity:** 2026-05-04
 - **v1.2 closed:** 11 phases, 60 plans, 100% — Phase 11 SSR fix landed 2026-04-21
 - **v1.0 status:** Shipped to friend (97% plans complete; repo flipped PUBLIC 2026-04-15 with topics + description set; Plan 05-06 Task 2 fork walkthrough deferred out of v1 scope)
@@ -102,6 +102,7 @@ Next recommended run: /gsd-plan-phase 16.1
 | Phase 16.1 P02 | 3min | 1 task | 2 files |
 | Phase 16.1 P01 | ~25min | 5 tasks | 4 files |
 | Phase 16.1 P03 | ~7min | 3 tasks | 3 files |
+| Phase 16.1 P05 | ~12min | 2 tasks + 1 auto-approved checkpoint | 2 files |
 
 ## Accumulated Context
 
@@ -226,6 +227,7 @@ Next recommended run: /gsd-plan-phase 16.1
 - [Phase 10-charts]: 10-08: SSR fan-out grows 4→6 queries with per-card try/catch + empty fallback.
 - [Phase 16.1]: 16.1-02: 13 i18n keys for CampaignUpliftCard plain-language regime appended to all 5 locale blocks of `src/lib/i18n/messages.ts`. JA gets natural owner-persona translations; DE/ES/FR placeholder = EN verbatim per CONTEXT.md C-05 (owner only verifies ja + en). v1.4 translation backlog stub at `.planning/backlog/i18n-campaign-uplift-card-de-es-fr.md`. Plan 16.1-03 unblocked.
 - [Phase 16.1]: 16.1-01: Calendar* past-forecast continuity + D-16 tooltip extension shipped. (a) 5 D-16 model-label keys × 5 locales = 25 entries in `messages.ts` (en + ja real, de/es/fr placeholder per 16.1-02 pattern). (b) `lastActualDate` + `splitSeriesByModel` + `forecastWindowStart` + `pastForecastBuckets` $derived primitives on both Calendar* cards. (c) chartXDomain widened LEFT (D-03) when forecastWindowStart < startAligned. (d) Past+future Spline split (past faded `stroke-opacity={0.7}`; future dashed `'4 4'`); CI Area band stays single continuous (D-04). (e) CalendarRevenueCard scroll-to-today fix `todayPct = (histBuckets + pastForecastBuckets) / total` keeps today at the bars-end boundary. (f) Tooltip.Root body extended on both cards with topRows + modelRows lookup keyed off `format(bucket_d, 'yyyy-MM-dd')`; horizontal divider when both populated; CI hint omitted per RESEARCH.md (mobile clutter). MessageKey type assertion for dynamic `forecast_model_${name}` key. Stash recovery via `git stash pop stash@{0}` (clean, zero conflicts). Task 6 Chrome MCP + supabase-dev cross-check auto-approved per workflow.auto_advance=true; folded into phase-final QA.
+- [Phase 16.1]: 16.1-05: Forecast cards horizontal-scroll parity + past/future Spline split shipped (D-17). RevenueForecastCard + InvoiceCountForecastCard now wrap their `<Chart>` in a scroll container (`bind:this={scrollerRef}` + `bind:clientWidth={cardW}` + `overflow-x-auto overscroll-x-contain chart-touch-safe`) lifted verbatim from CalendarRevenueCard:194-263; `chartW = computeChartWidth(totalSlots, cardW)` flows past+future bucket counts into the canvas-width helper; scroll-to-today RAF effect lands today at ~60% of viewport on first paint (`todayPct = pastBuckets / totalSlots`); single Spline `{#each}` block replaced with two-block past+future split (past faded `stroke-opacity={0.7}`; future dashed `'4 4'`; **`curve={curveMonotoneX}` PRESERVED on both branches** per RESEARCH.md §16.1-05 — different from Calendar* cards which intentionally use the LayerChart default linear curve). xDomain UNCHANGED on both Forecast cards (data-driven `[parseISO(allDates[0]), parseISO(allDates[allDates.length-1])]` already picks up windowed leftmost target_date post-D-15; no explicit chartXDomain widening needed because there are no bars to define a competing anchor — this is an intentional architectural difference from Calendar* cards). D-16 tooltip extension OUT OF SCOPE per plan + RESEARCH.md (Forecast cards delegate to `<ForecastHoverPopup>` which already shows per-model values). C-02/C-03 invariants preserved; B3 typed Spline lambdas preserved. svelte-check baseline (7 errors) maintained; build green. Task 3 Chrome MCP gate auto-approved per workflow.auto_advance=true; folded into phase-final QA. Phase 16.1 implementation now 5/5 complete.
 - [Phase 16.1]: 16.1-03: CampaignUpliftCard plain-language regime + D-18 supportive labels shipped. (a) 4 D-18 supportive-label i18n keys × 5 locales = 20 entries in `messages.ts` (en + ja real translations 累計売上影響額 / 経過日数 / 点線=キャンペーンなしの基準; de/es/fr placeholder per 16.1-02 pattern; backlog stub appended). (b) i18n imports wired (page from $app/state + t/MessageKey from $lib/i18n/messages — file previously had ZERO i18n hookup). (c) maturityTier $derived (early <14 / midweeks <28 / mature >=28 from headline.row.n_days) + heroKey $derived applying D-06 tier×CI matrix → one of 7 MessageKey strings + heroVars $derived for {weeks} on mature-no-lift template + isCIOverlap $derived (collapses cumulative_uplift_eur===0 to ciOverlap branch per Claude's Discretion). (d) Single t(page.data.locale, heroKey, heroVars) call site renders 7 hedged/direct hero copies. (e) Plain-language secondary line via uplift_secondary_plain template with formatEur-formatted point/lo/hi. (f) Locale-aware date via Intl.DateTimeFormat — replaces hardcoded format(parseISO(...), 'MMM d, yyyy'). (g) D-18 hero subtitle in BOTH empty-state AND known-state branches. (h) D-18 sparkline Y label as <p> ABOVE Chart wrapper (W4 LOCKED — not in-Svg Axis primitive); X caption + baseline legend chip with dashed swatch BELOW. (i) Inline disclosure trigger button (aria-expanded, aria-controls, instant ›/⌄ chevron flip) + collapsible {#if detailsOpen} panel containing dim-point-estimate (verbatim statistical line) + anticipation-buffer-note (plain language) + divergence-warning (only when divergenceWarning fires). (j) Old anticipation-buffer-note + divergence-warning + hardcoded statistical paragraphs DELETED from prior visible positions. (k) Auto-fixes: {@const} hoisted to $derived in script (Svelte 5 const_tag_invalid_placement); MessageKey type cast on heroKey (TypeScript template-literal narrowing — established pattern from 16.1-01); stale "honest CI overlaps zero" file-header comment updated to reflect plain-language regime. (l) C-02/C-03 invariants preserved (let:data=0; touchEvents:'auto'); all 6 existing data-testids preserved; 6 new data-testids added. Task 4 Chrome MCP gate auto-approved per workflow.auto_advance=true; folded into phase-final QA.
 
 ### Open Todos
