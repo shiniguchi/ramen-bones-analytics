@@ -210,7 +210,14 @@ const en = {
   uplift_secondary_plain: 'Best estimate: ~{point} compared to expected. Range: {lo} to {hi} — that\'s normal day-to-day noise.',
   uplift_details_trigger: 'How is this calculated?',
   uplift_details_anticipation_plain: 'We compare your actual revenue against what the model predicted from data 7+ days before the campaign launched, so any pre-launch anticipation isn\'t counted as campaign uplift.',
-  uplift_details_divergence_plain: 'Two of our checks disagree — we\'d want more weeks of data before drawing conclusions.'
+  uplift_details_divergence_plain: 'Two of our checks disagree — we\'d want more weeks of data before drawing conclusions.',
+
+  // --- Forecast model display labels (Phase 16.1 D-16) ---
+  forecast_model_sarimax: 'SARIMAX',
+  forecast_model_prophet: 'Prophet',
+  forecast_model_ets: 'ETS',
+  forecast_model_theta: 'Theta',
+  forecast_model_naive_dow: 'Naive (DoW avg)'
 } as const;
 
 export type MessageKey = keyof typeof en;
@@ -407,7 +414,14 @@ const de: Record<MessageKey, string> = {
   uplift_secondary_plain: 'Best estimate: ~{point} compared to expected. Range: {lo} to {hi} — that\'s normal day-to-day noise.',
   uplift_details_trigger: 'How is this calculated?',
   uplift_details_anticipation_plain: 'We compare your actual revenue against what the model predicted from data 7+ days before the campaign launched, so any pre-launch anticipation isn\'t counted as campaign uplift.',
-  uplift_details_divergence_plain: 'Two of our checks disagree — we\'d want more weeks of data before drawing conclusions.'
+  uplift_details_divergence_plain: 'Two of our checks disagree — we\'d want more weeks of data before drawing conclusions.',
+
+  // --- Forecast model display labels (Phase 16.1 D-16 — DE placeholder = EN; v1.4 backlog) ---
+  forecast_model_sarimax: 'SARIMAX',
+  forecast_model_prophet: 'Prophet',
+  forecast_model_ets: 'ETS',
+  forecast_model_theta: 'Theta',
+  forecast_model_naive_dow: 'Naive (DoW avg)'
 };
 
 // --- JA (日本語) ----------------------------------------------------------
@@ -601,7 +615,14 @@ const ja: Record<MessageKey, string> = {
   uplift_secondary_plain: '目安: 予想と比べて{point}ぐらい。範囲: {lo} 〜 {hi} — これくらいの差は普段の変動の範囲内です。',
   uplift_details_trigger: 'どうやって計算しているの？',
   uplift_details_anticipation_plain: 'キャンペーン開始の7日以上前のデータでモデルが予測した売上と、実際の売上を比べています。開始前の期待感による売上の動きはキャンペーンの効果には含めません。',
-  uplift_details_divergence_plain: '2つのチェック方法で結果が違いました — 結論を出す前にもう少しデータを集めたいところです。'
+  uplift_details_divergence_plain: '2つのチェック方法で結果が違いました — 結論を出す前にもう少しデータを集めたいところです。',
+
+  // --- Forecast model display labels (Phase 16.1 D-16) ---
+  forecast_model_sarimax: 'SARIMAX',
+  forecast_model_prophet: 'Prophet',
+  forecast_model_ets: 'ETS',
+  forecast_model_theta: 'Theta',
+  forecast_model_naive_dow: '単純予測（曜日平均）'
 };
 
 // --- ES (Español) ---------------------------------------------------------
@@ -796,7 +817,14 @@ const es: Record<MessageKey, string> = {
   uplift_secondary_plain: 'Best estimate: ~{point} compared to expected. Range: {lo} to {hi} — that\'s normal day-to-day noise.',
   uplift_details_trigger: 'How is this calculated?',
   uplift_details_anticipation_plain: 'We compare your actual revenue against what the model predicted from data 7+ days before the campaign launched, so any pre-launch anticipation isn\'t counted as campaign uplift.',
-  uplift_details_divergence_plain: 'Two of our checks disagree — we\'d want more weeks of data before drawing conclusions.'
+  uplift_details_divergence_plain: 'Two of our checks disagree — we\'d want more weeks of data before drawing conclusions.',
+
+  // --- Forecast model display labels (Phase 16.1 D-16 — ES placeholder = EN; v1.4 backlog) ---
+  forecast_model_sarimax: 'SARIMAX',
+  forecast_model_prophet: 'Prophet',
+  forecast_model_ets: 'ETS',
+  forecast_model_theta: 'Theta',
+  forecast_model_naive_dow: 'Naive (DoW avg)'
 };
 
 // --- FR (Français) --------------------------------------------------------
@@ -991,7 +1019,14 @@ const fr: Record<MessageKey, string> = {
   uplift_secondary_plain: 'Best estimate: ~{point} compared to expected. Range: {lo} to {hi} — that\'s normal day-to-day noise.',
   uplift_details_trigger: 'How is this calculated?',
   uplift_details_anticipation_plain: 'We compare your actual revenue against what the model predicted from data 7+ days before the campaign launched, so any pre-launch anticipation isn\'t counted as campaign uplift.',
-  uplift_details_divergence_plain: 'Two of our checks disagree — we\'d want more weeks of data before drawing conclusions.'
+  uplift_details_divergence_plain: 'Two of our checks disagree — we\'d want more weeks of data before drawing conclusions.',
+
+  // --- Forecast model display labels (Phase 16.1 D-16 — FR placeholder = EN; v1.4 backlog) ---
+  forecast_model_sarimax: 'SARIMAX',
+  forecast_model_prophet: 'Prophet',
+  forecast_model_ets: 'ETS',
+  forecast_model_theta: 'Theta',
+  forecast_model_naive_dow: 'Naive (DoW avg)'
 };
 
 export const messages: Record<Locale, Record<MessageKey, string>> = { en, de, ja, es, fr };
