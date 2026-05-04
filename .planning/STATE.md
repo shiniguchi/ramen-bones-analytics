@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: External Data & Forecasting Foundation
-status: executing
-stopped_at: Phase 14 complete. Ready for Phase 15 (Forecast Chart UI).
-last_updated: "2026-05-04T09:29:02.402Z"
+status: replanning
+stopped_at: "Phase 16.1 expanded scope per owner feedback #1-4 (2026-05-04 afternoon); ready for /gsd-plan-phase 16.1 --research"
+last_updated: "2026-05-04T11:45:00.000Z"
 last_activity: 2026-05-04
 progress:
   total_phases: 18
-  completed_phases: 12
-  total_plans: 89
+  completed_phases: 16
+  total_plans: 91
   completed_plans: 75
-  percent: 84
+  percent: 82
 ---
 
 # STATE: Ramen Bones Analytics
