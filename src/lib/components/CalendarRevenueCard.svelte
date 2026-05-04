@@ -18,7 +18,7 @@
   import { Chart, Svg, Axis, Bars, Spline, Area, Text, Tooltip } from 'layerchart';
   import { scaleTime } from 'd3-scale';
   import { timeDay, timeMonday, timeMonth } from 'd3-time';
-  import { addDays, parseISO, format, startOfMonth, startOfWeek } from 'date-fns';
+  import { addDays, differenceInDays, parseISO, format, startOfMonth, startOfWeek } from 'date-fns';
   import { page } from '$app/state';
   import { t } from '$lib/i18n/messages';
   import { formatEUR } from '$lib/format';
@@ -107,6 +107,47 @@
     return map;
   });
 
+  // Past/future boundary — server-truth derived from /api/forecast actuals.
+  // null when actuals is empty (cold-start) → all rows render as future.
+  const lastActualDate = $derived<string | null>(
+    (forecastData?.actuals ?? []).reduce<string | null>(
+      (max, a) => (max === null || a.date > max) ? a.date : max,
+      null
+    )
+  );
+
+  // Partition each model's rows by past/future relative to lastActualDate.
+  const splitSeriesByModel = $derived.by<Map<string, { past: ForecastRow[]; future: ForecastRow[] }>>(() => {
+    const out = new Map<string, { past: ForecastRow[]; future: ForecastRow[] }>();
+    for (const [modelName, modelRows] of seriesByModel.entries()) {
+      if (lastActualDate === null) {
+        out.set(modelName, { past: [], future: modelRows });
+        continue;
+      }
+      const past: ForecastRow[] = [];
+      const future: ForecastRow[] = [];
+      for (const r of modelRows) {
+        if (r.target_date < lastActualDate) past.push(r);
+        else future.push(r);
+      }
+      out.set(modelName, { past, future });
+    }
+    return out;
+  });
+
+  // D-03: leftmost past-forecast date for chartXDomain widening.
+  // null when no past rows exist (pre-D-15 / cold-start) → chartXDomain stays unchanged.
+  // splitSeriesByModel.past arrays inherit ascending sort from seriesByModel.
+  const forecastWindowStart = $derived.by<Date | null>(() => {
+    let minIso: string | null = null;
+    for (const split of splitSeriesByModel.values()) {
+      if (split.past.length === 0) continue;
+      const first = split.past[0].target_date;
+      if (minIso === null || first < minIso) minIso = first;
+    }
+    return minIso === null ? null : parseISO(minIso);
+  });
+
   const availableModels = $derived(
     Array.from(new Set((forecastData?.rows ?? []).map((r) => r.model_name)))
   );
@@ -178,29 +219,53 @@
     return (d: Date) => (grain === 'month' ? format(d, 'MMM') : format(d, 'MMM d'));
   });
 
-  // X-domain: bars span [from, to]; forecast lines render in the +365d gap.
-  // Aligned to the grain's bucket boundary so bars don't get clipped.
-  const chartXDomain = $derived.by((): [Date, Date] => {
+  // Bar-range left edge — bars start here. Used by chartXDomain widening (D-03)
+  // and pastForecastBuckets count below.
+  const startAligned = $derived.by<Date>(() => {
     const w = getWindow();
     const grain = getFilters().grain as 'day' | 'week' | 'month';
     const fromD = parseISO(w.from);
-    const startAligned =
-      grain === 'month' ? startOfMonth(fromD)
+    return grain === 'month' ? startOfMonth(fromD)
       : grain === 'week' ? startOfWeek(fromD, { weekStartsOn: 1 })
       : fromD;
-    return [startAligned, addDays(new Date(), 365)];
+  });
+
+  // X-domain: bars span [from, to]; forecast lines render in the +365d gap.
+  // D-03: widen LEFT edge to forecastWindowStart when past-forecast extends
+  // before startAligned (post-D-15). Pre-D-15: forecastWindowStart is null
+  // and the domain stays [startAligned, today + 365d] (existing behavior).
+  const chartXDomain = $derived.by<[Date, Date]>(() => {
+    const lo = forecastWindowStart !== null && forecastWindowStart < startAligned
+      ? forecastWindowStart
+      : startAligned;
+    return [lo, addDays(new Date(), 365)];
+  });
+
+  // D-03 scroll-to-today fix input — count of past-forecast buckets that extend
+  // BEFORE startAligned (i.e., outside the bar range, on the LEFT). Pre-D-15:
+  // forecastWindowStart is null OR >= startAligned → 0 → identical scroll math.
+  const pastForecastBuckets = $derived.by<number>(() => {
+    if (forecastWindowStart === null) return 0;
+    if (forecastWindowStart >= startAligned) return 0;
+    const grain = getFilters().grain as 'day' | 'week' | 'month';
+    if (grain === 'day') return Math.max(0, differenceInDays(startAligned, forecastWindowStart));
+    if (grain === 'week') return Math.max(0, Math.floor(differenceInDays(startAligned, forecastWindowStart) / 7));
+    // month
+    return Math.max(0,
+      (startAligned.getFullYear() - forecastWindowStart.getFullYear()) * 12
+      + (startAligned.getMonth() - forecastWindowStart.getMonth())
+    );
   });
 
   // Scroll overflow: when bars don't fit at mobile width, force a wider chart
   // and let the wrapper scroll horizontally. Forecast horizon adds ~365 day-slots
   // worth of x-axis distance — without scaling chartW up, bars would be crushed.
-  // We approximate "total slots" as (existing buckets + forecast row count) so
-  // the chart wraps the full extended domain without squeezing the bars.
+  // After D-15, also account for past-forecast buckets that extend LEFT of bars.
   let cardW = $state(0);
   const totalSlots = $derived.by(() => {
     const fcRows = forecastData?.rows ?? [];
     const fcDates = new Set(fcRows.map((r) => r.target_date));
-    return chartData.length + fcDates.size;
+    return chartData.length + fcDates.size + pastForecastBuckets;
   });
   const chartW = $derived(computeChartWidth(totalSlots, cardW));
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -242,10 +307,16 @@
     if (scrollerRef.scrollLeft !== lastSetScrollLeft) return;
     const el = scrollerRef;
     const histBuckets = chartData.length;
+    // D-15: split forecast counts into past (LEFT-extending) + future (RIGHT)
+    // so today still lands at the boundary between past-segment and future.
+    // pastForecastBuckets is the LEFT extension beyond the bar range.
+    // fcBuckets here counts ALL forecast distinct dates (past + future);
+    // we add pastForecastBuckets to the numerator so today sits at the
+    // (past-extension + bars + in-range-past-forecast) | future boundary.
     const fcBuckets = new Set((forecastData.rows ?? []).map((r) => r.target_date)).size;
-    const total = histBuckets + fcBuckets;
+    const total = histBuckets + pastForecastBuckets + fcBuckets;
     if (total === 0) return;
-    const todayPct = histBuckets / total;
+    const todayPct = (histBuckets + pastForecastBuckets) / total;
     let attempts = 0;
     const tryPosition = () => {
       if (el.scrollLeft !== lastSetScrollLeft) return;
@@ -322,18 +393,36 @@
             />
           {/each}
 
-          <!-- Forecast lines (front layer) — one Spline per visible model.
-               naive_dow gets dashed gray; others get solid 2px. -->
-          {#each Array.from(seriesByModel.entries()) as [modelName, modelRows] (`line-${modelName}`)}
+          <!-- Past-forecast lines — solid faded ~70% opacity (D-02; locked at 0.7).
+               naive_dow keeps its dashed gray; others render solid faded. -->
+          {#each Array.from(splitSeriesByModel.entries()) as [modelName, split] (`past-line-${modelName}`)}
             {@const isNaive = modelName === 'naive_dow'}
-            <Spline
-              data={modelRows.map((r) => ({ ...r, d: parseISO(r.target_date) }))}
-              x={(r: { d: Date }) => r.d}
-              y={(r: { yhat_mean: number }) => r.yhat_mean}
-              stroke={FORECAST_MODEL_COLORS[modelName]}
-              stroke-width={isNaive ? 1 : 2}
-              stroke-dasharray={isNaive ? '4 4' : undefined}
-            />
+            {#if split.past.length > 0}
+              <Spline
+                data={split.past.map((r) => ({ ...r, d: parseISO(r.target_date) }))}
+                x={(r: { d: Date }) => r.d}
+                y={(r: { yhat_mean: number }) => r.yhat_mean}
+                stroke={FORECAST_MODEL_COLORS[modelName]}
+                stroke-width={isNaive ? 1 : 2}
+                stroke-opacity={0.7}
+                stroke-dasharray={isNaive ? '4 4' : undefined}
+              />
+            {/if}
+          {/each}
+
+          <!-- Future-forecast lines — dashed for all models (D-02). -->
+          {#each Array.from(splitSeriesByModel.entries()) as [modelName, split] (`future-line-${modelName}`)}
+            {@const isNaive = modelName === 'naive_dow'}
+            {#if split.future.length > 0}
+              <Spline
+                data={split.future.map((r) => ({ ...r, d: parseISO(r.target_date) }))}
+                x={(r: { d: Date }) => r.d}
+                y={(r: { yhat_mean: number }) => r.yhat_mean}
+                stroke={FORECAST_MODEL_COLORS[modelName]}
+                stroke-width={isNaive ? 1 : 2}
+                stroke-dasharray={'4 4'}
+              />
+            {/if}
           {/each}
 
           {#each chartData as row, i (String(row.bucket_d))}
