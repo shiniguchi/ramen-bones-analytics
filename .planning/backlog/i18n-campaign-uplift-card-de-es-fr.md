@@ -16,3 +16,14 @@ The following 5 keys were added with DE/ES/FR placeholder = EN verbatim. Need re
 - `forecast_model_naive_dow` — needs DE/ES/FR equivalents of "Naive (DoW avg)"
 
 Same precedent as the original Phase 16.1-02 13-key stub: owner only verifies ja + en for v1.3.
+
+## 2026-05-04 — Phase 16.1 D-18 supportive labels
+
+The following 4 keys were added with DE/ES/FR placeholder = EN verbatim. Need real translation in v1.4 polish:
+
+- `uplift_card_subtitle` — hero subtitle context
+- `uplift_sparkline_y_label` — sparkline Y axis label
+- `uplift_sparkline_x_caption` — sparkline X axis caption
+- `uplift_baseline_label` — counterfactual baseline legend chip
+
+Same precedent as the original Phase 16.1-02 13-key stub: owner only verifies ja + en for v1.3.
