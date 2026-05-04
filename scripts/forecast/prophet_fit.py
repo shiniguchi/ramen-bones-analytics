@@ -38,6 +38,7 @@ from scripts.forecast.grain_helpers import (
     parse_granularity_env,
     pred_dates_for_grain,
     train_end_for_grain,
+    window_start_for_grain,  # NEW — Phase 16.1 D-14 (Path A — Risk 2 favorable)
 )
 from scripts.external.pipeline_runs_writer import write_success, write_failure
 
@@ -317,6 +318,8 @@ def fit_and_write(
         pred_anchor = train_end if track == 'cf' else run_date
         pred_dates = pred_dates_for_grain(
             run_date=pred_anchor, granularity='day', horizon=horizon,
+            window_start=window_start_for_grain(last_actual, 'day'),  # D-15 Option B (Path A)
+            train_end=train_end,  # B2: drop dates < train_end + 1d from past-side output
         )
         pred_start = pred_dates[0]
         pred_end = pred_dates[-1]
@@ -356,6 +359,8 @@ def fit_and_write(
 
         pred_dates = pred_dates_for_grain(
             run_date=run_date, granularity=granularity, horizon=horizon,
+            window_start=window_start_for_grain(last_actual, granularity),  # D-15 Option B (Path A)
+            train_end=train_end,  # B2: drop dates < train_end + 1d from past-side output
         )
         future_df = _build_future_df(pred_dates, None)
 
@@ -366,8 +371,8 @@ def fit_and_write(
 
     # 4. Generate sample paths via predictive_samples.
     raw = m.predictive_samples(future_df)
-    samples = raw['yhat']  # shape: (HORIZON, N_PATHS)
-    assert samples.shape == (horizon, N_PATHS), f'Unexpected samples shape: {samples.shape}'
+    samples = raw['yhat']  # shape: (len(pred_dates), N_PATHS) — past+future under D-15 Option B
+    assert samples.shape == (len(pred_dates), N_PATHS), f'Unexpected samples shape: {samples.shape}'
 
     # 5. Build forecast rows.
     rows = _build_forecast_rows(
