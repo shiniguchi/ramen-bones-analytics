@@ -10,8 +10,8 @@ progress:
   total_phases: 18
   completed_phases: 16
   total_plans: 91
-  completed_plans: 76
-  percent: 84
+  completed_plans: 77
+  percent: 85
 ---
 
 # STATE: Ramen Bones Analytics
