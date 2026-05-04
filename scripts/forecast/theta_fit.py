@@ -37,6 +37,7 @@ from scripts.forecast.grain_helpers import (
     parse_granularity_env,
     pred_dates_for_grain,
     train_end_for_grain,
+    window_start_for_grain,  # NEW — Phase 16.1 D-14
 )
 from scripts.external.pipeline_runs_writer import write_success, write_failure
 
@@ -357,6 +358,8 @@ def fit_and_write(
         pred_anchor = train_end if track == 'cf' else run_date
         all_pred_dates = pred_dates_for_grain(
             run_date=pred_anchor, granularity='day', horizon=horizon,
+            window_start=window_start_for_grain(last_actual, 'day'),  # D-15 Option B
+            train_end=train_end,  # B2: drop dates < train_end + 1d from past-side output
         )
         shop_cal = _fetch_shop_calendar(
             client,
@@ -420,8 +423,10 @@ def fit_and_write(
 
         pred_dates = pred_dates_for_grain(
             run_date=run_date, granularity=granularity, horizon=horizon,
+            window_start=window_start_for_grain(last_actual, granularity),  # D-15 Option B
+            train_end=train_end,  # B2: drop dates < train_end + 1d from past-side output
         )
-        pred_df = sf.forecast(h=horizon, fitted=True)
+        pred_df = sf.forecast(h=len(pred_dates), fitted=True)
         point_forecast = pred_df['AutoTheta'].values
 
         fitted_df = sf.forecast_fitted_values()
@@ -434,7 +439,7 @@ def fit_and_write(
             residuals=residuals,
             n_paths=N_PATHS,
         )
-        assert samples.shape == (horizon, N_PATHS), f'Unexpected samples shape: {samples.shape}'
+        assert samples.shape == (len(pred_dates), N_PATHS), f'Unexpected samples shape: {samples.shape}'
 
         rows = _build_forecast_rows_bucket(
             samples=samples,

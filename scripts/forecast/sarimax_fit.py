@@ -40,6 +40,7 @@ from scripts.forecast.grain_helpers import (
     parse_granularity_env,
     pred_dates_for_grain,
     train_end_for_grain,
+    window_start_for_grain,  # NEW — Phase 16.1 D-14
 )
 from scripts.external.pipeline_runs_writer import write_success, write_failure
 
@@ -326,6 +327,8 @@ def fit_and_write(
         pred_anchor = train_end if track == 'cf' else run_date
         pred_dates = pred_dates_for_grain(
             run_date=pred_anchor, granularity='day', horizon=horizon,
+            window_start=window_start_for_grain(last_actual, 'day'),  # D-15 Option B
+            train_end=train_end,  # B2: drop dates < train_end + 1d from past-side output
         )
         pred_start = pred_dates[0]
         pred_end = pred_dates[-1]
@@ -342,7 +345,7 @@ def fit_and_write(
         print(f'[sarimax_fit] Fitted SARIMAX{PRIMARY_ORDER}x{seasonal_used} for {kpi_name}/{granularity}')
 
         samples_raw = result.simulate(
-            nsimulations=horizon,
+            nsimulations=len(pred_dates),
             repetitions=N_PATHS,
             anchor='end',
             exog=X_pred,
@@ -373,17 +376,19 @@ def fit_and_write(
 
         pred_dates = pred_dates_for_grain(
             run_date=run_date, granularity=granularity, horizon=horizon,
+            window_start=window_start_for_grain(last_actual, granularity),  # D-15 Option B
+            train_end=train_end,  # B2: drop dates < train_end + 1d from past-side output
         )
         samples_raw = result.simulate(
-            nsimulations=horizon,
+            nsimulations=len(pred_dates),
             repetitions=N_PATHS,
             anchor='end',
         )
         exog_sig = {'model': 'sarimax', 'granularity': granularity, 'seasonal_period': period}
 
     samples = samples_raw.values if hasattr(samples_raw, 'values') else np.asarray(samples_raw)
-    # Expected shape: (nsimulations, repetitions) i.e. (horizon, N_PATHS)
-    assert samples.shape == (horizon, N_PATHS), f'Unexpected samples shape: {samples.shape}'
+    # Expected shape: (nsimulations, repetitions) i.e. (len(pred_dates), N_PATHS)
+    assert samples.shape == (len(pred_dates), N_PATHS), f'Unexpected samples shape: {samples.shape}'
 
     # 4. Build forecast rows
     rows = _build_forecast_rows(
