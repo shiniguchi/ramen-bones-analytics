@@ -188,18 +188,30 @@ describe('CampaignUpliftCard', () => {
     expect(text).not.toMatch(/CI overlaps zero/);
   });
 
-  it('shows honest label when CI overlaps zero (UPL-06)', async () => {
+  it('shows plain-language hero + isCIOverlap testid when CI overlaps zero (UPL-06 — 16.1-03 D-05..D-12)', async () => {
+    // 16.1-03 replaced the "CI overlaps zero — no detectable lift" jargon with a
+    // tier-aware plain-language hero. n_days=7 → tier='early' → heroKey='uplift_hero_too_early'.
+    // The dim-point-estimate testid still exists, but moved inside the {#if detailsOpen} disclosure
+    // panel — not visible by default. The hero element gets data-testid="hero-ci-overlaps" when
+    // isCIOverlap (CI bounds straddle zero).
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (clientFetchSpy as any).__activeFixture.current = FIXTURE_HEADLINE_ZERO_OVERLAP;
     const { container } = render(CampaignUpliftCard);
     await flush();
     const text = container.textContent ?? '';
-    expect(text).toMatch(/CI overlaps zero — no detectable lift/);
-    // Point estimate appears below in dim style.
-    const dim = container.querySelector('[data-testid="dim-point-estimate"]');
-    expect(dim).not.toBeNull();
-    const dimClass = dim?.getAttribute('class') ?? '';
-    expect(dimClass).toMatch(/text-(gray|zinc)|opacity-/);
+    // Plain-language hero (early-tier copy, locale=en default).
+    expect(text).toMatch(/Too early to tell/);
+    // CI-overlap testid present (early branch always hero-ci-overlaps when CI straddles zero OR cum=0).
+    expect(container.querySelector('[data-testid="hero-ci-overlaps"]')).not.toBeNull();
+    // Old jargon is GONE from the visible read.
+    expect(text).not.toMatch(/CI overlaps zero — no detectable lift/);
+    // Statistical detail lives inside the disclosure panel — not visible by default.
+    expect(container.querySelector('[data-testid="dim-point-estimate"]')).toBeNull();
+    expect(container.querySelector('[data-testid="uplift-details-panel"]')).toBeNull();
+    // Disclosure trigger is present so the user CAN reveal the statistical line.
+    const trigger = container.querySelector('[data-testid="uplift-details-trigger"]');
+    expect(trigger).not.toBeNull();
+    expect(trigger?.getAttribute('aria-expanded')).toBe('false');
   });
 
   it('layerchart_contract — sparkline uses Spline + Area at fill-opacity 0.06', async () => {
@@ -227,20 +239,20 @@ describe('CampaignUpliftCard', () => {
     expect(src).toMatch(/touchEvents:\s*['"]auto['"]/);
   });
 
-  it('shows CF computing message when campaigns array is empty (RESEARCH §4 empty-state)', async () => {
+  it('shows plain-language CF computing message when campaigns array is empty (RESEARCH §4 empty-state — 16.1-03 plain copy)', async () => {
+    // 16.1-03 replaced the jargon "Counterfactual is computing" with the friendly
+    // "We're still calculating — first result lands tomorrow morning" (uplift_card_computing key).
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (clientFetchSpy as any).__activeFixture.current = FIXTURE_EMPTY;
     const { container } = render(CampaignUpliftCard);
     await flush();
-    // Per RESEARCH §4: when campaigns:[] (CF still computing), the card frame
-    // remains visible with a helpful message — not hidden — so users don't
-    // see a confusing blank gap. Sibling cards follow the same convention.
     const card = container.querySelector('[data-testid="campaign-uplift-card"]');
     expect(card).not.toBeNull();
     const cfMsg = container.querySelector('[data-testid="cf-computing"]');
-    expect(cfMsg?.textContent ?? '').toMatch(/Counterfactual is computing/);
-    // Empty state must NOT show the hero number or honest-CI label.
-    expect(card!.textContent ?? '').not.toMatch(/Cumulative uplift|CI overlaps zero/);
+    // Plain-language message — first result lands tomorrow morning (or locale equivalent).
+    expect(cfMsg?.textContent ?? '').toMatch(/We're still calculating|first result lands tomorrow/);
+    // Empty state must NOT show the hero number or honest-CI label or the old jargon.
+    expect(card!.textContent ?? '').not.toMatch(/Cumulative uplift|CI overlaps zero|Counterfactual is computing/);
   });
 
   it('shows skeleton during fetch (animate-pulse before resolve)', () => {
@@ -252,14 +264,27 @@ describe('CampaignUpliftCard', () => {
     expect(pulse).not.toBeNull();
   });
 
-  it('shows divergence warning when sarimax vs naive_dow disagree by sign (D-09)', async () => {
+  it('shows divergence warning inside disclosure panel when sarimax vs naive_dow disagree by sign (D-09 — 16.1-03 disclosure pattern)', async () => {
+    // 16.1-03 moved the divergence-warning testid from inline-visible to INSIDE
+    // the {#if detailsOpen} disclosure panel. Test must click the trigger first,
+    // then verify the warning is present with the new plain-language copy.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (clientFetchSpy as any).__activeFixture.current = FIXTURE_DIVERGENCE;
     const { container } = render(CampaignUpliftCard);
     await flush();
+    // Before opening: divergence-warning is hidden (lives in collapsed panel).
+    expect(container.querySelector('[data-testid="divergence-warning"]')).toBeNull();
+    // Open the disclosure panel.
+    const trigger = container.querySelector<HTMLButtonElement>('[data-testid="uplift-details-trigger"]');
+    expect(trigger).not.toBeNull();
+    trigger!.click();
+    await flush();
+    // After opening: panel + divergence warning visible with new plain-language copy.
+    expect(container.querySelector('[data-testid="uplift-details-panel"]')).not.toBeNull();
     const warn = container.querySelector('[data-testid="divergence-warning"]');
     expect(warn).not.toBeNull();
-    expect(warn?.textContent ?? '').toMatch(/Naive baseline disagrees/);
+    // Plain-language D-09 copy: "Two of our checks disagree — we'd want more weeks of data..."
+    expect(warn?.textContent ?? '').toMatch(/Two of our checks disagree|disagree.*more weeks/i);
   });
 
   it('sparkline_data_contract — sparklineData consumes API daily[] (NOT a 2-point synthesized line)', () => {
