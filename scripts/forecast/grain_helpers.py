@@ -50,6 +50,61 @@ def train_end_for_grain(last_actual: date, granularity: str) -> date:
     raise ValueError(f'Unknown granularity: {granularity!r}')
 
 
+def window_start_for_grain(
+    last_actual_date: date | None,
+    granularity: str,
+    today_fallback: date | None = None,
+) -> date:
+    """Phase 16.1 D-14: friend-persona window start anchored on last complete period.
+
+    Day  : start_of_week(latest_complete_week_ending_before_or_on(last_actual_date))
+           -- Monday-anchored. Ex: last_actual=2026-04-27 (Mon, CW18 day 1) ->
+           CW18 incomplete -> CW17 (Apr 20-26) latest complete -> 2026-04-20.
+           Ex: last_actual=2026-04-26 (Sun, CW17 last day) -> CW17 IS complete ->
+           2026-04-20 (same).
+    Week : day-grain anchor - 28 days = last 5 complete ISO weeks.
+           Ex: 2026-04-27 -> day anchor 2026-04-20 -> 2026-03-23 (Mon CW13).
+    Month: start_of_month(latest_complete_month) - 3 months.
+           Ex: 2026-04-30 (end-of-month) -> April complete -> 2026-01-01.
+           Ex: 2026-04-27 (mid-month) -> April INCOMPLETE -> March latest -> 2025-12-01.
+
+    Cold-start: last_actual_date=None -> use today_fallback (or date.today() if also None).
+    "Latest complete" is defined RELATIVE to last_actual_date, not calendar today.
+    """
+    if last_actual_date is None:
+        # Cold-start fallback per RESEARCH.md §"What if cold-start?"
+        last_actual_date = today_fallback if today_fallback is not None else date.today()
+
+    if granularity == 'day':
+        # weekday(): Mon=0..Sun=6. Find Monday of latest complete week.
+        # If last_actual is Sun (weekday=6) -> the week ending on it IS complete -> Mon = Sun - 6d.
+        # Else -> previous week is the latest complete -> Mon = (last_actual - weekday) - 7d.
+        if last_actual_date.weekday() == 6:  # Sunday
+            return last_actual_date - timedelta(days=6)
+        # Mon of CURRENT (incomplete) week = last_actual - weekday. Step back 7d for last complete.
+        current_monday = last_actual_date - timedelta(days=last_actual_date.weekday())
+        return current_monday - timedelta(days=7)
+
+    if granularity == 'week':
+        # Day anchor (Monday of latest complete week), then -4 weeks (= 28 days) for 5-week window.
+        day_anchor = window_start_for_grain(last_actual_date, 'day')
+        return day_anchor - timedelta(days=28)
+
+    if granularity == 'month':
+        # Latest complete month: if last_actual is end-of-month (next-day rolls over), THIS month is complete.
+        # Else previous month is latest complete. Then start_of(latest_complete) - 3 calendar months.
+        next_day = last_actual_date + timedelta(days=1)
+        is_end_of_month = next_day.month != last_actual_date.month
+        if is_end_of_month:
+            latest_complete_first = last_actual_date.replace(day=1)
+        else:
+            # Previous month: roll back to first-of-previous-month.
+            latest_complete_first = (last_actual_date.replace(day=1) - timedelta(days=1)).replace(day=1)
+        return latest_complete_first - relativedelta(months=3)
+
+    raise ValueError(f'Unknown granularity: {granularity!r}')
+
+
 def pred_dates_for_grain(*, run_date: date, granularity: str, horizon: int) -> list:
     """Build native-cadence target_dates starting one bucket after run_date.
 
