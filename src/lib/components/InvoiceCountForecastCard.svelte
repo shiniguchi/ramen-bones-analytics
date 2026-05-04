@@ -240,8 +240,8 @@
                 x={(r: { d: Date }) => r.d}
                 y={(r: { yhat_mean: number }) => r.yhat_mean}
                 stroke={FORECAST_MODEL_COLORS[modelName]}
-                stroke-width={isNaive ? 1 : 2}
-                stroke-opacity={0.7}
+                strokeWidth={isNaive ? 1 : 2}
+                strokeOpacity={0.7}
                 stroke-dasharray={isNaive ? '4 4' : undefined}
                 curve={curveMonotoneX}
               />
@@ -257,7 +257,7 @@
                 x={(r: { d: Date }) => r.d}
                 y={(r: { yhat_mean: number }) => r.yhat_mean}
                 stroke={FORECAST_MODEL_COLORS[modelName]}
-                stroke-width={isNaive ? 1 : 2}
+                strokeWidth={isNaive ? 1 : 2}
                 stroke-dasharray={'4 4'}
                 curve={curveMonotoneX}
               />
