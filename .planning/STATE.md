@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: External Data & Forecasting Foundation
 status: executing
-stopped_at: Phase 14 complete. Ready for Phase 15 (Forecast Chart UI).
-last_updated: "2026-05-04T08:30:00.000Z"
+stopped_at: Phase 16.1 context captured. Ready for /gsd-plan-phase 16.1.
+last_updated: "2026-05-04T11:00:00.000Z"
 last_activity: 2026-05-04
 progress:
   total_phases: 18
@@ -34,7 +34,9 @@ Plan: 0/? complete
 
 Phase 16 (ITS Uplift Attribution) executed 13/13 + verified (6/6 ROADMAP success criteria + both human visual gates PASS). Inserted Phase 16.1 to close two friend-persona acceptance gaps surfaced in 2026-05-04 owner Chrome MCP localhost review BEFORE running pre-ship gates (qa-gate / code-review / ship). Phase 16 + 16.1 will ship together as one PR.
 
-Next recommended run: /gsd-discuss-phase 16.1
+Phase 16.1 context captured (2026-05-04): 12 implementation decisions across 4 gray areas (past-forecast visual on Calendar* cards, hero-copy regime tiering, statistical-detail disclosure pattern, file scope). UI-only; 4 target files (`CalendarRevenueCard.svelte`, `CalendarCountsCard.svelte`, `CampaignUpliftCard.svelte`, `messages.ts`). Top-20 menu-item card overlays deferred to v1.4.
+
+Next recommended run: /gsd-plan-phase 16.1
 
 - **Status:** Executing Phase 16
 - **Phase 15:** v2 (Forecast Backtest Overlay) merged via PR #26 on 2026-05-01.
