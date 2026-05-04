@@ -1,7 +1,5 @@
 name: Forecast Refresh
 on:
-  schedule:
-    - cron: '0 7 * * 1'        # Mondays 07:00 UTC (09:00 Berlin) — Phase 15-09 D-16 weekly cadence; preserves Guard 8 cascade
   workflow_dispatch:
     inputs:
       models:
@@ -13,8 +11,7 @@ on:
 permissions:
   contents: read
 
-# Single-flight: scheduled cron and manual workflow_dispatch must not race
-# against each other on the same DB rows.
+# Single-flight: concurrent runs must not race against each other on the same DB rows.
 concurrency:
   group: forecast-refresh
   cancel-in-progress: false
