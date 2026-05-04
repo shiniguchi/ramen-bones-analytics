@@ -20,7 +20,7 @@
   import { timeDay, timeMonday, timeMonth } from 'd3-time';
   import { addDays, differenceInDays, parseISO, format, startOfMonth, startOfWeek } from 'date-fns';
   import { page } from '$app/state';
-  import { t } from '$lib/i18n/messages';
+  import { t, type MessageKey } from '$lib/i18n/messages';
   import { formatEUR } from '$lib/format';
   import EmptyState from './EmptyState.svelte';
   import VisitSeqLegend from './VisitSeqLegend.svelte';
@@ -443,15 +443,38 @@
           {#snippet children({ data: row })}
             {@const bucketIdx = chartData.findIndex((r) => r.bucket === row?.bucket)}
             {@const fullRow = bucketIdx >= 0 ? chartData[bucketIdx] : row}
-            <Tooltip.Header>{fullRow?.bucket}</Tooltip.Header>
-            <Tooltip.List>
-              {#each series as s (s.key)}
-                {#if ((fullRow?.[s.key] as number) ?? 0) > 0}
-                  <Tooltip.Item label={s.label} color={s.color} value={formatEUR((fullRow[s.key] as number) * 100)} />
+            {@const bucketIso = fullRow?.bucket_d instanceof Date ? format(fullRow.bucket_d, 'yyyy-MM-dd') : null}
+            {@const topRows = series.filter((s) => ((fullRow?.[s.key] as number) ?? 0) > 0)}
+            {@const modelRows = bucketIso === null ? [] : Array.from(splitSeriesByModel.entries())
+              .map(([name, split]) => {
+                const r = split.past.find((x) => x.target_date === bucketIso)
+                       ?? split.future.find((x) => x.target_date === bucketIso);
+                return r ? { name, row: r } : null;
+              })
+              .filter((x): x is { name: string; row: ForecastRow } => x !== null)}
+            {#if topRows.length > 0 || modelRows.length > 0}
+              <Tooltip.Header>{fullRow?.bucket}</Tooltip.Header>
+              <Tooltip.List>
+                {#if topRows.length > 0}
+                  {#each topRows as s (s.key)}
+                    <Tooltip.Item label={s.label} color={s.color} value={formatEUR((fullRow[s.key] as number) * 100)} />
+                  {/each}
+                  <Tooltip.Item label={t(page.data.locale, 'tooltip_total')} value={formatEUR((bucketIdx >= 0 ? totals[bucketIdx] : 0) * 100)} />
                 {/if}
-              {/each}
-              <Tooltip.Item label={t(page.data.locale, 'tooltip_total')} value={formatEUR((bucketIdx >= 0 ? totals[bucketIdx] : 0) * 100)} />
-            </Tooltip.List>
+                {#if topRows.length > 0 && modelRows.length > 0}
+                  <li class="border-t border-zinc-200 my-1" aria-hidden="true"></li>
+                {/if}
+                {#if modelRows.length > 0}
+                  {#each modelRows as { name, row: fr } (`mr-${name}`)}
+                    <Tooltip.Item
+                      label={t(page.data.locale, `forecast_model_${name}` as MessageKey)}
+                      color={FORECAST_MODEL_COLORS[name]}
+                      value={formatEUR(fr.yhat_mean * 100)}
+                    />
+                  {/each}
+                {/if}
+              </Tooltip.List>
+            {/if}
           {/snippet}
         </Tooltip.Root>
       </Chart>
