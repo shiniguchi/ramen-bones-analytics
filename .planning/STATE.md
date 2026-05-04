@@ -4,14 +4,14 @@ milestone: v1.3
 milestone_name: External Data & Forecasting Foundation
 status: executing
 stopped_at: Phase 14 complete. Ready for Phase 15 (Forecast Chart UI).
-last_updated: "2026-05-04T07:00:00.000Z"
+last_updated: "2026-05-04T08:30:00.000Z"
 last_activity: 2026-05-04
 progress:
-  total_phases: 17
+  total_phases: 18
   completed_phases: 16
   total_plans: 86
   completed_plans: 74
-  percent: 92
+  percent: 89
 ---
 
 # STATE: Ramen Bones Analytics
@@ -29,8 +29,12 @@ progress:
 ## Current Position
 
 Milestone: v1.3 (External Data & Forecasting Foundation)
-Phase: 16 (ITS Uplift Attribution) — WAVE 4 EXECUTED, PENDING PHASE VERIFICATION
-Plan: 13 of 13 complete (Wave 4 done — Guards 9 + 10, cutoff sensitivity log, forecast-refresh.yml cascade smoke-tested PASS in 4m9s)
+Phase: 16.1 (Friend-Persona UX Polish — INSERTED) — NOT PLANNED YET
+Plan: 0/? complete
+
+Phase 16 (ITS Uplift Attribution) executed 13/13 + verified (6/6 ROADMAP success criteria + both human visual gates PASS). Inserted Phase 16.1 to close two friend-persona acceptance gaps surfaced in 2026-05-04 owner Chrome MCP localhost review BEFORE running pre-ship gates (qa-gate / code-review / ship). Phase 16 + 16.1 will ship together as one PR.
+
+Next recommended run: /gsd-discuss-phase 16.1
 
 - **Status:** Executing Phase 16
 - **Phase 15:** v2 (Forecast Backtest Overlay) merged via PR #26 on 2026-05-01.
@@ -95,6 +99,10 @@ Plan: 13 of 13 complete (Wave 4 done — Guards 9 + 10, cutoff sensitivity log, 
 | Phase 10-charts P08 | 7min | 3 tasks | 3 files |
 
 ## Accumulated Context
+
+### Roadmap Evolution
+
+- 2026-05-04: Phase 16.1 (Friend-Persona UX Polish) inserted after Phase 16 (URGENT). Source: 2026-05-04 owner Chrome MCP localhost review surfaced two persona-acceptance gaps — (1) CalendarRevenueCard + CalendarCountsCard missing past-forecast overlay (dashboard looks broken on T+N days after manual upload, even though /api/forecast already ships windowed past-forecast), (2) CampaignUpliftCard hero copy unreadable for non-statistical reader. Both UI-only, no backend changes. Inserted before qa-gate / code-review / ship so Phase 16 + 16.1 ship together as one PR.
 
 ### Key Decisions (from PROJECT.md)
 

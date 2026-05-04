@@ -47,6 +47,7 @@ A restaurant owner opens the site on their phone and makes a real business decis
 - [x] **Phase 14: Forecasting Engine — BAU Track** — SARIMAX/Prophet/ETS/Theta/Naive nightly fits + sample-path resampling + last_7_eval + forecast_daily_mv
 - [x] **Phase 15: Forecast Chart UI** — v2 (Forecast Backtest Overlay) merged via PR #26 on 2026-05-01. Plans 15-09..15-16 shipped; per-grain forecasts, RevenueForecastCard + InvoiceCountForecastCard + CalendarRevenueCard overlay. Post-merge QA fixes: grain-aware empty-state copy and CalendarRevenueCard auto-scroll-to-today. Plan 15-17 (retire dedicated cards) remains deferred
 - [x] **Phase 16: ITS Uplift Attribution** — campaign_calendar + Track-B counterfactual fit + campaign_uplift_v + CampaignUpliftCard with honest "CI overlaps zero" labeling
+- [ ] **Phase 16.1: Friend-Persona UX Polish (INSERTED)** — past-forecast overlay on CalendarRevenueCard + CalendarCountsCard so the dashboard stays continuous despite manual-upload data lag (lag is by design); CampaignUpliftCard plain-language framing for non-statistical reader. UI-only, no migrations. Owner-blocking for friend-persona acceptance.
 - [ ] **Phase 17: Backtest Gate & Quality Monitoring** — rolling-origin CV at 4 horizons + ConformalIntervals + ≥10% RMSE promotion gate + freshness-SLO badges + ACCURACY-LOG
 
 ## Phase Details
@@ -322,6 +323,20 @@ Plans:
   - Localhost-first Chrome MCP verification BEFORE any DEV deploy QA on UI plans (Plans 09, 10)
 **UI hint**: yes
 
+### Phase 16.1: Friend-Persona UX Polish (INSERTED)
+**Goal**: Close the two friend-persona acceptance gaps surfaced in Phase 16 closeout (2026-05-04 owner Chrome MCP localhost review): (1) CalendarRevenueCard + CalendarCountsCard render past-forecast overlay so the dashboard stays continuous when manual Orderbird upload lags actuals (lag is by design, not a freshness incident); (2) CampaignUpliftCard hero copy reframes "CI overlaps zero — no detectable lift" + "−€565 (95% CI −€3,745 ... +€2,298)" into plain language a non-statistical restaurant owner can read on her phone and state in her own words.
+**Depends on**: Phase 16 (CampaignUpliftCard exists; campaign_uplift_v populated; /api/forecast already ships windowed past-forecast)
+**Requirements**: derived from `.planning/backlog/forecast-overlay-on-stacked-bars.md` + `.planning/backlog/campaign-uplift-card-plain-language.md` (no new UPL/EXT/FCS/FUI/BCK requirement IDs — UI polish closing existing UPL-05 + FUI persona-acceptance gaps)
+**Success Criteria** (what must be TRUE):
+  1. `CalendarRevenueCard.svelte` and `CalendarCountsCard.svelte` render a past-forecast total line (LayerChart `Spline` + low-opacity `Area` CI band) overlaid on top of their stacked bars, sourced from the `forecast` array `/api/forecast` already returns; past-forecast section visually distinct from future-forecast (e.g. past = solid faded total line, future = dashed); window matches the existing backend contract: 7d for `day` grain, 5 ISO weeks for `week`, 4 complete months for `month`, anchored on last-actual date NOT today
+  2. CalendarRevenueCard + CalendarCountsCard remain readable at 375×667 with the new layer (mobile bundle budget unchanged — no new chart library dependency; reuse existing LayerChart primitives)
+  3. CampaignUpliftCard's hero copy adapts to n_days regime: <14d "Too early to tell" framing / 14-28d "Early signal, gathering more data" framing / ≥28d confident framing ("Yes, your campaign appears to have ${added,reduced} revenue" or "No measurable lift after N weeks"); plain-language version replaces the statistical headline as the default, with a tap-to-reveal "How is this calculated?" panel preserving the −€565 (95% CI ...) detail
+  4. Friend-persona acceptance test: owner reads the CampaignUpliftCard at 375px and can **state in her own words what it's telling her** without asking for translation; same test on Calendar* cards — owner sees forecast lines continuing past last-actual date and understands the dashboard is not broken when actuals lag
+  5. No backend changes: no migrations, no Python pipeline edits, no API contract changes; UI-only diff
+  6. Localhost-first Chrome MCP verification at 375×667 in `ja` and `en` locales BEFORE any DEV deploy (per `.claude/CLAUDE.md` localhost-first rule); no console errors / `invalid_default_snippet` warnings on Tooltip.Root
+**Plans**: TBD
+**UI hint**: yes
+
 ### Phase 17: Backtest Gate & Quality Monitoring
 **Goal**: A weekly rolling-origin CV harness scores every model at 4 horizons (7d/35d/120d/365d), conformal-calibrates the 35d CI, gates promotion on ≥10% RMSE improvement vs a regressor-aware naive baseline, and writes a public ACCURACY-LOG that stays honest even when the simpler model wins
 **Depends on**: Phase 16 (need ≥4 weeks of forecast-vs-actual history to gate on; cold-start handled by "BACKTEST PENDING" UI badge until day 28)
@@ -355,6 +370,7 @@ Plans:
 | 14. Forecasting Engine — BAU Track | v1.3 | 0/? | Not started | — |
 | 15. Forecast Chart UI | v1.3 | 0/? | Not started | — |
 | 16. ITS Uplift Attribution | v1.3 | 13/13 | Pending Verification|  |
+| 16.1. Friend-Persona UX Polish (INSERTED) | v1.3 | 0/? | Not started | — |
 | 17. Backtest Gate & Quality Monitoring | v1.3 | 0/? | Not started | — |
 
 ## Coverage Summary
