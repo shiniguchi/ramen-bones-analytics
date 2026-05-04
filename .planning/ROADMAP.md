@@ -46,7 +46,7 @@ A restaurant owner opens the site on their phone and makes a real business decis
 - [x] **Phase 13: External Data Ingestion** — 5 ingest tables (weather/holidays/school/transit/events) + pipeline_runs + shop_calendar + GHA workflow + backfill from 2025-06-11
 - [x] **Phase 14: Forecasting Engine — BAU Track** — SARIMAX/Prophet/ETS/Theta/Naive nightly fits + sample-path resampling + last_7_eval + forecast_daily_mv
 - [x] **Phase 15: Forecast Chart UI** — v2 (Forecast Backtest Overlay) merged via PR #26 on 2026-05-01. Plans 15-09..15-16 shipped; per-grain forecasts, RevenueForecastCard + InvoiceCountForecastCard + CalendarRevenueCard overlay. Post-merge QA fixes: grain-aware empty-state copy and CalendarRevenueCard auto-scroll-to-today. Plan 15-17 (retire dedicated cards) remains deferred
-- [ ] **Phase 16: ITS Uplift Attribution** — campaign_calendar + Track-B counterfactual fit + campaign_uplift_v + CampaignUpliftCard with honest "CI overlaps zero" labeling
+- [x] **Phase 16: ITS Uplift Attribution** — campaign_calendar + Track-B counterfactual fit + campaign_uplift_v + CampaignUpliftCard with honest "CI overlaps zero" labeling
 - [ ] **Phase 17: Backtest Gate & Quality Monitoring** — rolling-origin CV at 4 horizons + ConformalIntervals + ≥10% RMSE promotion gate + freshness-SLO badges + ACCURACY-LOG
 
 ## Phase Details
@@ -294,7 +294,7 @@ Plans:
   4. `campaign_uplift_v` exposes per-campaign-window `Σ(actual − Track-B)` with 95% Monte Carlo CI from 1000 sample paths AND a `naive_dow_uplift_eur` cross-check column (sanity check against trend-extrapolation false positives in the declining 10-month pre-period); cumulative-since-launch shown as a running total per `(campaign, model)`
   5. `CampaignUpliftCard.svelte` renders the per-campaign cumulative uplift on the dashboard at 375px; explicitly displays "CI overlaps zero — no detectable lift" when 95% CI includes 0; never reports a single-point estimate without its CI band; tap-to-pin tooltip explains the 7-day anticipation buffer in plain language
   6. `cumulative_uplift.py` runs nightly after Track-B forecast completes; quarterly off-week reminder fires from a `feature_flags` table on 2026-10-15 (~6 months post-campaign) to re-anchor the counterfactual; `EventMarker.svelte` overlays campaign-start markers on `RevenueForecastCard.svelte` from Phase 15
-**Plans:** 7/13 plans executed
+**Plans:** 13/13 plans executed
 Plans:
   **Wave 1 — Schema (parallel-safe; closes with [BLOCKING] supabase db push) ✓ complete 2026-05-02**
   - [x] 16-01-PLAN.md — campaign_calendar migration + 2026-04-14 seed
@@ -309,10 +309,10 @@ Plans:
   - [x] 16-08-PLAN.md — /api/campaign-uplift extended payload (daily[] array) + /api/forecast events campaign_start source
   - [x] 16-09-PLAN.md — CampaignUpliftCard.svelte + dashboard slot + retire CAMPAIGN_START
   - [x] 16-10-PLAN.md — EventMarker campaign_start E2E + Phase 15 forecast cards smoke test
-  **Wave 4 *(blocked on Wave 3 completion)* — Hardening**
-  - [ ] 16-11-PLAN.md — CI Guard 9 (raw-revenue Track-B) + Guard 10 (2026-04-14 literal) + red-team fixtures
-  - [ ] 16-12-PLAN.md — tests/forecast/cutoff_sensitivity.md log + check_cutoff_sensitivity.sh
-  - [ ] 16-13-PLAN.md — forecast-refresh.yml workflow extension + DEV smoke test
+  **Wave 4 *(blocked on Wave 3 completion)* — Hardening ✓ complete 2026-05-04**
+  - [x] 16-11-PLAN.md — CI Guard 9 (raw-revenue Track-B) + Guard 10 (2026-04-14 literal) + red-team fixtures
+  - [x] 16-12-PLAN.md — tests/forecast/cutoff_sensitivity.md log + check_cutoff_sensitivity.sh (4 Wave-2 hotfixes folded in: mig 0065/0066, pred_dates anchor, started_at probe; sarimax 1.139 + prophet 0.890 PASS in [0.8, 1.25])
+  - [x] 16-13-PLAN.md — forecast-refresh.yml workflow extension + DEV smoke test (4m9s, 80 campaign_uplift rows)
 
   **Cross-cutting constraints (must_haves.truths shared across plans):**
   - `auth.jwt()->>'restaurant_id'` RLS filter on every new table/view (Plans 01, 02, 03, 04, 07)
@@ -354,7 +354,7 @@ Plans:
 | 13. External Data Ingestion | v1.3 | 0/? | Not started | — |
 | 14. Forecasting Engine — BAU Track | v1.3 | 0/? | Not started | — |
 | 15. Forecast Chart UI | v1.3 | 0/? | Not started | — |
-| 16. ITS Uplift Attribution | v1.3 | 7/13 | In Progress|  |
+| 16. ITS Uplift Attribution | v1.3 | 13/13 | Pending Verification|  |
 | 17. Backtest Gate & Quality Monitoring | v1.3 | 0/? | Not started | — |
 
 ## Coverage Summary
