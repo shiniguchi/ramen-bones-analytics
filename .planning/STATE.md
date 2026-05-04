@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: External Data & Forecasting Foundation
-status: replanning
-stopped_at: "Phase 16.1 expanded scope per owner feedback #1-4 (2026-05-04 afternoon); ready for /gsd-plan-phase 16.1 --research"
-last_updated: "2026-05-04T11:45:00.000Z"
+status: ready_to_execute
+stopped_at: "Phase 16.1 replanned (4 new + 1 shipped). Ready for /gsd-execute-phase 16.1 — Wave 1 (16.1-04 keystone backend) then Wave 2 (16.1-01, 16.1-03, 16.1-05 in parallel)"
+last_updated: "2026-05-04T14:05:00.000Z"
 last_activity: 2026-05-04
 progress:
   total_phases: 18
   completed_phases: 16
-  total_plans: 89
+  total_plans: 91
   completed_plans: 75
-  percent: 84
+  percent: 82
 ---
 
 # STATE: Ramen Bones Analytics

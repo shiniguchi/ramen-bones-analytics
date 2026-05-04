@@ -338,15 +338,15 @@ Plans:
   8. **Localhost-first Chrome MCP verification at 375×667 in `ja` AND `en` locales** BEFORE any DEV deploy (per `.claude/CLAUDE.md` localhost-first rule); zero console errors / `invalid_default_snippet` warnings on any modified component; backend SQL migrations (if any) ship via `migrations.yml workflow_dispatch` on the feature branch BEFORE the visual QA at DEV (per `feedback_migrations_workflow_dispatch.md`)
   9. **Friend-persona acceptance**: owner reads any of the four cards (Calendar*, Forecast*, CampaignUpliftCard) at 375px and **states in her own words what it's telling her** without asking for translation
   10. **Planning-docs drift gate passes** (`.claude/scripts/validate-planning-docs.sh`)
-**Plans**: 5 plans (1 done, 4 to plan)
+**Plans**: 5 plans (1 done, 4 planned — ready to execute)
 Plans:
   **Wave 1 (keystone — backend; parallel with done plan)**
-  - [ ] 16.1-04-PLAN.md (NEW) — Pipeline + API forecast windowing fix per D-14/D-15. Researcher picks Option A (backtest pre-fill, subset of Phase 17 BCK-01) / Option B (forecast-from-window-start anchor change in nightly run) / Option C (MV-only redefinition). Includes any required SQL migration shipped via `migrations.yml workflow_dispatch`.
+  - [ ] 16.1-04-PLAN.md (PLANNED) — Pipeline forecast windowing fix per D-14/D-15. **Locked: Option B (Forecast-from-window-start)** — single edit to `scripts/forecast/grain_helpers.py` (`window_start_for_grain` + extended `pred_dates_for_grain`); cascades via existing kwarg threading to sarimax/naive_dow/ets/theta fits + Prophet (Path A wire OR Path B skip-with-SUMMARY). NO migration. NO MV redefinition. NO API change. NO Phase 17 preemption.
   - [x] 16.1-02-PLAN.md (DONE) — i18n keys for CampaignUpliftCard plain-language regime (13 keys × 5 locales; shipped in `de61cc5`)
   **Wave 2 (UI — depends on 16.1-04 + 16.1-02; parallel within wave)**
-  - [ ] 16.1-01-PLAN.md (REVISED) — Calendar* past-forecast overlay (CalendarRevenueCard + CalendarCountsCard split-Spline past/future + continuous CI band) + Tooltip.Root expansion (D-16). Re-applies stashed scaffold (`stash@{0}`). Localhost-first Chrome MCP gate.
-  - [ ] 16.1-03-PLAN.md (REVISED) — CampaignUpliftCard plain-language rewrite + supportive labels (D-18). Adds ~5 new i18n keys for chart context. Localhost-first Chrome MCP gate.
-  - [ ] 16.1-05-PLAN.md (NEW) — RevenueForecastCard + InvoiceCountForecastCard horizontal-scroll parity (D-17) + past/future Spline split. Localhost-first Chrome MCP gate.
+  - [ ] 16.1-01-PLAN.md (PLANNED) — Calendar* past-forecast overlay (CalendarRevenueCard + CalendarCountsCard split-Spline past/future + continuous CI band) + Tooltip.Root expansion with per-visible-model rows (D-16). Re-applies stashed scaffold (`stash@{0}`). Localhost-first Chrome MCP gate ja+en.
+  - [ ] 16.1-03-PLAN.md (PLANNED) — CampaignUpliftCard plain-language rewrite (regime tier × CI matrix; "How is this calculated? ›" disclosure) + supportive labels (D-18 hero subtitle, sparkline Y/X labels, counterfactual baseline marker). 4 new i18n keys × 5 locales. Localhost-first Chrome MCP gate ja+en.
+  - [ ] 16.1-05-PLAN.md (PLANNED) — RevenueForecastCard + InvoiceCountForecastCard horizontal-scroll parity (D-17) + past/future Spline split. Lifts `CalendarRevenueCard.svelte:270-305` wrapper verbatim. Localhost-first Chrome MCP gate ja+en.
 **UI hint**: yes
 
 ### Phase 17: Backtest Gate & Quality Monitoring
@@ -382,7 +382,7 @@ Plans:
 | 14. Forecasting Engine — BAU Track | v1.3 | 0/? | Not started | — |
 | 15. Forecast Chart UI | v1.3 | 0/? | Not started | — |
 | 16. ITS Uplift Attribution | v1.3 | 13/13 | Pending Verification|  |
-| 16.1. Friend-Persona UX Polish (INSERTED, EXPANDED) | v1.3 | 1/5 | Replanning | — |
+| 16.1. Friend-Persona UX Polish (INSERTED, EXPANDED) | v1.3 | 1/5 | Ready to execute | — |
 | 17. Backtest Gate & Quality Monitoring | v1.3 | 0/? | Not started | — |
 
 ## Coverage Summary
