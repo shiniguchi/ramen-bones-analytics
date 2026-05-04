@@ -47,7 +47,7 @@ A restaurant owner opens the site on their phone and makes a real business decis
 - [x] **Phase 14: Forecasting Engine — BAU Track** — SARIMAX/Prophet/ETS/Theta/Naive nightly fits + sample-path resampling + last_7_eval + forecast_daily_mv
 - [x] **Phase 15: Forecast Chart UI** — v2 (Forecast Backtest Overlay) merged via PR #26 on 2026-05-01. Plans 15-09..15-16 shipped; per-grain forecasts, RevenueForecastCard + InvoiceCountForecastCard + CalendarRevenueCard overlay. Post-merge QA fixes: grain-aware empty-state copy and CalendarRevenueCard auto-scroll-to-today. Plan 15-17 (retire dedicated cards) remains deferred
 - [x] **Phase 16: ITS Uplift Attribution** — campaign_calendar + Track-B counterfactual fit + campaign_uplift_v + CampaignUpliftCard with honest "CI overlaps zero" labeling
-- [ ] **Phase 16.1: Friend-Persona UX Polish (INSERTED)** — past-forecast overlay on CalendarRevenueCard + CalendarCountsCard so the dashboard stays continuous despite manual-upload data lag (lag is by design); CampaignUpliftCard plain-language framing for non-statistical reader. UI-only, no migrations. Owner-blocking for friend-persona acceptance.
+- [ ] **Phase 16.1: Friend-Persona UX Polish (INSERTED, EXPANDED 2026-05-04)** — past-forecast continuity on Calendar* cards + Forecast cards via pipeline windowing fix anchored on last complete period (day=start-of-CW17, week=last 5 CWs, month=last 4 calendar months); Forecast cards horizontal-scroll parity; Calendar* tooltip shows per-model forecast values; CampaignUpliftCard plain-language regime + supportive labels. Backend pipeline + UI. Owner-blocking for friend-persona acceptance.
 - [ ] **Phase 17: Backtest Gate & Quality Monitoring** — rolling-origin CV at 4 horizons + ConformalIntervals + ≥10% RMSE promotion gate + freshness-SLO badges + ACCURACY-LOG
 
 ## Phase Details
@@ -323,24 +323,30 @@ Plans:
   - Localhost-first Chrome MCP verification BEFORE any DEV deploy QA on UI plans (Plans 09, 10)
 **UI hint**: yes
 
-### Phase 16.1: Friend-Persona UX Polish (INSERTED)
-**Goal**: Close the two friend-persona acceptance gaps surfaced in Phase 16 closeout (2026-05-04 owner Chrome MCP localhost review): (1) CalendarRevenueCard + CalendarCountsCard render past-forecast overlay so the dashboard stays continuous when manual Orderbird upload lags actuals (lag is by design, not a freshness incident); (2) CampaignUpliftCard hero copy reframes "CI overlaps zero — no detectable lift" + "−€565 (95% CI −€3,745 ... +€2,298)" into plain language a non-statistical restaurant owner can read on her phone and state in her own words.
-**Depends on**: Phase 16 (CampaignUpliftCard exists; campaign_uplift_v populated; /api/forecast already ships windowed past-forecast)
-**Requirements**: derived from `.planning/backlog/forecast-overlay-on-stacked-bars.md` + `.planning/backlog/campaign-uplift-card-plain-language.md` (no new UPL/EXT/FCS/FUI/BCK requirement IDs — UI polish closing existing UPL-05 + FUI persona-acceptance gaps)
+### Phase 16.1: Friend-Persona UX Polish (INSERTED, EXPANDED 2026-05-04)
+**Goal**: Close the **four** friend-persona acceptance gaps from the 2026-05-04 owner Chrome MCP localhost reviews (morning + afternoon): (1) Calendar* + Forecast cards render past-forecast continuously over the windowed range anchored on last complete period (day=start-of-week-17 if last_actual=2026-04-27; week=last 5 complete weeks; month=last 4 complete months); (2) Forecast cards (`RevenueForecastCard`, `InvoiceCountForecastCard`) get horizontal-scroll parity with Calendar* cards; (3) Calendar* `Tooltip.Root` shows per-visible-model forecast values when both bar data and forecast row exist on a bucket; (4) CampaignUpliftCard plain-language regime tiering + supportive chart-context labels so a non-statistical owner can state in her own words what it tells her. Owner-blocking for v1.3 friend-persona acceptance.
+**Depends on**: Phase 16 (CampaignUpliftCard exists; campaign_uplift_v populated). Phase 17 backtest gate stays separate; 16.1 ships the smallest backtest-row-generation subset needed for the windowing display.
+**Requirements**: derived from `.planning/backlog/forecast-overlay-on-stacked-bars.md` + `.planning/backlog/campaign-uplift-card-plain-language.md` + 2026-05-04 afternoon owner feedback #1–4 captured in `16.1-CONTEXT.md` D-13..D-20 (no new UPL/EXT/FCS/FUI/BCK requirement IDs — closes existing UPL-05 + UPL-06 + FUI-09 persona-acceptance gaps)
 **Success Criteria** (what must be TRUE):
-  1. `CalendarRevenueCard.svelte` and `CalendarCountsCard.svelte` render a past-forecast total line (LayerChart `Spline` + low-opacity `Area` CI band) overlaid on top of their stacked bars, sourced from the `forecast` array `/api/forecast` already returns; past-forecast section visually distinct from future-forecast (e.g. past = solid faded total line, future = dashed); window matches the existing backend contract: 7d for `day` grain, 5 ISO weeks for `week`, 4 complete months for `month`, anchored on last-actual date NOT today
-  2. CalendarRevenueCard + CalendarCountsCard remain readable at 375×667 with the new layer (mobile bundle budget unchanged — no new chart library dependency; reuse existing LayerChart primitives)
-  3. CampaignUpliftCard's hero copy adapts to n_days regime: <14d "Too early to tell" framing / 14-28d "Early signal, gathering more data" framing / ≥28d confident framing ("Yes, your campaign appears to have ${added,reduced} revenue" or "No measurable lift after N weeks"); plain-language version replaces the statistical headline as the default, with a tap-to-reveal "How is this calculated?" panel preserving the −€565 (95% CI ...) detail
-  4. Friend-persona acceptance test: owner reads the CampaignUpliftCard at 375px and can **state in her own words what it's telling her** without asking for translation; same test on Calendar* cards — owner sees forecast lines continuing past last-actual date and understands the dashboard is not broken when actuals lag
-  5. No backend changes: no migrations, no Python pipeline edits, no API contract changes; UI-only diff
-  6. Localhost-first Chrome MCP verification at 375×667 in `ja` and `en` locales BEFORE any DEV deploy (per `.claude/CLAUDE.md` localhost-first rule); no console errors / `invalid_default_snippet` warnings on Tooltip.Root
-**Plans**: 3 plans
+  1. `CalendarRevenueCard.svelte` and `CalendarCountsCard.svelte` render past-forecast Spline (solid faded `stroke-opacity={0.7}`) + future-forecast Spline (dashed `4 4`) per visible model + continuous CI Area band per model (`fillOpacity={0.06}`); covering `[window_start_per_grain, today + horizon]` continuously with NO gaps
+  2. **Forecast windowing per granularity (D-14)**: day grain anchors on `start_of_week(latest_complete_week_ending_before_or_on(last_actual_date))` (Monday-anchored); week grain anchors 4 complete weeks before that (= last 5 complete weeks); month grain anchors 3 complete months before `start_of_month(latest_complete_month)` (= last 4 complete months). Definition relative to `last_actual_date`, not `today`.
+  3. **Pipeline + API ship continuous forecast rows over the windowed range (D-15)**: `forecast_with_actual_v` contains rows for every period in `[window_start, today + horizon]` per `(kpi, model, granularity)` — verifiable via `SELECT COUNT(DISTINCT target_date) FROM forecast_with_actual_v WHERE granularity='day'` matching the expected row count. No gaps (e.g., Apr 28-29 must be present when last_actual=Apr 27 and today=May 4).
+  4. **Forecast cards x-axis parity (D-17)**: `RevenueForecastCard.svelte` and `InvoiceCountForecastCard.svelte` get the same horizontal-scroll wrapper as Calendar* cards (chart-touch-safe overflow-x-auto + dynamic `chartW = computeChartWidth(totalSlots, cardW)` + scroll-to-today-at-60% effect); past + future Spline split also applied to these cards
+  5. **Calendar* tooltip shows forecast data (D-16)**: `Tooltip.Root` body in CalendarRevenueCard + CalendarCountsCard renders existing visit_seq/cash/total rows AND a new per-visible-model section with `formatEUR(yhat_mean*100)` (revenue) or `formatIntShort(yhat_mean)` (counts); model display labels via new i18n keys (`forecast_model_*` per locale)
+  6. **CampaignUpliftCard regime + supportive labels (D-05..D-11 + D-18)**: hero adapts to maturity tier (`<14d` / `14-28d` / `>=28d` × CI-overlaps-zero matrix, 7 i18n keys from 16.1-02); inline "How is this calculated? ›" disclosure (collapsed by default); NEW chart-context labels (~5 new i18n keys × 5 locales) — hero subtitle, sparkline Y/X axis labels, counterfactual baseline marker
+  7. **Mobile bundle budget unchanged**: no new chart library dependency; reuse existing LayerChart primitives + `chartPalettes` + `format` helpers
+  8. **Localhost-first Chrome MCP verification at 375×667 in `ja` AND `en` locales** BEFORE any DEV deploy (per `.claude/CLAUDE.md` localhost-first rule); zero console errors / `invalid_default_snippet` warnings on any modified component; backend SQL migrations (if any) ship via `migrations.yml workflow_dispatch` on the feature branch BEFORE the visual QA at DEV (per `feedback_migrations_workflow_dispatch.md`)
+  9. **Friend-persona acceptance**: owner reads any of the four cards (Calendar*, Forecast*, CampaignUpliftCard) at 375px and **states in her own words what it's telling her** without asking for translation
+  10. **Planning-docs drift gate passes** (`.claude/scripts/validate-planning-docs.sh`)
+**Plans**: 5 plans (1 done, 4 to plan)
 Plans:
-  **Wave 1 (parallel)**
-  - [ ] 16.1-01-PLAN.md — Past-forecast overlay on Calendar* cards (CalendarRevenueCard + CalendarCountsCard split-Spline past/future + continuous CI band; localhost-first Chrome MCP gate)
-  - [x] 16.1-02-PLAN.md — i18n keys for CampaignUpliftCard plain-language regime (13 keys × 5 locales in messages.ts; ja real translation, de/es/fr placeholders + v1.4 backlog)
-  **Wave 2 (depends_on 16.1-02)**
-  - [ ] 16.1-03-PLAN.md — CampaignUpliftCard plain-language rewrite (tier-aware hero + inline How-is-this-calculated disclosure; localhost-first Chrome MCP gate)
+  **Wave 1 (keystone — backend; parallel with done plan)**
+  - [ ] 16.1-04-PLAN.md (NEW) — Pipeline + API forecast windowing fix per D-14/D-15. Researcher picks Option A (backtest pre-fill, subset of Phase 17 BCK-01) / Option B (forecast-from-window-start anchor change in nightly run) / Option C (MV-only redefinition). Includes any required SQL migration shipped via `migrations.yml workflow_dispatch`.
+  - [x] 16.1-02-PLAN.md (DONE) — i18n keys for CampaignUpliftCard plain-language regime (13 keys × 5 locales; shipped in `de61cc5`)
+  **Wave 2 (UI — depends on 16.1-04 + 16.1-02; parallel within wave)**
+  - [ ] 16.1-01-PLAN.md (REVISED) — Calendar* past-forecast overlay (CalendarRevenueCard + CalendarCountsCard split-Spline past/future + continuous CI band) + Tooltip.Root expansion (D-16). Re-applies stashed scaffold (`stash@{0}`). Localhost-first Chrome MCP gate.
+  - [ ] 16.1-03-PLAN.md (REVISED) — CampaignUpliftCard plain-language rewrite + supportive labels (D-18). Adds ~5 new i18n keys for chart context. Localhost-first Chrome MCP gate.
+  - [ ] 16.1-05-PLAN.md (NEW) — RevenueForecastCard + InvoiceCountForecastCard horizontal-scroll parity (D-17) + past/future Spline split. Localhost-first Chrome MCP gate.
 **UI hint**: yes
 
 ### Phase 17: Backtest Gate & Quality Monitoring
@@ -376,7 +382,7 @@ Plans:
 | 14. Forecasting Engine — BAU Track | v1.3 | 0/? | Not started | — |
 | 15. Forecast Chart UI | v1.3 | 0/? | Not started | — |
 | 16. ITS Uplift Attribution | v1.3 | 13/13 | Pending Verification|  |
-| 16.1. Friend-Persona UX Polish (INSERTED) | v1.3 | 1/3 | Executing | — |
+| 16.1. Friend-Persona UX Polish (INSERTED, EXPANDED) | v1.3 | 1/5 | Replanning | — |
 | 17. Backtest Gate & Quality Monitoring | v1.3 | 0/? | Not started | — |
 
 ## Coverage Summary

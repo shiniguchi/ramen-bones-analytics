@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: External Data & Forecasting Foundation
 status: executing
-stopped_at: Phase 16.1 plan 02 complete (i18n keys for CampaignUpliftCard). Wave 1 in progress; plan 01 still running.
-last_updated: "2026-05-04T09:08:22Z"
+stopped_at: Phase 14 complete. Ready for Phase 15 (Forecast Chart UI).
+last_updated: "2026-05-04T09:29:02.402Z"
 last_activity: 2026-05-04
 progress:
   total_phases: 18
-  completed_phases: 16
+  completed_phases: 12
   total_plans: 89
   completed_plans: 75
-  percent: 89
+  percent: 84
 ---
 
 # STATE: Ramen Bones Analytics
@@ -21,7 +21,7 @@ progress:
 ## Project Reference
 
 - **Core Value:** A restaurant owner opens the site on their phone and makes a real business decision from the numbers they see.
-- **Current Focus:** Phase 16.1 — Friend-Persona UX Polish (Wave 1)
+- **Current Focus:** Phase 16.1 — friend-persona-ux-polish
 - **Timeline:** Slow and deliberate — understand data first, ship one layer at a time
 - **Granularity:** standard
 - **Tenants in v1:** 1 (architecture multi-tenant-ready)
@@ -29,8 +29,8 @@ progress:
 ## Current Position
 
 Milestone: v1.3 (External Data & Forecasting Foundation)
-Phase: 16.1 (Friend-Persona UX Polish — INSERTED) — EXECUTING
-Plan: 1/3 complete (Wave 1 plan 02 landed; Wave 1 plan 01 + Wave 2 plan 03 outstanding)
+Phase: 16.1 (friend-persona-ux-polish) — EXECUTING
+Plan: 1 of 3
 
 Phase 16 (ITS Uplift Attribution) executed 13/13 + verified (6/6 ROADMAP success criteria + both human visual gates PASS). Inserted Phase 16.1 to close two friend-persona acceptance gaps surfaced in 2026-05-04 owner Chrome MCP localhost review BEFORE running pre-ship gates (qa-gate / code-review / ship). Phase 16 + 16.1 will ship together as one PR.
 
@@ -38,12 +38,12 @@ Phase 16.1 context captured (2026-05-04): 12 implementation decisions across 4 g
 
 Next recommended run: /gsd-plan-phase 16.1
 
-- **Status:** Executing Phase 16.1 (Wave 1: plan 02 complete, plan 01 in progress)
+- **Status:** Executing Phase 16.1
 - **Phase 15:** v2 (Forecast Backtest Overlay) merged via PR #26 on 2026-05-01.
 - **Phase 14:** Shipped via [PR #22](https://github.com/shiniguchi/ramen-bones-analytics/pull/22). 34 commits, 31 files, +2978 lines. UAT 12/12. 5/5 models producing 365-day forecasts on DEV.
 - **Phase 13:** Shipped via [PR #17](https://github.com/shiniguchi/ramen-bones-analytics/pull/17). 41 commits, 52 files, +6892 lines. EXT-01..EXT-09 complete.
 - **Progress:** [█████████░] 88% (15/17 phases shipped; v1.0+v1.1+v1.2+Phase 12-15 done)
-- **Last activity:** 2026-05-02
+- **Last activity:** 2026-05-04
 - **v1.2 closed:** 11 phases, 60 plans, 100% — Phase 11 SSR fix landed 2026-04-21
 - **v1.0 status:** Shipped to friend (97% plans complete; repo flipped PUBLIC 2026-04-15 with topics + description set; Plan 05-06 Task 2 fork walkthrough deferred out of v1 scope)
 
