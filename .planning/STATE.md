@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: External Data & Forecasting Foundation
 status: executing
-stopped_at: Phase 16.1 planned (3 plans, 2 waves). Ready for /gsd-execute-phase 16.1.
-last_updated: "2026-05-04T11:55:00.000Z"
+stopped_at: Phase 16.1 plan 02 complete (i18n keys for CampaignUpliftCard). Wave 1 in progress; plan 01 still running.
+last_updated: "2026-05-04T09:08:22Z"
 last_activity: 2026-05-04
 progress:
   total_phases: 18
   completed_phases: 16
   total_plans: 89
-  completed_plans: 74
+  completed_plans: 75
   percent: 89
 ---
 
@@ -21,7 +21,7 @@ progress:
 ## Project Reference
 
 - **Core Value:** A restaurant owner opens the site on their phone and makes a real business decision from the numbers they see.
-- **Current Focus:** Phase 16 — ITS Uplift Attribution
+- **Current Focus:** Phase 16.1 — Friend-Persona UX Polish (Wave 1)
 - **Timeline:** Slow and deliberate — understand data first, ship one layer at a time
 - **Granularity:** standard
 - **Tenants in v1:** 1 (architecture multi-tenant-ready)
@@ -29,8 +29,8 @@ progress:
 ## Current Position
 
 Milestone: v1.3 (External Data & Forecasting Foundation)
-Phase: 16.1 (Friend-Persona UX Polish — INSERTED) — NOT PLANNED YET
-Plan: 0/? complete
+Phase: 16.1 (Friend-Persona UX Polish — INSERTED) — EXECUTING
+Plan: 1/3 complete (Wave 1 plan 02 landed; Wave 1 plan 01 + Wave 2 plan 03 outstanding)
 
 Phase 16 (ITS Uplift Attribution) executed 13/13 + verified (6/6 ROADMAP success criteria + both human visual gates PASS). Inserted Phase 16.1 to close two friend-persona acceptance gaps surfaced in 2026-05-04 owner Chrome MCP localhost review BEFORE running pre-ship gates (qa-gate / code-review / ship). Phase 16 + 16.1 will ship together as one PR.
 
@@ -38,7 +38,7 @@ Phase 16.1 context captured (2026-05-04): 12 implementation decisions across 4 g
 
 Next recommended run: /gsd-plan-phase 16.1
 
-- **Status:** Executing Phase 16
+- **Status:** Executing Phase 16.1 (Wave 1: plan 02 complete, plan 01 in progress)
 - **Phase 15:** v2 (Forecast Backtest Overlay) merged via PR #26 on 2026-05-01.
 - **Phase 14:** Shipped via [PR #22](https://github.com/shiniguchi/ramen-bones-analytics/pull/22). 34 commits, 31 files, +2978 lines. UAT 12/12. 5/5 models producing 365-day forecasts on DEV.
 - **Phase 13:** Shipped via [PR #17](https://github.com/shiniguchi/ramen-bones-analytics/pull/17). 41 commits, 52 files, +6892 lines. EXT-01..EXT-09 complete.
@@ -99,6 +99,7 @@ Next recommended run: /gsd-plan-phase 16.1
 | Phase 10-charts P07 | 4min | 2 tasks | 5 files |
 | Phase 10-charts P05 | 6min | 2 tasks | 6 files |
 | Phase 10-charts P08 | 7min | 3 tasks | 3 files |
+| Phase 16.1 P02 | 3min | 1 task | 2 files |
 
 ## Accumulated Context
 
@@ -221,6 +222,7 @@ Next recommended run: /gsd-plan-phase 16.1
 - [Phase 10-charts]: 10-08: Path C eager-mount — Lighthouse crashed; fell through to eager-mount per plan's hard-stop clause. No LazyMount.svelte shipped (later landed in Phase 11).
 - [Phase 10-charts]: 10-08: customer_ltv_v NOT range-filtered at SSR — LTV is lifetime; filter-scoping would hide customers outside chip window.
 - [Phase 10-charts]: 10-08: SSR fan-out grows 4→6 queries with per-card try/catch + empty fallback.
+- [Phase 16.1]: 16.1-02: 13 i18n keys for CampaignUpliftCard plain-language regime appended to all 5 locale blocks of `src/lib/i18n/messages.ts`. JA gets natural owner-persona translations; DE/ES/FR placeholder = EN verbatim per CONTEXT.md C-05 (owner only verifies ja + en). v1.4 translation backlog stub at `.planning/backlog/i18n-campaign-uplift-card-de-es-fr.md`. Plan 16.1-03 unblocked.
 
 ### Open Todos
 

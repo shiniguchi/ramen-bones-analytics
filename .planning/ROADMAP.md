@@ -338,7 +338,7 @@ Plans:
 Plans:
   **Wave 1 (parallel)**
   - [ ] 16.1-01-PLAN.md — Past-forecast overlay on Calendar* cards (CalendarRevenueCard + CalendarCountsCard split-Spline past/future + continuous CI band; localhost-first Chrome MCP gate)
-  - [ ] 16.1-02-PLAN.md — i18n keys for CampaignUpliftCard plain-language regime (13 keys × 5 locales in messages.ts; ja real translation, de/es/fr placeholders + v1.4 backlog)
+  - [x] 16.1-02-PLAN.md — i18n keys for CampaignUpliftCard plain-language regime (13 keys × 5 locales in messages.ts; ja real translation, de/es/fr placeholders + v1.4 backlog)
   **Wave 2 (depends_on 16.1-02)**
   - [ ] 16.1-03-PLAN.md — CampaignUpliftCard plain-language rewrite (tier-aware hero + inline How-is-this-calculated disclosure; localhost-first Chrome MCP gate)
 **UI hint**: yes
@@ -376,7 +376,7 @@ Plans:
 | 14. Forecasting Engine — BAU Track | v1.3 | 0/? | Not started | — |
 | 15. Forecast Chart UI | v1.3 | 0/? | Not started | — |
 | 16. ITS Uplift Attribution | v1.3 | 13/13 | Pending Verification|  |
-| 16.1. Friend-Persona UX Polish (INSERTED) | v1.3 | 0/3 | Not started | — |
+| 16.1. Friend-Persona UX Polish (INSERTED) | v1.3 | 1/3 | Executing | — |
 | 17. Backtest Gate & Quality Monitoring | v1.3 | 0/? | Not started | — |
 
 ## Coverage Summary
