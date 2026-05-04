@@ -23,7 +23,14 @@ Owner feedback (verbatim, 2026-05-04 Chrome MCP localhost session):
 
 ## What's missing today
 
-`/api/forecast` already returns past-forecast rows (`backtestStart` window: last 7 days for day grain, 5 ISO weeks for week grain, 4 months for month grain) — the BACKEND is ready.
+**Backend contract is already correct.** `/api/forecast` (`+server.ts:57-61`) computes `backtestStart` **anchored on last-actual date, not today**:
+- `day` grain → 7 days of past forecast counting back from last available actual
+- `week` grain → 5 ISO weeks (~35 days) counting back from last available actual
+- `month` grain → 4 complete months counting back from last available actual
+
+This is exactly the "show forecast lines from the day data is missing" requirement. The API ships these rows alongside future-forecast in the same `forecast` array. The four forecast-aware components fetch this payload — RevenueForecastCard + InvoiceCountForecastCard already render the past-forecast layer (Phase 15 v2). The two stacked-bar Calendar* cards fetch the payload but don't render the past-forecast layer on top of the bars.
+
+**The fix is purely a missing UI layer on CalendarRevenueCard + CalendarCountsCard.** No backend change, no API change, no MV change.
 
 | Component | Past-forecast overlay state |
 |---|---|
