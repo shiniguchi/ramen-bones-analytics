@@ -344,7 +344,7 @@ Plans:
   - [x] 16.1-04-PLAN.md (PLANNED) — Pipeline forecast windowing fix per D-14/D-15. **Locked: Option B (Forecast-from-window-start)** — single edit to `scripts/forecast/grain_helpers.py` (`window_start_for_grain` + extended `pred_dates_for_grain`); cascades via existing kwarg threading to sarimax/naive_dow/ets/theta fits + Prophet (Path A wire OR Path B skip-with-SUMMARY). NO migration. NO MV redefinition. NO API change. NO Phase 17 preemption.
   - [x] 16.1-02-PLAN.md (DONE) — i18n keys for CampaignUpliftCard plain-language regime (13 keys × 5 locales; shipped in `de61cc5`)
   **Wave 2 (UI — depends on 16.1-04 + 16.1-02; parallel within wave)**
-  - [ ] 16.1-01-PLAN.md (PLANNED) — Calendar* past-forecast overlay (CalendarRevenueCard + CalendarCountsCard split-Spline past/future + continuous CI band) + Tooltip.Root expansion with per-visible-model rows (D-16). Re-applies stashed scaffold (`stash@{0}`). Localhost-first Chrome MCP gate ja+en.
+  - [x] 16.1-01-PLAN.md (DONE 2026-05-04) — Calendar* past-forecast overlay (CalendarRevenueCard + CalendarCountsCard split-Spline past/future + continuous CI band) + Tooltip.Root expansion with per-visible-model rows (D-16). Re-applied stashed scaffold via `git stash pop` (clean). Tasks 1-5 shipped (1567a59 / 0918ecc / 644e8a5 / 0695056 / 151b5c6); Task 6 Chrome MCP gate auto-approved per workflow.auto_advance=true and folded into phase-final QA.
   - [ ] 16.1-03-PLAN.md (PLANNED) — CampaignUpliftCard plain-language rewrite (regime tier × CI matrix; "How is this calculated? ›" disclosure) + supportive labels (D-18 hero subtitle, sparkline Y/X labels, counterfactual baseline marker). 4 new i18n keys × 5 locales. Localhost-first Chrome MCP gate ja+en.
   - [ ] 16.1-05-PLAN.md (PLANNED) — RevenueForecastCard + InvoiceCountForecastCard horizontal-scroll parity (D-17) + past/future Spline split. Lifts `CalendarRevenueCard.svelte:270-305` wrapper verbatim. Localhost-first Chrome MCP gate ja+en.
 **UI hint**: yes
@@ -382,7 +382,7 @@ Plans:
 | 14. Forecasting Engine — BAU Track | v1.3 | 0/? | Not started | — |
 | 15. Forecast Chart UI | v1.3 | 0/? | Not started | — |
 | 16. ITS Uplift Attribution | v1.3 | 13/13 | Pending Verification|  |
-| 16.1. Friend-Persona UX Polish (INSERTED, EXPANDED) | v1.3 | 2/5 | In Progress|  |
+| 16.1. Friend-Persona UX Polish (INSERTED, EXPANDED) | v1.3 | 3/5 | In Progress|  |
 | 17. Backtest Gate & Quality Monitoring | v1.3 | 0/? | Not started | — |
 
 ## Coverage Summary

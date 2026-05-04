@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: External Data & Forecasting Foundation
 status: ready_to_execute
-stopped_at: "Phase 16.1 replanned (4 new + 1 shipped). Ready for /gsd-execute-phase 16.1 — Wave 1 (16.1-04 keystone backend) then Wave 2 (16.1-01, 16.1-03, 16.1-05 in parallel)"
-last_updated: "2026-05-04T14:05:00.000Z"
+stopped_at: "Phase 16.1 — Wave 1 done (16.1-02 + 16.1-04). Wave 2 in flight: 16.1-01 (Calendar* past-forecast + tooltip D-16) shipped via Tasks 1-5 + auto-approved Task 6. Remaining: 16.1-03 (CampaignUpliftCard plain-language + D-18 supportive labels), 16.1-05 (Forecast cards horizontal-scroll parity + past/future split). Both Wave 2 sibling plans independent of this one — 16.1-03 uses /api/campaign-uplift; 16.1-05 reuses splitSeriesByModel pattern established here."
+last_updated: "2026-05-04T18:30:00.000Z"
 last_activity: 2026-05-04
 progress:
   total_phases: 18
   completed_phases: 16
   total_plans: 91
-  completed_plans: 75
-  percent: 82
+  completed_plans: 76
+  percent: 84
 ---
 
 # STATE: Ramen Bones Analytics
@@ -100,6 +100,7 @@ Next recommended run: /gsd-plan-phase 16.1
 | Phase 10-charts P05 | 6min | 2 tasks | 6 files |
 | Phase 10-charts P08 | 7min | 3 tasks | 3 files |
 | Phase 16.1 P02 | 3min | 1 task | 2 files |
+| Phase 16.1 P01 | ~25min | 5 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -223,6 +224,7 @@ Next recommended run: /gsd-plan-phase 16.1
 - [Phase 10-charts]: 10-08: customer_ltv_v NOT range-filtered at SSR — LTV is lifetime; filter-scoping would hide customers outside chip window.
 - [Phase 10-charts]: 10-08: SSR fan-out grows 4→6 queries with per-card try/catch + empty fallback.
 - [Phase 16.1]: 16.1-02: 13 i18n keys for CampaignUpliftCard plain-language regime appended to all 5 locale blocks of `src/lib/i18n/messages.ts`. JA gets natural owner-persona translations; DE/ES/FR placeholder = EN verbatim per CONTEXT.md C-05 (owner only verifies ja + en). v1.4 translation backlog stub at `.planning/backlog/i18n-campaign-uplift-card-de-es-fr.md`. Plan 16.1-03 unblocked.
+- [Phase 16.1]: 16.1-01: Calendar* past-forecast continuity + D-16 tooltip extension shipped. (a) 5 D-16 model-label keys × 5 locales = 25 entries in `messages.ts` (en + ja real, de/es/fr placeholder per 16.1-02 pattern). (b) `lastActualDate` + `splitSeriesByModel` + `forecastWindowStart` + `pastForecastBuckets` $derived primitives on both Calendar* cards. (c) chartXDomain widened LEFT (D-03) when forecastWindowStart < startAligned. (d) Past+future Spline split (past faded `stroke-opacity={0.7}`; future dashed `'4 4'`); CI Area band stays single continuous (D-04). (e) CalendarRevenueCard scroll-to-today fix `todayPct = (histBuckets + pastForecastBuckets) / total` keeps today at the bars-end boundary. (f) Tooltip.Root body extended on both cards with topRows + modelRows lookup keyed off `format(bucket_d, 'yyyy-MM-dd')`; horizontal divider when both populated; CI hint omitted per RESEARCH.md (mobile clutter). MessageKey type assertion for dynamic `forecast_model_${name}` key. Stash recovery via `git stash pop stash@{0}` (clean, zero conflicts). Task 6 Chrome MCP + supabase-dev cross-check auto-approved per workflow.auto_advance=true; folded into phase-final QA.
 
 ### Open Todos
 
