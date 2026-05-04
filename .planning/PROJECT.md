@@ -82,12 +82,14 @@ A restaurant owner opens the site on their phone and makes a real business decis
 **Goal:** Ingest free external signals (weather, holidays, events), build a multi-horizon forecasting engine, render forecast overlays on the revenue chart, and attribute campaign uplift via Interrupted Time Series counterfactuals.
 
 **Target features:**
-- External data ingestion: Open-Meteo weather, `python-holidays` federal+state, `ferien-api.de` school breaks, BVG transit-strike RSS, hand-curated recurring events — backfilled from 2025-06-11 with 7-day forward forecast where available
-- Multi-horizon forecasting engine: SARIMAX (primary) + Prophet + ETS + Theta + Naive baseline at +7d / +35d (5w) / +120d (4mo) / +365d (1yr); daily refit at 03:00 Berlin; conformal CIs at long horizons
-- Forecast chart UI: LayerChart overlay on revenue card with horizon toggle, event markers, hover popup showing per-horizon RMSE/MAPE/last-refit; granularity toggle re-buckets sample paths for proper CI aggregation
-- ITS-based uplift attribution: Track-B counterfactual fit on pre-campaign era (2025-06-11 → 2026-04-13) only; cumulative `actual − Track-B` per campaign window with 95% MC CIs in `campaign_uplift_v`
-- Backtest gate: rolling-origin CV at 4 horizons, 12-week harness, ≥10% RMSE improvement vs naive same-DoW required to deploy a new model
-- Last-7-actual-days nightly accuracy log surfaced on hover tooltip (freshness ≤24h)
+- ✓ **External data ingestion** — shipped Phase 13 (PR #17, 2026-04-21). Open-Meteo weather, `python-holidays` federal+state, `ferien-api.de` school breaks, BVG transit-strike RSS, hand-curated recurring events — backfilled from 2025-06-11.
+- ✓ **Multi-horizon forecasting engine** — shipped Phase 14 (PR #22, 2026-05-01). SARIMAX + Prophet + ETS + Theta + Naive at +7d / +35d / +120d / +365d; daily refit; 5/5 models producing forecasts on DEV.
+- ✓ **Forecast chart UI** — shipped Phase 15 (PR #26, 2026-05-01). LayerChart overlay with horizon toggle, event markers (5 sources), backtest overlay v2.
+- ✓ **ITS-based uplift attribution** — shipped Phase 16 (2026-05-04). Track-B counterfactual fit on pre-campaign era only; `campaign_uplift_v` exposes per-campaign cumulative `actual − Track-B` with 95% Monte Carlo CIs from 1000 sample paths; `CampaignUpliftCard.svelte` renders honest "CI overlaps zero — no detectable lift" labeling when 95% CI straddles 0; sensitivity log at `tests/forecast/cutoff_sensitivity.md` confirms sarimax 1.139 + prophet 0.890 ratios PASS in [0.8, 1.25] healthy band. UPL-01..07 validated.
+- [ ] Backtest gate (Phase 17): rolling-origin CV at 4 horizons, 12-week harness, ≥10% RMSE improvement vs naive same-DoW required to deploy a new model
+- [ ] Last-7-actual-days nightly accuracy log surfaced on hover tooltip (freshness ≤24h)
+
+**Shipped this milestone (in order):** 13 → 14 → 15 → 16. Phase 17 (Backtest Gate & Quality Monitoring) is the final v1.3 phase.
 
 **Key context:**
 - Friend-owner started a marketing campaign on 2026-04-14; she needs a "did it work?" answer that current MDE analysis cannot give (lift detection requires ≥6 weeks at current σ)
@@ -115,4 +117,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-27 — Milestone v1.3 (External Data & Forecasting Foundation) started. Driver: friend-owner's 2026-04-14 marketing campaign needs causal lift attribution that current MDE analysis can't deliver. Skipping `phases.clear` to preserve `.planning/phases/12-forecasting-foundation/12-PROPOSAL.md` (1484-line user input proposal). v1.2 wrapped at Phase 11 (CF Pages outage fix, 100% complete).*
+*Last updated: 2026-05-04 — Phase 16 (ITS Uplift Attribution) complete. Track-B counterfactual pipeline, campaign_uplift_v + CampaignUpliftCard with honest "CI overlaps zero" labeling shipped. UPL-01..07 validated. Headline empirical result for the 2026-04-14 friend campaign: −€565 cumulative deviation over 14 post-launch days, 95% CI [−€3,745, +€2,298] — statistically indistinguishable from null effect. Sensitivity log: sarimax 1.139 + prophet 0.890 ratios PASS in [0.8, 1.25] band. Wave 4 also folded in 4 Wave-2 spec-gap hotfixes (mig 0065/0066, pred_dates anchor, started_at probe). Phase 17 (Backtest Gate) is the only remaining v1.3 phase.*
