@@ -19,7 +19,8 @@ vi.mock('$lib/clientFetch', () => ({
 // Importing dashboardStore.svelte from a unit test requires the runes runtime;
 // the mock keeps the test boundary clean.
 vi.mock('$lib/dashboardStore.svelte', () => ({
-  getFilters: () => ({ grain: 'day' })
+  getFilters: () => ({ grain: 'day' }),
+  computeChartWidth: () => undefined
 }));
 
 import RevenueForecastCard from '../../src/lib/components/RevenueForecastCard.svelte';
