@@ -22,6 +22,8 @@
   import { curveMonotoneX } from 'd3-shape';
   import { format, differenceInDays, parseISO } from 'date-fns';
   import { clientFetch } from '$lib/clientFetch';
+  import { page } from '$app/state';
+  import { t } from '$lib/i18n/messages';
 
   type UpliftBlockRow = {
     model_name: string;
@@ -110,6 +112,57 @@
     const magnitudeDivergent = Math.abs(s - n) / Math.max(Math.abs(s), 1) > 0.5;
     return signDisagree || magnitudeDivergent;
   });
+
+  // D-05 / D-06: maturity tier from server-truth headline.row.n_days.
+  type MaturityTier = 'early' | 'midweeks' | 'mature';
+  const maturityTier = $derived.by<MaturityTier>(() => {
+    if (!headline) return 'early';
+    const n = headline.row.n_days;
+    if (n < 14) return 'early';
+    if (n < 28) return 'midweeks';
+    return 'mature';
+  });
+
+  // D-06 tier × CI matrix → resolves to one of 7 hero keys.
+  // Edge case (Claude's Discretion): cumulative_uplift_eur === 0 → treat as ciOverlapsZero=true regardless.
+  const heroKey = $derived.by<string>(() => {
+    if (!headline) return 'uplift_hero_too_early';
+    const tier = maturityTier;
+    if (tier === 'early') return 'uplift_hero_too_early';
+    const s = headline.row.cumulative_uplift_eur;
+    const ciOverlap = ciOverlapsZero || s === 0;
+    if (ciOverlap) {
+      return tier === 'midweeks'
+        ? 'uplift_hero_early_not_measurable'
+        : 'uplift_hero_mature_no_lift';
+    }
+    const sign = s > 0 ? 'added' : 'reduced';
+    return tier === 'midweeks'
+      ? `uplift_hero_early_${sign}`
+      : `uplift_hero_mature_${sign}`;
+  });
+
+  // Vars for the mature-tier no-lift template ({weeks}); undefined otherwise.
+  const heroVars = $derived.by<Record<string, string | number> | undefined>(() => {
+    if (!headline) return undefined;
+    if (heroKey === 'uplift_hero_mature_no_lift') {
+      return { weeks: Math.floor(headline.row.n_days / 7) };
+    }
+    return undefined;
+  });
+
+  // Disclosure panel toggle (D-09 / D-11 — collapsed by default, no localStorage).
+  let detailsOpen = $state(false);
+
+  // Locale-aware date formatter for the headline campaign-start date.
+  // Intl.DateTimeFormat is built into Cloudflare Workers runtime — zero bundle cost.
+  function formatHeadlineDate(iso: string, locale: string): string {
+    return new Intl.DateTimeFormat(locale, {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    }).format(parseISO(iso));
+  }
 
   // Sparkline source — per-day trajectory consumed directly from API daily[].
   // CONTEXT.md D-11: shape-of-uplift requires the FULL trajectory across
