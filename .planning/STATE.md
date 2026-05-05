@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: External Data & Forecasting Foundation
-status: ready_to_plan
-stopped_at: "Phase 16.2 (Friend-Persona QA Gap Closure) inserted into ROADMAP and CONTEXT captured. 7 owner-reported issues from 2026-05-05 SC9 persona test on Phase 16.1 scoped: (1) date-range freeze perf bug, (2) forecast tooltip model-filter + Highlight binding, (3) visit-cohort tooltip layout regression, (4) Spline z-order behind bars, (5) visit-number week/month coverage verify-only, (6) Prophet Path B revert (drop window_start kwarg from prophet_fit.py), (7) CampaignUpliftCard add Rule baseline + Axis ticks. 20 implementation decisions locked (D-01..D-20). 3 gray areas resolved via AskUserQuestion: Path B revert + investigate-first perf + verify-only Item 5. Phase 16+16.1+16.2 ship as ONE PR. Next: /gsd-plan-phase 16.2 to break down into plans."
-last_updated: "2026-05-05T08:30:00.000Z"
+status: ready_to_execute
+stopped_at: "Phase 16.2 planning complete 2026-05-05. 7 PLAN.md files locked across 3 waves: W1 (16.2-01 perf trace+fix, 16.2-04 SQL audit, 16.2-05 Prophet Path B revert+regen), W2 (16.2-02 forecast tooltip multi-model+Highlight, 16.2-03 calendar tooltip+z-order verify, 16.2-06 CampaignUpliftCard Rule+Axis), W3 (16.2-07 phase-final localhost+DEV QA + STATE/ROADMAP update). plan-checker: 0 blockers / 6 warnings — all 6 fixed via surgical edits (16.2-05 line 362 explicit, 16.2-02 N-instance Highlight via Context7 gate, 16.2-07 computed STATE bumps not hard-coded, 16.2-01 anchored regex, 16.2-04 16.2-04b scaffold, 16.2-03 D-09 stale-assumption note + CONTEXT D-09 corrected). Phase 16+16.1+16.2 ship as ONE PR. Next: /gsd-execute-phase 16.2 (recommend /clear first for fresh context window)."
+last_updated: "2026-05-05T10:30:00.000Z"
 last_activity: 2026-05-05
 progress:
   total_phases: 19
   completed_phases: 17
-  total_plans: 91
+  total_plans: 98
   completed_plans: 79
-  percent: 87
+  percent: 81
 ---
 
 # STATE: Ramen Bones Analytics

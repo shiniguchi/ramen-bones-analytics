@@ -365,7 +365,18 @@ Plans:
   8. **Localhost-first Chrome MCP verification at 375×667 in `ja` AND `en` locales** BEFORE any DEV deploy (per `.claude/CLAUDE.md` localhost-first rule); zero console errors / `invalid_default_snippet` warnings on any modified component; backend pipeline regen (if Path B revert touches Python) ships via `migrations.yml` / `forecast-refresh.yml` `workflow_dispatch` on the feature branch BEFORE the visual QA at DEV.
   9. **Friend-persona re-acceptance**: owner re-runs the 5-card persona test at 375px in `ja` locale and confirms all 7 issues are resolved without surfacing new ones.
   10. **Planning-docs drift gate passes** (`.claude/scripts/validate-planning-docs.sh`)
-**Plans**: TBD (locked during `/gsd-plan-phase 16.2`)
+**Plans**: 7 plans (locked during /gsd-plan-phase 16.2 on 2026-05-05)
+Plans:
+  **Wave 1 (parallel — independent investigations / pipeline regen)**
+  - [ ] 16.2-01-PLAN.md — Item 1 date-range freeze investigation + fix (Chrome MCP perf trace at 375×667 + minimal fix per D-01..D-03)
+  - [ ] 16.2-04-PLAN.md — Item 5 visit-number week/month forecast coverage SQL audit (verify-only per D-10/D-11)
+  - [ ] 16.2-05-PLAN.md — Item 6 Prophet Path B revert (drop window_start kwarg from prophet_fit.py per D-12) + workflow_dispatch regen + .planning/learnings/ entry
+  **Wave 2 (parallel — UI fixes; depend on Wave 1 perf fix for smooth visual QA)**
+  - [ ] 16.2-02-PLAN.md — Item 2 RevenueForecastCard + InvoiceCountForecastCard tooltip multi-model rows (D-04) + per-Spline Highlight binding (D-05)
+  - [ ] 16.2-03-PLAN.md — Items 3+4 (merged) CalendarRevenueCard + CalendarCountsCard tooltip layout fix (D-08) + Spline z-order verification (D-09)
+  - [ ] 16.2-06-PLAN.md — Item 7 CampaignUpliftCard Rule baseline (D-15) + Y-axis € ticks (D-16) + X-axis days ticks (D-17), W4 Y-label preserved (D-18)
+  **Wave 3 (sequential — phase-final QA gate)**
+  - [ ] 16.2-07-PLAN.md — Localhost-first Chrome MCP QA × 5 cards × 2 locales + DEV final QA + drift gate + STATE/ROADMAP update
 **UI hint**: yes
 
 ### Phase 17: Backtest Gate & Quality Monitoring
