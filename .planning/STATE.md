@@ -3,11 +3,11 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: External Data & Forecasting Foundation
 status: ready_to_execute
-stopped_at: "Phase 16.2 Friend-Persona QA Gap Closure complete 2026-05-05. All 7 owner-reported issues from 2026-05-05 SC9 closed: Item 1 date-range freeze (71% reduction PARTIAL, user-accepted; v1.4 follow-up for the residual single-cascade weight), Item 2 forecast tooltip multi-model + per-Spline Highlight, Items 3+4 cohort tooltip layout fix + Spline z-order verified (path 3 — DOM evidence), Item 5 visit-number week/month coverage SQL audit (path A — scope-deferred; selector already data-driven), Item 6 Prophet Path B revert + cleanup + pipeline regen + learning entry, Item 7 CampaignUpliftCard Rule baseline + Y/X axis ticks (W4 Y-label preserved). 7/7 plans shipped. Phase 16+16.1+16.2 ship as ONE PR on feature/phase-16-its-uplift-attribution. Next: /gsd-ship to open PR + run DEV QA + friend persona re-acceptance (SC9)."
-last_updated: "2026-05-05T11:00:00.000Z"
-last_activity: 2026-05-05
+stopped_at: "Phase 16.3 context gathered 2026-05-06 — 8 decisions locked across 4 gray areas (past-bucket events feed, strip placement, multi-event badge visual, EventMarker fate) + 4 follow-up specifics (API range, empty-bucket behavior, popup positioning, DailyHeatmap exclusion). All Recommended accepted per follow-recs-first. Ready for /gsd-plan-phase 16.3 on a fresh feature/phase-16.3-dashboard-cleanup-events-everywhere branch off main AFTER the 16+16.1+16.2 PR merges. Resume file: .planning/phases/16.3-dashboard-cleanup-events-everywhere/16.3-CONTEXT.md"
+last_updated: "2026-05-06T01:00:00.000Z"
+last_activity: 2026-05-06
 progress:
-  total_phases: 19
+  total_phases: 20
   completed_phases: 18
   total_plans: 98
   completed_plans: 86
@@ -115,6 +115,7 @@ Next recommended run: /gsd-plan-phase 16.2
 ### Roadmap Evolution
 
 - 2026-05-04: Phase 16.1 (Friend-Persona UX Polish) inserted after Phase 16 (URGENT). Source: 2026-05-04 owner Chrome MCP localhost review surfaced two persona-acceptance gaps — (1) CalendarRevenueCard + CalendarCountsCard missing past-forecast overlay (dashboard looks broken on T+N days after manual upload, even though /api/forecast already ships windowed past-forecast), (2) CampaignUpliftCard hero copy unreadable for non-statistical reader. Both UI-only, no backend changes. Inserted before qa-gate / code-review / ship so Phase 16 + 16.1 ship together as one PR.
+- 2026-05-06: Phase 16.3 (Dashboard Cleanup + Events Everywhere) inserted after Phase 16.2 (URGENT). Source: 2026-05-06 owner conversation — `RevenueForecastCard` + `InvoiceCountForecastCard` don't drive any business decision, owner asks to delete them; vertical event markers (currently only on those two cards) DO help her reason about the calendar, owner asks to bring them to every remaining dashboard chart. Pure UI simplification + cross-chart event overlay; forecast pipeline (`/api/forecast`, `forecast_daily`, cron, `forecast_quality`, `EventMarker.svelte`, `forecastEventClamp.ts`, `ForecastLegend.svelte`, `ModelAvailabilityDisclosure.svelte`, `forecastOverlay.svelte.ts`) preserved because Calendar* + CampaignUpliftCard depend on it. Slots between 16.2 (ready_to_ship) and 17 (Backtest Gate). Ships on a fresh `feature/phase-16.3-dashboard-cleanup-events-everywhere` branch off main post-16.2-merge — does NOT block the 16+16.1+16.2 PR. Phase 17 unaffected.
 
 ### Key Decisions (from PROJECT.md)
 
