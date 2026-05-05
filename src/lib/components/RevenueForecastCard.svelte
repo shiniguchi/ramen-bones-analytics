@@ -15,6 +15,7 @@
   import { getFilters, computeChartWidth } from '$lib/dashboardStore.svelte';
   import EmptyState from './EmptyState.svelte';
   import ForecastLegend from './ForecastLegend.svelte';
+  import ModelAvailabilityDisclosure from './ModelAvailabilityDisclosure.svelte';
   import EventMarker from './EventMarker.svelte';
   import ForecastHoverPopup from './ForecastHoverPopup.svelte';
   import { FORECAST_MODEL_COLORS } from '$lib/chartPalettes';
@@ -338,5 +339,6 @@
     </div>
 
     <ForecastLegend {availableModels} {visibleModels} ontoggle={toggleModel} />
+    <ModelAvailabilityDisclosure {availableModels} grain={getFilters().grain} />
   {/if}
 </div>

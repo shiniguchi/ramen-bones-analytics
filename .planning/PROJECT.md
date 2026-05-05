@@ -99,6 +99,32 @@ A restaurant owner opens the site on their phone and makes a real business decis
 - Out of scope: full Marketing Mix Modeling (defer to v1.4+ when 3+ channels exist), real-time/hourly forecasting, item-level demand, multi-shop scaling
 - Phase numbering continues from 11 → Phases 12-N (no `--reset-phase-numbers`)
 
+## Forecast Model Availability Matrix
+
+(captured 2026-05-05 during Phase 16.2 polish — see also `.planning/phases/16.2-friend-persona-qa-gap-closure/16.2-04-AUDIT.md` for the SQL audit and `src/lib/components/ModelAvailabilityDisclosure.svelte` for the in-product surface)
+
+The pipeline runs separate fits per `(model, kpi, granularity)` tuple. Each model has minimum-history thresholds before it can fit at a given grain. Chips in `ForecastLegend` are data-driven — disabled at 40% opacity when the API does not return rows for that model at the selected grain.
+
+| Model | day grain | week grain | month grain | Why |
+|---|---|---|---|---|
+| **SARIMAX** | 30 daily buckets | 104 weekly buckets | 24 monthly buckets | Statsmodels SARIMAX requires ≥3× seasonal period to estimate AR/MA orders. At week/month grain, `scripts/forecast/grain_helpers.py` `YEARLY_THRESHOLD_BY_GRAIN` is the hard gate — fit refuses to run below it (workflow log: `RuntimeError: Insufficient week history: 41 buckets (need >= 104)`). At day grain the pipeline runs without yearly seasonality below 730 (gracefully degraded). |
+| **Prophet** | 30 daily | 8 weekly | 4 monthly | Prophet auto-degrades gracefully — `yearly_seasonality=False` until ≥730 daily / 104 weekly / 24 monthly buckets per `scripts/forecast/prophet_fit.py:52` `YEARLY_THRESHOLD_BY_GRAIN`, but the model still fits below threshold without yearly term. Lowest fit threshold of all 5 statistical models. |
+| **ETS** | 30 daily | 104 weekly | 24 monthly | Same hard week/month gate as SARIMAX (workflow log: `RuntimeError: Insufficient week history: 41 buckets`). |
+| **Theta** | 30 daily | 104 weekly | 24 monthly | Same hard week/month gate as SARIMAX/ETS. |
+| **Naive_DoW** | 7 daily | 1 weekly | 1 monthly | Trivial — just averages historical day-of-week values. Always available once history exists. |
+| **Chronos** | feature-flagged off | feature-flagged off | feature-flagged off | Not in `FORECAST_ENABLED_MODELS` env in `.github/workflows/forecast-refresh.yml`. Phase 17 backlog (foundation models need backtest gate before promotion). |
+| **NeuralProphet** | feature-flagged off | feature-flagged off | feature-flagged off | Same as Chronos — Phase 17 backlog. ROADMAP entry: "≥5% RMSE-win promotion criterion". |
+
+**Friend's data as of 2026-05-05:** ~330 days / ~46 weeks / ~10 months. So:
+
+- **Day grain:** all 5 statistical models available + 2 disabled feature-flagged
+- **Week grain:** only Prophet + Naive_DoW available (need ~58 more weeks for SARIMAX/ETS/Theta to unlock — projected mid-2027)
+- **Month grain:** only Prophet + Naive_DoW available (need ~14 more months for SARIMAX/ETS/Theta — projected mid-2027)
+
+**The "just sum daily forecasts" question** (raised by the friend 2026-05-05): summing daily yhat point estimates is mathematically fine; **summing daily yhat_lower / yhat_upper is a documented anti-pattern** because daily errors are correlated and pointwise CIs assume independence. The pipeline already stores 200 sample paths per daily forecast in `forecast_daily.yhat_samples jsonb` (written by `paths_to_jsonb` in every `*_fit.py`). A future v1.3 polish could aggregate those daily paths to weekly/monthly buckets server-side and expose SARIMAX/ETS/Theta at non-day grain via path aggregation rather than native fit — half-day work, cleanest as a SQL view + Edge Function. Not blocking v1.3 friend-persona acceptance; flagged as a v1.4 candidate.
+
+**In-product surface:** `ModelAvailabilityDisclosure` component renders this matrix as an inline `<details>`-style disclosure under the legend chip row on RevenueForecastCard, InvoiceCountForecastCard, CalendarRevenueCard, and CalendarCountsCard. The status column reads available/Phase-17/short-history dynamically based on the current grain + the API's `availableModels` shape. i18n keys `model_avail_*` in `src/lib/i18n/messages.ts` (en + ja real, de/es/fr placeholder per 16.1-02 pattern).
+
 ## Evolution
 
 This document evolves at phase transitions and milestone boundaries.

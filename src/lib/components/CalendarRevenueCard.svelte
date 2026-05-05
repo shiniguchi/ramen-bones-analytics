@@ -25,6 +25,7 @@
   import EmptyState from './EmptyState.svelte';
   import VisitSeqLegend from './VisitSeqLegend.svelte';
   import ForecastLegend from './ForecastLegend.svelte';
+  import ModelAvailabilityDisclosure from './ModelAvailabilityDisclosure.svelte';
   import { VISIT_SEQ_COLORS, CASH_COLOR, FORECAST_MODEL_COLORS } from '$lib/chartPalettes';
   import { formatEURShort } from '$lib/format';
   import { bucketTotals, bucketTrend } from '$lib/trendline';
@@ -495,6 +496,7 @@
     <VisitSeqLegend {showCash} />
     {#if forecastData && availableModels.length > 0}
       <ForecastLegend {availableModels} {visibleModels} ontoggle={toggleModel} />
+      <ModelAvailabilityDisclosure {availableModels} grain={getFilters().grain} />
     {/if}
   {/if}
 </div>

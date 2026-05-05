@@ -223,7 +223,20 @@ const en = {
   forecast_model_prophet: 'Prophet',
   forecast_model_ets: 'ETS',
   forecast_model_theta: 'Theta',
-  forecast_model_naive_dow: 'Naive (DoW avg)'
+  forecast_model_naive_dow: 'Naive (DoW avg)',
+
+  // --- Model availability disclosure (Phase 16.2 polish) ---
+  model_avail_disclosure_trigger: 'Why are some models disabled?',
+  model_avail_disclosure_intro: 'Each model needs a minimum amount of history before it can run. Disabled chips become available as more data arrives.',
+  model_avail_col_model: 'Model',
+  model_avail_col_status: 'Status',
+  model_avail_col_min: 'Min data',
+  model_avail_status_available: 'Available',
+  model_avail_status_phase17: 'Phase 17 backlog',
+  model_avail_status_short_day: 'Need more daily history',
+  model_avail_status_short_week: 'Need more weekly history',
+  model_avail_status_short_month: 'Need more monthly history',
+  model_avail_disclosure_footnote: 'Min data shown in current grain units (days for day grain, weeks for week, months for month). Source: scripts/forecast/grain_helpers.py YEARLY_THRESHOLD_BY_GRAIN.'
 } as const;
 
 export type MessageKey = keyof typeof en;
@@ -433,7 +446,20 @@ const de: Record<MessageKey, string> = {
   forecast_model_prophet: 'Prophet',
   forecast_model_ets: 'ETS',
   forecast_model_theta: 'Theta',
-  forecast_model_naive_dow: 'Naive (DoW avg)'
+  forecast_model_naive_dow: 'Naive (DoW avg)',
+
+  // --- Model availability disclosure (Phase 16.2 polish — DE placeholder = EN; v1.4 backlog) ---
+  model_avail_disclosure_trigger: 'Why are some models disabled?',
+  model_avail_disclosure_intro: 'Each model needs a minimum amount of history before it can run. Disabled chips become available as more data arrives.',
+  model_avail_col_model: 'Model',
+  model_avail_col_status: 'Status',
+  model_avail_col_min: 'Min data',
+  model_avail_status_available: 'Available',
+  model_avail_status_phase17: 'Phase 17 backlog',
+  model_avail_status_short_day: 'Need more daily history',
+  model_avail_status_short_week: 'Need more weekly history',
+  model_avail_status_short_month: 'Need more monthly history',
+  model_avail_disclosure_footnote: 'Min data shown in current grain units (days for day grain, weeks for week, months for month). Source: scripts/forecast/grain_helpers.py YEARLY_THRESHOLD_BY_GRAIN.'
 };
 
 // --- JA (日本語) ----------------------------------------------------------
@@ -640,7 +666,20 @@ const ja: Record<MessageKey, string> = {
   forecast_model_prophet: 'Prophet',
   forecast_model_ets: 'ETS',
   forecast_model_theta: 'Theta',
-  forecast_model_naive_dow: '単純予測（曜日平均）'
+  forecast_model_naive_dow: '単純予測（曜日平均）',
+
+  // --- Model availability disclosure (Phase 16.2 polish) ---
+  model_avail_disclosure_trigger: 'なぜ一部のモデルは無効？',
+  model_avail_disclosure_intro: '各モデルには最小限の履歴データが必要です。データが蓄積するにつれて無効のチップが利用可能になります。',
+  model_avail_col_model: 'モデル',
+  model_avail_col_status: '状態',
+  model_avail_col_min: '最小データ',
+  model_avail_status_available: '利用可',
+  model_avail_status_phase17: 'Phase 17で対応予定',
+  model_avail_status_short_day: '日次履歴が不足',
+  model_avail_status_short_week: '週次履歴が不足',
+  model_avail_status_short_month: '月次履歴が不足',
+  model_avail_disclosure_footnote: '最小データは現在の粒度の単位（日次なら日数、週次なら週数、月次なら月数）。出典: scripts/forecast/grain_helpers.py の YEARLY_THRESHOLD_BY_GRAIN。'
 };
 
 // --- ES (Español) ---------------------------------------------------------
@@ -848,7 +887,20 @@ const es: Record<MessageKey, string> = {
   forecast_model_prophet: 'Prophet',
   forecast_model_ets: 'ETS',
   forecast_model_theta: 'Theta',
-  forecast_model_naive_dow: 'Naive (DoW avg)'
+  forecast_model_naive_dow: 'Naive (DoW avg)',
+
+  // --- Model availability disclosure (Phase 16.2 polish — ES placeholder = EN; v1.4 backlog) ---
+  model_avail_disclosure_trigger: 'Why are some models disabled?',
+  model_avail_disclosure_intro: 'Each model needs a minimum amount of history before it can run. Disabled chips become available as more data arrives.',
+  model_avail_col_model: 'Model',
+  model_avail_col_status: 'Status',
+  model_avail_col_min: 'Min data',
+  model_avail_status_available: 'Available',
+  model_avail_status_phase17: 'Phase 17 backlog',
+  model_avail_status_short_day: 'Need more daily history',
+  model_avail_status_short_week: 'Need more weekly history',
+  model_avail_status_short_month: 'Need more monthly history',
+  model_avail_disclosure_footnote: 'Min data shown in current grain units (days for day grain, weeks for week, months for month). Source: scripts/forecast/grain_helpers.py YEARLY_THRESHOLD_BY_GRAIN.'
 };
 
 // --- FR (Français) --------------------------------------------------------
@@ -1056,7 +1108,20 @@ const fr: Record<MessageKey, string> = {
   forecast_model_prophet: 'Prophet',
   forecast_model_ets: 'ETS',
   forecast_model_theta: 'Theta',
-  forecast_model_naive_dow: 'Naive (DoW avg)'
+  forecast_model_naive_dow: 'Naive (DoW avg)',
+
+  // --- Model availability disclosure (Phase 16.2 polish — FR placeholder = EN; v1.4 backlog) ---
+  model_avail_disclosure_trigger: 'Why are some models disabled?',
+  model_avail_disclosure_intro: 'Each model needs a minimum amount of history before it can run. Disabled chips become available as more data arrives.',
+  model_avail_col_model: 'Model',
+  model_avail_col_status: 'Status',
+  model_avail_col_min: 'Min data',
+  model_avail_status_available: 'Available',
+  model_avail_status_phase17: 'Phase 17 backlog',
+  model_avail_status_short_day: 'Need more daily history',
+  model_avail_status_short_week: 'Need more weekly history',
+  model_avail_status_short_month: 'Need more monthly history',
+  model_avail_disclosure_footnote: 'Min data shown in current grain units (days for day grain, weeks for week, months for month). Source: scripts/forecast/grain_helpers.py YEARLY_THRESHOLD_BY_GRAIN.'
 };
 
 export const messages: Record<Locale, Record<MessageKey, string>> = { en, de, ja, es, fr };
