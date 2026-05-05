@@ -19,7 +19,7 @@
 import type { RequestHandler } from './$types';
 import { json } from '@sveltejs/kit';
 import { fetchAll } from '$lib/supabasePagination';
-import { parseGranularity, type Granularity } from '$lib/forecastValidation';
+import { parseGranularity, windowStartForGrain, type Granularity } from '$lib/forecastValidation';
 import { clampEvents, type ForecastEvent } from '$lib/forecastEventClamp';
 import { format, subDays, subMonths, startOfWeek, startOfMonth, parseISO } from 'date-fns';
 
@@ -222,9 +222,20 @@ export const GET: RequestHandler = async ({ locals, url }) => {
       if (last_run === null || p.finished_at > last_run) last_run = p.finished_at;
     }
 
+    // 2026-05-05 friend feedback: visually trim past-forecast rows to the
+    // latest complete period anchored on last_actual. Older rows from prior
+    // run_date versions stay in forecast_daily (audit trail) — we just don't
+    // ship them to the chart. Computed in TS to mirror grain_helpers.window_start_for_grain.
+    const windowStartIso = lastActualDate === '0000-01-01'
+      ? null
+      : format(windowStartForGrain(lastActual, granularity), 'yyyy-MM-dd');
+    const visibleForecastRows = windowStartIso === null
+      ? forecastRows
+      : forecastRows.filter((r) => r.target_date >= windowStartIso);
+
     return json(
       {
-        rows: forecastRows.map((r) => ({
+        rows: visibleForecastRows.map((r) => ({
           target_date: r.target_date,
           model_name: r.model_name,
           yhat_mean: r.yhat,
