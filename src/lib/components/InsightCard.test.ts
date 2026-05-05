@@ -1,6 +1,16 @@
 // @vitest-environment jsdom
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { render } from "@testing-library/svelte";
+
+// Pin the test locale to 'en' so the EN assertions below match what
+// InsightCard.svelte renders. Without this, page.data.locale resolves to
+// DEFAULT_LOCALE ('ja' per src/lib/i18n/locales.ts) and the rendered text
+// comes out in Japanese — making English assertions like "Refreshed weekly"
+// fail in CI even though the component is behaving correctly.
+vi.mock("$app/state", () => ({
+  page: { data: { locale: "en" } },
+}));
+
 import InsightCard from "$lib/components/InsightCard.svelte";
 
 describe("InsightCard", () => {
