@@ -407,6 +407,21 @@ def fit_and_write(
     # 7. Restore target_date to str for upsert
     preds_df['target_date'] = preds_df['target_date'].astype(str)
 
+    # 7b. 16.2-05 Path B cleanup: delete any past-target Prophet rows for this
+    # (restaurant, kpi, grain, track) below the earliest pred_date. Path A
+    # historically wrote past-target rows; Path B doesn't, so without this
+    # delete the MV's DISTINCT ON ORDER BY run_date DESC keeps orphaned Path A
+    # rows visible (no newer Prophet write replaces them at past target_dates).
+    earliest_pred = str(pred_dates[0])
+    client.table('forecast_daily').delete()\
+        .eq('restaurant_id', restaurant_id)\
+        .eq('kpi_name', kpi_name)\
+        .eq('model_name', 'prophet')\
+        .eq('granularity', granularity)\
+        .eq('forecast_track', track)\
+        .lt('target_date', earliest_pred)\
+        .execute()
+
     # 8. Chunked upsert
     final_rows = preds_df.to_dict(orient='records')
     n = _upsert_rows(client, final_rows)
