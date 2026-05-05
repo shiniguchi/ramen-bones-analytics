@@ -38,8 +38,14 @@ from scripts.forecast.grain_helpers import (
     parse_granularity_env,
     pred_dates_for_grain,
     train_end_for_grain,
-    window_start_for_grain,  # NEW — Phase 16.1 D-14 (Path A — Risk 2 favorable)
 )
+# 16.2 Path B revert (Item 6): window_start_for_grain DROPPED from prophet_fit.
+# Prophet's predict() on a past-DataFrame projects the model's stationary trend
+# BACKWARD — produces an exponential past-yhat curve that is NOT backtest-equivalent.
+# The other 4 models (sarimax/naive_dow/ets/theta) keep their windowed past-yhat
+# rows via grain_helpers.window_start_for_grain — Path B is Prophet-only.
+# Revisit only after Phase 17 backtest gate provides a CV harness.
+# See .planning/learnings/16.2-prophet-past-projection-path-b.md.
 from scripts.external.pipeline_runs_writer import write_success, write_failure
 
 # --- Constants ---
@@ -318,8 +324,8 @@ def fit_and_write(
         pred_anchor = train_end if track == 'cf' else run_date
         pred_dates = pred_dates_for_grain(
             run_date=pred_anchor, granularity='day', horizon=horizon,
-            window_start=window_start_for_grain(last_actual, 'day'),  # D-15 Option B (Path A)
-            train_end=train_end,  # B2: drop dates < train_end + 1d from past-side output
+            # 16.2 Path B revert: window_start kwarg DROPPED — Prophet only predicts FUTURE.
+            train_end=train_end,
         )
         pred_start = pred_dates[0]
         pred_end = pred_dates[-1]
@@ -359,8 +365,8 @@ def fit_and_write(
 
         pred_dates = pred_dates_for_grain(
             run_date=run_date, granularity=granularity, horizon=horizon,
-            window_start=window_start_for_grain(last_actual, granularity),  # D-15 Option B (Path A)
-            train_end=train_end,  # B2: drop dates < train_end + 1d from past-side output
+            # 16.2 Path B revert: window_start kwarg DROPPED — week/month branch.
+            train_end=train_end,
         )
         future_df = _build_future_df(pred_dates, None)
 
