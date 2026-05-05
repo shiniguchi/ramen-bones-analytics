@@ -95,8 +95,15 @@
       data-testid="model-avail-panel"
     >
       <p class="mb-2 text-[11px]">{t(page.data.locale, 'model_avail_disclosure_intro')}</p>
-      <table class="w-full text-[11px]">
-        <thead>
+      <!-- 16.2 polish (friend feedback 2026-05-05): horizontal-scroll wrapper so
+           the 4-column table doesn't cramp on narrow viewports. min-w-[640px]
+           gives columns breathing room; overflow-x-auto + overscroll-x-contain
+           confines the scroll to this region (matches CalendarRevenueCard:200
+           pattern). -mx-3 lets the table extend slightly past the panel's px-3
+           padding for max usable width. -->
+      <div class="-mx-3 overflow-x-auto overscroll-x-contain px-3">
+        <table class="w-full min-w-[640px] text-[11px]">
+          <thead>
           <tr class="border-b border-zinc-200 text-zinc-500">
             <th class="pb-1 text-left font-medium">{t(page.data.locale, 'model_avail_col_model')}</th>
             <th class="pb-1 text-left font-medium">{t(page.data.locale, 'model_avail_col_status')}</th>
@@ -130,7 +137,8 @@
             </tr>
           {/each}
         </tbody>
-      </table>
+        </table>
+      </div>
     </div>
   {/if}
 </div>
