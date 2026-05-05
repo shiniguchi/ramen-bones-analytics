@@ -2,12 +2,12 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: External Data & Forecasting Foundation
-status: ready_to_execute
-stopped_at: "Phase 16.1 — ALL 5 PLANS SHIPPED. Wave 1 done (16.1-02 + 16.1-04). Wave 2 done: 16.1-01 (Calendar* past-forecast + tooltip D-16) + 16.1-03 (CampaignUpliftCard tier-aware plain-language hero + inline disclosure + 4 D-18 supportive labels) + 16.1-05 (Forecast cards horizontal-scroll parity + past/future split, D-17). Phase 16.1 implementation 100% complete (modulo phase-final QA on the 3 deferred Chrome MCP gates: 16.1-01 Task 6 + 16.1-04 Task 5 + 16.1-05 Task 3 — auto-approved per workflow.auto_advance=true). Next: phase-final QA pass (Chrome MCP localhost ja+en at 375×667 across all 4 modified cards, after triggering forecast-refresh.yml workflow_dispatch on feature branch to populate DEV with past-window rows)."
-last_updated: "2026-05-04T21:45:00.000Z"
-last_activity: 2026-05-04
+status: ready_to_plan
+stopped_at: "Phase 16.2 (Friend-Persona QA Gap Closure) inserted into ROADMAP and CONTEXT captured. 7 owner-reported issues from 2026-05-05 SC9 persona test on Phase 16.1 scoped: (1) date-range freeze perf bug, (2) forecast tooltip model-filter + Highlight binding, (3) visit-cohort tooltip layout regression, (4) Spline z-order behind bars, (5) visit-number week/month coverage verify-only, (6) Prophet Path B revert (drop window_start kwarg from prophet_fit.py), (7) CampaignUpliftCard add Rule baseline + Axis ticks. 20 implementation decisions locked (D-01..D-20). 3 gray areas resolved via AskUserQuestion: Path B revert + investigate-first perf + verify-only Item 5. Phase 16+16.1+16.2 ship as ONE PR. Next: /gsd-plan-phase 16.2 to break down into plans."
+last_updated: "2026-05-05T08:30:00.000Z"
+last_activity: 2026-05-05
 progress:
-  total_phases: 18
+  total_phases: 19
   completed_phases: 17
   total_plans: 91
   completed_plans: 79
@@ -16,12 +16,12 @@ progress:
 
 # STATE: Ramen Bones Analytics
 
-**Last updated:** 2026-05-04
+**Last updated:** 2026-05-05
 
 ## Project Reference
 
 - **Core Value:** A restaurant owner opens the site on their phone and makes a real business decision from the numbers they see.
-- **Current Focus:** Phase 16.1 — friend-persona-ux-polish
+- **Current Focus:** Phase 16.2 — friend-persona-qa-gap-closure (CONTEXT captured, ready for planning)
 - **Timeline:** Slow and deliberate — understand data first, ship one layer at a time
 - **Granularity:** standard
 - **Tenants in v1:** 1 (architecture multi-tenant-ready)
@@ -29,21 +29,27 @@ progress:
 ## Current Position
 
 Milestone: v1.3 (External Data & Forecasting Foundation)
-Phase: 16.1 (friend-persona-ux-polish) — IMPLEMENTATION COMPLETE (5/5 plans)
-Plan: 5 of 5 (DONE)
+Phase: 16.2 (friend-persona-qa-gap-closure) — CONTEXT captured 2026-05-05
+Plan: 0 of TBD (awaiting /gsd-plan-phase 16.2)
 
-Phase 16 (ITS Uplift Attribution) executed 13/13 + verified (6/6 ROADMAP success criteria + both human visual gates PASS). Inserted Phase 16.1 to close two friend-persona acceptance gaps surfaced in 2026-05-04 owner Chrome MCP localhost review BEFORE running pre-ship gates (qa-gate / code-review / ship). Phase 16 + 16.1 will ship together as one PR.
+Phase 16.1 implementation 100% complete 2026-05-04 (5/5 plans). SC3 + SC8 PASSED on 2026-05-05 via Chrome MCP localhost QA. SC9 persona test on 2026-05-05 surfaced 7 owner-reported issues captured in `.planning/feedback/16.1-friend-2026-05-05/HANDOFF.md` with 3 screenshots. Phase 16.2 inserted to close those 7 gaps before v1.3 friend-persona acceptance signs off.
 
-Phase 16.1 context captured (2026-05-04): 12 implementation decisions across 4 gray areas (past-forecast visual on Calendar* cards, hero-copy regime tiering, statistical-detail disclosure pattern, file scope). UI-only; 4 target files (`CalendarRevenueCard.svelte`, `CalendarCountsCard.svelte`, `CampaignUpliftCard.svelte`, `messages.ts`). Top-20 menu-item card overlays deferred to v1.4.
+Phase 16.2 context captured (2026-05-05): 20 implementation decisions across 7 items + phase execution; 11 carry-forward decisions from Phase 16.1 + memory + CLAUDE.md. Per `.claude/memory/feedback_follow_recs_first.md`, HANDOFF.md's clear-cut triage was locked as defaults inline; only 3 genuinely undecided gray areas surfaced via single AskUserQuestion call:
+- **G1 (Item 6 Prophet):** Path B revert — drop `window_start` kwarg from `scripts/forecast/prophet_fit.py`. Past-Spline becomes empty for Prophet only; future keeps rendering.
+- **G2 (Item 1 perf):** Investigate-first via Chrome MCP perf trace at 375×667 with April + day grain BEFORE applying any fix.
+- **G3 (Item 5 coverage):** Verify-only SQL audit on `forecast_with_actual_v` for week/month sarimax/ets/theta presence; conditional UI fix-up only if DB has the rows.
 
-Next recommended run: /gsd-plan-phase 16.1
+User accepted all 3 Recommended options. Phase 16+16.1+16.2 ship as ONE PR on `feature/phase-16-its-uplift-attribution`.
 
-- **Status:** Executing Phase 16.1
+Next recommended run: /gsd-plan-phase 16.2
+
+- **Status:** Phase 16.2 ready for planning
+- **Phase 16.1:** 5/5 plans implementation done 2026-05-04; SC3 + SC8 PASSED 2026-05-05; SC9 surfaced 7 issues now scoped into Phase 16.2.
 - **Phase 15:** v2 (Forecast Backtest Overlay) merged via PR #26 on 2026-05-01.
 - **Phase 14:** Shipped via [PR #22](https://github.com/shiniguchi/ramen-bones-analytics/pull/22). 34 commits, 31 files, +2978 lines. UAT 12/12. 5/5 models producing 365-day forecasts on DEV.
 - **Phase 13:** Shipped via [PR #17](https://github.com/shiniguchi/ramen-bones-analytics/pull/17). 41 commits, 52 files, +6892 lines. EXT-01..EXT-09 complete.
-- **Progress:** [█████████░] 87% (79/91 plans done; v1.0+v1.1+v1.2+Phase 12-16 done; Phase 16.1 5/5 plans complete — implementation done, phase-final QA pending)
-- **Last activity:** 2026-05-04
+- **Progress:** [█████████░] 87% (79/91 plans done; v1.0+v1.1+v1.2+Phase 12-16+16.1 implementation done; Phase 16.1 phase-final QA partial (SC3+SC8 PASSED, SC9 → folded into 16.2); Phase 16.2 context captured, planning next)
+- **Last activity:** 2026-05-05
 - **v1.2 closed:** 11 phases, 60 plans, 100% — Phase 11 SSR fix landed 2026-04-21
 - **v1.0 status:** Shipped to friend (97% plans complete; repo flipped PUBLIC 2026-04-15 with topics + description set; Plan 05-06 Task 2 fork walkthrough deferred out of v1 scope)
 
