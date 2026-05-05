@@ -68,7 +68,10 @@
   };
 
   let forecastData = $state<ForecastPayload | null>(null);
-  let visibleModels = $state(new Set<string>(['sarimax', 'naive_dow']));
+  // Default visibility expanded to include ets/theta (2026-05-05 friend feedback):
+  // these have day-grain past-forecast rows but were hidden behind the legend
+  // toggle; week/month grain naturally hides them when no rows exist.
+  let visibleModels = $state(new Set<string>(['sarimax', 'naive_dow', 'ets', 'theta']));
   let lastFetchedGrain = $state<string | null>(null);
 
   function toggleModel(modelName: string) {
@@ -117,33 +120,18 @@
     )
   );
 
-  // Partition each model's rows by past/future relative to lastActualDate.
-  const splitSeriesByModel = $derived.by<Map<string, { past: ForecastRow[]; future: ForecastRow[] }>>(() => {
-    const out = new Map<string, { past: ForecastRow[]; future: ForecastRow[] }>();
-    for (const [modelName, modelRows] of seriesByModel.entries()) {
-      if (lastActualDate === null) {
-        out.set(modelName, { past: [], future: modelRows });
-        continue;
-      }
-      const past: ForecastRow[] = [];
-      const future: ForecastRow[] = [];
-      for (const r of modelRows) {
-        if (r.target_date < lastActualDate) past.push(r);
-        else future.push(r);
-      }
-      out.set(modelName, { past, future });
-    }
-    return out;
-  });
+  // 16.2-polish (2026-05-05): past/future split DROPPED. Single Spline per
+  // model (all rows continuous, single dashed style) eliminates the kink at
+  // lastActualDate and makes legend toggles consistent. lastActualDate kept
+  // for tooltip date matching.
 
-  // D-03: leftmost past-forecast date for chartXDomain widening.
-  // null when no past rows exist (pre-D-15 / cold-start) → chartXDomain stays unchanged.
-  // splitSeriesByModel.past arrays inherit ascending sort from seriesByModel.
+  // D-03: leftmost forecast date for chartXDomain widening.
+  // Uses ALL forecast rows (past + future). Null when no rows exist.
   const forecastWindowStart = $derived.by<Date | null>(() => {
     let minIso: string | null = null;
-    for (const split of splitSeriesByModel.values()) {
-      if (split.past.length === 0) continue;
-      const first = split.past[0].target_date;
+    for (const rows of seriesByModel.values()) {
+      if (rows.length === 0) continue;
+      const first = rows[0].target_date; // sorted asc by target_date
       if (minIso === null || first < minIso) minIso = first;
     }
     return minIso === null ? null : parseISO(minIso);
@@ -214,6 +202,16 @@
     return timeDay;
   });
 
+  // Center of a bar given its left-edge bucket Date. LayerChart on a time scale
+  // plots Spline points at xScale(bucket_d) = bar's LEFT edge; the bar itself
+  // spans [bucket_d, xInterval.offset(bucket_d, 1)]. Without this shift the
+  // forecast/trend dots appear at the bar boundary, not the bar center
+  // (friend feedback 2026-05-05). Pixel-equivalent works for day/week (fixed
+  // 12h / 3.5d offsets) and month (variable, ~14–15d).
+  function bucketCenter(d: Date): Date {
+    return new Date((d.getTime() + xInterval.offset(d, 1).getTime()) / 2);
+  }
+
   // X-axis tick formatter — switches based on grain (drops year for mobile fit).
   const formatXTick = $derived.by(() => {
     const grain = getFilters().grain as 'day' | 'week' | 'month';
@@ -271,6 +269,19 @@
   const chartW = $derived(computeChartWidth(totalSlots, cardW));
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let chartCtx = $state<any>();
+
+  // 16.2 polish: ISO bucket key for the currently hovered bar. Drives the
+  // vertical guide line + per-model dots. chartCtx.tooltip.data is reactive
+  // (Svelte 5 state inside LayerChart's TooltipContext); reading it inside
+  // a $derived re-runs whenever the hover changes.
+  const hoveredBucketIso = $derived.by<string | null>(() => {
+    const data = chartCtx?.tooltip?.data;
+    if (!data) return null;
+    const idx = chartData.findIndex((r) => r.bucket === data.bucket);
+    if (idx < 0) return null;
+    const d = chartData[idx]?.bucket_d;
+    return d instanceof Date ? format(d, 'yyyy-MM-dd') : null;
+  });
 
   // Auto-scroll to "today" so the forecast tail is visible on first render.
   // Without this, the chart canvas can be 19k+ px wide (year of historical bars
@@ -375,7 +386,7 @@
                 ...r,
                 bucket_d: chartData[i]?.bucket_d ?? new Date()
               }))}
-              x={(r: { bucket_d: Date }) => r.bucket_d}
+              x={(r: { bucket_d: Date }) => bucketCenter(r.bucket_d)}
               y="trend"
               class="stroke-zinc-900 stroke-[1.5] opacity-70"
               stroke-dasharray="3 3"
@@ -386,7 +397,7 @@
           {#each Array.from(seriesByModel.entries()) as [modelName, modelRows] (`band-${modelName}`)}
             <Area
               data={modelRows.map((r) => ({ ...r, d: parseISO(r.target_date) }))}
-              x={(r: { d: Date }) => r.d}
+              x={(r: { d: Date }) => bucketCenter(r.d)}
               y0={(r: { yhat_lower: number }) => r.yhat_lower}
               y1={(r: { yhat_upper: number }) => r.yhat_upper}
               fill={FORECAST_MODEL_COLORS[modelName]}
@@ -394,37 +405,58 @@
             />
           {/each}
 
-          <!-- Past-forecast lines — solid faded ~70% opacity (D-02; locked at 0.7).
-               naive_dow keeps its dashed gray; others render solid faded. -->
-          {#each Array.from(splitSeriesByModel.entries()) as [modelName, split] (`past-line-${modelName}`)}
+          <!-- Forecast lines — single Spline per model spanning all rows
+               (past + future unified, 16.2 polish 2026-05-05). All dashed
+               since they're forecasts; naive_dow stays distinct via thinner
+               stroke. -->
+          {#each Array.from(seriesByModel.entries()) as [modelName, modelRows] (`line-${modelName}`)}
             {@const isNaive = modelName === 'naive_dow'}
-            {#if split.past.length > 0}
+            {#if modelRows.length > 0}
               <Spline
-                data={split.past.map((r) => ({ ...r, d: parseISO(r.target_date) }))}
-                x={(r: { d: Date }) => r.d}
+                data={modelRows.map((r) => ({ ...r, d: parseISO(r.target_date) }))}
+                x={(r: { d: Date }) => bucketCenter(r.d)}
                 y={(r: { yhat_mean: number }) => r.yhat_mean}
                 stroke={FORECAST_MODEL_COLORS[modelName]}
                 strokeWidth={isNaive ? 1 : 2}
-                strokeOpacity={0.7}
-                stroke-dasharray={isNaive ? '4 4' : undefined}
+                strokeOpacity={0.8}
+                stroke-dasharray="4 4"
               />
             {/if}
           {/each}
 
-          <!-- Future-forecast lines — dashed for all models (D-02). -->
-          {#each Array.from(splitSeriesByModel.entries()) as [modelName, split] (`future-line-${modelName}`)}
-            {@const isNaive = modelName === 'naive_dow'}
-            {#if split.future.length > 0}
-              <Spline
-                data={split.future.map((r) => ({ ...r, d: parseISO(r.target_date) }))}
-                x={(r: { d: Date }) => r.d}
-                y={(r: { yhat_mean: number }) => r.yhat_mean}
-                stroke={FORECAST_MODEL_COLORS[modelName]}
-                strokeWidth={isNaive ? 1 : 2}
-                stroke-dasharray={'4 4'}
-              />
-            {/if}
-          {/each}
+          <!-- Hover affordance (16.2 polish 2026-05-05): vertical guide line at
+               the hovered bucket + a colored dot on each visible forecast line
+               at that bucket's value. Mirrors the items chart's hover effect. -->
+          {#if hoveredBucketIso && chartCtx?.xScale && chartCtx?.yScale}
+            {@const hoveredD = parseISO(hoveredBucketIso)}
+            {@const cx = chartCtx.xScale(bucketCenter(hoveredD))}
+            {@const yLo = Math.min(...(chartCtx.yRange ?? [0, 0]))}
+            {@const yHi = Math.max(...(chartCtx.yRange ?? [0, 0]))}
+            <line
+              x1={cx}
+              x2={cx}
+              y1={yLo}
+              y2={yHi}
+              stroke="rgb(113 113 122 / 0.4)"
+              stroke-width="1"
+              stroke-dasharray="2 2"
+              class="pointer-events-none"
+            />
+            {#each Array.from(seriesByModel.entries()) as [modelName, modelRows] (`hover-${modelName}`)}
+              {@const fr = modelRows.find((x) => x.target_date === hoveredBucketIso)}
+              {#if fr}
+                <circle
+                  {cx}
+                  cy={chartCtx.yScale(fr.yhat_mean)}
+                  r="4"
+                  fill={FORECAST_MODEL_COLORS[modelName]}
+                  stroke="white"
+                  stroke-width="1.5"
+                  class="pointer-events-none"
+                />
+              {/if}
+            {/each}
+          {/if}
 
           {#each chartData as row, i (String(row.bucket_d))}
             {#if totals[i] > 0 && chartCtx && row.bucket_d instanceof Date}
@@ -446,10 +478,9 @@
             {@const fullRow = bucketIdx >= 0 ? chartData[bucketIdx] : row}
             {@const bucketIso = fullRow?.bucket_d instanceof Date ? format(fullRow.bucket_d, 'yyyy-MM-dd') : null}
             {@const topRows = series.filter((s) => ((fullRow?.[s.key] as number) ?? 0) > 0)}
-            {@const modelRows = bucketIso === null ? [] : Array.from(splitSeriesByModel.entries())
-              .map(([name, split]) => {
-                const r = split.past.find((x) => x.target_date === bucketIso)
-                       ?? split.future.find((x) => x.target_date === bucketIso);
+            {@const modelRows = bucketIso === null ? [] : Array.from(seriesByModel.entries())
+              .map(([name, rows]) => {
+                const r = rows.find((x) => x.target_date === bucketIso);
                 return r ? { name, row: r } : null;
               })
               .filter((x): x is { name: string; row: ForecastRow } => x !== null)}
@@ -463,17 +494,19 @@
                   <Tooltip.Item label={t(page.data.locale, 'tooltip_total')} value={formatEUR((bucketIdx >= 0 ? totals[bucketIdx] : 0) * 100)} />
                 {/if}
                 {#if topRows.length > 0 && modelRows.length > 0}
-                  <li class="border-t border-zinc-200 my-1" aria-hidden="true"></li>
+                  <li class="border-t border-zinc-200 my-1" style:grid-column="1 / -1" aria-hidden="true"></li>
                 {/if}
                 {#if modelRows.length > 0}
-                  <!-- 16.2-03 Item 3: hand-rolled flex row replaces Tooltip.Item for
-                       model rows. Owner-reported regression (HANDOFF item 3,
-                       2026-05-05): long model labels like "Naive (DoW avg)" wrapped
-                       to 2 lines and pushed the value to a new visual row.
-                       flex justify-between + truncate on label + flex-shrink-0 +
-                       whitespace-nowrap on value keeps every row to a single line. -->
+                  <!-- 16.2 polish (2026-05-05): hand-rolled li but each row spans
+                       the full grid (1 / -1) so model rows don't pair into 2 columns
+                       inside Tooltip.List's `grid-template-columns: 1fr auto`.
+                       Per-row layout: dot + label on the left, mean + (low–high)
+                       range on the right, all in one nowrap line. -->
                   {#each modelRows as { name, row: fr } (`mr-${name}`)}
-                    <li class="flex items-center justify-between gap-3 py-0.5 text-xs">
+                    <li
+                      style:grid-column="1 / -1"
+                      class="flex items-center justify-between gap-3 py-0.5 text-xs"
+                    >
                       <span class="flex items-center gap-1.5 min-w-0">
                         <span
                           class="inline-block h-2 w-2 flex-shrink-0 rounded-full"
@@ -483,6 +516,7 @@
                       </span>
                       <span class="flex-shrink-0 whitespace-nowrap tabular-nums">
                         {formatEUR(fr.yhat_mean * 100)}
+                        <span class="text-zinc-400 ml-1">({formatEUR(fr.yhat_lower * 100)}–{formatEUR(fr.yhat_upper * 100)})</span>
                       </span>
                     </li>
                   {/each}
