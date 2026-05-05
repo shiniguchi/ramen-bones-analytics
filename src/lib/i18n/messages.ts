@@ -231,12 +231,22 @@ const en = {
   model_avail_col_model: 'Model',
   model_avail_col_status: 'Status',
   model_avail_col_min: 'Min data',
+  model_avail_col_why: 'Why',
   model_avail_status_available: 'Available',
   model_avail_status_phase17: 'Phase 17 backlog',
   model_avail_status_short_day: 'Need more daily history',
   model_avail_status_short_week: 'Need more weekly history',
   model_avail_status_short_month: 'Need more monthly history',
-  model_avail_disclosure_footnote: 'Min data shown in current grain units (days for day grain, weeks for week, months for month). Source: scripts/forecast/grain_helpers.py YEARLY_THRESHOLD_BY_GRAIN.'
+  model_avail_unit_day: 'days',
+  model_avail_unit_week: 'weeks',
+  model_avail_unit_month: 'months',
+  model_avail_why_sarimax: 'Needs 2+ full yearly cycles to learn the seasonal pattern',
+  model_avail_why_prophet: 'Auto-disables yearly seasonality when data is short — still fits trend',
+  model_avail_why_ets: 'Needs 2+ full yearly cycles to learn the seasonal pattern',
+  model_avail_why_theta: 'Needs 2+ full yearly cycles to learn the seasonal pattern',
+  model_avail_why_naive_dow: 'No fitting — just averages history at the same position (e.g., all Mondays)',
+  model_avail_why_chronos: 'Foundation model; promotion gated by Phase 17 backtest harness',
+  model_avail_why_neuralprophet: 'Neural model; promotion gated by Phase 17 backtest harness'
 } as const;
 
 export type MessageKey = keyof typeof en;
@@ -454,12 +464,22 @@ const de: Record<MessageKey, string> = {
   model_avail_col_model: 'Model',
   model_avail_col_status: 'Status',
   model_avail_col_min: 'Min data',
+  model_avail_col_why: 'Why',
   model_avail_status_available: 'Available',
   model_avail_status_phase17: 'Phase 17 backlog',
   model_avail_status_short_day: 'Need more daily history',
   model_avail_status_short_week: 'Need more weekly history',
   model_avail_status_short_month: 'Need more monthly history',
-  model_avail_disclosure_footnote: 'Min data shown in current grain units (days for day grain, weeks for week, months for month). Source: scripts/forecast/grain_helpers.py YEARLY_THRESHOLD_BY_GRAIN.'
+  model_avail_unit_day: 'days',
+  model_avail_unit_week: 'weeks',
+  model_avail_unit_month: 'months',
+  model_avail_why_sarimax: 'Needs 2+ full yearly cycles to learn the seasonal pattern',
+  model_avail_why_prophet: 'Auto-disables yearly seasonality when data is short — still fits trend',
+  model_avail_why_ets: 'Needs 2+ full yearly cycles to learn the seasonal pattern',
+  model_avail_why_theta: 'Needs 2+ full yearly cycles to learn the seasonal pattern',
+  model_avail_why_naive_dow: 'No fitting — just averages history at the same position (e.g., all Mondays)',
+  model_avail_why_chronos: 'Foundation model; promotion gated by Phase 17 backtest harness',
+  model_avail_why_neuralprophet: 'Neural model; promotion gated by Phase 17 backtest harness'
 };
 
 // --- JA (日本語) ----------------------------------------------------------
@@ -674,12 +694,22 @@ const ja: Record<MessageKey, string> = {
   model_avail_col_model: 'モデル',
   model_avail_col_status: '状態',
   model_avail_col_min: '最小データ',
+  model_avail_col_why: '理由',
   model_avail_status_available: '利用可',
   model_avail_status_phase17: 'Phase 17で対応予定',
   model_avail_status_short_day: '日次履歴が不足',
   model_avail_status_short_week: '週次履歴が不足',
   model_avail_status_short_month: '月次履歴が不足',
-  model_avail_disclosure_footnote: '最小データは現在の粒度の単位（日次なら日数、週次なら週数、月次なら月数）。出典: scripts/forecast/grain_helpers.py の YEARLY_THRESHOLD_BY_GRAIN。'
+  model_avail_unit_day: '日',
+  model_avail_unit_week: '週',
+  model_avail_unit_month: 'ヶ月',
+  model_avail_why_sarimax: '季節パターンを学習するには2年以上の周期データが必要',
+  model_avail_why_prophet: 'データが少ないときは年次成分を自動で無効化 — トレンドのみで予測',
+  model_avail_why_ets: '季節パターンを学習するには2年以上の周期データが必要',
+  model_avail_why_theta: '季節パターンを学習するには2年以上の周期データが必要',
+  model_avail_why_naive_dow: 'モデル学習なし — 同じ位置の過去平均（例：過去の月曜の平均）を使用',
+  model_avail_why_chronos: '基盤モデル — Phase 17のバックテストゲート通過後に有効化',
+  model_avail_why_neuralprophet: 'ニューラルモデル — Phase 17のバックテストゲート通過後に有効化'
 };
 
 // --- ES (Español) ---------------------------------------------------------
@@ -895,12 +925,22 @@ const es: Record<MessageKey, string> = {
   model_avail_col_model: 'Model',
   model_avail_col_status: 'Status',
   model_avail_col_min: 'Min data',
+  model_avail_col_why: 'Why',
   model_avail_status_available: 'Available',
   model_avail_status_phase17: 'Phase 17 backlog',
   model_avail_status_short_day: 'Need more daily history',
   model_avail_status_short_week: 'Need more weekly history',
   model_avail_status_short_month: 'Need more monthly history',
-  model_avail_disclosure_footnote: 'Min data shown in current grain units (days for day grain, weeks for week, months for month). Source: scripts/forecast/grain_helpers.py YEARLY_THRESHOLD_BY_GRAIN.'
+  model_avail_unit_day: 'days',
+  model_avail_unit_week: 'weeks',
+  model_avail_unit_month: 'months',
+  model_avail_why_sarimax: 'Needs 2+ full yearly cycles to learn the seasonal pattern',
+  model_avail_why_prophet: 'Auto-disables yearly seasonality when data is short — still fits trend',
+  model_avail_why_ets: 'Needs 2+ full yearly cycles to learn the seasonal pattern',
+  model_avail_why_theta: 'Needs 2+ full yearly cycles to learn the seasonal pattern',
+  model_avail_why_naive_dow: 'No fitting — just averages history at the same position (e.g., all Mondays)',
+  model_avail_why_chronos: 'Foundation model; promotion gated by Phase 17 backtest harness',
+  model_avail_why_neuralprophet: 'Neural model; promotion gated by Phase 17 backtest harness'
 };
 
 // --- FR (Français) --------------------------------------------------------
@@ -1116,12 +1156,22 @@ const fr: Record<MessageKey, string> = {
   model_avail_col_model: 'Model',
   model_avail_col_status: 'Status',
   model_avail_col_min: 'Min data',
+  model_avail_col_why: 'Why',
   model_avail_status_available: 'Available',
   model_avail_status_phase17: 'Phase 17 backlog',
   model_avail_status_short_day: 'Need more daily history',
   model_avail_status_short_week: 'Need more weekly history',
   model_avail_status_short_month: 'Need more monthly history',
-  model_avail_disclosure_footnote: 'Min data shown in current grain units (days for day grain, weeks for week, months for month). Source: scripts/forecast/grain_helpers.py YEARLY_THRESHOLD_BY_GRAIN.'
+  model_avail_unit_day: 'days',
+  model_avail_unit_week: 'weeks',
+  model_avail_unit_month: 'months',
+  model_avail_why_sarimax: 'Needs 2+ full yearly cycles to learn the seasonal pattern',
+  model_avail_why_prophet: 'Auto-disables yearly seasonality when data is short — still fits trend',
+  model_avail_why_ets: 'Needs 2+ full yearly cycles to learn the seasonal pattern',
+  model_avail_why_theta: 'Needs 2+ full yearly cycles to learn the seasonal pattern',
+  model_avail_why_naive_dow: 'No fitting — just averages history at the same position (e.g., all Mondays)',
+  model_avail_why_chronos: 'Foundation model; promotion gated by Phase 17 backtest harness',
+  model_avail_why_neuralprophet: 'Neural model; promotion gated by Phase 17 backtest harness'
 };
 
 export const messages: Record<Locale, Record<MessageKey, string>> = { en, de, ja, es, fr };

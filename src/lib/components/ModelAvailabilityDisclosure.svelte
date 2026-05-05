@@ -69,6 +69,10 @@
     if (!info.enabledByFlag) return 'model_avail_status_phase17';
     return `model_avail_status_short_${grain}` as MessageKey;
   }
+
+  // Unit label for the current grain — shown inline in the Min-data cell.
+  // Replaces the prior footnote that explained units separately.
+  const unitLabel = $derived(t(page.data.locale, `model_avail_unit_${grain}` as MessageKey));
 </script>
 
 <div class="mt-2 text-xs">
@@ -97,6 +101,7 @@
             <th class="pb-1 text-left font-medium">{t(page.data.locale, 'model_avail_col_model')}</th>
             <th class="pb-1 text-left font-medium">{t(page.data.locale, 'model_avail_col_status')}</th>
             <th class="pb-1 text-right font-medium">{t(page.data.locale, 'model_avail_col_min')}</th>
+            <th class="pb-1 text-left font-medium">{t(page.data.locale, 'model_avail_col_why')}</th>
           </tr>
         </thead>
         <tbody>
@@ -104,7 +109,7 @@
             {@const available = availableModels.includes(info.key)}
             {@const minVal = minForGrain(info)}
             <tr>
-              <td class="py-0.5">
+              <td class="py-0.5 align-top">
                 <span class="inline-flex items-center gap-1.5">
                   <span
                     class="inline-block h-2 w-2 rounded-full {available ? '' : 'opacity-30'}"
@@ -113,17 +118,19 @@
                   <span>{t(page.data.locale, `legend_model_${info.key}` as MessageKey)}</span>
                 </span>
               </td>
-              <td class="py-0.5 {available ? 'text-emerald-700' : 'text-zinc-500'}">
+              <td class="py-0.5 align-top {available ? 'text-emerald-700' : 'text-zinc-500'}">
                 {t(page.data.locale, statusKey(info, available))}
               </td>
-              <td class="py-0.5 text-right tabular-nums">
-                {minVal === null ? '—' : minVal}
+              <td class="py-0.5 align-top text-right tabular-nums whitespace-nowrap">
+                {minVal === null ? '—' : `${minVal} ${unitLabel}`}
+              </td>
+              <td class="py-0.5 align-top text-zinc-500">
+                {t(page.data.locale, `model_avail_why_${info.key}` as MessageKey)}
               </td>
             </tr>
           {/each}
         </tbody>
       </table>
-      <p class="mt-2 text-[11px] text-zinc-500">{t(page.data.locale, 'model_avail_disclosure_footnote')}</p>
     </div>
   {/if}
 </div>
