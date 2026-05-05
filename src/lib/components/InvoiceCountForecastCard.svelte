@@ -9,7 +9,7 @@
   import { curveMonotoneX } from 'd3-shape';
   import { parseISO, format } from 'date-fns';
   import { page } from '$app/state';
-  import { t } from '$lib/i18n/messages';
+  import { t, type MessageKey } from '$lib/i18n/messages';
   import { formatIntShort } from '$lib/format';
   import { clientFetch } from '$lib/clientFetch';
   import { getFilters, computeChartWidth } from '$lib/dashboardStore.svelte';
@@ -284,25 +284,53 @@
             />
           {/if}
 
-          <Highlight points lines />
+          <!-- Phase 16.2-02 (D-05): per-Spline Highlight binding so each visible
+               model's dot lands on its own Spline path. Replaces the chart-level
+               <Highlight points lines /> which used bisect-x and drifted dots
+               off-line for non-leading models. -->
+          {#each Array.from(splitSeriesByModel.entries()) as [modelName, split] (`hl-${modelName}`)}
+            {#if split.past.length > 0 || split.future.length > 0}
+              {@const modelData = [...split.past, ...split.future].map((r) => ({ ...r, d: parseISO(r.target_date) }))}
+              <Highlight
+                data={modelData}
+                x={(r: { d: Date }) => r.d}
+                y={(r: { yhat_mean: number }) => r.yhat_mean}
+                points={{ fill: FORECAST_MODEL_COLORS[modelName] }}
+                lines={false}
+              />
+            {/if}
+          {/each}
         </Svg>
 
+        <!-- Phase 16.2-02 (D-04, C-01): multi-model Tooltip.List filtered by
+             visibleModels. Replaces ForecastHoverPopup single-row consumer
+             (kept on disk for diff legibility; v1.4 cleanup task). -->
         <Tooltip.Root contained="window" class="max-w-[92vw]">
           {#snippet children({ data })}
-            {#if data}
-              <ForecastHoverPopup
-                hoveredRow={{
-                  target_date: format(data.target_date_d as Date, 'yyyy-MM-dd'),
-                  model_name: (data.model_name as string) ?? 'sarimax',
-                  yhat_mean: data.yhat_mean as number,
-                  yhat_lower: data.yhat_lower as number,
-                  yhat_upper: data.yhat_upper as number,
-                  horizon_days: data.horizon_days as number
-                }}
-                qualityByModelHorizon={new Map()}
-                cumulativeDeviationEur={null}
-                lastRun={lastRun}
-              />
+            {@const bucketIso = data?.target_date_d instanceof Date
+              ? format(data.target_date_d, 'yyyy-MM-dd')
+              : null}
+            {@const modelRows = bucketIso === null
+              ? []
+              : Array.from(splitSeriesByModel.entries())
+                  .filter(([name]) => visibleModels.has(name))
+                  .map(([name, split]) => {
+                    const r = split.past.find((x) => x.target_date === bucketIso)
+                           ?? split.future.find((x) => x.target_date === bucketIso);
+                    return r ? { name, row: r } : null;
+                  })
+                  .filter((x): x is { name: string; row: ForecastRow } => x !== null)}
+            {#if modelRows.length > 0}
+              <Tooltip.Header>{format(data.target_date_d as Date, 'MMM d')}</Tooltip.Header>
+              <Tooltip.List>
+                {#each modelRows as { name, row: fr } (`mr-${name}`)}
+                  <Tooltip.Item
+                    label={t(page.data.locale, `forecast_model_${name}` as MessageKey)}
+                    color={FORECAST_MODEL_COLORS[name]}
+                    value={formatIntShort(fr.yhat_mean as number)}
+                  />
+                {/each}
+              </Tooltip.List>
             {/if}
           {/snippet}
         </Tooltip.Root>
