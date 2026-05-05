@@ -23,7 +23,16 @@ GRANULARITIES: tuple[str, ...] = ('day', 'week', 'month')
 def train_end_for_grain(last_actual: date, granularity: str) -> date:
     """Compute the grain-specific TRAIN_END cutoff (D-14).
 
-    Day  : last_actual - 7 days  (one full week back for back-test).
+    Day  : day BEFORE the latest complete Mon-Sun week's Monday. Holding out
+           the entire calendar week means the past-forecast line covers the
+           full Mon-Sun, matching the friend's mental model "show what the
+           model would have predicted last week vs what actually happened"
+           (2026-05-05 feedback). Previously: last_actual-7d, which produced
+           a rolling 7-day window off-by-one from calendar weeks.
+           Ex: last_actual=2026-05-11 (Mon) -> window_start=2026-05-04 ->
+                train_end=2026-05-03 (Sun) -> past line covers May 4-10.
+           Ex: last_actual=2026-05-10 (Sun) -> window_start=2026-05-04 ->
+                train_end=2026-05-03 (Sun) -> past line covers May 4-10.
     Week : last_actual - 35 days (5 weeks back so all weekly buckets in
            the window are COMPLETE -- no partial trailing week sneaks in).
     Month: end-of-month for (last_actual.month - 5 calendar months).
@@ -35,7 +44,7 @@ def train_end_for_grain(last_actual: date, granularity: str) -> date:
     accept the freshness cost in exchange for unbiased trailing-bucket data.
     """
     if granularity == 'day':
-        return last_actual - timedelta(days=7)
+        return window_start_for_grain(last_actual, 'day') - timedelta(days=1)
     if granularity == 'week':
         return last_actual - timedelta(days=35)
     if granularity == 'month':

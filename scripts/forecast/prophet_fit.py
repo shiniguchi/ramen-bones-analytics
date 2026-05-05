@@ -38,14 +38,18 @@ from scripts.forecast.grain_helpers import (
     parse_granularity_env,
     pred_dates_for_grain,
     train_end_for_grain,
+    window_start_for_grain,  # Re-instated 2026-05-05 (friend feedback)
 )
-# 16.2 Path B revert (Item 6): window_start_for_grain DROPPED from prophet_fit.
-# Prophet's predict() on a past-DataFrame projects the model's stationary trend
-# BACKWARD — produces an exponential past-yhat curve that is NOT backtest-equivalent.
-# The other 4 models (sarimax/naive_dow/ets/theta) keep their windowed past-yhat
-# rows via grain_helpers.window_start_for_grain — Path B is Prophet-only.
-# Revisit only after Phase 17 backtest gate provides a CV harness.
-# See .planning/learnings/16.2-prophet-past-projection-path-b.md.
+# 2026-05-05 friend feedback: previous "16.2 Path B revert" removed
+# window_start_for_grain so prophet emitted FORWARD-only forecasts. The owner
+# expected the daily prophet line to draw across the last completed week like
+# the other 4 models. We've re-enabled window_start; trade-off acknowledged
+# below and surfaced in the learning doc:
+#   Prophet's predict() on past dates projects the model's stationary trend
+#   BACKWARD — it is a model-trend projection, NOT a rolling-origin backtest.
+#   For a true held-out backtest, see Phase 17 CV harness (planned).
+# See .planning/learnings/16.2-prophet-past-projection-path-b.md for original
+# rationale; the friend explicitly chose visibility over backtest-purity.
 from scripts.external.pipeline_runs_writer import write_success, write_failure
 
 # --- Constants ---
@@ -324,7 +328,10 @@ def fit_and_write(
         pred_anchor = train_end if track == 'cf' else run_date
         pred_dates = pred_dates_for_grain(
             run_date=pred_anchor, granularity='day', horizon=horizon,
-            # 16.2 Path B revert: window_start kwarg DROPPED — Prophet only predicts FUTURE.
+            # 2026-05-05: window_start re-instated so prophet emits past-forecast
+            # rows over the latest complete week (matches sarimax/ets/theta/naive).
+            # Past curve is a model-trend projection, not a rolling-origin backtest.
+            window_start=window_start_for_grain(last_actual, 'day'),
             train_end=train_end,
         )
         pred_start = pred_dates[0]
@@ -365,7 +372,9 @@ def fit_and_write(
 
         pred_dates = pred_dates_for_grain(
             run_date=run_date, granularity=granularity, horizon=horizon,
-            # 16.2 Path B revert: window_start kwarg DROPPED — week/month branch.
+            # 2026-05-05: window_start re-instated for week/month, same caveat
+            # as day branch — past curve is model-trend projection, not backtest.
+            window_start=window_start_for_grain(last_actual, granularity),
             train_end=train_end,
         )
         future_df = _build_future_df(pred_dates, None)
