@@ -107,8 +107,8 @@
           <tr class="border-b border-zinc-200 text-zinc-500">
             <th class="pb-1 text-left font-medium">{t(page.data.locale, 'model_avail_col_model')}</th>
             <th class="pb-1 text-left font-medium">{t(page.data.locale, 'model_avail_col_status')}</th>
-            <th class="pb-1 text-right font-medium">{t(page.data.locale, 'model_avail_col_min')}</th>
-            <th class="pb-1 text-left font-medium">{t(page.data.locale, 'model_avail_col_why')}</th>
+            <th class="pb-1 pr-4 text-right font-medium">{t(page.data.locale, 'model_avail_col_min')}</th>
+            <th class="pb-1 pl-2 text-left font-medium">{t(page.data.locale, 'model_avail_col_why')}</th>
           </tr>
         </thead>
         <tbody>
@@ -128,10 +128,10 @@
               <td class="py-0.5 align-top {available ? 'text-emerald-700' : 'text-zinc-500'}">
                 {t(page.data.locale, statusKey(info, available))}
               </td>
-              <td class="py-0.5 align-top text-right tabular-nums whitespace-nowrap">
+              <td class="py-0.5 pr-4 align-top text-right tabular-nums whitespace-nowrap">
                 {minVal === null ? '—' : `${minVal} ${unitLabel}`}
               </td>
-              <td class="py-0.5 align-top text-zinc-500">
+              <td class="py-0.5 pl-2 align-top text-zinc-500">
                 {t(page.data.locale, `model_avail_why_${info.key}` as MessageKey)}
               </td>
             </tr>
