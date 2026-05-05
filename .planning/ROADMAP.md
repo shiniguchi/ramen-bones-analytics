@@ -48,7 +48,7 @@ A restaurant owner opens the site on their phone and makes a real business decis
 - [x] **Phase 15: Forecast Chart UI** — v2 (Forecast Backtest Overlay) merged via PR #26 on 2026-05-01. Plans 15-09..15-16 shipped; per-grain forecasts, RevenueForecastCard + InvoiceCountForecastCard + CalendarRevenueCard overlay. Post-merge QA fixes: grain-aware empty-state copy and CalendarRevenueCard auto-scroll-to-today. Plan 15-17 (retire dedicated cards) remains deferred
 - [x] **Phase 16: ITS Uplift Attribution** — campaign_calendar + Track-B counterfactual fit + campaign_uplift_v + CampaignUpliftCard with honest "CI overlaps zero" labeling
 - [x] **Phase 16.1: Friend-Persona UX Polish (INSERTED, EXPANDED 2026-05-04)** — past-forecast continuity on Calendar* cards + Forecast cards via pipeline windowing fix anchored on last complete period (day=start-of-CW17, week=last 5 CWs, month=last 4 calendar months); Forecast cards horizontal-scroll parity; Calendar* tooltip shows per-model forecast values; CampaignUpliftCard plain-language regime + supportive labels. Backend pipeline + UI. Owner-blocking for friend-persona acceptance. **5/5 plans implementation done 2026-05-04; phase-final QA (Chrome MCP at localhost ja+en × 4 cards × 3 grains) pending.**
-- [ ] **Phase 16.2: Friend-Persona QA Gap Closure (INSERTED 2026-05-05)** — fix 7 friend-owner persona-test issues from 16.1 SC9: (1) date-range freeze (perf), (2) forecast tooltip ignores model selection + dot misalignment, (3) visit-cohort tooltip layout regression, (4) SVG z-order — bars on top of forecast Splines, (5) verify-only: visit-number week/month forecast model coverage, (6) Prophet exponential past-curve / no future line (Risk 2 Path A artifact), (7) CampaignUpliftCard missing baseline rule + axis ticks. Owner-blocking for v1.3 friend-persona acceptance.
+- [x] **Phase 16.2: Friend-Persona QA Gap Closure (INSERTED 2026-05-05; complete 2026-05-05)** — fix 7 friend-owner persona-test issues from 16.1 SC9: (1) date-range freeze (perf — PARTIAL 71% reduction, v1.4 follow-up for residual), (2) forecast tooltip ignores model selection + dot misalignment (FIXED), (3) visit-cohort tooltip layout regression (FIXED), (4) SVG z-order — bars on top of forecast Splines (path 3 — DOM evidence; no code change), (5) verify-only: visit-number week/month forecast model coverage (path A — scope-deferred), (6) Prophet exponential past-curve / no future line (Path B revert + cleanup applied), (7) CampaignUpliftCard missing baseline rule + axis ticks (FIXED). Owner-blocking for v1.3 friend-persona acceptance — SC9 sign-off via /gsd-ship.
 - [ ] **Phase 17: Backtest Gate & Quality Monitoring** — rolling-origin CV at 4 horizons + ConformalIntervals + ≥10% RMSE promotion gate + freshness-SLO badges + ACCURACY-LOG
 
 ## Phase Details
@@ -365,18 +365,18 @@ Plans:
   8. **Localhost-first Chrome MCP verification at 375×667 in `ja` AND `en` locales** BEFORE any DEV deploy (per `.claude/CLAUDE.md` localhost-first rule); zero console errors / `invalid_default_snippet` warnings on any modified component; backend pipeline regen (if Path B revert touches Python) ships via `migrations.yml` / `forecast-refresh.yml` `workflow_dispatch` on the feature branch BEFORE the visual QA at DEV.
   9. **Friend-persona re-acceptance**: owner re-runs the 5-card persona test at 375px in `ja` locale and confirms all 7 issues are resolved without surfacing new ones.
   10. **Planning-docs drift gate passes** (`.claude/scripts/validate-planning-docs.sh`)
-**Plans**: 7 plans (locked during /gsd-plan-phase 16.2 on 2026-05-05)
+**Plans**: 7 plans (all complete 2026-05-05)
 Plans:
   **Wave 1 (parallel — independent investigations / pipeline regen)**
-  - [ ] 16.2-01-PLAN.md — Item 1 date-range freeze investigation + fix (Chrome MCP perf trace at 375×667 + minimal fix per D-01..D-03)
-  - [ ] 16.2-04-PLAN.md — Item 5 visit-number week/month forecast coverage SQL audit (verify-only per D-10/D-11)
-  - [ ] 16.2-05-PLAN.md — Item 6 Prophet Path B revert (drop window_start kwarg from prophet_fit.py per D-12) + workflow_dispatch regen + .planning/learnings/ entry
+  - [x] 16.2-01-PLAN.md — Item 1 date-range freeze investigation + fix (PARTIAL — 71% blocking reduction, single-cascade residual deferred to v1.4 per user-accepted decision 2026-05-05)
+  - [x] 16.2-04-PLAN.md — Item 5 visit-number week/month forecast coverage SQL audit (path A — DB has only naive_dow + prophet at week/month; selector already data-driven, no code change)
+  - [x] 16.2-05-PLAN.md — Item 6 Prophet Path B revert (3 sites + cleanup step in prophet_fit.py) + forecast-refresh.yml workflow_dispatch regen + .planning/learnings/16.2-prophet-past-projection-path-b.md entry
   **Wave 2 (parallel — UI fixes; depend on Wave 1 perf fix for smooth visual QA)**
-  - [ ] 16.2-02-PLAN.md — Item 2 RevenueForecastCard + InvoiceCountForecastCard tooltip multi-model rows (D-04) + per-Spline Highlight binding (D-05)
-  - [ ] 16.2-03-PLAN.md — Items 3+4 (merged) CalendarRevenueCard + CalendarCountsCard tooltip layout fix (D-08) + Spline z-order verification (D-09)
-  - [ ] 16.2-06-PLAN.md — Item 7 CampaignUpliftCard Rule baseline (D-15) + Y-axis € ticks (D-16) + X-axis days ticks (D-17), W4 Y-label preserved (D-18)
+  - [x] 16.2-02-PLAN.md — Item 2 RevenueForecastCard + InvoiceCountForecastCard tooltip multi-model rows + per-Spline Highlight binding via points={{ fill: ... }} Circle config
+  - [x] 16.2-03-PLAN.md — Items 3+4 (merged) CalendarRevenueCard + CalendarCountsCard tooltip model row flex layout fix + Spline z-order verification (path 3 — DOM evidence confirms paths-after-rects)
+  - [x] 16.2-06-PLAN.md — Item 7 CampaignUpliftCard Rule baseline + Y-axis € ticks + X-axis day-number ticks (W4 Y-label preserved per D-18)
   **Wave 3 (sequential — phase-final QA gate)**
-  - [ ] 16.2-07-PLAN.md — Localhost-first Chrome MCP QA × 5 cards × 2 locales + DEV final QA + drift gate + STATE/ROADMAP update
+  - [x] 16.2-07-PLAN.md — Cross-card localhost QA aggregated (en + ja spot-check); DEV final QA deferred to /gsd-ship; STATE/ROADMAP update + drift gate
 **UI hint**: yes
 
 ### Phase 17: Backtest Gate & Quality Monitoring
