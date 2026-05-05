@@ -381,12 +381,22 @@
                   <li class="border-t border-zinc-200 my-1" aria-hidden="true"></li>
                 {/if}
                 {#if modelRows.length > 0}
+                  <!-- 16.2-03 Item 3: hand-rolled flex row replaces Tooltip.Item for
+                       model rows. See CalendarRevenueCard rationale comment for full
+                       context — same fix pattern, integer formatter for invoice counts. -->
                   {#each modelRows as { name, row: fr } (`mr-${name}`)}
-                    <Tooltip.Item
-                      label={t(page.data.locale, `forecast_model_${name}` as MessageKey)}
-                      color={FORECAST_MODEL_COLORS[name]}
-                      value={formatIntShort(fr.yhat_mean)}
-                    />
+                    <li class="flex items-center justify-between gap-3 py-0.5 text-xs">
+                      <span class="flex items-center gap-1.5 min-w-0">
+                        <span
+                          class="inline-block h-2 w-2 flex-shrink-0 rounded-full"
+                          style:background-color={FORECAST_MODEL_COLORS[name]}
+                        ></span>
+                        <span class="truncate">{t(page.data.locale, `forecast_model_${name}` as MessageKey)}</span>
+                      </span>
+                      <span class="flex-shrink-0 whitespace-nowrap tabular-nums">
+                        {formatIntShort(fr.yhat_mean)}
+                      </span>
+                    </li>
                   {/each}
                 {/if}
               </Tooltip.List>
