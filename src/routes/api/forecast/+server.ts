@@ -21,7 +21,7 @@ import { json } from '@sveltejs/kit';
 import { fetchAll } from '$lib/supabasePagination';
 import { parseGranularity, type Granularity } from '$lib/forecastValidation';
 import { clampEvents, type ForecastEvent } from '$lib/forecastEventClamp';
-import { format, subDays, subMonths, startOfWeek, startOfMonth } from 'date-fns';
+import { format, subDays, subMonths, startOfWeek, startOfMonth, parseISO } from 'date-fns';
 
 type CampaignRow = { campaign_id: string; start_date: string; name: string | null };
 
@@ -168,10 +168,38 @@ export const GET: RequestHandler = async ({ locals, url }) => {
         .order('business_date', { ascending: true })
     );
 
-    const actuals = actualsRows.map((r) => ({
-      date: r.business_date,
-      value: kpi === 'revenue_eur' ? r.revenue_cents / 100 : r.tx_count
-    }));
+    // 16.2 hotfix: aggregate actuals to match `granularity`. kpi_daily_v is
+    // always daily; without this aggregation, week/month forecast Splines
+    // (one point per week/month at ~weekly/monthly totals) plotted alongside
+    // daily actuals (one point per day at ~daily values) appear visually
+    // compressed against the y-axis — owner reported on 2026-05-05 that
+    // weekly aggregation tooltips read €4680 but the plotted spike sat
+    // below the €2000 y-tick because actuals were per-day.
+    const bucketKey = (date: string): string => {
+      if (granularity === 'day') return date;
+      const d = parseISO(date);
+      const anchor = granularity === 'week'
+        ? startOfWeek(d, { weekStartsOn: 1 })  // ISO Monday — matches dashboardStore.bucketKey
+        : startOfMonth(d);
+      return format(anchor, 'yyyy-MM-dd');
+    };
+    const bucketed = new Map<string, { revenue_cents: number; tx_count: number }>();
+    for (const r of actualsRows) {
+      const key = bucketKey(r.business_date);
+      const existing = bucketed.get(key);
+      if (existing) {
+        existing.revenue_cents += r.revenue_cents;
+        existing.tx_count += r.tx_count;
+      } else {
+        bucketed.set(key, { revenue_cents: r.revenue_cents, tx_count: r.tx_count });
+      }
+    }
+    const actuals = Array.from(bucketed.entries())
+      .map(([date, sums]) => ({
+        date,
+        value: kpi === 'revenue_eur' ? sums.revenue_cents / 100 : sums.tx_count
+      }))
+      .sort((a, b) => a.date.localeCompare(b.date));
 
     // Sibling events array — Phase 16 D-12 adds 5th source (campaign_start).
     // EventMarker.svelte already supports campaign_start (red 3px line, C-09).
