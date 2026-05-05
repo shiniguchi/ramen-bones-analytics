@@ -2,25 +2,26 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: External Data & Forecasting Foundation
-status: "Phase 15 v2 merged via PR #26 — ready for Phase 16"
-stopped_at: Phase 15 v2 (Forecast Backtest Overlay) merged on 2026-05-01. Plans 15-09 through 15-16 shipped; per-grain forecasts, RevenueForecastCard + InvoiceCountForecastCard + CalendarRevenueCard overlay live on DEV. Post-merge QA fixes (grain-aware empty-state copy, CalendarRevenueCard auto-scroll-to-today) included. Plan 15-17 (retire dedicated forecast cards) remains deferred per CONTEXT.md. Scheduled remote agent (trig_01DzJUc9HFAopRWP4tVD27vb) verifies week+month grain rows after Mon 2026-05-04 07:00 UTC forecast-refresh cron.
-last_updated: "2026-05-01T15:30:00Z"
+status: ready_to_execute
+stopped_at: "Phase 16.2 Friend-Persona QA Gap Closure complete 2026-05-05. All 7 owner-reported issues from 2026-05-05 SC9 closed: Item 1 date-range freeze (71% reduction PARTIAL, user-accepted; v1.4 follow-up for the residual single-cascade weight), Item 2 forecast tooltip multi-model + per-Spline Highlight, Items 3+4 cohort tooltip layout fix + Spline z-order verified (path 3 — DOM evidence), Item 5 visit-number week/month coverage SQL audit (path A — scope-deferred; selector already data-driven), Item 6 Prophet Path B revert + cleanup + pipeline regen + learning entry, Item 7 CampaignUpliftCard Rule baseline + Y/X axis ticks (W4 Y-label preserved). 7/7 plans shipped. Phase 16+16.1+16.2 ship as ONE PR on feature/phase-16-its-uplift-attribution. Next: /gsd-ship to open PR + run DEV QA + friend persona re-acceptance (SC9)."
+last_updated: "2026-05-05T11:00:00.000Z"
+last_activity: 2026-05-05
 progress:
-  total_phases: 17
-  completed_phases: 15
-  total_plans: 73
-  completed_plans: 61
-  percent: 95
+  total_phases: 19
+  completed_phases: 18
+  total_plans: 98
+  completed_plans: 86
+  percent: 88
 ---
 
 # STATE: Ramen Bones Analytics
 
-**Last updated:** 2026-04-30
+**Last updated:** 2026-05-05
 
 ## Project Reference
 
 - **Core Value:** A restaurant owner opens the site on their phone and makes a real business decision from the numbers they see.
-- **Current Focus:** Phase 13 — External Data Ingestion (shipped, PR #17 open)
+- **Current Focus:** Phase 16.2 — friend-persona-qa-gap-closure (CONTEXT captured, ready for planning)
 - **Timeline:** Slow and deliberate — understand data first, ship one layer at a time
 - **Granularity:** standard
 - **Tenants in v1:** 1 (architecture multi-tenant-ready)
@@ -28,13 +29,27 @@ progress:
 ## Current Position
 
 Milestone: v1.3 (External Data & Forecasting Foundation)
-Phase: 14 (Forecasting Engine — BAU Track) — Shipped via PR #22
-Plan: —
+Phase: 16.2 (friend-persona-qa-gap-closure) — CONTEXT captured 2026-05-05
+Plan: 0 of TBD (awaiting /gsd-plan-phase 16.2)
 
-- **Status:** Phase 14 shipped via [PR #22](https://github.com/shiniguchi/ramen-bones-analytics/pull/22). 34 commits, 31 files, +2978 lines. Code review 15 findings (7 critical schema mismatches), all 12 in-scope fixed. UAT 12/12. 5/5 models producing 365-day forecasts on DEV.
+Phase 16.1 implementation 100% complete 2026-05-04 (5/5 plans). SC3 + SC8 PASSED on 2026-05-05 via Chrome MCP localhost QA. SC9 persona test on 2026-05-05 surfaced 7 owner-reported issues captured in `.planning/feedback/16.1-friend-2026-05-05/HANDOFF.md` with 3 screenshots. Phase 16.2 inserted to close those 7 gaps before v1.3 friend-persona acceptance signs off.
+
+Phase 16.2 context captured (2026-05-05): 20 implementation decisions across 7 items + phase execution; 11 carry-forward decisions from Phase 16.1 + memory + CLAUDE.md. Per `.claude/memory/feedback_follow_recs_first.md`, HANDOFF.md's clear-cut triage was locked as defaults inline; only 3 genuinely undecided gray areas surfaced via single AskUserQuestion call:
+- **G1 (Item 6 Prophet):** Path B revert — drop `window_start` kwarg from `scripts/forecast/prophet_fit.py`. Past-Spline becomes empty for Prophet only; future keeps rendering.
+- **G2 (Item 1 perf):** Investigate-first via Chrome MCP perf trace at 375×667 with April + day grain BEFORE applying any fix.
+- **G3 (Item 5 coverage):** Verify-only SQL audit on `forecast_with_actual_v` for week/month sarimax/ets/theta presence; conditional UI fix-up only if DB has the rows.
+
+User accepted all 3 Recommended options. Phase 16+16.1+16.2 ship as ONE PR on `feature/phase-16-its-uplift-attribution`.
+
+Next recommended run: /gsd-plan-phase 16.2
+
+- **Status:** Phase 16.2 ready for planning
+- **Phase 16.1:** 5/5 plans implementation done 2026-05-04; SC3 + SC8 PASSED 2026-05-05; SC9 surfaced 7 issues now scoped into Phase 16.2.
+- **Phase 15:** v2 (Forecast Backtest Overlay) merged via PR #26 on 2026-05-01.
+- **Phase 14:** Shipped via [PR #22](https://github.com/shiniguchi/ramen-bones-analytics/pull/22). 34 commits, 31 files, +2978 lines. UAT 12/12. 5/5 models producing 365-day forecasts on DEV.
 - **Phase 13:** Shipped via [PR #17](https://github.com/shiniguchi/ramen-bones-analytics/pull/17). 41 commits, 52 files, +6892 lines. EXT-01..EXT-09 complete.
-- **Progress:** [████████░░] 82% (14/17 phases shipped; v1.0+v1.1+v1.2+Phase 12-14 done)
-- **Last activity:** 2026-04-30 — Phase 14 merged, migrations applied, pipeline running on DEV
+- **Progress:** [█████████░] 87% (79/91 plans done; v1.0+v1.1+v1.2+Phase 12-16+16.1 implementation done; Phase 16.1 phase-final QA partial (SC3+SC8 PASSED, SC9 → folded into 16.2); Phase 16.2 context captured, planning next)
+- **Last activity:** 2026-05-05
 - **v1.2 closed:** 11 phases, 60 plans, 100% — Phase 11 SSR fix landed 2026-04-21
 - **v1.0 status:** Shipped to friend (97% plans complete; repo flipped PUBLIC 2026-04-15 with topics + description set; Plan 05-06 Task 2 fork walkthrough deferred out of v1 scope)
 
@@ -90,8 +105,16 @@ Plan: —
 | Phase 10-charts P07 | 4min | 2 tasks | 5 files |
 | Phase 10-charts P05 | 6min | 2 tasks | 6 files |
 | Phase 10-charts P08 | 7min | 3 tasks | 3 files |
+| Phase 16.1 P02 | 3min | 1 task | 2 files |
+| Phase 16.1 P01 | ~25min | 5 tasks | 4 files |
+| Phase 16.1 P03 | ~7min | 3 tasks | 3 files |
+| Phase 16.1 P05 | ~12min | 2 tasks + 1 auto-approved checkpoint | 2 files |
 
 ## Accumulated Context
+
+### Roadmap Evolution
+
+- 2026-05-04: Phase 16.1 (Friend-Persona UX Polish) inserted after Phase 16 (URGENT). Source: 2026-05-04 owner Chrome MCP localhost review surfaced two persona-acceptance gaps — (1) CalendarRevenueCard + CalendarCountsCard missing past-forecast overlay (dashboard looks broken on T+N days after manual upload, even though /api/forecast already ships windowed past-forecast), (2) CampaignUpliftCard hero copy unreadable for non-statistical reader. Both UI-only, no backend changes. Inserted before qa-gate / code-review / ship so Phase 16 + 16.1 ship together as one PR.
 
 ### Key Decisions (from PROJECT.md)
 
@@ -208,6 +231,10 @@ Plan: —
 - [Phase 10-charts]: 10-08: Path C eager-mount — Lighthouse crashed; fell through to eager-mount per plan's hard-stop clause. No LazyMount.svelte shipped (later landed in Phase 11).
 - [Phase 10-charts]: 10-08: customer_ltv_v NOT range-filtered at SSR — LTV is lifetime; filter-scoping would hide customers outside chip window.
 - [Phase 10-charts]: 10-08: SSR fan-out grows 4→6 queries with per-card try/catch + empty fallback.
+- [Phase 16.1]: 16.1-02: 13 i18n keys for CampaignUpliftCard plain-language regime appended to all 5 locale blocks of `src/lib/i18n/messages.ts`. JA gets natural owner-persona translations; DE/ES/FR placeholder = EN verbatim per CONTEXT.md C-05 (owner only verifies ja + en). v1.4 translation backlog stub at `.planning/backlog/i18n-campaign-uplift-card-de-es-fr.md`. Plan 16.1-03 unblocked.
+- [Phase 16.1]: 16.1-01: Calendar* past-forecast continuity + D-16 tooltip extension shipped. (a) 5 D-16 model-label keys × 5 locales = 25 entries in `messages.ts` (en + ja real, de/es/fr placeholder per 16.1-02 pattern). (b) `lastActualDate` + `splitSeriesByModel` + `forecastWindowStart` + `pastForecastBuckets` $derived primitives on both Calendar* cards. (c) chartXDomain widened LEFT (D-03) when forecastWindowStart < startAligned. (d) Past+future Spline split (past faded `stroke-opacity={0.7}`; future dashed `'4 4'`); CI Area band stays single continuous (D-04). (e) CalendarRevenueCard scroll-to-today fix `todayPct = (histBuckets + pastForecastBuckets) / total` keeps today at the bars-end boundary. (f) Tooltip.Root body extended on both cards with topRows + modelRows lookup keyed off `format(bucket_d, 'yyyy-MM-dd')`; horizontal divider when both populated; CI hint omitted per RESEARCH.md (mobile clutter). MessageKey type assertion for dynamic `forecast_model_${name}` key. Stash recovery via `git stash pop stash@{0}` (clean, zero conflicts). Task 6 Chrome MCP + supabase-dev cross-check auto-approved per workflow.auto_advance=true; folded into phase-final QA.
+- [Phase 16.1]: 16.1-05: Forecast cards horizontal-scroll parity + past/future Spline split shipped (D-17). RevenueForecastCard + InvoiceCountForecastCard now wrap their `<Chart>` in a scroll container (`bind:this={scrollerRef}` + `bind:clientWidth={cardW}` + `overflow-x-auto overscroll-x-contain chart-touch-safe`) lifted verbatim from CalendarRevenueCard:194-263; `chartW = computeChartWidth(totalSlots, cardW)` flows past+future bucket counts into the canvas-width helper; scroll-to-today RAF effect lands today at ~60% of viewport on first paint (`todayPct = pastBuckets / totalSlots`); single Spline `{#each}` block replaced with two-block past+future split (past faded `stroke-opacity={0.7}`; future dashed `'4 4'`; **`curve={curveMonotoneX}` PRESERVED on both branches** per RESEARCH.md §16.1-05 — different from Calendar* cards which intentionally use the LayerChart default linear curve). xDomain UNCHANGED on both Forecast cards (data-driven `[parseISO(allDates[0]), parseISO(allDates[allDates.length-1])]` already picks up windowed leftmost target_date post-D-15; no explicit chartXDomain widening needed because there are no bars to define a competing anchor — this is an intentional architectural difference from Calendar* cards). D-16 tooltip extension OUT OF SCOPE per plan + RESEARCH.md (Forecast cards delegate to `<ForecastHoverPopup>` which already shows per-model values). C-02/C-03 invariants preserved; B3 typed Spline lambdas preserved. svelte-check baseline (7 errors) maintained; build green. Task 3 Chrome MCP gate auto-approved per workflow.auto_advance=true; folded into phase-final QA. Phase 16.1 implementation now 5/5 complete.
+- [Phase 16.1]: 16.1-03: CampaignUpliftCard plain-language regime + D-18 supportive labels shipped. (a) 4 D-18 supportive-label i18n keys × 5 locales = 20 entries in `messages.ts` (en + ja real translations 累計売上影響額 / 経過日数 / 点線=キャンペーンなしの基準; de/es/fr placeholder per 16.1-02 pattern; backlog stub appended). (b) i18n imports wired (page from $app/state + t/MessageKey from $lib/i18n/messages — file previously had ZERO i18n hookup). (c) maturityTier $derived (early <14 / midweeks <28 / mature >=28 from headline.row.n_days) + heroKey $derived applying D-06 tier×CI matrix → one of 7 MessageKey strings + heroVars $derived for {weeks} on mature-no-lift template + isCIOverlap $derived (collapses cumulative_uplift_eur===0 to ciOverlap branch per Claude's Discretion). (d) Single t(page.data.locale, heroKey, heroVars) call site renders 7 hedged/direct hero copies. (e) Plain-language secondary line via uplift_secondary_plain template with formatEur-formatted point/lo/hi. (f) Locale-aware date via Intl.DateTimeFormat — replaces hardcoded format(parseISO(...), 'MMM d, yyyy'). (g) D-18 hero subtitle in BOTH empty-state AND known-state branches. (h) D-18 sparkline Y label as <p> ABOVE Chart wrapper (W4 LOCKED — not in-Svg Axis primitive); X caption + baseline legend chip with dashed swatch BELOW. (i) Inline disclosure trigger button (aria-expanded, aria-controls, instant ›/⌄ chevron flip) + collapsible {#if detailsOpen} panel containing dim-point-estimate (verbatim statistical line) + anticipation-buffer-note (plain language) + divergence-warning (only when divergenceWarning fires). (j) Old anticipation-buffer-note + divergence-warning + hardcoded statistical paragraphs DELETED from prior visible positions. (k) Auto-fixes: {@const} hoisted to $derived in script (Svelte 5 const_tag_invalid_placement); MessageKey type cast on heroKey (TypeScript template-literal narrowing — established pattern from 16.1-01); stale "honest CI overlaps zero" file-header comment updated to reflect plain-language regime. (l) C-02/C-03 invariants preserved (let:data=0; touchEvents:'auto'); all 6 existing data-testids preserved; 6 new data-testids added. Task 4 Chrome MCP gate auto-approved per workflow.auto_advance=true; folded into phase-final QA.
 
 ### Open Todos
 

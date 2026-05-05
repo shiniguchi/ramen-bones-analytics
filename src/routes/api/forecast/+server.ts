@@ -15,13 +15,15 @@
 //   pipeline_runs_status_v applies its own caller-JWT row filter (Phase 13
 //   migration 0049).
 // Cache-Control: private, no-store — prevents CDN cross-tenant leakage.
-// CF Pages 50-subrequest budget: 7 parallel Supabase queries — well under cap.
+// CF Pages 50-subrequest budget: 8 parallel Supabase queries — well under cap.
 import type { RequestHandler } from './$types';
 import { json } from '@sveltejs/kit';
 import { fetchAll } from '$lib/supabasePagination';
-import { parseGranularity, type Granularity } from '$lib/forecastValidation';
+import { parseGranularity, windowStartForGrain, type Granularity } from '$lib/forecastValidation';
 import { clampEvents, type ForecastEvent } from '$lib/forecastEventClamp';
-import { format, subDays, subMonths, startOfWeek, startOfMonth } from 'date-fns';
+import { format, subDays, subMonths, startOfWeek, startOfMonth, parseISO } from 'date-fns';
+
+type CampaignRow = { campaign_id: string; start_date: string; name: string | null };
 
 const KPIS = ['revenue_eur', 'invoice_count'] as const;
 type Kpi = typeof KPIS[number];
@@ -85,7 +87,11 @@ export const GET: RequestHandler = async ({ locals, url }) => {
     // trims to 50 anyway.
     const eventsEnd = format(subDays(today, -365), 'yyyy-MM-dd');
 
-    const [forecastRows, holidayRows, schoolRows, recurRows, transitRows, pipelineRows] = await Promise.all([
+    // Phase 16 D-12: campaign_calendar window — 90d back to eventsEnd. Pre-filter
+    // before clampEvents to keep payload bounded; clampEvents priority 5 still trims.
+    const campaignsStart = format(subDays(today, 90), 'yyyy-MM-dd');
+
+    const [forecastRows, holidayRows, schoolRows, recurRows, transitRows, pipelineRows, campaignRows] = await Promise.all([
       fetchAll<ForecastViewRow>(() =>
         locals.supabase
           .from('forecast_with_actual_v')
@@ -131,6 +137,13 @@ export const GET: RequestHandler = async ({ locals, url }) => {
           .select('step_name,status,finished_at')
           .eq('status', 'success')
           .order('finished_at', { ascending: false })
+      ),
+      fetchAll<CampaignRow>(() =>
+        locals.supabase
+          .from('campaign_calendar')
+          .select('campaign_id,start_date,name')
+          .gte('start_date', campaignsStart)
+          .lte('start_date', eventsEnd)
       )
     ]);
 
@@ -155,17 +168,48 @@ export const GET: RequestHandler = async ({ locals, url }) => {
         .order('business_date', { ascending: true })
     );
 
-    const actuals = actualsRows.map((r) => ({
-      date: r.business_date,
-      value: kpi === 'revenue_eur' ? r.revenue_cents / 100 : r.tx_count
-    }));
+    // 16.2 hotfix: aggregate actuals to match `granularity`. kpi_daily_v is
+    // always daily; without this aggregation, week/month forecast Splines
+    // (one point per week/month at ~weekly/monthly totals) plotted alongside
+    // daily actuals (one point per day at ~daily values) appear visually
+    // compressed against the y-axis — owner reported on 2026-05-05 that
+    // weekly aggregation tooltips read €4680 but the plotted spike sat
+    // below the €2000 y-tick because actuals were per-day.
+    const bucketKey = (date: string): string => {
+      if (granularity === 'day') return date;
+      const d = parseISO(date);
+      const anchor = granularity === 'week'
+        ? startOfWeek(d, { weekStartsOn: 1 })  // ISO Monday — matches dashboardStore.bucketKey
+        : startOfMonth(d);
+      return format(anchor, 'yyyy-MM-dd');
+    };
+    const bucketed = new Map<string, { revenue_cents: number; tx_count: number }>();
+    for (const r of actualsRows) {
+      const key = bucketKey(r.business_date);
+      const existing = bucketed.get(key);
+      if (existing) {
+        existing.revenue_cents += r.revenue_cents;
+        existing.tx_count += r.tx_count;
+      } else {
+        bucketed.set(key, { revenue_cents: r.revenue_cents, tx_count: r.tx_count });
+      }
+    }
+    const actuals = Array.from(bucketed.entries())
+      .map(([date, sums]) => ({
+        date,
+        value: kpi === 'revenue_eur' ? sums.revenue_cents / 100 : sums.tx_count
+      }))
+      .sort((a, b) => a.date.localeCompare(b.date));
 
-    // Sibling events array — preserved verbatim from v1.
+    // Sibling events array — Phase 16 D-12 adds 5th source (campaign_start).
+    // EventMarker.svelte already supports campaign_start (red 3px line, C-09).
+    // clampEvents priority 5 already covers campaign_start (Phase 15 carry-forward).
     const events: ForecastEvent[] = [
-      ...holidayRows.map((h) => ({ type: 'holiday' as const,         date: h.date,       label: h.name })),
-      ...schoolRows .map((s) => ({ type: 'school_holiday' as const,  date: s.start_date, label: s.block_name, end_date: s.end_date })),
-      ...recurRows  .map((r) => ({ type: 'recurring_event' as const, date: r.start_date, label: r.name })),
-      ...transitRows.map((t) => ({ type: 'transit_strike' as const,  date: t.pub_date.slice(0, 10), label: t.title }))
+      ...holidayRows .map((h) => ({ type: 'holiday' as const,         date: h.date,       label: h.name })),
+      ...schoolRows  .map((s) => ({ type: 'school_holiday' as const,  date: s.start_date, label: s.block_name, end_date: s.end_date })),
+      ...recurRows   .map((r) => ({ type: 'recurring_event' as const, date: r.start_date, label: r.name })),
+      ...transitRows .map((t) => ({ type: 'transit_strike' as const,  date: t.pub_date.slice(0, 10), label: t.title })),
+      ...campaignRows.map((c) => ({ type: 'campaign_start' as const,  date: c.start_date, label: c.name ?? c.campaign_id }))
     ];
 
     // Latest forecast pipeline run feeds last_run — preserved from v1.
@@ -178,9 +222,20 @@ export const GET: RequestHandler = async ({ locals, url }) => {
       if (last_run === null || p.finished_at > last_run) last_run = p.finished_at;
     }
 
+    // 2026-05-05 friend feedback: visually trim past-forecast rows to the
+    // latest complete period anchored on last_actual. Older rows from prior
+    // run_date versions stay in forecast_daily (audit trail) — we just don't
+    // ship them to the chart. Computed in TS to mirror grain_helpers.window_start_for_grain.
+    const windowStartIso = lastActualDate === '0000-01-01'
+      ? null
+      : format(windowStartForGrain(lastActual, granularity), 'yyyy-MM-dd');
+    const visibleForecastRows = windowStartIso === null
+      ? forecastRows
+      : forecastRows.filter((r) => r.target_date >= windowStartIso);
+
     return json(
       {
-        rows: forecastRows.map((r) => ({
+        rows: visibleForecastRows.map((r) => ({
           target_date: r.target_date,
           model_name: r.model_name,
           yhat_mean: r.yhat,

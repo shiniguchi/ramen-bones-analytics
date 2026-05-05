@@ -46,7 +46,9 @@ A restaurant owner opens the site on their phone and makes a real business decis
 - [x] **Phase 13: External Data Ingestion** — 5 ingest tables (weather/holidays/school/transit/events) + pipeline_runs + shop_calendar + GHA workflow + backfill from 2025-06-11
 - [x] **Phase 14: Forecasting Engine — BAU Track** — SARIMAX/Prophet/ETS/Theta/Naive nightly fits + sample-path resampling + last_7_eval + forecast_daily_mv
 - [x] **Phase 15: Forecast Chart UI** — v2 (Forecast Backtest Overlay) merged via PR #26 on 2026-05-01. Plans 15-09..15-16 shipped; per-grain forecasts, RevenueForecastCard + InvoiceCountForecastCard + CalendarRevenueCard overlay. Post-merge QA fixes: grain-aware empty-state copy and CalendarRevenueCard auto-scroll-to-today. Plan 15-17 (retire dedicated cards) remains deferred
-- [ ] **Phase 16: ITS Uplift Attribution** — campaign_calendar + Track-B counterfactual fit + campaign_uplift_v + CampaignUpliftCard with honest "CI overlaps zero" labeling
+- [x] **Phase 16: ITS Uplift Attribution** — campaign_calendar + Track-B counterfactual fit + campaign_uplift_v + CampaignUpliftCard with honest "CI overlaps zero" labeling
+- [x] **Phase 16.1: Friend-Persona UX Polish (INSERTED, EXPANDED 2026-05-04)** — past-forecast continuity on Calendar* cards + Forecast cards via pipeline windowing fix anchored on last complete period (day=start-of-CW17, week=last 5 CWs, month=last 4 calendar months); Forecast cards horizontal-scroll parity; Calendar* tooltip shows per-model forecast values; CampaignUpliftCard plain-language regime + supportive labels. Backend pipeline + UI. Owner-blocking for friend-persona acceptance. **5/5 plans implementation done 2026-05-04; phase-final QA (Chrome MCP at localhost ja+en × 4 cards × 3 grains) pending.**
+- [x] **Phase 16.2: Friend-Persona QA Gap Closure (INSERTED 2026-05-05; complete 2026-05-05)** — fix 7 friend-owner persona-test issues from 16.1 SC9: (1) date-range freeze (perf — PARTIAL 71% reduction, v1.4 follow-up for residual), (2) forecast tooltip ignores model selection + dot misalignment (FIXED), (3) visit-cohort tooltip layout regression (FIXED), (4) SVG z-order — bars on top of forecast Splines (path 3 — DOM evidence; no code change), (5) verify-only: visit-number week/month forecast model coverage (path A — scope-deferred), (6) Prophet exponential past-curve / no future line (Path B revert + cleanup applied), (7) CampaignUpliftCard missing baseline rule + axis ticks (FIXED). Owner-blocking for v1.3 friend-persona acceptance — SC9 sign-off via /gsd-ship.
 - [ ] **Phase 17: Backtest Gate & Quality Monitoring** — rolling-origin CV at 4 horizons + ConformalIntervals + ≥10% RMSE promotion gate + freshness-SLO badges + ACCURACY-LOG
 
 ## Phase Details
@@ -294,7 +296,87 @@ Plans:
   4. `campaign_uplift_v` exposes per-campaign-window `Σ(actual − Track-B)` with 95% Monte Carlo CI from 1000 sample paths AND a `naive_dow_uplift_eur` cross-check column (sanity check against trend-extrapolation false positives in the declining 10-month pre-period); cumulative-since-launch shown as a running total per `(campaign, model)`
   5. `CampaignUpliftCard.svelte` renders the per-campaign cumulative uplift on the dashboard at 375px; explicitly displays "CI overlaps zero — no detectable lift" when 95% CI includes 0; never reports a single-point estimate without its CI band; tap-to-pin tooltip explains the 7-day anticipation buffer in plain language
   6. `cumulative_uplift.py` runs nightly after Track-B forecast completes; quarterly off-week reminder fires from a `feature_flags` table on 2026-10-15 (~6 months post-campaign) to re-anchor the counterfactual; `EventMarker.svelte` overlays campaign-start markers on `RevenueForecastCard.svelte` from Phase 15
-**Plans**: TBD
+**Plans:** 13/13 plans executed
+Plans:
+  **Wave 1 — Schema (parallel-safe; closes with [BLOCKING] supabase db push) ✓ complete 2026-05-02**
+  - [x] 16-01-PLAN.md — campaign_calendar migration + 2026-04-14 seed
+  - [x] 16-02-PLAN.md — baseline_items_v migration (TDD — first-seen ≥7d derivation)
+  - [x] 16-03-PLAN.md — kpi_daily_with_comparable_v migration (revenue_comparable_eur)
+  - [x] 16-04-PLAN.md — feature_flags + pipeline_runs.fit_train_end migrations + db push (BLOCKING)
+  **Wave 2 *(blocked on Wave 1 completion)* — Track-B Python pipeline (closes with [BLOCKING] db push for migration 0062 + DB CHECK)**
+  - [x] 16-05-PLAN.md — counterfactual_fit.py + run_all.py --track flag (Track-B fits)
+  - [x] 16-06-PLAN.md — cumulative_uplift.py — bootstrap CI math + per-day rows for sparkline (TDD)
+  - [x] 16-07-PLAN.md — campaign_uplift_v + campaign_uplift_daily_v + DB CHECK constraint + Wave-2 db push
+  **Wave 3 *(blocked on Wave 2 completion)* — API + UI (closes with localhost-first Chrome MCP gates)**
+  - [x] 16-08-PLAN.md — /api/campaign-uplift extended payload (daily[] array) + /api/forecast events campaign_start source
+  - [x] 16-09-PLAN.md — CampaignUpliftCard.svelte + dashboard slot + retire CAMPAIGN_START
+  - [x] 16-10-PLAN.md — EventMarker campaign_start E2E + Phase 15 forecast cards smoke test
+  **Wave 4 *(blocked on Wave 3 completion)* — Hardening ✓ complete 2026-05-04**
+  - [x] 16-11-PLAN.md — CI Guard 9 (raw-revenue Track-B) + Guard 10 (2026-04-14 literal) + red-team fixtures
+  - [x] 16-12-PLAN.md — tests/forecast/cutoff_sensitivity.md log + check_cutoff_sensitivity.sh (4 Wave-2 hotfixes folded in: mig 0065/0066, pred_dates anchor, started_at probe; sarimax 1.139 + prophet 0.890 PASS in [0.8, 1.25])
+  - [x] 16-13-PLAN.md — forecast-refresh.yml workflow extension + DEV smoke test (4m9s, 80 campaign_uplift rows)
+
+  **Cross-cutting constraints (must_haves.truths shared across plans):**
+  - `auth.jwt()->>'restaurant_id'` RLS filter on every new table/view (Plans 01, 02, 03, 04, 07)
+  - `pipeline_runs.fit_train_end < min(campaign_calendar.start_date) − 7 days` for every `forecast_track='cf'` row (Plans 04, 05, 11)
+  - Track-B fits read `kpi_daily_with_comparable_v.revenue_comparable_eur`, NEVER raw `revenue_eur` — DB CHECK + grep Guard 9 (Plans 05, 07, 11)
+  - Server-side aggregation only — `yhat_samples` arrays NEVER leave the API boundary (Plans 06, 08)
+  - Localhost-first Chrome MCP verification BEFORE any DEV deploy QA on UI plans (Plans 09, 10)
+**UI hint**: yes
+
+### Phase 16.1: Friend-Persona UX Polish (INSERTED, EXPANDED 2026-05-04)
+**Goal**: Close the **four** friend-persona acceptance gaps from the 2026-05-04 owner Chrome MCP localhost reviews (morning + afternoon): (1) Calendar* + Forecast cards render past-forecast continuously over the windowed range anchored on last complete period (day=start-of-week-17 if last_actual=2026-04-27; week=last 5 complete weeks; month=last 4 complete months); (2) Forecast cards (`RevenueForecastCard`, `InvoiceCountForecastCard`) get horizontal-scroll parity with Calendar* cards; (3) Calendar* `Tooltip.Root` shows per-visible-model forecast values when both bar data and forecast row exist on a bucket; (4) CampaignUpliftCard plain-language regime tiering + supportive chart-context labels so a non-statistical owner can state in her own words what it tells her. Owner-blocking for v1.3 friend-persona acceptance.
+**Depends on**: Phase 16 (CampaignUpliftCard exists; campaign_uplift_v populated). Phase 17 backtest gate stays separate; 16.1 ships the smallest backtest-row-generation subset needed for the windowing display.
+**Requirements**: derived from `.planning/backlog/forecast-overlay-on-stacked-bars.md` + `.planning/backlog/campaign-uplift-card-plain-language.md` + 2026-05-04 afternoon owner feedback #1–4 captured in `16.1-CONTEXT.md` D-13..D-20 (no new UPL/EXT/FCS/FUI/BCK requirement IDs — closes existing UPL-05 + UPL-06 + FUI-09 persona-acceptance gaps)
+**Success Criteria** (what must be TRUE):
+  1. `CalendarRevenueCard.svelte` and `CalendarCountsCard.svelte` render past-forecast Spline (solid faded `stroke-opacity={0.7}`) + future-forecast Spline (dashed `4 4`) per visible model + continuous CI Area band per model (`fillOpacity={0.06}`); covering `[window_start_per_grain, today + horizon]` continuously with NO gaps
+  2. **Forecast windowing per granularity (D-14)**: day grain anchors on `start_of_week(latest_complete_week_ending_before_or_on(last_actual_date))` (Monday-anchored); week grain anchors 4 complete weeks before that (= last 5 complete weeks); month grain anchors 3 complete months before `start_of_month(latest_complete_month)` (= last 4 complete months). Definition relative to `last_actual_date`, not `today`.
+  3. **Pipeline + API ship continuous forecast rows over the windowed range (D-15)**: `forecast_with_actual_v` contains rows for every period in `[window_start, today + horizon]` per `(kpi, model, granularity)` — verifiable via `SELECT COUNT(DISTINCT target_date) FROM forecast_with_actual_v WHERE granularity='day'` matching the expected row count. No gaps (e.g., Apr 28-29 must be present when last_actual=Apr 27 and today=May 4).
+  4. **Forecast cards x-axis parity (D-17)**: `RevenueForecastCard.svelte` and `InvoiceCountForecastCard.svelte` get the same horizontal-scroll wrapper as Calendar* cards (chart-touch-safe overflow-x-auto + dynamic `chartW = computeChartWidth(totalSlots, cardW)` + scroll-to-today-at-60% effect); past + future Spline split also applied to these cards
+  5. **Calendar* tooltip shows forecast data (D-16)**: `Tooltip.Root` body in CalendarRevenueCard + CalendarCountsCard renders existing visit_seq/cash/total rows AND a new per-visible-model section with `formatEUR(yhat_mean*100)` (revenue) or `formatIntShort(yhat_mean)` (counts); model display labels via new i18n keys (`forecast_model_*` per locale)
+  6. **CampaignUpliftCard regime + supportive labels (D-05..D-11 + D-18)**: hero adapts to maturity tier (`<14d` / `14-28d` / `>=28d` × CI-overlaps-zero matrix, 7 i18n keys from 16.1-02); inline "How is this calculated? ›" disclosure (collapsed by default); NEW chart-context labels (~5 new i18n keys × 5 locales) — hero subtitle, sparkline Y/X axis labels, counterfactual baseline marker
+  7. **Mobile bundle budget unchanged**: no new chart library dependency; reuse existing LayerChart primitives + `chartPalettes` + `format` helpers
+  8. **Localhost-first Chrome MCP verification at 375×667 in `ja` AND `en` locales** BEFORE any DEV deploy (per `.claude/CLAUDE.md` localhost-first rule); zero console errors / `invalid_default_snippet` warnings on any modified component; backend SQL migrations (if any) ship via `migrations.yml workflow_dispatch` on the feature branch BEFORE the visual QA at DEV (per `feedback_migrations_workflow_dispatch.md`)
+  9. **Friend-persona acceptance**: owner reads any of the four cards (Calendar*, Forecast*, CampaignUpliftCard) at 375px and **states in her own words what it's telling her** without asking for translation
+  10. **Planning-docs drift gate passes** (`.claude/scripts/validate-planning-docs.sh`)
+**Plans**: 5 plans (1 done, 4 planned — ready to execute)
+Plans:
+  **Wave 1 (keystone — backend; parallel with done plan)**
+  - [x] 16.1-04-PLAN.md (PLANNED) — Pipeline forecast windowing fix per D-14/D-15. **Locked: Option B (Forecast-from-window-start)** — single edit to `scripts/forecast/grain_helpers.py` (`window_start_for_grain` + extended `pred_dates_for_grain`); cascades via existing kwarg threading to sarimax/naive_dow/ets/theta fits + Prophet (Path A wire OR Path B skip-with-SUMMARY). NO migration. NO MV redefinition. NO API change. NO Phase 17 preemption.
+  - [x] 16.1-02-PLAN.md (DONE) — i18n keys for CampaignUpliftCard plain-language regime (13 keys × 5 locales; shipped in `de61cc5`)
+  **Wave 2 (UI — depends on 16.1-04 + 16.1-02; parallel within wave)**
+  - [x] 16.1-01-PLAN.md (DONE 2026-05-04) — Calendar* past-forecast overlay (CalendarRevenueCard + CalendarCountsCard split-Spline past/future + continuous CI band) + Tooltip.Root expansion with per-visible-model rows (D-16). Re-applied stashed scaffold via `git stash pop` (clean). Tasks 1-5 shipped (1567a59 / 0918ecc / 644e8a5 / 0695056 / 151b5c6); Task 6 Chrome MCP gate auto-approved per workflow.auto_advance=true and folded into phase-final QA.
+  - [x] 16.1-03-PLAN.md (DONE 2026-05-04) — CampaignUpliftCard tier-aware plain-language hero (3 maturity tiers × CI matrix → 7 i18n keys; D-05..D-11) + plain secondary line + inline "How is this calculated? ›" disclosure trigger + collapsible panel (statistical detail / anticipation note / divergence warning) + 4 D-18 supportive labels (subtitle / sparkline Y label above-Chart / X caption / baseline legend chip). Locale-aware date via Intl.DateTimeFormat. 4 new i18n keys × 5 locales. Tasks 1-3 shipped (4bdabf7 / 6d518c8 / 8cb008c); Task 4 Chrome MCP gate auto-approved per workflow.auto_advance=true and folded into phase-final QA.
+  - [x] 16.1-05-PLAN.md (DONE 2026-05-04) — RevenueForecastCard + InvoiceCountForecastCard horizontal-scroll parity (D-17) + past/future Spline split shipped. Lifts `CalendarRevenueCard.svelte:194-263` wrapper verbatim — `bind:this={scrollerRef}` + `bind:clientWidth={cardW}` + `width={chartW}` + scroll-to-today RAF lands today at ~60% viewport on first paint (`todayPct = pastBuckets / totalSlots`). Past Spline (faded solid `stroke-opacity={0.7}`) + future Spline (dashed `'4 4'`); `curve={curveMonotoneX}` preserved on both branches per cards' pre-existing styling. CI Area band continuous (`fillOpacity={0.06}`). xDomain UNCHANGED — data-driven `[parseISO(allDates[0]), parseISO(allDates[allDates.length-1])]` auto-picks-up windowed leftmost target_date post-D-15 because there are no bars to define a competing anchor (intentional architectural difference from Calendar* cards). D-16 tooltip extension OUT OF SCOPE (Forecast cards delegate to `<ForecastHoverPopup>`). C-02/C-03 invariants preserved. Tasks 1+2 shipped (ab43c28 / ed8bf22); Task 3 Chrome MCP gate auto-approved per workflow.auto_advance=true and folded into phase-final QA.
+**UI hint**: yes
+
+### Phase 16.2: Friend-Persona QA Gap Closure (INSERTED 2026-05-05)
+**Goal**: Close the 7 issues the friend-owner surfaced during the 2026-05-05 SC9 persona test of Phase 16.1, captured verbatim with screenshots in `.planning/feedback/16.1-friend-2026-05-05/HANDOFF.md`. The dashboard must remain owner-acceptable across all 5 modified cards on her phone (375×667) in `ja` locale: no UI freeze on date-range changes, tooltips honor model-selection state and align dots to lines, forecast Splines render in front of bars, Prophet past-projection no longer hallucinates an exponential trend, and CampaignUpliftCard renders the counterfactual baseline + axis tick marks the owner asked for.
+**Depends on**: Phase 16.1 (5/5 plans complete; SC9 surfaced these 7 issues against the merged 16.1 implementation). Continues on the same `feature/phase-16-its-uplift-attribution` branch.
+**Requirements**: derived from `.planning/feedback/16.1-friend-2026-05-05/HANDOFF.md` items #1–7 (no new requirement IDs — closes residual gaps in UPL-05 / UPL-06 / FUI-01 / FUI-09 friend-persona acceptance plus a Risk 2 carryover from 16.1-04 Task 4b)
+**Success Criteria** (what must be TRUE):
+  1. **Date-range filter responsive (item 1)**: changing date range or granularity (e.g., April + day grain) re-renders all charts in <500ms perceived response — no UI freeze, no SvelteKit `replaceState` re-fetch loop, no quadratic chartXDomain recomputation. Verified via Chrome MCP user-timing measurements at 375×667 against the documented baseline range that hung 16.1.
+  2. **Forecast tooltip respects model selection AND aligns dots (item 2)**: `RevenueForecastCard.svelte` + `InvoiceCountForecastCard.svelte` `Tooltip.Root` (a) renders rows for every selected model — and only selected models — on every hovered bucket where data exists; (b) per-Spline `Highlight` dots land ON the corresponding Spline path within ±1px (verified by DOM inspection at 3 sample x-positions). The current symptom — only 1 of N selected models shown, dots drifting off-line — does not reproduce after the fix.
+  3. **Visit-cohort tooltip layout fixed (item 3)**: the visit-number `Tooltip.Root` model section in `RepeaterCohortRevenueCard.svelte` / `CalendarItemsCard.svelte` (whichever variant ships D-16 model rows) renders `<label-LEFT> <value-RIGHT>` per row consistently — no flipped rows, no rows wrapping with the value pushed to the next line. Visual parity with the upper visit-cohort rows of the same tooltip.
+  4. **Forecast Splines render in front of bars (item 4)**: `<Spline past>` and `<Spline future>` blocks render AFTER `<Bars>` in source order in `CalendarRevenueCard.svelte` + `CalendarCountsCard.svelte`. SVG paint order verified — past + future + CI band sit on top of stacked bars at every grain.
+  5. **Visit-number week/month forecast coverage verified (item 5)**: SQL audit `SELECT DISTINCT model_name, granularity FROM forecast_with_actual_v WHERE granularity IN ('week','month') AND kpi_name='revenue_eur'` documented in CONTEXT.md. If sarimax/ets/theta exist in DB but are filtered in UI → wire them into the visit-number cards. If they don't exist by design → document as planned scope (deferred to a future phase) and update the model-selector to show only the available models without rendering empty options.
+  6. **Prophet past-projection neutralized (item 6)**: Prophet does NOT render an exponentially-growing past-yhat line ahead of campaign era. Concretely: revert 16.1-04 Task 4b's window_start kwarg from `scripts/forecast/prophet_fit.py` (Path B fallback documented in `16.1-04-PLAN.md` as the explicit Risk 2 contingency); past-Spline branch becomes empty for Prophet only; future-Spline continues to render normally; `.planning/learnings/` records "Prophet `predict()` on past dates produces stationary-trend projection backward — Path A unsafe without CV harness" for future phases.
+  7. **CampaignUpliftCard chart primitives complete (item 7)**: sparkline renders (a) a horizontal counterfactual baseline `<Rule y={0} stroke-dasharray="4 4">` (or equivalent) so the owner can see the "no campaign baseline" she's been told about by the legend chip; (b) Y-axis tick labels in € (e.g., `−€500`, `€0`, `+€500`) and X-axis tick labels in days-since-launch (e.g., `0`, `7`, `14`, `21`). The W4 LOCKED decision (Y-label as `<p>` ABOVE Chart) is preserved — only adding tick marks, not rotating the axis label.
+  8. **Localhost-first Chrome MCP verification at 375×667 in `ja` AND `en` locales** BEFORE any DEV deploy (per `.claude/CLAUDE.md` localhost-first rule); zero console errors / `invalid_default_snippet` warnings on any modified component; backend pipeline regen (if Path B revert touches Python) ships via `migrations.yml` / `forecast-refresh.yml` `workflow_dispatch` on the feature branch BEFORE the visual QA at DEV.
+  9. **Friend-persona re-acceptance**: owner re-runs the 5-card persona test at 375px in `ja` locale and confirms all 7 issues are resolved without surfacing new ones.
+  10. **Planning-docs drift gate passes** (`.claude/scripts/validate-planning-docs.sh`)
+**Plans**: 7 plans (all complete 2026-05-05)
+Plans:
+  **Wave 1 (parallel — independent investigations / pipeline regen)**
+  - [x] 16.2-01-PLAN.md — Item 1 date-range freeze investigation + fix (PARTIAL — 71% blocking reduction, single-cascade residual deferred to v1.4 per user-accepted decision 2026-05-05)
+  - [x] 16.2-04-PLAN.md — Item 5 visit-number week/month forecast coverage SQL audit (path A — DB has only naive_dow + prophet at week/month; selector already data-driven, no code change)
+  - [x] 16.2-05-PLAN.md — Item 6 Prophet Path B revert (3 sites + cleanup step in prophet_fit.py) + forecast-refresh.yml workflow_dispatch regen + .planning/learnings/16.2-prophet-past-projection-path-b.md entry
+  **Wave 2 (parallel — UI fixes; depend on Wave 1 perf fix for smooth visual QA)**
+  - [x] 16.2-02-PLAN.md — Item 2 RevenueForecastCard + InvoiceCountForecastCard tooltip multi-model rows + per-Spline Highlight binding via points={{ fill: ... }} Circle config
+  - [x] 16.2-03-PLAN.md — Items 3+4 (merged) CalendarRevenueCard + CalendarCountsCard tooltip model row flex layout fix + Spline z-order verification (path 3 — DOM evidence confirms paths-after-rects)
+  - [x] 16.2-06-PLAN.md — Item 7 CampaignUpliftCard Rule baseline + Y-axis € ticks + X-axis day-number ticks (W4 Y-label preserved per D-18)
+  **Wave 3 (sequential — phase-final QA gate)**
+  - [x] 16.2-07-PLAN.md — Cross-card localhost QA aggregated (en + ja spot-check); DEV final QA deferred to /gsd-ship; STATE/ROADMAP update + drift gate
 **UI hint**: yes
 
 ### Phase 17: Backtest Gate & Quality Monitoring
@@ -329,7 +411,9 @@ Plans:
 | 13. External Data Ingestion | v1.3 | 0/? | Not started | — |
 | 14. Forecasting Engine — BAU Track | v1.3 | 0/? | Not started | — |
 | 15. Forecast Chart UI | v1.3 | 0/? | Not started | — |
-| 16. ITS Uplift Attribution | v1.3 | 0/? | Not started | — |
+| 16. ITS Uplift Attribution | v1.3 | 13/13 | Pending Verification|  |
+| 16.1. Friend-Persona UX Polish (INSERTED, EXPANDED) | v1.3 | 5/5 | Pending Verification | 2026-05-04 |
+| 16.2. Friend-Persona QA Gap Closure (INSERTED) | v1.3 | 0/? | Not started | — |
 | 17. Backtest Gate & Quality Monitoring | v1.3 | 0/? | Not started | — |
 
 ## Coverage Summary

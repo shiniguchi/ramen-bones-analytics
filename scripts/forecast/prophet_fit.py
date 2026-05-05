@@ -38,7 +38,18 @@ from scripts.forecast.grain_helpers import (
     parse_granularity_env,
     pred_dates_for_grain,
     train_end_for_grain,
+    window_start_for_grain,  # Re-instated 2026-05-05 (friend feedback)
 )
+# 2026-05-05 friend feedback: previous "16.2 Path B revert" removed
+# window_start_for_grain so prophet emitted FORWARD-only forecasts. The owner
+# expected the daily prophet line to draw across the last completed week like
+# the other 4 models. We've re-enabled window_start; trade-off acknowledged
+# below and surfaced in the learning doc:
+#   Prophet's predict() on past dates projects the model's stationary trend
+#   BACKWARD — it is a model-trend projection, NOT a rolling-origin backtest.
+#   For a true held-out backtest, see Phase 17 CV harness (planned).
+# See .planning/learnings/16.2-prophet-past-projection-path-b.md for original
+# rationale; the friend explicitly chose visibility over backtest-purity.
 from scripts.external.pipeline_runs_writer import write_success, write_failure
 
 # --- Constants ---
@@ -82,6 +93,50 @@ def _fetch_history(client, *, restaurant_id: str, kpi_name: str) -> pd.DataFrame
     if kpi_name not in df.columns:
         raise RuntimeError(f'KPI column {kpi_name!r} not in kpi_daily_mv response')
     df['y'] = df[kpi_name].astype(float)
+    return df
+
+
+def _load_comparable_history(
+    client,
+    *,
+    restaurant_id: str,
+    kpi_name: str,
+    train_end: date,
+) -> pd.DataFrame:
+    """Phase 16 Track-B: source from kpi_daily_with_comparable_v capped at train_end.
+
+    Per Guard 9 / D-04 — CF must NEVER read from kpi_daily_mv.revenue_cents.
+    """
+    col_map = {
+        'revenue_comparable_eur': 'revenue_comparable_eur',
+        'invoice_count': 'tx_count',
+    }
+    if kpi_name not in col_map:
+        raise RuntimeError(
+            f"CF kpi_name must be one of {list(col_map)}; got {kpi_name!r}. "
+            "Forbidden kpi_name='revenue_eur' on a Track-B fit (Guard 9)."
+        )
+    col = col_map[kpi_name]
+    resp = (
+        client.table('kpi_daily_with_comparable_v')
+        .select(f'business_date,{col}')
+        .eq('restaurant_id', restaurant_id)
+        .lte('business_date', train_end.isoformat())
+        .order('business_date')
+        .limit(10000)
+        .execute()
+    )
+    rows = resp.data or []
+    if not rows:
+        raise RuntimeError(
+            f'No CF history from kpi_daily_with_comparable_v for {restaurant_id}/{kpi_name} '
+            f'<= {train_end}'
+        )
+    df = pd.DataFrame(rows)
+    df.rename(columns={'business_date': 'date'}, inplace=True)
+    df['date'] = pd.to_datetime(df['date']).dt.date
+    df = df.sort_values('date').reset_index(drop=True)
+    df['y'] = df[col].astype(float)
     return df
 
 
@@ -166,6 +221,7 @@ def _build_forecast_rows(
     run_date: date,
     granularity: str,
     exog_sig: dict,
+    track: str = 'bau',
 ) -> list:
     """Convert Prophet sample paths to forecast_daily row dicts.
 
@@ -183,7 +239,7 @@ def _build_forecast_rows(
             'target_date': str(target_date),
             'model_name': 'prophet',
             'run_date': str(run_date),
-            'forecast_track': 'bau',
+            'forecast_track': track,
             'granularity': granularity,
             'yhat': round(yhat, 4),
             'yhat_lower': round(yhat_lower, 4),
@@ -211,24 +267,43 @@ def fit_and_write(
     kpi_name: str,
     run_date: date,
     granularity: str = 'day',
+    track: str = 'bau',
+    train_end: Optional[date] = None,
 ) -> int:
     """Core logic: fit Prophet at the chosen grain, generate sample paths, write rows.
+
+    Phase 16 D-04 / D-07: when track='cf', source from kpi_daily_with_comparable_v
+    (NEVER kpi_daily_mv); cap history at train_end (= min(campaign_start)-7d);
+    granularity must be 'day'; kpi_name must be 'revenue_comparable_eur' or
+    'invoice_count' (Guard 9). build_exog_matrix is reused unchanged.
 
     Returns the number of rows written to forecast_daily.
     """
     horizon = HORIZON_BY_GRAIN[granularity]
 
-    # 1. Fetch training history (daily from kpi_daily_mv).
-    history = _fetch_history(client, restaurant_id=restaurant_id, kpi_name=kpi_name)
-    last_actual = history['date'].iloc[-1]
-    train_end = train_end_for_grain(last_actual, granularity)
-    print(
-        f'[prophet_fit] grain={granularity} last_actual={last_actual} '
-        f'train_end={train_end} horizon={horizon}'
-    )
+    if track == 'cf':
+        assert granularity == 'day', f"CF fits require granularity='day', got {granularity}"
+        assert train_end is not None, "CF fits require train_end (min(campaign_start)-7d)"
+        history = _load_comparable_history(
+            client, restaurant_id=restaurant_id, kpi_name=kpi_name, train_end=train_end,
+        )
+        last_actual = history['date'].iloc[-1]
+        print(
+            f'[prophet_fit] grain={granularity} TRACK=cf last_actual={last_actual} '
+            f'train_end={train_end} horizon={horizon}'
+        )
+    else:
+        # 1. Fetch training history (BAU path: kpi_daily_mv).
+        history = _fetch_history(client, restaurant_id=restaurant_id, kpi_name=kpi_name)
+        last_actual = history['date'].iloc[-1]
+        train_end = train_end_for_grain(last_actual, granularity)
+        print(
+            f'[prophet_fit] grain={granularity} last_actual={last_actual} '
+            f'train_end={train_end} horizon={horizon}'
+        )
 
-    # 2. Truncate to <= train_end before bucketing.
-    history = history[history['date'] <= train_end].reset_index(drop=True)
+        # 2. Truncate to <= train_end before bucketing.
+        history = history[history['date'] <= train_end].reset_index(drop=True)
     if history.empty:
         raise RuntimeError(f'Empty history after train_end cutoff {train_end}')
 
@@ -247,8 +322,17 @@ def fit_and_write(
 
         train_df = _build_prophet_df(history, X_fit)
 
+        # Phase 16 D-07 / 16-12 follow-up: CF fits anchor pred_dates on train_end
+        # (Prophet's future_df rows must align with the post-train_end window
+        # we're counterfactually projecting). BAU keeps run_date anchor.
+        pred_anchor = train_end if track == 'cf' else run_date
         pred_dates = pred_dates_for_grain(
-            run_date=run_date, granularity='day', horizon=horizon,
+            run_date=pred_anchor, granularity='day', horizon=horizon,
+            # 2026-05-05: window_start re-instated so prophet emits past-forecast
+            # rows over the latest complete week (matches sarimax/ets/theta/naive).
+            # Past curve is a model-trend projection, not a rolling-origin backtest.
+            window_start=window_start_for_grain(last_actual, 'day'),
+            train_end=train_end,
         )
         pred_start = pred_dates[0]
         pred_end = pred_dates[-1]
@@ -288,6 +372,10 @@ def fit_and_write(
 
         pred_dates = pred_dates_for_grain(
             run_date=run_date, granularity=granularity, horizon=horizon,
+            # 2026-05-05: window_start re-instated for week/month, same caveat
+            # as day branch — past curve is model-trend projection, not backtest.
+            window_start=window_start_for_grain(last_actual, granularity),
+            train_end=train_end,
         )
         future_df = _build_future_df(pred_dates, None)
 
@@ -298,8 +386,8 @@ def fit_and_write(
 
     # 4. Generate sample paths via predictive_samples.
     raw = m.predictive_samples(future_df)
-    samples = raw['yhat']  # shape: (HORIZON, N_PATHS)
-    assert samples.shape == (horizon, N_PATHS), f'Unexpected samples shape: {samples.shape}'
+    samples = raw['yhat']  # shape: (len(pred_dates), N_PATHS) — past+future under D-15 Option B
+    assert samples.shape == (len(pred_dates), N_PATHS), f'Unexpected samples shape: {samples.shape}'
 
     # 5. Build forecast rows.
     rows = _build_forecast_rows(
@@ -310,6 +398,7 @@ def fit_and_write(
         run_date=run_date,
         granularity=granularity,
         exog_sig=exog_sig,
+        track=track,
     )
     preds_df = pd.DataFrame(rows)
     preds_df['target_date'] = pd.to_datetime(preds_df['target_date']).dt.date
@@ -326,6 +415,21 @@ def fit_and_write(
 
     # 7. Restore target_date to str for upsert
     preds_df['target_date'] = preds_df['target_date'].astype(str)
+
+    # 7b. 16.2-05 Path B cleanup: delete any past-target Prophet rows for this
+    # (restaurant, kpi, grain, track) below the earliest pred_date. Path A
+    # historically wrote past-target rows; Path B doesn't, so without this
+    # delete the MV's DISTINCT ON ORDER BY run_date DESC keeps orphaned Path A
+    # rows visible (no newer Prophet write replaces them at past target_dates).
+    earliest_pred = str(pred_dates[0])
+    client.table('forecast_daily').delete()\
+        .eq('restaurant_id', restaurant_id)\
+        .eq('kpi_name', kpi_name)\
+        .eq('model_name', 'prophet')\
+        .eq('granularity', granularity)\
+        .eq('forecast_track', track)\
+        .lt('target_date', earliest_pred)\
+        .execute()
 
     # 8. Chunked upsert
     final_rows = preds_df.to_dict(orient='records')

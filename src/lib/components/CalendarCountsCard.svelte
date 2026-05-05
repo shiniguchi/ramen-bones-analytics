@@ -1,30 +1,27 @@
 <script lang="ts">
-  // VA-05: Calendar customer counts — same stacked-bar shape as revenue card,
-  // tx_count metric instead of revenue_cents. Title + testid differ only.
-  // D-06 gradient + D-07 cash segment + D-08 shared legend.
-  //
-  // Phase 15-13: Forecast overlay — per-model lines (Spline) + low-opacity CI bands
-  // (Area) on top of visit_seq stacked bars. Mirrors CalendarRevenueCard's 15-12
-  // overlay; the y-values from /api/forecast?kpi=invoice_count are integer counts
-  // (no /100 divisor — invoice_count is INTEGER COUNT, unlike revenue_cents).
-  //
-  // Scale strategy: bars use a TIME scale (scaleTime + xInterval=day|week|month) so
-  // bars and forecast lines share the same x-axis. bucket key (yyyy-MM-dd or
-  // yyyy-MM) is parsed to a Date and stored as `bucket_d`; the original bucket
-  // label is kept in `bucket` for tooltip display only.
-  import { Chart, Svg, Axis, Bars, Spline, Area, Text, Tooltip } from 'layerchart';
+  // Calendar customer counts — stacked bars by visit_seq + cash, with a
+  // forecast overlay (per-model lines + CI bands + hover affordance).
+  // Uses tx_count metric. Sibling CalendarRevenueCard is the same shape
+  // but on revenue_cents; both delegate forecast logic to the shared
+  // `createForecastOverlay` factory + `<ForecastOverlay>` SVG component
+  // + `<ForecastTooltipRows>` tooltip rows.
+  import { Chart, Svg, Axis, Bars, Spline, Text, Tooltip } from 'layerchart';
   import { scaleTime } from 'd3-scale';
   import { timeDay, timeMonday, timeMonth } from 'd3-time';
-  import { addDays, parseISO, format, startOfMonth, startOfWeek } from 'date-fns';
+  import { addDays, differenceInDays, parseISO, format, startOfMonth, startOfWeek } from 'date-fns';
   import { page } from '$app/state';
   import { t } from '$lib/i18n/messages';
   import EmptyState from './EmptyState.svelte';
   import VisitSeqLegend from './VisitSeqLegend.svelte';
   import ForecastLegend from './ForecastLegend.svelte';
-  import { VISIT_SEQ_COLORS, CASH_COLOR, FORECAST_MODEL_COLORS } from '$lib/chartPalettes';
+  import ForecastOverlay from './ForecastOverlay.svelte';
+  import ForecastTooltipRows from './ForecastTooltipRows.svelte';
+  import ModelAvailabilityDisclosure from './ModelAvailabilityDisclosure.svelte';
+  import { VISIT_SEQ_COLORS, CASH_COLOR } from '$lib/chartPalettes';
   import { formatIntShort } from '$lib/format';
   import { bucketTotals, bucketTrend } from '$lib/trendline';
-  import { clientFetch } from '$lib/clientFetch';
+  import { createForecastOverlay } from '$lib/forecastOverlay.svelte';
+  import type { Granularity } from '$lib/forecastValidation';
   import {
     getFiltered,
     getFilters,
@@ -38,80 +35,22 @@
   } from '$lib/dashboardStore.svelte';
 
   const yAxisFormat = (n: number) => formatIntShort(n, 'txn');
+  const txnSuffix = $derived(t(page.data.locale, 'txn_suffix'));
+  const formatTxn = (n: number) => `${n} ${txnSuffix}`;
+  const formatForecast = (n: number) => formatIntShort(n);
 
   const VISIT_KEYS = ['1st', '2nd', '3rd', '4x', '5x', '6x', '7x', '8x+'] as const;
 
-  // ----- Forecast overlay state (Phase 15-13) -----
-  type ForecastRow = {
-    target_date: string;
-    model_name: string;
-    yhat_mean: number;
-    yhat_lower: number;
-    yhat_upper: number;
-    horizon_days: number;
-  };
-  type ForecastPayload = {
-    rows: ForecastRow[];
-    actuals: { date: string; value: number }[];
-    events: unknown[];
-    last_run: string | null;
-    kpi: 'revenue_eur' | 'invoice_count';
-    granularity: 'day' | 'week' | 'month';
-  };
-
-  let forecastData = $state<ForecastPayload | null>(null);
-  let visibleModels = $state(new Set<string>(['sarimax', 'naive_dow']));
-  let lastFetchedGrain = $state<string | null>(null);
-
-  function toggleModel(modelName: string) {
-    // Always create a NEW Set to trigger Svelte 5 reactivity
-    const next = new Set(visibleModels);
-    if (next.has(modelName)) next.delete(modelName);
-    else next.add(modelName);
-    visibleModels = next;
-  }
-
-  // Re-fetch /api/forecast when grain changes. Guard with lastFetchedGrain
-  // to prevent reactive loops if the response itself touches reactive state.
-  $effect(() => {
-    const grain = getFilters().grain as 'day' | 'week' | 'month';
-    if (lastFetchedGrain === grain) return;
-    lastFetchedGrain = grain;
-    const url = `/api/forecast?kpi=invoice_count&granularity=${grain}`;
-    clientFetch<ForecastPayload>(url)
-      .then((data) => { forecastData = data; })
-      .catch(() => { forecastData = null; });
-  });
-
-  // Group forecast rows per model, filtered by visibleModels.
-  const seriesByModel = $derived.by(() => {
-    const map = new Map<string, ForecastRow[]>();
-    const rows = forecastData?.rows ?? [];
-    for (const r of rows) {
-      if (!visibleModels.has(r.model_name)) continue;
-      if (!map.has(r.model_name)) map.set(r.model_name, []);
-      map.get(r.model_name)!.push(r);
-    }
-    for (const arr of map.values()) {
-      arr.sort((a, b) => a.target_date.localeCompare(b.target_date));
-    }
-    return map;
-  });
-
-  const availableModels = $derived(
-    Array.from(new Set((forecastData?.rows ?? []).map((r) => r.model_name)))
-  );
-
   // Convert raw bucket key (yyyy-MM-dd or yyyy-MM) to a Date anchor at the
   // bucket's left edge. Required for scaleTime + xInterval bar dimensioning.
-  function bucketKeyToDate(bucket: string, grain: 'day' | 'week' | 'month'): Date {
+  function bucketKeyToDate(bucket: string, grain: Granularity): Date {
     if (grain === 'month') return parseISO(bucket + '-01');
     return parseISO(bucket); // day/week — week key is the Monday yyyy-MM-dd
   }
 
   const chartData = $derived.by(() => {
     const filtered = getFiltered();
-    const grain = getFilters().grain as 'day' | 'week' | 'month';
+    const grain = getFilters().grain as Granularity;
     const w = getWindow();
     const nested = aggregateByBucketAndVisitSeq(filtered, grain);
     return shapeForChart(nested, 'tx_count', bucketRange(w.from, w.to, grain)).map((r) => {
@@ -137,15 +76,14 @@
   });
 
   const showCash = $derived(getFilters().is_cash !== 'card');
-
-  const visibleKeys = $derived(series.map(s => s.key));
+  const visibleKeys = $derived(series.map((s) => s.key));
   const trendData = $derived(bucketTrend(chartData, 'bucket', visibleKeys));
   const totals = $derived(bucketTotals(chartData, visibleKeys));
 
   // Pick d3-time interval matching the grain (Bar.svelte uses
   // xInterval.floor/offset to compute bar width on time scales).
   const xInterval = $derived.by(() => {
-    const grain = getFilters().grain as 'day' | 'week' | 'month';
+    const grain = getFilters().grain as Granularity;
     if (grain === 'week') return timeMonday;
     if (grain === 'month') return timeMonth;
     return timeDay;
@@ -153,21 +91,56 @@
 
   // X-axis tick formatter — switches based on grain (drops year for mobile fit).
   const formatXTick = $derived.by(() => {
-    const grain = getFilters().grain as 'day' | 'week' | 'month';
+    const grain = getFilters().grain as Granularity;
     return (d: Date) => (grain === 'month' ? format(d, 'MMM') : format(d, 'MMM d'));
   });
 
-  // X-domain: bars span [from, to]; forecast lines render in the +365d gap.
-  // Aligned to the grain's bucket boundary so bars don't get clipped.
-  const chartXDomain = $derived.by((): [Date, Date] => {
+  // Bar-range left edge — bars start here. Used by chartXDomain widening
+  // and pastForecastBuckets count below.
+  const startAligned = $derived.by<Date>(() => {
     const w = getWindow();
-    const grain = getFilters().grain as 'day' | 'week' | 'month';
+    const grain = getFilters().grain as Granularity;
     const fromD = parseISO(w.from);
-    const startAligned =
-      grain === 'month' ? startOfMonth(fromD)
+    return grain === 'month' ? startOfMonth(fromD)
       : grain === 'week' ? startOfWeek(fromD, { weekStartsOn: 1 })
       : fromD;
-    return [startAligned, addDays(new Date(), 365)];
+  });
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let chartCtx = $state<any>();
+
+  // Shared forecast-overlay state (fetch + reactive derivations + bucketCenter
+  // + hoveredBucketIso). Identical shape across CalendarCountsCard and
+  // CalendarRevenueCard — only the kpi key differs.
+  const overlay = createForecastOverlay({
+    kpi: 'invoice_count',
+    grain: () => getFilters().grain as Granularity,
+    chartData: () => chartData,
+    xInterval: () => xInterval,
+    chartCtx: () => chartCtx
+  });
+
+  // X-domain: bars span [from, to]; forecast lines render in the +365d gap.
+  // Widen LEFT edge to overlay.forecastWindowStart when past-forecast extends
+  // before startAligned.
+  const chartXDomain = $derived.by<[Date, Date]>(() => {
+    const ws = overlay.forecastWindowStart;
+    const lo = ws !== null && ws < startAligned ? ws : startAligned;
+    return [lo, addDays(new Date(), 365)];
+  });
+
+  // Count of past-forecast buckets that extend BEFORE startAligned (LEFT side
+  // of the bar range). Feeds totalSlots so the chart canvas widens to fit.
+  const pastForecastBuckets = $derived.by<number>(() => {
+    const ws = overlay.forecastWindowStart;
+    if (ws === null || ws >= startAligned) return 0;
+    const grain = getFilters().grain as Granularity;
+    if (grain === 'day') return Math.max(0, differenceInDays(startAligned, ws));
+    if (grain === 'week') return Math.max(0, Math.floor(differenceInDays(startAligned, ws) / 7));
+    return Math.max(0,
+      (startAligned.getFullYear() - ws.getFullYear()) * 12
+      + (startAligned.getMonth() - ws.getMonth())
+    );
   });
 
   // Scroll overflow: when bars don't fit at mobile width, force a wider chart
@@ -175,13 +148,11 @@
   // worth of x-axis distance — without scaling chartW up, bars would be crushed.
   let cardW = $state(0);
   const totalSlots = $derived.by(() => {
-    const fcRows = forecastData?.rows ?? [];
+    const fcRows = overlay.forecastData?.rows ?? [];
     const fcDates = new Set(fcRows.map((r) => r.target_date));
-    return chartData.length + fcDates.size;
+    return chartData.length + fcDates.size + pastForecastBuckets;
   });
   const chartW = $derived(computeChartWidth(totalSlots, cardW));
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let chartCtx = $state<any>();
 </script>
 
 <div data-testid="calendar-counts-card" class="rounded-xl border border-zinc-200 bg-white p-4">
@@ -198,7 +169,7 @@
         data={chartData}
         x="bucket_d"
         xScale={scaleTime()}
-        xInterval={xInterval}
+        {xInterval}
         xDomain={chartXDomain}
         {series}
         seriesLayout="stack"
@@ -224,38 +195,19 @@
                 ...r,
                 bucket_d: chartData[i]?.bucket_d ?? new Date()
               }))}
-              x={(r: { bucket_d: Date }) => r.bucket_d}
+              x={(r: { bucket_d: Date }) => overlay.bucketCenter(r.bucket_d)}
               y="trend"
               class="stroke-zinc-900 stroke-[1.5] opacity-70"
               stroke-dasharray="3 3"
             />
           {/if}
 
-          <!-- Forecast CI bands (back layer) — one Area per visible model. -->
-          {#each Array.from(seriesByModel.entries()) as [modelName, modelRows] (`band-${modelName}`)}
-            <Area
-              data={modelRows.map((r) => ({ ...r, d: parseISO(r.target_date) }))}
-              x={(r: { d: Date }) => r.d}
-              y0={(r: { yhat_lower: number }) => r.yhat_lower}
-              y1={(r: { yhat_upper: number }) => r.yhat_upper}
-              fill={FORECAST_MODEL_COLORS[modelName]}
-              fillOpacity={0.06}
-            />
-          {/each}
-
-          <!-- Forecast lines (front layer) — one Spline per visible model.
-               naive_dow gets dashed gray; others get solid 2px. -->
-          {#each Array.from(seriesByModel.entries()) as [modelName, modelRows] (`line-${modelName}`)}
-            {@const isNaive = modelName === 'naive_dow'}
-            <Spline
-              data={modelRows.map((r) => ({ ...r, d: parseISO(r.target_date) }))}
-              x={(r: { d: Date }) => r.d}
-              y={(r: { yhat_mean: number }) => r.yhat_mean}
-              stroke={FORECAST_MODEL_COLORS[modelName]}
-              stroke-width={isNaive ? 1 : 2}
-              stroke-dasharray={isNaive ? '4 4' : undefined}
-            />
-          {/each}
+          <ForecastOverlay
+            seriesByModel={overlay.seriesByModel}
+            bucketCenter={overlay.bucketCenter}
+            hoveredBucketIso={overlay.hoveredBucketIso}
+            {chartCtx}
+          />
 
           {#each chartData as row, i (String(row.bucket_d))}
             {#if totals[i] > 0 && chartCtx && row.bucket_d instanceof Date}
@@ -275,22 +227,44 @@
           {#snippet children({ data: row })}
             {@const bucketIdx = chartData.findIndex((r) => r.bucket === row?.bucket)}
             {@const fullRow = bucketIdx >= 0 ? chartData[bucketIdx] : row}
-            <Tooltip.Header>{fullRow?.bucket}</Tooltip.Header>
-            <Tooltip.List>
-              {#each series as s (s.key)}
-                {#if ((fullRow?.[s.key] as number) ?? 0) > 0}
-                  <Tooltip.Item label={s.label} color={s.color} value={`${fullRow[s.key]} ${t(page.data.locale, 'txn_suffix')}`} />
+            {@const bucketIso = fullRow?.bucket_d instanceof Date ? format(fullRow.bucket_d, 'yyyy-MM-dd') : null}
+            {@const topRows = series.filter((s) => ((fullRow?.[s.key] as number) ?? 0) > 0)}
+            {@const hasForecast = bucketIso !== null && Array.from(overlay.seriesByModel.values())
+              .some((rows) => rows.some((r) => r.target_date === bucketIso))}
+            {#if topRows.length > 0 || hasForecast}
+              <Tooltip.Header>{fullRow?.bucket}</Tooltip.Header>
+              <Tooltip.List>
+                {#if topRows.length > 0}
+                  {#each topRows as s (s.key)}
+                    <Tooltip.Item label={s.label} color={s.color} value={formatTxn(fullRow[s.key] as number)} />
+                  {/each}
+                  <Tooltip.Item label={t(page.data.locale, 'tooltip_total')} value={formatTxn(bucketIdx >= 0 ? totals[bucketIdx] : 0)} />
                 {/if}
-              {/each}
-              <Tooltip.Item label={t(page.data.locale, 'tooltip_total')} value={`${bucketIdx >= 0 ? totals[bucketIdx] : 0} ${t(page.data.locale, 'txn_suffix')}`} />
-            </Tooltip.List>
+                {#if topRows.length > 0 && hasForecast}
+                  <li class="border-t border-zinc-200 my-1" style:grid-column="1 / -1" aria-hidden="true"></li>
+                {/if}
+                <ForecastTooltipRows
+                  {bucketIso}
+                  seriesByModel={overlay.seriesByModel}
+                  formatValue={formatForecast}
+                />
+              </Tooltip.List>
+            {/if}
           {/snippet}
         </Tooltip.Root>
       </Chart>
     </div>
     <VisitSeqLegend {showCash} />
-    {#if forecastData && availableModels.length > 0}
-      <ForecastLegend {availableModels} {visibleModels} ontoggle={toggleModel} />
+    {#if overlay.forecastData && overlay.availableModels.length > 0}
+      <ForecastLegend
+        availableModels={overlay.availableModels}
+        visibleModels={overlay.visibleModels}
+        ontoggle={overlay.toggleModel}
+      />
+      <ModelAvailabilityDisclosure
+        availableModels={overlay.availableModels}
+        grain={getFilters().grain}
+      />
     {/if}
   {/if}
 </div>

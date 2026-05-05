@@ -3,6 +3,10 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    # Manual trigger so feature branches can be previewed on Cloudflare Pages
+    # without merging. Pick the branch in the GitHub UI ("Run workflow" → ref);
+    # the ref's branch name is forwarded to `pages deploy --branch=...`, which
+    # CF Pages turns into a preview URL at <slug>.ramen-bones-analytics.pages.dev.
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -26,4 +30,9 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy .svelte-kit/cloudflare --project-name=ramen-bones-analytics --branch=main --commit-hash=${{ github.sha }}
+          # `github.ref_name` resolves to "main" for push-to-main (production
+          # deploy) and to the feature branch name for workflow_dispatch
+          # (preview deploy). CF Pages production-vs-preview routing is
+          # determined by whether --branch matches the production branch
+          # configured in the project; everything else becomes a preview URL.
+          command: pages deploy .svelte-kit/cloudflare --project-name=ramen-bones-analytics --branch=${{ github.ref_name }} --commit-hash=${{ github.sha }}

@@ -688,93 +688,195 @@ describe('/api/forecast-quality', () => {
   });
 });
 
-// -------------------- /api/campaign-uplift --------------------
+// -------------------- /api/campaign-uplift (Phase 16) --------------------
+// Phase 16 D-11 / C-08 / T-16-04. Endpoint reads from campaign_uplift_v
+// (per-window aggregates) and campaign_uplift_daily_v (per-day trajectory).
+// Threat T-16-04: response MUST NEVER contain raw `yhat_samples`/path arrays.
 import { GET as campaignUpliftGET } from '../../src/routes/api/campaign-uplift/+server';
 
 describe('/api/campaign-uplift', () => {
-  // forecast_with_actual_v rows since CAMPAIGN_START (2026-04-14).
-  // Σ(actual − yhat) = (1500-1400) + (1700-1600) + (1300-1500) = 0
-  const upliftRows = [
-    { target_date: '2026-04-14', model_name: 'sarimax', kpi_name: 'revenue_eur',
-      forecast_track: 'bau', yhat: 1400, yhat_lower: 1300, yhat_upper: 1500, actual_value: 1500 },
-    { target_date: '2026-04-15', model_name: 'sarimax', kpi_name: 'revenue_eur',
-      forecast_track: 'bau', yhat: 1600, yhat_lower: 1500, yhat_upper: 1700, actual_value: 1700 },
-    { target_date: '2026-04-16', model_name: 'sarimax', kpi_name: 'revenue_eur',
-      forecast_track: 'bau', yhat: 1500, yhat_lower: 1400, yhat_upper: 1600, actual_value: 1300 }
+  // Friend-owner Apr-14 campaign × sarimax × cumulative_since_launch (headline).
+  const headlineRow = {
+    campaign_id: 'friend-2026-04-14',
+    campaign_start: '2026-04-14',
+    campaign_end: '2026-04-21',
+    campaign_name: 'Friend Instagram Push',
+    campaign_channel: 'instagram',
+    model_name: 'sarimax',
+    window_kind: 'cumulative_since_launch',
+    cumulative_uplift_eur: 1500,
+    ci_lower_eur: 200,
+    ci_upper_eur: 2800,
+    naive_dow_uplift_eur: 1320,
+    n_days: 7,
+    as_of_date: '2026-04-21'
+  };
+  const headlineCampaignWindow = { ...headlineRow, window_kind: 'campaign_window' };
+  const dailyRows = [
+    { campaign_id: 'friend-2026-04-14', model_name: 'sarimax',
+      cumulative_uplift_eur: 200, ci_lower_eur: -50, ci_upper_eur: 450, as_of_date: '2026-04-14' },
+    { campaign_id: 'friend-2026-04-14', model_name: 'sarimax',
+      cumulative_uplift_eur: 600, ci_lower_eur: 100, ci_upper_eur: 1100, as_of_date: '2026-04-15' },
+    { campaign_id: 'friend-2026-04-14', model_name: 'sarimax',
+      cumulative_uplift_eur: 1500, ci_lower_eur: 200, ci_upper_eur: 2800, as_of_date: '2026-04-21' }
   ];
 
-  it('authenticated GET returns 200 with {campaign_start, cumulative_deviation_eur, as_of}', async () => {
-    const state = freshState({ forecast_with_actual_v: upliftRows });
+  it('returns extended payload shape with ci bounds + daily[] + campaigns[]', async () => {
+    const state = freshState({
+      campaign_uplift_v: [headlineRow, headlineCampaignWindow],
+      campaign_uplift_daily_v: dailyRows
+    });
     const res = await campaignUpliftGET(mkEvent(mkLocalsAuthed(state)));
     expect(res.status).toBe(200);
     const body = await res.json();
+    // Phase 16 extension keys:
+    expect(body).toHaveProperty('model', 'sarimax');
+    expect(body).toHaveProperty('ci_lower_eur', 200);
+    expect(body).toHaveProperty('ci_upper_eur', 2800);
+    expect(body).toHaveProperty('naive_dow_uplift_eur', 1320);
+    expect(Array.isArray(body.daily)).toBe(true);
+    expect(body.daily.length).toBe(3);
+    expect(body.daily[0]).toEqual({
+      date: '2026-04-14', cumulative_uplift_eur: 200, ci_lower_eur: -50, ci_upper_eur: 450
+    });
+    expect(Array.isArray(body.campaigns)).toBe(true);
+  });
+
+  it('preserves back-compat fields from Phase 15 (campaign_start, cumulative_deviation_eur, as_of)', async () => {
+    const state = freshState({
+      campaign_uplift_v: [headlineRow, headlineCampaignWindow],
+      campaign_uplift_daily_v: []
+    });
+    const res = await campaignUpliftGET(mkEvent(mkLocalsAuthed(state)));
+    const body = await res.json();
     expect(body.campaign_start).toBe('2026-04-14');
-    expect(body.cumulative_deviation_eur).toBeCloseTo(0, 6);
+    // back-compat: cumulative_deviation_eur === sarimax cumulative_since_launch uplift
+    expect(body.cumulative_deviation_eur).toBe(1500);
     expect(typeof body.as_of).toBe('string');
   });
 
-  it('cumulative_deviation_eur sums (actual − yhat) across all rows since CAMPAIGN_START', async () => {
-    const state = freshState({
-      forecast_with_actual_v: [
-        { ...upliftRows[0], actual_value: 1500, yhat: 1400 }, // +100
-        { ...upliftRows[1], actual_value: 1500, yhat: 1700 }  // -200
-      ]
-    });
-    const res = await campaignUpliftGET(mkEvent(mkLocalsAuthed(state)));
-    const body = await res.json();
-    expect(body.cumulative_deviation_eur).toBeCloseTo(-100, 6);
-  });
-
-  it('rows where actual_value is null (future dates) are excluded from the sum', async () => {
-    const state = freshState({
-      forecast_with_actual_v: [
-        { ...upliftRows[0], actual_value: 1500, yhat: 1400 }, // +100
-        { ...upliftRows[1], actual_value: null,  yhat: 1700 } // skipped
-      ]
-    });
-    const res = await campaignUpliftGET(mkEvent(mkLocalsAuthed(state)));
-    const body = await res.json();
-    expect(body.cumulative_deviation_eur).toBeCloseTo(100, 6);
-  });
-
-  it('null claims returns 401 and never touches supabase', async () => {
+  it('returns 401 without claims and never touches supabase', async () => {
     const state = freshState();
     const res = await campaignUpliftGET(mkEvent(mkLocalsUnauthed(state)));
     expect(res.status).toBe(401);
+    expect(res.headers.get('cache-control')).toBe('private, no-store');
     expect(state.fromSpy).not.toHaveBeenCalled();
   });
 
+  // T-16-04 contract — endpoint reads ONLY aggregate columns from the wrapper
+  // views; the views never expose yhat_samples. This test asserts the
+  // structural mitigation: even if the underlying table somehow surfaced raw
+  // path arrays, the response body would still be free of the forbidden keys.
+  it('NEVER returns raw sample paths (T-16-04 sample-path-leak prevention)', async () => {
+    const state = freshState({
+      campaign_uplift_v: [headlineRow, headlineCampaignWindow],
+      campaign_uplift_daily_v: dailyRows
+    });
+    const res = await campaignUpliftGET(mkEvent(mkLocalsAuthed(state)));
+    const text = JSON.stringify(await res.json());
+    expect(text).not.toMatch(/yhat_samples/);
+    expect(text).not.toMatch(/"paths"/);
+    expect(text).not.toMatch(/"samples"/);
+    // Reject any 200-element numeric array — bootstrap path leaks would have
+    // exactly this shape (D-08 stores 200 sample paths per fit).
+    expect(text).not.toMatch(/\[\s*-?\d+(?:\.\d+)?(?:\s*,\s*-?\d+(?:\.\d+)?){199,}\s*\]/);
+  });
+
+  it('campaigns[] groups rows by campaign_id (2 campaigns × 5 models × 2 windows = 20 rows → 2 blocks of 10)', async () => {
+    const models = ['sarimax', 'prophet', 'ets', 'theta', 'naive_dow'];
+    const windows: Array<'campaign_window' | 'cumulative_since_launch'> = [
+      'campaign_window',
+      'cumulative_since_launch'
+    ];
+    const rows = [];
+    for (const cid of ['c-A', 'c-B']) {
+      for (const m of models) {
+        for (const w of windows) {
+          rows.push({
+            campaign_id: cid,
+            campaign_start: cid === 'c-A' ? '2026-04-14' : '2026-03-01',
+            campaign_end:   cid === 'c-A' ? '2026-04-21' : '2026-03-08',
+            campaign_name: `${cid}-name`,
+            campaign_channel: 'instagram',
+            model_name: m,
+            window_kind: w,
+            cumulative_uplift_eur: 100,
+            ci_lower_eur: -50,
+            ci_upper_eur: 250,
+            naive_dow_uplift_eur: 90,
+            n_days: 7,
+            as_of_date: '2026-04-21'
+          });
+        }
+      }
+    }
+    const state = freshState({ campaign_uplift_v: rows, campaign_uplift_daily_v: [] });
+    const res = await campaignUpliftGET(mkEvent(mkLocalsAuthed(state)));
+    const body = await res.json();
+    expect(body.campaigns.length).toBe(2);
+    for (const block of body.campaigns) {
+      expect(block.rows.length).toBe(10);
+    }
+  });
+
+  it('handles empty campaign_uplift_v gracefully (campaigns:[], cumulative_deviation_eur:0, no 500)', async () => {
+    const state = freshState({ campaign_uplift_v: [], campaign_uplift_daily_v: [] });
+    const res = await campaignUpliftGET(mkEvent(mkLocalsAuthed(state)));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.campaigns).toEqual([]);
+    expect(body.cumulative_deviation_eur).toBe(0);
+    expect(body.campaign_start).toBeNull();
+    expect(body.daily).toEqual([]);
+    expect(body.ci_lower_eur).toBeNull();
+    expect(body.ci_upper_eur).toBeNull();
+    expect(body.naive_dow_uplift_eur).toBeNull();
+  });
+
   it('200 response carries Cache-Control: private, no-store', async () => {
-    const state = freshState({ forecast_with_actual_v: [] });
+    const state = freshState({ campaign_uplift_v: [], campaign_uplift_daily_v: [] });
     const res = await campaignUpliftGET(mkEvent(mkLocalsAuthed(state)));
     expect(res.headers.get('cache-control')).toBe('private, no-store');
   });
 
-  it('handler applies kpi_name=revenue_eur, forecast_track=bau, model_name=sarimax, gte target_date', async () => {
-    const state = freshState({ forecast_with_actual_v: upliftRows });
-    await campaignUpliftGET(mkEvent(mkLocalsAuthed(state)));
-    const eqCalls = state.queries[0].calls.filter(c => c.method === 'eq');
-    const eqMap = Object.fromEntries(eqCalls.map(c => [c.args[0] as string, c.args[1]]));
-    expect(eqMap).toMatchObject({
-      kpi_name: 'revenue_eur',
-      forecast_track: 'bau',
-      model_name: 'sarimax'
+  it('daily[] only contains the headline campaign × sarimax (filters out non-headline campaigns)', async () => {
+    const state = freshState({
+      campaign_uplift_v: [headlineRow, headlineCampaignWindow],
+      campaign_uplift_daily_v: [
+        ...dailyRows,
+        // a different campaign's per-day rows must NOT leak into headline daily[]
+        { campaign_id: 'other-campaign', model_name: 'sarimax',
+          cumulative_uplift_eur: 9999, ci_lower_eur: 5000, ci_upper_eur: 14000, as_of_date: '2026-04-15' }
+      ]
     });
-    const gteCall = state.queries[0].calls.find(c => c.method === 'gte');
-    expect(gteCall?.args).toEqual(['target_date', '2026-04-14']);
-  });
-
-  it('zero rows since campaign-start returns 0 deviation, not null', async () => {
-    const state = freshState({ forecast_with_actual_v: [] });
     const res = await campaignUpliftGET(mkEvent(mkLocalsAuthed(state)));
     const body = await res.json();
-    expect(body.cumulative_deviation_eur).toBe(0);
+    expect(body.daily.length).toBe(3);
+    expect(body.daily.every((d: { date: string }) => typeof d.date === 'string')).toBe(true);
+    expect(body.daily.some((d: { cumulative_uplift_eur: number }) => d.cumulative_uplift_eur === 9999)).toBe(false);
   });
 
-  it('supabase error surfaces as 500', async () => {
+  it('queries campaign_uplift_v AND campaign_uplift_daily_v in parallel', async () => {
+    const state = freshState({
+      campaign_uplift_v: [headlineRow],
+      campaign_uplift_daily_v: dailyRows
+    });
+    await campaignUpliftGET(mkEvent(mkLocalsAuthed(state)));
+    const tables = state.queries.map((q) => q.table);
+    expect(tables).toContain('campaign_uplift_v');
+    expect(tables).toContain('campaign_uplift_daily_v');
+    // daily query must filter to model_name=sarimax (D-11 headline-only)
+    const dailyQ = state.queries.find((q) => q.table === 'campaign_uplift_daily_v')!;
+    const eqCalls = dailyQ.calls.filter((c) => c.method === 'eq');
+    const modelEq = eqCalls.find((c) => c.args[0] === 'model_name');
+    expect(modelEq?.args[1]).toBe('sarimax');
+  });
+
+  it('supabase error on campaign_uplift_v surfaces as 500', async () => {
     const state = freshState();
-    state.errors.set('forecast_with_actual_v', { message: 'boom' });
+    state.errors.set('campaign_uplift_v', { message: 'boom' });
     const res = await campaignUpliftGET(mkEvent(mkLocalsAuthed(state)));
     expect(res.status).toBe(500);
+    expect(res.headers.get('cache-control')).toBe('private, no-store');
   });
 });

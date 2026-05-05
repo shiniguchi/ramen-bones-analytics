@@ -194,8 +194,8 @@ Requirements for initial release. Each maps to exactly one roadmap phase.
 - [ ] **UPL-02**: Track-B counterfactual fits on pre-campaign data only — `TRAIN_END = campaign_start_date − 7 days` (anticipation buffer); `pipeline_runs.fit_train_end` records the cutoff and CI test asserts no campaign-era row is included in any Track-B fit
 - [ ] **UPL-03**: `revenue_comparable_eur` derived KPI excludes new menu items launched coincidentally with campaign era (per `tools/its_validity_audit.py` findings 2026-04-27); Track-B fits on this baseline-comparable revenue, not raw revenue
 - [ ] **UPL-04**: `campaign_uplift_v` exposes per-campaign-window `Σ(actual − Track-B)` with 95% Monte Carlo CI from 1000 sample paths; cumulative-since-launch shown as a running total per (campaign, model)
-- [ ] **UPL-05**: `naive_dow_uplift_eur` cross-check column included in `campaign_uplift_v` — sanity check against false positives from trend extrapolation in the declining 10-month pre-period
-- [ ] **UPL-06**: `CampaignUpliftCard.svelte` renders per-campaign cumulative uplift on the dashboard; explicitly displays "CI overlaps zero — no detectable lift" when 95% CI includes 0; never reports a single-point estimate without CI
+- [x] **UPL-05**: `naive_dow_uplift_eur` cross-check column included in `campaign_uplift_v` — sanity check against false positives from trend extrapolation in the declining 10-month pre-period — _closed by Phase 16.1-03 (sarimax-vs-naive_dow divergence warning surfaced inside CampaignUpliftCard disclosure panel as `divergence-warning` testid)_
+- [x] **UPL-06**: `CampaignUpliftCard.svelte` renders per-campaign cumulative uplift on the dashboard; never reports a single-point estimate without CI — _closed by Phase 16.1-03 (D-05..D-11 plain-language regime: tier-aware hero replaces literal "CI overlaps zero" string with one of 7 i18n keys; statistical detail with CI bounds available via inline "How is this calculated? ›" disclosure panel; secondary line always pairs point estimate with `lo`/`hi` bounds)_
 - [ ] **UPL-07**: `cumulative_uplift.py` runs nightly after Track-B forecast completes; quarterly off-week reminder fires from `feature_flags` table on 2026-10-15 (~6 months post-campaign) to re-anchor the counterfactual
 
 ### Backtest Gate & Quality Monitoring (Phase 12.5)
@@ -394,9 +394,9 @@ Each requirement maps to exactly one roadmap phase.
 | UPL-01 | Phase 16 — ITS Uplift Attribution | Pending | — |
 | UPL-02 | Phase 16 — ITS Uplift Attribution | Pending | — |
 | UPL-03 | Phase 16 — ITS Uplift Attribution | Pending | — |
-| UPL-04 | Phase 16 — ITS Uplift Attribution | Pending | — |
-| UPL-05 | Phase 16 — ITS Uplift Attribution | Pending | — |
-| UPL-06 | Phase 16 — ITS Uplift Attribution | Pending | — |
+| UPL-04 | Phase 16 — ITS Uplift Attribution | Partial | Plan 16-07 (DDL + 2 wrapper views on DEV; UI surfacing in Plan 16-09) |
+| UPL-05 | Phase 16 + 16.1 — ITS Uplift Attribution + Friend-Persona | Closed | Plan 16-07 (column live in campaign_uplift_v) + Plan 16.1-03 (divergence warning surfaced in disclosure panel) |
+| UPL-06 | Phase 16 + 16.1 — ITS Uplift Attribution + Friend-Persona | Closed | Plan 16.1-03 (tier-aware plain-language hero + CI bounds in secondary line + statistical disclosure panel) |
 | UPL-07 | Phase 16 — ITS Uplift Attribution | Pending | — |
 | BCK-01 | Phase 17 — Backtest Gate & Quality Monitoring | Pending | — |
 | BCK-02 | Phase 17 — Backtest Gate & Quality Monitoring | Pending | — |

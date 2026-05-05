@@ -45,8 +45,8 @@ export const load: PageServerLoad = async ({ locals, url, depends }) => {
       freshness: new Date().toISOString(),
       window: chipToRange((range === 'custom' ? '7d' : range) as Range),
       dailyRows: [
-        { business_date: '2026-04-14', gross_cents: 4500, sales_type: 'INHOUSE',  is_cash: false, visit_seq: 1,    card_hash: 'h1' },
-        { business_date: '2026-04-14', gross_cents: 2000, sales_type: 'TAKEAWAY', is_cash: true,  visit_seq: null, card_hash: null },
+        { business_date: '2026-04-14', gross_cents: 4500, sales_type: 'INHOUSE',  is_cash: false, visit_seq: 1,    card_hash: 'h1' }, // noqa: guard10
+        { business_date: '2026-04-14', gross_cents: 2000, sales_type: 'TAKEAWAY', is_cash: true,  visit_seq: null, card_hash: null }, // noqa: guard10
         { business_date: '2026-04-15', gross_cents: 5500, sales_type: 'INHOUSE',  is_cash: false, visit_seq: 3,    card_hash: 'h2' },
         { business_date: '2026-04-15', gross_cents: 1800, sales_type: 'INHOUSE',  is_cash: true,  visit_seq: null, card_hash: null },
         { business_date: '2026-04-16', gross_cents: 3200, sales_type: 'TAKEAWAY', is_cash: false, visit_seq: 8,    card_hash: 'h1' },

@@ -82,12 +82,14 @@ A restaurant owner opens the site on their phone and makes a real business decis
 **Goal:** Ingest free external signals (weather, holidays, events), build a multi-horizon forecasting engine, render forecast overlays on the revenue chart, and attribute campaign uplift via Interrupted Time Series counterfactuals.
 
 **Target features:**
-- External data ingestion: Open-Meteo weather, `python-holidays` federal+state, `ferien-api.de` school breaks, BVG transit-strike RSS, hand-curated recurring events — backfilled from 2025-06-11 with 7-day forward forecast where available
-- Multi-horizon forecasting engine: SARIMAX (primary) + Prophet + ETS + Theta + Naive baseline at +7d / +35d (5w) / +120d (4mo) / +365d (1yr); daily refit at 03:00 Berlin; conformal CIs at long horizons
-- Forecast chart UI: LayerChart overlay on revenue card with horizon toggle, event markers, hover popup showing per-horizon RMSE/MAPE/last-refit; granularity toggle re-buckets sample paths for proper CI aggregation
-- ITS-based uplift attribution: Track-B counterfactual fit on pre-campaign era (2025-06-11 → 2026-04-13) only; cumulative `actual − Track-B` per campaign window with 95% MC CIs in `campaign_uplift_v`
-- Backtest gate: rolling-origin CV at 4 horizons, 12-week harness, ≥10% RMSE improvement vs naive same-DoW required to deploy a new model
-- Last-7-actual-days nightly accuracy log surfaced on hover tooltip (freshness ≤24h)
+- ✓ **External data ingestion** — shipped Phase 13 (PR #17, 2026-04-21). Open-Meteo weather, `python-holidays` federal+state, `ferien-api.de` school breaks, BVG transit-strike RSS, hand-curated recurring events — backfilled from 2025-06-11.
+- ✓ **Multi-horizon forecasting engine** — shipped Phase 14 (PR #22, 2026-05-01). SARIMAX + Prophet + ETS + Theta + Naive at +7d / +35d / +120d / +365d; daily refit; 5/5 models producing forecasts on DEV.
+- ✓ **Forecast chart UI** — shipped Phase 15 (PR #26, 2026-05-01). LayerChart overlay with horizon toggle, event markers (5 sources), backtest overlay v2.
+- ✓ **ITS-based uplift attribution** — shipped Phase 16 (2026-05-04). Track-B counterfactual fit on pre-campaign era only; `campaign_uplift_v` exposes per-campaign cumulative `actual − Track-B` with 95% Monte Carlo CIs from 1000 sample paths; `CampaignUpliftCard.svelte` renders honest "CI overlaps zero — no detectable lift" labeling when 95% CI straddles 0; sensitivity log at `tests/forecast/cutoff_sensitivity.md` confirms sarimax 1.139 + prophet 0.890 ratios PASS in [0.8, 1.25] healthy band. UPL-01..07 validated.
+- [ ] Backtest gate (Phase 17): rolling-origin CV at 4 horizons, 12-week harness, ≥10% RMSE improvement vs naive same-DoW required to deploy a new model
+- [ ] Last-7-actual-days nightly accuracy log surfaced on hover tooltip (freshness ≤24h)
+
+**Shipped this milestone (in order):** 13 → 14 → 15 → 16. Phase 17 (Backtest Gate & Quality Monitoring) is the final v1.3 phase.
 
 **Key context:**
 - Friend-owner started a marketing campaign on 2026-04-14; she needs a "did it work?" answer that current MDE analysis cannot give (lift detection requires ≥6 weeks at current σ)
@@ -96,6 +98,32 @@ A restaurant owner opens the site on their phone and makes a real business decis
 - $0/month budget preserved: Open-Meteo + python-holidays + ferien-api.de + BVG RSS + GitHub Actions = $0
 - Out of scope: full Marketing Mix Modeling (defer to v1.4+ when 3+ channels exist), real-time/hourly forecasting, item-level demand, multi-shop scaling
 - Phase numbering continues from 11 → Phases 12-N (no `--reset-phase-numbers`)
+
+## Forecast Model Availability Matrix
+
+(captured 2026-05-05 during Phase 16.2 polish — see also `.planning/phases/16.2-friend-persona-qa-gap-closure/16.2-04-AUDIT.md` for the SQL audit and `src/lib/components/ModelAvailabilityDisclosure.svelte` for the in-product surface)
+
+The pipeline runs separate fits per `(model, kpi, granularity)` tuple. Each model has minimum-history thresholds before it can fit at a given grain. Chips in `ForecastLegend` are data-driven — disabled at 40% opacity when the API does not return rows for that model at the selected grain.
+
+| Model | day grain | week grain | month grain | Why |
+|---|---|---|---|---|
+| **SARIMAX** | 30 daily buckets | 104 weekly buckets | 24 monthly buckets | Statsmodels SARIMAX requires ≥3× seasonal period to estimate AR/MA orders. At week/month grain, `scripts/forecast/grain_helpers.py` `YEARLY_THRESHOLD_BY_GRAIN` is the hard gate — fit refuses to run below it (workflow log: `RuntimeError: Insufficient week history: 41 buckets (need >= 104)`). At day grain the pipeline runs without yearly seasonality below 730 (gracefully degraded). |
+| **Prophet** | 30 daily | 8 weekly | 4 monthly | Prophet auto-degrades gracefully — `yearly_seasonality=False` until ≥730 daily / 104 weekly / 24 monthly buckets per `scripts/forecast/prophet_fit.py:52` `YEARLY_THRESHOLD_BY_GRAIN`, but the model still fits below threshold without yearly term. Lowest fit threshold of all 5 statistical models. |
+| **ETS** | 30 daily | 104 weekly | 24 monthly | Same hard week/month gate as SARIMAX (workflow log: `RuntimeError: Insufficient week history: 41 buckets`). |
+| **Theta** | 30 daily | 104 weekly | 24 monthly | Same hard week/month gate as SARIMAX/ETS. |
+| **Naive_DoW** | 7 daily | 1 weekly | 1 monthly | Trivial — just averages historical day-of-week values. Always available once history exists. |
+| **Chronos** | feature-flagged off | feature-flagged off | feature-flagged off | Not in `FORECAST_ENABLED_MODELS` env in `.github/workflows/forecast-refresh.yml`. Phase 17 backlog (foundation models need backtest gate before promotion). |
+| **NeuralProphet** | feature-flagged off | feature-flagged off | feature-flagged off | Same as Chronos — Phase 17 backlog. ROADMAP entry: "≥5% RMSE-win promotion criterion". |
+
+**Friend's data as of 2026-05-05:** ~330 days / ~46 weeks / ~10 months. So:
+
+- **Day grain:** all 5 statistical models available + 2 disabled feature-flagged
+- **Week grain:** only Prophet + Naive_DoW available (need ~58 more weeks for SARIMAX/ETS/Theta to unlock — projected mid-2027)
+- **Month grain:** only Prophet + Naive_DoW available (need ~14 more months for SARIMAX/ETS/Theta — projected mid-2027)
+
+**The "just sum daily forecasts" question** (raised by the friend 2026-05-05): summing daily yhat point estimates is mathematically fine; **summing daily yhat_lower / yhat_upper is a documented anti-pattern** because daily errors are correlated and pointwise CIs assume independence. The pipeline already stores 200 sample paths per daily forecast in `forecast_daily.yhat_samples jsonb` (written by `paths_to_jsonb` in every `*_fit.py`). A future v1.3 polish could aggregate those daily paths to weekly/monthly buckets server-side and expose SARIMAX/ETS/Theta at non-day grain via path aggregation rather than native fit — half-day work, cleanest as a SQL view + Edge Function. Not blocking v1.3 friend-persona acceptance; flagged as a v1.4 candidate.
+
+**In-product surface:** `ModelAvailabilityDisclosure` component renders this matrix as an inline `<details>`-style disclosure under the legend chip row on RevenueForecastCard, InvoiceCountForecastCard, CalendarRevenueCard, and CalendarCountsCard. The status column reads available/Phase-17/short-history dynamically based on the current grain + the API's `availableModels` shape. i18n keys `model_avail_*` in `src/lib/i18n/messages.ts` (en + ja real, de/es/fr placeholder per 16.1-02 pattern).
 
 ## Evolution
 
@@ -115,4 +143,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-27 — Milestone v1.3 (External Data & Forecasting Foundation) started. Driver: friend-owner's 2026-04-14 marketing campaign needs causal lift attribution that current MDE analysis can't deliver. Skipping `phases.clear` to preserve `.planning/phases/12-forecasting-foundation/12-PROPOSAL.md` (1484-line user input proposal). v1.2 wrapped at Phase 11 (CF Pages outage fix, 100% complete).*
+*Last updated: 2026-05-04 — Phase 16 (ITS Uplift Attribution) complete. Track-B counterfactual pipeline, campaign_uplift_v + CampaignUpliftCard with honest "CI overlaps zero" labeling shipped. UPL-01..07 validated. Headline empirical result for the 2026-04-14 friend campaign: −€565 cumulative deviation over 14 post-launch days, 95% CI [−€3,745, +€2,298] — statistically indistinguishable from null effect. Sensitivity log: sarimax 1.139 + prophet 0.890 ratios PASS in [0.8, 1.25] band. Wave 4 also folded in 4 Wave-2 spec-gap hotfixes (mig 0065/0066, pred_dates anchor, started_at probe). Phase 17 (Backtest Gate) is the only remaining v1.3 phase.*

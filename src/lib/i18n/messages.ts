@@ -195,7 +195,58 @@ const en = {
   cal_items_description: 'Top-selling menu items by transaction count. Longer bars = more plates served — use this to spot which items carry the restaurant day-to-day.',
   cal_item_revenue_description: 'Top-selling menu items by gross revenue. Differs from transaction count when an item has a higher ticket — use this to find hidden profit drivers.',
   cohort_retention_description: 'How many customers come back in the weeks / months after their first visit. A flat line = sticky; a sharp drop = one-and-done. Each cohort is a separate line so you can compare quarters.',
-  repeater_cohort_description: 'Repeat-customer count by first-visit cohort. The stack on the right shows your newest cohort attracting the most returners; thinner left stacks = older cohorts fading out.'
+  repeater_cohort_description: 'Repeat-customer count by first-visit cohort. The stack on the right shows your newest cohort attracting the most returners; thinner left stacks = older cohorts fading out.',
+
+  // --- Campaign uplift card (Phase 16.1: D-06 plain-language hero / D-08 secondary line / D-09 disclosure / D-10 detail panel) ---
+  uplift_card_title_with_date: 'Did the {date} campaign work?',
+  uplift_card_computing: 'We\'re still calculating — first result lands tomorrow morning.',
+  uplift_hero_too_early: 'Too early to tell',
+  uplift_hero_early_not_measurable: 'Probably not measurable yet',
+  uplift_hero_early_added: 'Looks like the campaign added revenue, but more weeks of data would confirm',
+  uplift_hero_early_reduced: 'Looks like the campaign reduced revenue, but more weeks of data would confirm',
+  uplift_hero_mature_no_lift: 'No measurable lift after {weeks} weeks',
+  uplift_hero_mature_added: 'Yes, your campaign appears to have added revenue',
+  uplift_hero_mature_reduced: 'Yes, your campaign appears to have reduced revenue',
+  uplift_secondary_plain: 'Best estimate: ~{point} compared to expected. Range: {lo} to {hi} — that\'s normal day-to-day noise.',
+  uplift_details_trigger: 'How is this calculated?',
+  uplift_details_anticipation_plain: 'We compare your actual revenue against what the model predicted from data 7+ days before the campaign launched, so any pre-launch anticipation isn\'t counted as campaign uplift.',
+  uplift_details_divergence_plain: 'Two of our checks disagree — we\'d want more weeks of data before drawing conclusions.',
+
+  // --- Campaign uplift card supportive labels (Phase 16.1 D-18) ---
+  uplift_card_subtitle: 'Comparing your actual revenue since launch against what the model predicted without the campaign.',
+  uplift_sparkline_y_label: 'Cumulative revenue impact (€)',
+  uplift_sparkline_x_caption: 'Days since campaign launch',
+  uplift_baseline_label: 'Dashed line = no campaign baseline',
+
+  // --- Forecast model display labels (Phase 16.1 D-16) ---
+  forecast_model_sarimax: 'SARIMAX',
+  forecast_model_prophet: 'Prophet',
+  forecast_model_ets: 'ETS',
+  forecast_model_theta: 'Theta',
+  forecast_model_naive_dow: 'Naive (DoW avg)',
+
+  // --- Model availability disclosure (Phase 16.2 polish) ---
+  model_avail_disclosure_trigger: 'Why are some models disabled?',
+  model_avail_disclosure_intro: 'Each model needs a minimum amount of history before it can run. Disabled chips become available as more data arrives.',
+  model_avail_col_model: 'Model',
+  model_avail_col_status: 'Status',
+  model_avail_col_min: 'Min data',
+  model_avail_col_why: 'Why',
+  model_avail_status_available: 'Available',
+  model_avail_status_phase17: 'Phase 17 backlog',
+  model_avail_status_short_day: 'Need more daily history',
+  model_avail_status_short_week: 'Need more weekly history',
+  model_avail_status_short_month: 'Need more monthly history',
+  model_avail_unit_day: 'days',
+  model_avail_unit_week: 'weeks',
+  model_avail_unit_month: 'months',
+  model_avail_why_sarimax: 'Needs 2+ full yearly cycles to learn the seasonal pattern',
+  model_avail_why_prophet: 'Auto-disables yearly seasonality when data is short. Past line is a model-trend projection, not a held-out backtest.',
+  model_avail_why_ets: 'Needs 2+ full yearly cycles to learn the seasonal pattern',
+  model_avail_why_theta: 'Needs 2+ full yearly cycles to learn the seasonal pattern',
+  model_avail_why_naive_dow: 'No fitting — just averages history at the same position (e.g., all Mondays)',
+  model_avail_why_chronos: 'Foundation model; promotion gated by Phase 17 backtest harness',
+  model_avail_why_neuralprophet: 'Neural model; promotion gated by Phase 17 backtest harness'
 } as const;
 
 export type MessageKey = keyof typeof en;
@@ -377,7 +428,58 @@ const de: Record<MessageKey, string> = {
   cal_items_description: 'Meistverkaufte Menüpunkte nach Transaktionszahl. Längere Balken = mehr servierte Portionen — so erkennen Sie, welche Gerichte das Geschäft täglich tragen.',
   cal_item_revenue_description: 'Meistverkaufte Menüpunkte nach Umsatz. Unterscheidet sich von der Transaktionszahl, wenn ein Gericht einen höheren Preis hat — so finden Sie versteckte Umsatzbringer.',
   cohort_retention_description: 'Wie viele Kunden nach ihrem ersten Besuch in den Wochen / Monaten danach zurückkehren. Flache Linie = treu; steiler Abfall = einmalig. Jede Kohorte ist eine eigene Linie, damit Quartale vergleichbar sind.',
-  repeater_cohort_description: 'Anzahl wiederkehrender Kunden nach Erstbesuch-Kohorte. Der rechte Stapel zeigt Ihre neueste Kohorte mit den meisten Rückkehrern; dünnere linke Stapel = ältere Kohorten, die abflauen.'
+  repeater_cohort_description: 'Anzahl wiederkehrender Kunden nach Erstbesuch-Kohorte. Der rechte Stapel zeigt Ihre neueste Kohorte mit den meisten Rückkehrern; dünnere linke Stapel = ältere Kohorten, die abflauen.',
+
+  // --- Campaign uplift card (Phase 16.1) — DE placeholder = EN; v1.4 polish backlog item filed ---
+  uplift_card_title_with_date: 'Did the {date} campaign work?',
+  uplift_card_computing: 'We\'re still calculating — first result lands tomorrow morning.',
+  uplift_hero_too_early: 'Too early to tell',
+  uplift_hero_early_not_measurable: 'Probably not measurable yet',
+  uplift_hero_early_added: 'Looks like the campaign added revenue, but more weeks of data would confirm',
+  uplift_hero_early_reduced: 'Looks like the campaign reduced revenue, but more weeks of data would confirm',
+  uplift_hero_mature_no_lift: 'No measurable lift after {weeks} weeks',
+  uplift_hero_mature_added: 'Yes, your campaign appears to have added revenue',
+  uplift_hero_mature_reduced: 'Yes, your campaign appears to have reduced revenue',
+  uplift_secondary_plain: 'Best estimate: ~{point} compared to expected. Range: {lo} to {hi} — that\'s normal day-to-day noise.',
+  uplift_details_trigger: 'How is this calculated?',
+  uplift_details_anticipation_plain: 'We compare your actual revenue against what the model predicted from data 7+ days before the campaign launched, so any pre-launch anticipation isn\'t counted as campaign uplift.',
+  uplift_details_divergence_plain: 'Two of our checks disagree — we\'d want more weeks of data before drawing conclusions.',
+
+  // --- Campaign uplift card supportive labels (Phase 16.1 D-18 — DE placeholder = EN; v1.4 backlog) ---
+  uplift_card_subtitle: 'Comparing your actual revenue since launch against what the model predicted without the campaign.',
+  uplift_sparkline_y_label: 'Cumulative revenue impact (€)',
+  uplift_sparkline_x_caption: 'Days since campaign launch',
+  uplift_baseline_label: 'Dashed line = no campaign baseline',
+
+  // --- Forecast model display labels (Phase 16.1 D-16 — DE placeholder = EN; v1.4 backlog) ---
+  forecast_model_sarimax: 'SARIMAX',
+  forecast_model_prophet: 'Prophet',
+  forecast_model_ets: 'ETS',
+  forecast_model_theta: 'Theta',
+  forecast_model_naive_dow: 'Naive (DoW avg)',
+
+  // --- Model availability disclosure (Phase 16.2 polish — DE placeholder = EN; v1.4 backlog) ---
+  model_avail_disclosure_trigger: 'Why are some models disabled?',
+  model_avail_disclosure_intro: 'Each model needs a minimum amount of history before it can run. Disabled chips become available as more data arrives.',
+  model_avail_col_model: 'Model',
+  model_avail_col_status: 'Status',
+  model_avail_col_min: 'Min data',
+  model_avail_col_why: 'Why',
+  model_avail_status_available: 'Available',
+  model_avail_status_phase17: 'Phase 17 backlog',
+  model_avail_status_short_day: 'Need more daily history',
+  model_avail_status_short_week: 'Need more weekly history',
+  model_avail_status_short_month: 'Need more monthly history',
+  model_avail_unit_day: 'days',
+  model_avail_unit_week: 'weeks',
+  model_avail_unit_month: 'months',
+  model_avail_why_sarimax: 'Needs 2+ full yearly cycles to learn the seasonal pattern',
+  model_avail_why_prophet: 'Auto-disables yearly seasonality when data is short. Past line is a model-trend projection, not a held-out backtest.',
+  model_avail_why_ets: 'Needs 2+ full yearly cycles to learn the seasonal pattern',
+  model_avail_why_theta: 'Needs 2+ full yearly cycles to learn the seasonal pattern',
+  model_avail_why_naive_dow: 'No fitting — just averages history at the same position (e.g., all Mondays)',
+  model_avail_why_chronos: 'Foundation model; promotion gated by Phase 17 backtest harness',
+  model_avail_why_neuralprophet: 'Neural model; promotion gated by Phase 17 backtest harness'
 };
 
 // --- JA (日本語) ----------------------------------------------------------
@@ -556,7 +658,58 @@ const ja: Record<MessageKey, string> = {
   cal_items_description: '取引件数で見たメニューの売れ筋。棒が長いほど出数が多い — お店を日々支えている一皿を見つけるのに使えます。',
   cal_item_revenue_description: '売上額で見たメニューの売れ筋。客単価の高い一皿は取引件数と順位が変わります — 隠れた稼ぎ頭を見つけるのに使えます。',
   cohort_retention_description: '初回来店後の数週 / 数ヶ月で再来店する顧客の割合です。線が水平 = 定着している、急降下 = 一度きり。コホートごとに線が分かれているので四半期を比較できます。',
-  repeater_cohort_description: '初回来店コホート別のリピーター数です。右端のスタックが高いほど、最新のコホートが多くのリピーターを生んでいます。左側が細い = 古いコホートが先細りしている状態。'
+  repeater_cohort_description: '初回来店コホート別のリピーター数です。右端のスタックが高いほど、最新のコホートが多くのリピーターを生んでいます。左側が細い = 古いコホートが先細りしている状態。',
+
+  // --- Campaign uplift card (Phase 16.1) ---
+  uplift_card_title_with_date: '{date}のキャンペーンは効果ありましたか？',
+  uplift_card_computing: '計算中です — 最初の結果は明日の朝に出ます。',
+  uplift_hero_too_early: '判断するにはまだ早すぎます',
+  uplift_hero_early_not_measurable: 'まだはっきりとした効果は見えていません',
+  uplift_hero_early_added: '売上が伸びたように見えますが、もう少しデータが必要です',
+  uplift_hero_early_reduced: '売上が下がったように見えますが、もう少しデータが必要です',
+  uplift_hero_mature_no_lift: '{weeks}週間経っても、はっきりとした効果は出ていません',
+  uplift_hero_mature_added: 'はい、キャンペーンで売上が伸びたようです',
+  uplift_hero_mature_reduced: 'はい、キャンペーンで売上が下がったようです',
+  uplift_secondary_plain: '目安: 予想と比べて{point}ぐらい。範囲: {lo} 〜 {hi} — これくらいの差は普段の変動の範囲内です。',
+  uplift_details_trigger: 'どうやって計算しているの？',
+  uplift_details_anticipation_plain: 'キャンペーン開始の7日以上前のデータでモデルが予測した売上と、実際の売上を比べています。開始前の期待感による売上の動きはキャンペーンの効果には含めません。',
+  uplift_details_divergence_plain: '2つのチェック方法で結果が違いました — 結論を出す前にもう少しデータを集めたいところです。',
+
+  // --- Campaign uplift card supportive labels (Phase 16.1 D-18) ---
+  uplift_card_subtitle: 'キャンペーン開始後の実際の売上と、キャンペーンがなかった場合のモデル予測を比較しています。',
+  uplift_sparkline_y_label: '累計売上影響額（€）',
+  uplift_sparkline_x_caption: 'キャンペーン開始からの経過日数',
+  uplift_baseline_label: '点線 = キャンペーンなしの基準',
+
+  // --- Forecast model display labels (Phase 16.1 D-16) ---
+  forecast_model_sarimax: 'SARIMAX',
+  forecast_model_prophet: 'Prophet',
+  forecast_model_ets: 'ETS',
+  forecast_model_theta: 'Theta',
+  forecast_model_naive_dow: '単純予測（曜日平均）',
+
+  // --- Model availability disclosure (Phase 16.2 polish) ---
+  model_avail_disclosure_trigger: 'なぜ一部のモデルは無効？',
+  model_avail_disclosure_intro: '各モデルには最小限の履歴データが必要です。データが蓄積するにつれて無効のチップが利用可能になります。',
+  model_avail_col_model: 'モデル',
+  model_avail_col_status: '状態',
+  model_avail_col_min: '最小データ',
+  model_avail_col_why: '理由',
+  model_avail_status_available: '利用可',
+  model_avail_status_phase17: 'Phase 17で対応予定',
+  model_avail_status_short_day: '日次履歴が不足',
+  model_avail_status_short_week: '週次履歴が不足',
+  model_avail_status_short_month: '月次履歴が不足',
+  model_avail_unit_day: '日',
+  model_avail_unit_week: '週',
+  model_avail_unit_month: 'ヶ月',
+  model_avail_why_sarimax: '季節パターンを学習するには2年以上の周期データが必要',
+  model_avail_why_prophet: 'データが少ないときは年次成分を自動で無効化。過去の線はモデル傾向の投影で、ホールドアウト検証ではありません',
+  model_avail_why_ets: '季節パターンを学習するには2年以上の周期データが必要',
+  model_avail_why_theta: '季節パターンを学習するには2年以上の周期データが必要',
+  model_avail_why_naive_dow: 'モデル学習なし — 同じ位置の過去平均（例：過去の月曜の平均）を使用',
+  model_avail_why_chronos: '基盤モデル — Phase 17のバックテストゲート通過後に有効化',
+  model_avail_why_neuralprophet: 'ニューラルモデル — Phase 17のバックテストゲート通過後に有効化'
 };
 
 // --- ES (Español) ---------------------------------------------------------
@@ -736,7 +889,58 @@ const es: Record<MessageKey, string> = {
   cal_items_description: 'Platos más vendidos por número de transacciones. Barras más largas = más platos servidos — úsalo para detectar qué platos sostienen el restaurante día a día.',
   cal_item_revenue_description: 'Platos más vendidos por ingreso bruto. Difiere del recuento cuando un plato tiene un ticket más alto — úsalo para encontrar generadores de beneficio ocultos.',
   cohort_retention_description: 'Cuántos clientes regresan en las semanas / meses posteriores a su primera visita. Línea plana = fidelizados; caída brusca = de una sola vez. Cada cohorte es una línea distinta para comparar trimestres.',
-  repeater_cohort_description: 'Recuento de clientes recurrentes por cohorte de primera visita. La pila de la derecha muestra que tu cohorte más reciente atrae la mayor cantidad de retornos; pilas más delgadas a la izquierda = cohortes antiguas que se diluyen.'
+  repeater_cohort_description: 'Recuento de clientes recurrentes por cohorte de primera visita. La pila de la derecha muestra que tu cohorte más reciente atrae la mayor cantidad de retornos; pilas más delgadas a la izquierda = cohortes antiguas que se diluyen.',
+
+  // --- Campaign uplift card (Phase 16.1) — ES placeholder = EN; v1.4 polish backlog item filed ---
+  uplift_card_title_with_date: 'Did the {date} campaign work?',
+  uplift_card_computing: 'We\'re still calculating — first result lands tomorrow morning.',
+  uplift_hero_too_early: 'Too early to tell',
+  uplift_hero_early_not_measurable: 'Probably not measurable yet',
+  uplift_hero_early_added: 'Looks like the campaign added revenue, but more weeks of data would confirm',
+  uplift_hero_early_reduced: 'Looks like the campaign reduced revenue, but more weeks of data would confirm',
+  uplift_hero_mature_no_lift: 'No measurable lift after {weeks} weeks',
+  uplift_hero_mature_added: 'Yes, your campaign appears to have added revenue',
+  uplift_hero_mature_reduced: 'Yes, your campaign appears to have reduced revenue',
+  uplift_secondary_plain: 'Best estimate: ~{point} compared to expected. Range: {lo} to {hi} — that\'s normal day-to-day noise.',
+  uplift_details_trigger: 'How is this calculated?',
+  uplift_details_anticipation_plain: 'We compare your actual revenue against what the model predicted from data 7+ days before the campaign launched, so any pre-launch anticipation isn\'t counted as campaign uplift.',
+  uplift_details_divergence_plain: 'Two of our checks disagree — we\'d want more weeks of data before drawing conclusions.',
+
+  // --- Campaign uplift card supportive labels (Phase 16.1 D-18 — ES placeholder = EN; v1.4 backlog) ---
+  uplift_card_subtitle: 'Comparing your actual revenue since launch against what the model predicted without the campaign.',
+  uplift_sparkline_y_label: 'Cumulative revenue impact (€)',
+  uplift_sparkline_x_caption: 'Days since campaign launch',
+  uplift_baseline_label: 'Dashed line = no campaign baseline',
+
+  // --- Forecast model display labels (Phase 16.1 D-16 — ES placeholder = EN; v1.4 backlog) ---
+  forecast_model_sarimax: 'SARIMAX',
+  forecast_model_prophet: 'Prophet',
+  forecast_model_ets: 'ETS',
+  forecast_model_theta: 'Theta',
+  forecast_model_naive_dow: 'Naive (DoW avg)',
+
+  // --- Model availability disclosure (Phase 16.2 polish — ES placeholder = EN; v1.4 backlog) ---
+  model_avail_disclosure_trigger: 'Why are some models disabled?',
+  model_avail_disclosure_intro: 'Each model needs a minimum amount of history before it can run. Disabled chips become available as more data arrives.',
+  model_avail_col_model: 'Model',
+  model_avail_col_status: 'Status',
+  model_avail_col_min: 'Min data',
+  model_avail_col_why: 'Why',
+  model_avail_status_available: 'Available',
+  model_avail_status_phase17: 'Phase 17 backlog',
+  model_avail_status_short_day: 'Need more daily history',
+  model_avail_status_short_week: 'Need more weekly history',
+  model_avail_status_short_month: 'Need more monthly history',
+  model_avail_unit_day: 'days',
+  model_avail_unit_week: 'weeks',
+  model_avail_unit_month: 'months',
+  model_avail_why_sarimax: 'Needs 2+ full yearly cycles to learn the seasonal pattern',
+  model_avail_why_prophet: 'Auto-disables yearly seasonality when data is short. Past line is a model-trend projection, not a held-out backtest.',
+  model_avail_why_ets: 'Needs 2+ full yearly cycles to learn the seasonal pattern',
+  model_avail_why_theta: 'Needs 2+ full yearly cycles to learn the seasonal pattern',
+  model_avail_why_naive_dow: 'No fitting — just averages history at the same position (e.g., all Mondays)',
+  model_avail_why_chronos: 'Foundation model; promotion gated by Phase 17 backtest harness',
+  model_avail_why_neuralprophet: 'Neural model; promotion gated by Phase 17 backtest harness'
 };
 
 // --- FR (Français) --------------------------------------------------------
@@ -916,7 +1120,58 @@ const fr: Record<MessageKey, string> = {
   cal_items_description: "Plats les plus vendus par nombre de transactions. Plus la barre est longue, plus le plat est servi — utile pour identifier les plats qui font tourner le restaurant au quotidien.",
   cal_item_revenue_description: "Plats les plus vendus par chiffre d'affaires. Diffère du nombre de transactions quand un plat a un ticket plus élevé — utile pour repérer les moteurs de profit cachés.",
   cohort_retention_description: "Combien de clients reviennent dans les semaines / mois suivant leur première visite. Ligne plate = fidélisés ; chute nette = passage unique. Chaque cohorte est une ligne séparée pour comparer les trimestres.",
-  repeater_cohort_description: "Nombre de clients fidèles par cohorte de première visite. La pile de droite montre que votre cohorte la plus récente attire le plus de retours ; des piles plus fines à gauche = cohortes anciennes qui s'estompent."
+  repeater_cohort_description: "Nombre de clients fidèles par cohorte de première visite. La pile de droite montre que votre cohorte la plus récente attire le plus de retours ; des piles plus fines à gauche = cohortes anciennes qui s'estompent.",
+
+  // --- Campaign uplift card (Phase 16.1) — FR placeholder = EN; v1.4 polish backlog item filed ---
+  uplift_card_title_with_date: 'Did the {date} campaign work?',
+  uplift_card_computing: 'We\'re still calculating — first result lands tomorrow morning.',
+  uplift_hero_too_early: 'Too early to tell',
+  uplift_hero_early_not_measurable: 'Probably not measurable yet',
+  uplift_hero_early_added: 'Looks like the campaign added revenue, but more weeks of data would confirm',
+  uplift_hero_early_reduced: 'Looks like the campaign reduced revenue, but more weeks of data would confirm',
+  uplift_hero_mature_no_lift: 'No measurable lift after {weeks} weeks',
+  uplift_hero_mature_added: 'Yes, your campaign appears to have added revenue',
+  uplift_hero_mature_reduced: 'Yes, your campaign appears to have reduced revenue',
+  uplift_secondary_plain: 'Best estimate: ~{point} compared to expected. Range: {lo} to {hi} — that\'s normal day-to-day noise.',
+  uplift_details_trigger: 'How is this calculated?',
+  uplift_details_anticipation_plain: 'We compare your actual revenue against what the model predicted from data 7+ days before the campaign launched, so any pre-launch anticipation isn\'t counted as campaign uplift.',
+  uplift_details_divergence_plain: 'Two of our checks disagree — we\'d want more weeks of data before drawing conclusions.',
+
+  // --- Campaign uplift card supportive labels (Phase 16.1 D-18 — FR placeholder = EN; v1.4 backlog) ---
+  uplift_card_subtitle: 'Comparing your actual revenue since launch against what the model predicted without the campaign.',
+  uplift_sparkline_y_label: 'Cumulative revenue impact (€)',
+  uplift_sparkline_x_caption: 'Days since campaign launch',
+  uplift_baseline_label: 'Dashed line = no campaign baseline',
+
+  // --- Forecast model display labels (Phase 16.1 D-16 — FR placeholder = EN; v1.4 backlog) ---
+  forecast_model_sarimax: 'SARIMAX',
+  forecast_model_prophet: 'Prophet',
+  forecast_model_ets: 'ETS',
+  forecast_model_theta: 'Theta',
+  forecast_model_naive_dow: 'Naive (DoW avg)',
+
+  // --- Model availability disclosure (Phase 16.2 polish — FR placeholder = EN; v1.4 backlog) ---
+  model_avail_disclosure_trigger: 'Why are some models disabled?',
+  model_avail_disclosure_intro: 'Each model needs a minimum amount of history before it can run. Disabled chips become available as more data arrives.',
+  model_avail_col_model: 'Model',
+  model_avail_col_status: 'Status',
+  model_avail_col_min: 'Min data',
+  model_avail_col_why: 'Why',
+  model_avail_status_available: 'Available',
+  model_avail_status_phase17: 'Phase 17 backlog',
+  model_avail_status_short_day: 'Need more daily history',
+  model_avail_status_short_week: 'Need more weekly history',
+  model_avail_status_short_month: 'Need more monthly history',
+  model_avail_unit_day: 'days',
+  model_avail_unit_week: 'weeks',
+  model_avail_unit_month: 'months',
+  model_avail_why_sarimax: 'Needs 2+ full yearly cycles to learn the seasonal pattern',
+  model_avail_why_prophet: 'Auto-disables yearly seasonality when data is short. Past line is a model-trend projection, not a held-out backtest.',
+  model_avail_why_ets: 'Needs 2+ full yearly cycles to learn the seasonal pattern',
+  model_avail_why_theta: 'Needs 2+ full yearly cycles to learn the seasonal pattern',
+  model_avail_why_naive_dow: 'No fitting — just averages history at the same position (e.g., all Mondays)',
+  model_avail_why_chronos: 'Foundation model; promotion gated by Phase 17 backtest harness',
+  model_avail_why_neuralprophet: 'Neural model; promotion gated by Phase 17 backtest harness'
 };
 
 export const messages: Record<Locale, Record<MessageKey, string>> = { en, de, ja, es, fr };

@@ -1,15 +1,15 @@
 // tests/unit/forecastConfig.test.ts
-// Phase 15 D-08 — hard-coded campaign-start. Phase 16 replaces this constant
-// with a campaign_calendar lookup. The test pins the date so any drift fails CI.
+// Phase 16 Plan 09 retired the CAMPAIGN_START constant — the campaign date
+// now comes from /api/campaign-uplift (sourced from campaign_calendar). The
+// test asserts the constant has been removed; if anyone re-adds it, the
+// import-named test will fail and the retirement is reversed.
 import { describe, it, expect } from 'vitest';
-import { CAMPAIGN_START } from '../../src/lib/forecastConfig';
+import * as forecastConfig from '../../src/lib/forecastConfig';
 
-describe('forecastConfig', () => {
-  it('CAMPAIGN_START is 2026-04-14 (Phase 15 D-08 stub for friend-owner spring campaign)', () => {
-    expect(CAMPAIGN_START.toISOString().slice(0, 10)).toBe('2026-04-14');
-  });
-
-  it('CAMPAIGN_START is a Date instance (not a string), so date-fns helpers can consume it directly', () => {
-    expect(CAMPAIGN_START).toBeInstanceOf(Date);
+describe('forecastConfig (Phase 16 retirement)', () => {
+  it('CAMPAIGN_START is no longer exported (retired in Phase 16 Plan 09 / Guard 10)', () => {
+    expect(
+      Object.prototype.hasOwnProperty.call(forecastConfig, 'CAMPAIGN_START')
+    ).toBe(false);
   });
 });

@@ -51,6 +51,7 @@ Before ANY work (planning, coding, reviewing, debugging), gather context:
 - `docs/project-context.md` — technical specs, architecture, coding standards
 - `docs/feature-roadmap.md` — feature roadmap and implementation status
 - `docs/architecture.md` — system design
+- `.planning/PROJECT.md` §"Forecast Model Availability Matrix" — per-model min-history thresholds at day/week/month grain, why SARIMAX/ETS/Theta/Chronos/NeuralProphet may be disabled at certain grains, and the path-aggregation alternative. Surfaced in-product via `src/lib/components/ModelAvailabilityDisclosure.svelte`. Read this BEFORE answering "why don't I see model X?" questions.
 
 ### 2. Gather fresh context via CLI & MCPs
 
