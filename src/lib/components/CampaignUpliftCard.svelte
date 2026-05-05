@@ -20,7 +20,7 @@
   // Tooltip.Root uses the snippet-children form (the older shorthand binding
   // throws invalid_default_snippet on Svelte 5 — see
   // .claude/memory/feedback_svelte5_tooltip_snippet.md).
-  import { Chart, Svg, Spline, Area, Tooltip } from 'layerchart';
+  import { Chart, Svg, Spline, Area, Tooltip, Axis, Rule } from 'layerchart';
   import { scaleTime } from 'd3-scale';
   import { curveMonotoneX } from 'd3-shape';
   import { format, differenceInDays, parseISO } from 'date-fns';
@@ -273,10 +273,42 @@
           y={['ci_lower', 'ci_upper']}
           xScale={scaleTime()}
           yNice={2}
-          padding={{ left: 0, right: 0, top: 4, bottom: 4 }}
+          padding={{ left: 36, right: 4, top: 4, bottom: 20 }}
           tooltipContext={{ mode: 'bisect-x', touchEvents: 'auto' }}
         >
           <Svg>
+            <!-- 16.2-06 D-16: Y-axis tick marks (€). 3 ticks at 375px without
+                 crowding. cum_uplift is in EUR (line 183: `cum_uplift:
+                 d.cumulative_uplift_eur`), so format value directly without
+                 cents conversion. W4 LOCKED preserved — the rotated label
+                 text stays as <p> ABOVE Chart at line 268. -->
+            <Axis
+              placement="left"
+              ticks={3}
+              format={(v: number) => (v < 0 ? '−€' : '€') + Math.abs(Math.round(v))}
+              rule
+            />
+
+            <!-- 16.2-06 D-17: X-axis tick marks (days since campaign launch).
+                 X channel is Date (xScale=scaleTime). Format converts each
+                 tick's Date to integer days-since-headline.campaign.start_date.
+                 ticks={5} fits 4-5 day labels at 375px. -->
+            <Axis
+              placement="bottom"
+              ticks={5}
+              format={(v: Date) => String(differenceInDays(v, parseISO(headline.campaign.start_date)))}
+              rule
+            />
+
+            <!-- 16.2-06 D-15: counterfactual baseline — horizontal dashed line
+                 at y=0 matching the legend chip "Dashed line = no campaign
+                 baseline" at line 316-318 below. Rule is a Line-based
+                 primitive (NOT Path-based like Spline/Area), so kebab-case
+                 stroke-dasharray flows through SVGAttributes<SVGPathElement>
+                 unchanged — the C-03 camelCase rule applies only to
+                 Path-derived components that destructure props internally. -->
+            <Rule y={0} class="stroke-zinc-500" stroke-dasharray="4 4" />
+
             <Area
               y0="ci_lower"
               y1="ci_upper"
