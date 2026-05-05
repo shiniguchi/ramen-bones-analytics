@@ -208,7 +208,14 @@
       // is the canonical API that both updates SvelteKit's internal URL and forces
       // load re-run. replaceState:true prevents a duplicate history entry.
       // See .planning/debug/range-chip-stale-cache.md for the evidence chain.
-      setRange(window);
+      //
+      // Phase 16.2-01: do NOT call setRange(window) here. Mutating dateFrom/dateTo
+      // before goto() returns triggers a full reactive cascade (filterRows + every
+      // chart card's $derived chain) against the OLD rawRows, then $effect →
+      // initStore() runs the same cascade AGAIN with new rawRows after fetch.
+      // Owner-reported freeze (HANDOFF item 1, 2026-05-05) was 2× ~2-second
+      // cascades = 4221ms blocking. The $effect on data change owns the post-fetch
+      // store update — single cascade. See 16.2-01-trace.md.
       await goto(globalThis.window.location.href, {
         replaceState: true,
         invalidateAll: true,
