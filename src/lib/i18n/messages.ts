@@ -246,7 +246,18 @@ const en = {
   model_avail_why_theta: 'Needs 2+ full yearly cycles to learn the seasonal pattern',
   model_avail_why_naive_dow: 'No fitting — just averages history at the same position (e.g., all Mondays)',
   model_avail_why_chronos: 'Foundation model; promotion gated by Phase 17 backtest harness',
-  model_avail_why_neuralprophet: 'Neural model; promotion gated by Phase 17 backtest harness'
+  model_avail_why_neuralprophet: 'Neural model; promotion gated by Phase 17 backtest harness',
+
+  // --- Event badge strip + popup (Phase 16.3 D-03/D-04/SC3-SC6) ----------
+  event_type_campaign_start:    'Campaign',
+  event_type_transit_strike:    'Transit strike',
+  event_type_school_holiday:    'School holiday',
+  event_type_holiday:           'Public holiday',
+  event_type_recurring_event:   'Recurring event',
+  popup_event_count:            '{n} events',
+  popup_show_all_events:        'Show all {n}',
+  popup_show_fewer:             'Show fewer',
+  event_strip_open_popup:       '{count} events on {date}'
 } as const;
 
 export type MessageKey = keyof typeof en;
@@ -479,7 +490,18 @@ const de: Record<MessageKey, string> = {
   model_avail_why_theta: 'Needs 2+ full yearly cycles to learn the seasonal pattern',
   model_avail_why_naive_dow: 'No fitting — just averages history at the same position (e.g., all Mondays)',
   model_avail_why_chronos: 'Foundation model; promotion gated by Phase 17 backtest harness',
-  model_avail_why_neuralprophet: 'Neural model; promotion gated by Phase 17 backtest harness'
+  model_avail_why_neuralprophet: 'Neural model; promotion gated by Phase 17 backtest harness',
+
+  // --- Event badge strip + popup (Phase 16.3 — DE placeholder = EN; v1.4 backlog) ---
+  event_type_campaign_start:    'Campaign',
+  event_type_transit_strike:    'Transit strike',
+  event_type_school_holiday:    'School holiday',
+  event_type_holiday:           'Public holiday',
+  event_type_recurring_event:   'Recurring event',
+  popup_event_count:            '{n} events',
+  popup_show_all_events:        'Show all {n}',
+  popup_show_fewer:             'Show fewer',
+  event_strip_open_popup:       '{count} events on {date}'
 };
 
 // --- JA (日本語) ----------------------------------------------------------
@@ -709,7 +731,18 @@ const ja: Record<MessageKey, string> = {
   model_avail_why_theta: '季節パターンを学習するには2年以上の周期データが必要',
   model_avail_why_naive_dow: 'モデル学習なし — 同じ位置の過去平均（例：過去の月曜の平均）を使用',
   model_avail_why_chronos: '基盤モデル — Phase 17のバックテストゲート通過後に有効化',
-  model_avail_why_neuralprophet: 'ニューラルモデル — Phase 17のバックテストゲート通過後に有効化'
+  model_avail_why_neuralprophet: 'ニューラルモデル — Phase 17のバックテストゲート通過後に有効化',
+
+  // --- Event badge strip + popup (Phase 16.3 D-03/D-04/SC3-SC6) ----------
+  event_type_campaign_start:    'キャンペーン',
+  event_type_transit_strike:    '交通機関の運休',
+  event_type_school_holiday:    '学校休暇',
+  event_type_holiday:           '祝日',
+  event_type_recurring_event:   '定期イベント',
+  popup_event_count:            '{n}件のイベント',
+  popup_show_all_events:        '{n}件すべて表示',
+  popup_show_fewer:             '折りたたむ',
+  event_strip_open_popup:       '{date}に{count}件のイベント'
 };
 
 // --- ES (Español) ---------------------------------------------------------
@@ -940,7 +973,18 @@ const es: Record<MessageKey, string> = {
   model_avail_why_theta: 'Needs 2+ full yearly cycles to learn the seasonal pattern',
   model_avail_why_naive_dow: 'No fitting — just averages history at the same position (e.g., all Mondays)',
   model_avail_why_chronos: 'Foundation model; promotion gated by Phase 17 backtest harness',
-  model_avail_why_neuralprophet: 'Neural model; promotion gated by Phase 17 backtest harness'
+  model_avail_why_neuralprophet: 'Neural model; promotion gated by Phase 17 backtest harness',
+
+  // --- Event badge strip + popup (Phase 16.3 — ES placeholder = EN; v1.4 backlog) ---
+  event_type_campaign_start:    'Campaign',
+  event_type_transit_strike:    'Transit strike',
+  event_type_school_holiday:    'School holiday',
+  event_type_holiday:           'Public holiday',
+  event_type_recurring_event:   'Recurring event',
+  popup_event_count:            '{n} events',
+  popup_show_all_events:        'Show all {n}',
+  popup_show_fewer:             'Show fewer',
+  event_strip_open_popup:       '{count} events on {date}'
 };
 
 // --- FR (Français) --------------------------------------------------------
@@ -1171,7 +1215,18 @@ const fr: Record<MessageKey, string> = {
   model_avail_why_theta: 'Needs 2+ full yearly cycles to learn the seasonal pattern',
   model_avail_why_naive_dow: 'No fitting — just averages history at the same position (e.g., all Mondays)',
   model_avail_why_chronos: 'Foundation model; promotion gated by Phase 17 backtest harness',
-  model_avail_why_neuralprophet: 'Neural model; promotion gated by Phase 17 backtest harness'
+  model_avail_why_neuralprophet: 'Neural model; promotion gated by Phase 17 backtest harness',
+
+  // --- Event badge strip + popup (Phase 16.3 — FR placeholder = EN; v1.4 backlog) ---
+  event_type_campaign_start:    'Campaign',
+  event_type_transit_strike:    'Transit strike',
+  event_type_school_holiday:    'School holiday',
+  event_type_holiday:           'Public holiday',
+  event_type_recurring_event:   'Recurring event',
+  popup_event_count:            '{n} events',
+  popup_show_all_events:        'Show all {n}',
+  popup_show_fewer:             'Show fewer',
+  event_strip_open_popup:       '{count} events on {date}'
 };
 
 export const messages: Record<Locale, Record<MessageKey, string>> = { en, de, ja, es, fr };
