@@ -37,7 +37,7 @@
 
   const yAxisFormat = (n: number) => formatIntShort(n, 'txn');
   const txnSuffix = $derived(t(page.data.locale, 'txn_suffix'));
-  const formatTxn = (n: number) => `${n} ${txnSuffix}`;
+  const formatTxn = (n: number) => `${n} ${txnSuffix}`;
   const formatForecast = (n: number) => formatIntShort(n);
 
   const VISIT_KEYS = ['1st', '2nd', '3rd', '4x', '5x', '6x', '7x', '8x+'] as const;
