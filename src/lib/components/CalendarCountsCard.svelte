@@ -316,6 +316,7 @@
       <ModelAvailabilityDisclosure
         availableModels={overlay.availableModels}
         grain={getFilters().grain}
+        backtestStatus={overlay.forecastData?.modelBacktestStatus ?? null}
       />
     {/if}
   {/if}
