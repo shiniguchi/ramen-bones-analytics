@@ -1,43 +1,51 @@
 ---
 phase: 17-backtest-gate-quality-monitoring
-verified: 2026-05-06T19:08:05Z
-status: gaps_found
-score: 4/6 must-haves verified
+verified: 2026-05-06T21:35:00Z
+status: passed
+score: 6/6 must-haves verified
 overrides_applied: 0
 re_verification:
-  previous_status: none
-  previous_score: n/a
-  gaps_closed: []
+  previous_status: gaps_found
+  previous_score: 4/6
+  gaps_closed:
+    - "Promotion gate enforces ≥10% RMSE improvement vs the higher of naive_dow / naive_dow_with_holidays at every horizon (BCK-03/BCK-04)"
+    - "Backtest fold-row writes to forecast_daily are cleaned up after every run, success or failure, so dashboard reads never observe `forecast_track LIKE 'backtest_fold_%'` rows"
   gaps_remaining: []
   regressions: []
-gaps:
-  - truth: "Promotion gate enforces ≥10% RMSE improvement vs the higher of naive_dow / naive_dow_with_holidays at every horizon (BCK-03/BCK-04)"
-    status: failed
-    reason: "BL-01 — `_gate_decision` defaults missing baselines to `float('inf')`, so `threshold = inf * 0.9 = inf` and every non-baseline model passes whenever either baseline RMSE is missing. A baseline subprocess crash, zero aligned rows, or any data-quality blip silently turns the gate into a pass-through. This is a security/correctness gate that the phase exists to provide — the failure mode neutralises the central deliverable."
-    artifacts:
-      - path: "scripts/forecast/backtest.py:344-347"
-        issue: "`baseline_dow = mean_rmse.get('naive_dow', float('inf'))` and same for `naive_dow_with_holidays`. `max(inf, x) = inf`, `inf * 0.9 = inf`, `rmse <= inf` is always True for any challenger."
-    missing:
-      - "Replace `float('inf')` defaults with explicit None checks; when either baseline is missing, mark all models for that (kpi, horizon) as PENDING (verdict-undecidable). Baselines are R7 always-on; their absence is a data-quality signal, not a free pass."
-      - "Add a regression test in `test_backtest.py` that constructs `quality_rows` with `naive_dow_with_holidays` missing and asserts `_gate_decision` returns PENDING (or FAIL) for challengers — never PASS. Plan 17-05's existing tests do not cover this path; that is why the bug shipped."
-  - truth: "Backtest fold-row writes to forecast_daily are cleaned up after every run, success or failure, so dashboard reads never observe `forecast_track LIKE 'backtest_fold_%'` rows"
-    status: failed
-    reason: "BL-02 — `_cleanup_sentinel_rows` is called inside the `try:` block (line 649, before `write_success`), not in a `finally:`. Any exception in the fold loop, conformal calibration, gate update, or `write_success` itself escapes via the `except:` handler at line 664, which writes pipeline_runs failure but never deletes the fold rows. Because `forecast_daily_mv` does `DISTINCT ON ... ORDER BY run_date DESC`, a leaked `forecast_track='backtest_fold_3'` row can persist until the same (kpi, model, target_date, run_date) combination is re-written — which never happens for `track='bau'` reads."
-    artifacts:
-      - path: "scripts/forecast/backtest.py:649 (called in try) and 664-676 (except path with no cleanup)"
-        issue: "Cleanup is on the happy path only. The docstring claim 'Cleans backtest_fold_* rows post-eval' is contradicted by the control flow."
-    missing:
-      - "Wrap the cleanup call in a `finally:` block so it runs on both success and failure: `finally: try: _cleanup_sentinel_rows(client, restaurant_id=restaurant_id) except Exception as cleanup_err: print(...)`."
-      - "Add a `test_backtest.py` case that simulates an exception during the fold loop (e.g., raises in `_write_quality_row` mock) and asserts cleanup is still called — currently no test exercises the exception path."
-deferred: []
+  warnings_closed:
+    - WR-01 (silent error swallowing in createForecastOverlay)
+    - WR-03 (ACCURACY-LOG + write_accuracy_log.py Tuesday-cron drift)
+    - WR-04 (NaN qhat → NULL at write boundary; render NULL in ACCURACY-LOG)
+    - WR-05 (quality_gate_check.py dead imports)
+    - WR-06 (quality_gate_check.py loose comprehension)
+    - WR-07 (hardcoded English Backtest column header)
+    - WR-08 (write_accuracy_log.py timestamp string-compare across Z / +00:00 suffixes)
+    - WR-09 (non-deterministic production_model selection in ACCURACY-LOG)
+  warnings_skipped:
+    - WR-02 (auto-scroll RAF cleanup) — explicit non-fix; chains self-terminate at scroll-clamp; refactor not blocker
+deferred:
+  - truth: "forecast-backtest.yml + forecast-quality-gate.yml verified live via gh workflow run on a feature ref"
+    addressed_in: "Phase 17 ship to main (post-merge, structural)"
+    evidence: "`gh workflow run` returns 404 for workflow files that aren't on main yet; verification auto-resolves on merge to main. Logic verified locally (139/139 pytest)."
+gaps: []
 ---
 
 # Phase 17: Backtest Gate & Quality Monitoring — Verification Report
 
 **Phase Goal:** Backtest Gate & Quality Monitoring — rolling-origin CV at 4 horizons + ConformalIntervals + ≥10% RMSE promotion gate + freshness-SLO badges + ACCURACY-LOG.
-**Verified:** 2026-05-06T19:08:05Z
-**Status:** gaps_found
-**Re-verification:** No — initial verification
+**Verified:** 2026-05-06T21:35:00Z
+**Status:** passed
+**Re-verification:** Yes — after gap closure for BL-01, BL-02 + 7 of 8 warnings.
+
+## Re-verification Summary
+
+The 2026-05-06T19:08:05Z verification surfaced two BLOCKERS (BL-01: gate fails open on missing baseline; BL-02: fold-row cleanup not in `finally:`) and 9 warnings. Between then and now (commits `5fdcb2e` → `506305a`):
+
+- **2 blockers closed** with regression tests (BL-01: 5 tests, BL-02: 3 tests).
+- **8 of 9 warnings closed.** WR-02 (RAF cleanup) explicitly skipped — not a defect; the existing chains self-terminate at scroll-clamp, so the absence of cancel-on-rerun is a refactor opportunity, not a fix.
+- **Test totals:** 139 pytest pass (was 131; +8 regression tests for BL-01 + BL-02). 20 vitest UI tests pass (unchanged).
+- **Status flips** from `gaps_found` (4/6) to `passed` (6/6). The two PARTIALLY SATISFIED requirements (BCK-03 + BCK-04) become SATISFIED because their root cause (BL-01) is fixed.
+- **Workflow-on-feature-ref** (BCK-05/06/07 partial) remains structural — auto-resolves at ship to main. Recorded under `deferred:` not `gaps:`.
 
 ## Goal Achievement
 
@@ -45,121 +53,135 @@ deferred: []
 
 | # | Truth | Status | Evidence |
 |---|-------|--------|----------|
-| SC1 | `backtest.py` runs rolling-origin CV at h=7/35/120/365, computes RMSE+MAPE per (model × horizon × fold), writes rows to `forecast_quality` with `evaluation_window='rolling_origin_cv'`; conformal calibration at h=35 with n_windows=4; long horizons UNCALIBRATED until 2y; cold-start PENDING badge | VERIFIED (with documented deviation) | `backtest.py` exists (~770 LOC). Constants `HORIZONS=[7,35,120,365]`, `N_FOLDS=4`, `UNCALIBRATED_HORIZONS=(120,365)`, cold-start PENDING write at lines that gate `if days_history < horizon + N_FOLDS`. **D-03 deviation:** plan/CONTEXT explicitly chose a manual numpy rolling-origin loop over `statsforecast.cross_validation`, and a manual absolute-residual quantile in `conformal.py` over `statsforecast.ConformalIntervals`. Decision recorded in 17-CONTEXT.md D-03 + 17-02-PLAN; substantively equivalent (split-conformal math). 89/89 Phase 17 pytests + 20/20 vitest pass. |
-| SC2 | Gate compares challengers against the higher of `naive_dow` and `naive_dow_with_holidays` RMSE at every horizon | FAILED | `_gate_decision` (`backtest.py:344-347`) computes `baseline = max(naive_dow_rmse, naive_dow_with_holidays_rmse)` correctly when both exist — but defaults missing baselines to `float('inf')`. The infinity propagates through `threshold = inf * 0.9 = inf`, so any challenger passes when either baseline is absent. The "higher of two" rule degrades to a pass-through whenever a baseline subprocess fails — exactly the data-quality scenario where the gate matters. See gap #1. |
-| SC3 | Promotion gate: any model promoted requires ≥10% RMSE improvement vs the regressor-aware naive baseline; gate failure flips `feature_flags.{model}.enabled=false`; baselines never flipped | FAILED | `BASELINE_MODELS=('naive_dow','naive_dow_with_holidays')` constant at `backtest.py:99`; R7 hard guard `if model in BASELINE_MODELS: continue` verified at line 376. `_apply_gate_to_feature_flags` writes `enabled=False` for non-baseline FAIL — verified by 13 `test_gate.py` tests. **Gate threshold logic itself is broken (BL-01)** — the ≥10% improvement threshold collapses to "any improvement vs ∞" when a baseline is missing. The mechanism for flipping flags is correct; the decision feeding it is not. See gap #1. |
-| SC4 | `forecast-backtest.yml` runs weekly Tuesday 23:00 UTC; `forecast-quality-gate.yml` runs on every forecast-engine PR; both <5 min on ubuntu-latest | PARTIAL — accepted | `forecast-quality-gate.yml` correct: `pull_request: paths: scripts/forecast/**`, `timeout-minutes: 5`. **`forecast-backtest.yml` deviates from SC4** — has `push: paths: data/**` + `workflow_dispatch`, NO `schedule:` block. The 17-07-SUMMARY claimed `cron: '0 23 * * 2'` and `test_workflow_yaml.py::test_backtest_cron_tuesday_2300_utc PASSED`, but the workflow file on disk has no schedule. `test_workflow_yaml.py:33` actually asserts `not on_block.get('schedule')` (intentional owner-driven cadence, not a cron). REVIEW WR-03 flags the doc/code drift. The phase explicitly accepts a "merge-deferred + cadence change" PARTIAL per 17-10-SUMMARY. Logic is verified locally (89/89 tests pass); `gh workflow run --ref feature/...` returns 404 because the workflow file isn't on `main` yet. |
-| SC5 | `docs/forecast/ACCURACY-LOG.md` auto-committed weekly with RMSE history per (model × horizon) including PASS/FAIL/PENDING gate verdict; honest-failure copy when no challenger beats naive | VERIFIED (with caveats) | `docs/forecast/ACCURACY-LOG.md` exists (skeleton form; auto-update wired). `write_accuracy_log.py:29-30` defines exact em-dash canonical string `'> naive-DoW-with-holidays remains production model — no challenger promoted this week.'` per BCK-07 spec. PASS/FAIL/PENDING/UNCALIBRATED verdict rendering verified by `test_accuracy_log.py` (6 tests pass). Commit-back step uses `[skip ci]` to prevent recursive triggers. **Caveats:** (a) `qhat = 0.0` is a hardcoded placeholder in `write_accuracy_log.py:224` — the rendered "qhat_95 = 0 EUR" is a placeholder value (REVIEW WR-04); (b) ACCURACY-LOG.md skeleton claims "Auto-generated weekly by ... (Tuesday 23:00 UTC)" which contradicts the actual `push: data/**` trigger (REVIEW WR-03); (c) merge-deferred — the workflow hasn't fired in production yet (404 on feature ref). Logic is correct; first auto-update happens after merge to main + first `data/**` push. |
-| SC6 | Freshness-SLO check: if any cascade stage `upstream_freshness_h > 24`, dashboard renders stale-data badge; CI fault-injection verifies surfacing | VERIFIED | `data_freshness_v` migration 0067 has UNION branch `pipeline_runs WHERE step_name IN (...) AND status='success'`, returns `MIN(stage_last)` (stalest stage) per restaurant. `WITH (security_invoker = true)` and `GRANT SELECT TO authenticated` preserved. `FreshnessLabel.svelte:16,19` — `hours > 30 ? red : hours > 24 ? yellow : zinc` — threshold tightened to 24h per BCK-08. `tests/unit/cards.test.ts` (14 tests pass) covers the boundary cases (23h gray, 25h yellow, 31h red). 17-10-SUMMARY records DEV round-trip pass at 375×667 in ja+en. **Note:** ROADMAP SC6 mentions "deliberate weather-fetch failure in CI verifies the badge surfaces" — no automated CI fault-injection test was added; verification was manual on DEV via Playwright MCP. Acceptable per 17-10 PARTIAL acceptance for this round; not a blocker because the data-layer surfacing is verified. |
+| SC1 | `backtest.py` runs rolling-origin CV at h=7/35/120/365, computes RMSE+MAPE per (model × horizon × fold), writes rows to `forecast_quality` with `evaluation_window='rolling_origin_cv'`; conformal calibration at h=35 with n_windows=4; long horizons UNCALIBRATED until 2y; cold-start PENDING badge | VERIFIED (with documented D-03 deviation) | `backtest.py` (745 LOC) — `HORIZONS=[7,35,120,365]`, `N_FOLDS=4`, `UNCALIBRATED_HORIZONS=(120,365)`, cold-start PENDING write at the per-(kpi,model) cold-start guard. **D-03 deviation:** plan/CONTEXT explicitly chose a manual numpy rolling-origin loop over `statsforecast.cross_validation`, and a manual absolute-residual quantile in `conformal.py` over `statsforecast.ConformalIntervals`. Decision recorded in 17-CONTEXT.md D-03 + 17-02-PLAN; substantively equivalent (split-conformal math). 139/139 pytest + 20/20 vitest pass post-fix. |
+| SC2 | Gate compares challengers against the higher of `naive_dow` and `naive_dow_with_holidays` RMSE at every horizon | VERIFIED | `_gate_decision` (`backtest.py:343-360`) computes `baseline = max(naive_dow_rmse, naive_dow_with_holidays_rmse)` when both are present and finite. **BL-01 fix (commit `5fdcb2e`):** when either baseline is `None`, NaN, or inf, returns `{m: 'PENDING' for m in mean_rmse}` — refuses to compute a verdict rather than letting `inf * 0.9 = inf` silently pass every challenger. 5 regression tests added in `test_backtest.py:221-290` covering all 4 missing-baseline modes (None / NaN / inf / both-missing). |
+| SC3 | Promotion gate: any model promoted requires ≥10% RMSE improvement vs the regressor-aware naive baseline; gate failure flips `feature_flags.{model}.enabled=false`; baselines never flipped | VERIFIED | `BASELINE_MODELS=('naive_dow','naive_dow_with_holidays')` constant at `backtest.py:99`; R7 hard guard `if model in BASELINE_MODELS: continue` verified at line 389. `_apply_gate_to_feature_flags` writes `enabled=False` for non-baseline FAIL — covered by 13 `test_gate.py` tests. **Gate decision logic itself is now correct** post-BL-01 fix: missing baselines route to PENDING (no flip), present baselines route to PASS / FAIL on the ≥10% threshold. The mechanism for flipping flags AND the decision feeding it are both verified. |
+| SC4 | `forecast-backtest.yml` runs weekly Tuesday 23:00 UTC; `forecast-quality-gate.yml` runs on every forecast-engine PR; both <5 min on ubuntu-latest | PARTIAL — accepted (cadence redefined; doc/code drift fixed) | `forecast-quality-gate.yml` correct: `pull_request: paths: scripts/forecast/**`, `timeout-minutes: 5`. **`forecast-backtest.yml` deviates from SC4** — has `push: paths: data/**` + `workflow_dispatch`, NO `schedule:` block. The phase explicitly accepted this owner-driven cadence per 17-10-SUMMARY. **WR-03 fix (`e684dbb`):** doc/code drift reconciled — ACCURACY-LOG.md and `write_accuracy_log.py` no longer claim a Tuesday cron; both now say "owner-driven cadence — no scheduled cron." `gh workflow run --ref feature/...` 404 is structural (workflow file isn't on `main` yet) → auto-resolves post-merge. Recorded under `deferred:` not `gaps:`. |
+| SC5 | `docs/forecast/ACCURACY-LOG.md` auto-committed weekly with RMSE history per (model × horizon) including PASS/FAIL/PENDING gate verdict; honest-failure copy when no challenger beats naive | VERIFIED | Skeleton form committed; auto-update wired. `write_accuracy_log.py:32-35` defines exact em-dash canonical string `'> naive-DoW-with-holidays remains production model — no challenger promoted this week.'` per BCK-07 spec. PASS/FAIL/PENDING/UNCALIBRATED verdict rendering verified by `test_accuracy_log.py` (6 tests pass). Commit-back step uses `[skip ci]` to prevent recursive triggers. **WR-04 fix (`ed68b8b`):** NaN qhat → NULL at backtest.py write boundary (lines 601-604); ACCURACY-LOG renders `qhat_95 = NULL (no calibration data yet)` instead of the prior `0 EUR` placeholder lie. **WR-08 fix (`344ce91`):** timestamp comparison now in datetime space via `_parse_pg_timestamp` helper — no more wrong-by-a-day filter on mixed Z / +00:00 suffixes. **WR-09 fix (`506305a`):** `production_model` selection deterministic via `sorted` by h=7 RMSE asc with alphabetical tie-break. First auto-update fires post-merge on first `data/**` push. |
+| SC6 | Freshness-SLO check: if any cascade stage `upstream_freshness_h > 24`, dashboard renders stale-data badge; CI fault-injection verifies surfacing | VERIFIED | `data_freshness_v` migration 0067 has UNION branch `pipeline_runs WHERE step_name IN (...) AND status='success'`, returns `MIN(stage_last)` (stalest stage) per restaurant. `WITH (security_invoker = true)` and `GRANT SELECT TO authenticated` preserved. `FreshnessLabel.svelte:16,19` — `hours > 30 ? red : hours > 24 ? yellow : zinc` — threshold tightened to 24h per BCK-08. `tests/unit/cards.test.ts` (14 tests pass) covers boundary cases (23h gray, 25h yellow, 31h red). 17-10-SUMMARY records DEV round-trip pass at 375×667 in ja+en. **Note:** ROADMAP SC6 mentions "deliberate weather-fetch failure in CI verifies the badge surfaces" — no automated CI fault-injection test was added; verification was manual on DEV via Playwright MCP. Acceptable per 17-10 PARTIAL acceptance for this round; data-layer surfacing is verified. |
 
-**Score:** 4/6 truths verified (SC1, SC4 [partial-accepted], SC5, SC6); 2 truths FAILED (SC2, SC3 — both blocked by BL-01).
+**Score:** 6/6 truths verified (SC1, SC2, SC3, SC5, SC6 outright; SC4 partial-accepted with cadence redefinition + doc/code drift now fixed).
 
 ### Required Artifacts
 
 | Artifact | Expected | Status | Details |
 |---|---|---|---|
 | `supabase/migrations/0067_phase17_backtest_schema.sql` | ALTER forecast_quality + INSERT feature_flags + DROP/CREATE data_freshness_v | VERIFIED | All 3 sections present, RLS preserved, 8 step_name literals match `*_fit.py` constants. |
-| `supabase/migrations/0068_phase17_backtest_schema_gap.sql` | Gap closure (qhat column + NULLABLE relax + CHECK constraint) | VERIFIED | All 3 ALTERs present; `forecast_quality_rolling_origin_cv_verdict_required` constraint enforces gate_verdict NOT NULL on `rolling_origin_cv` rows. (Migration was originally promised in plan 17-01 but landed in a follow-up 0068 — cosmetic split.) |
+| `supabase/migrations/0068_phase17_backtest_schema_gap.sql` | Gap closure (qhat column + NULLABLE relax + CHECK constraint) | VERIFIED | All 3 ALTERs present; `forecast_quality_rolling_origin_cv_verdict_required` constraint enforces gate_verdict NOT NULL on `rolling_origin_cv` rows. |
 | `scripts/forecast/conformal.py` | Pure function `calibrate_conformal_h35(fold_residuals, alpha=0.05) -> {'qhat_h35': float}` | VERIFIED | 30 LOC, only numpy import; 5/5 tests pass; cold-start returns nan; absolute-residual quantile math correct. |
-| `scripts/forecast/naive_dow_with_holidays_fit.py` | Regressor-aware naive baseline; STEP_NAME='forecast_naive_dow_with_holidays'; honors FORECAST_TRACK env var | VERIFIED | Renamed (originally `naive_dow_with_holidays.py` — defect 119ad45). MODEL_NAME, STEP_NAME, FORECAST_TRACK env read all confirmed via grep. 6/6 helper tests pass. |
-| `scripts/forecast/{sarimax,prophet,ets,theta,naive_dow}_fit.py` argparse retrofit | --train-end/--eval-start/--fold-index + FORECAST_TRACK env var | VERIFIED | 15/15 parametrized tests in `test_fit_scripts_argparse.py` pass. All 5 scripts grep-confirmed for `track = os.environ.get('FORECAST_TRACK', 'bau')` and `train_end=train_end_override`. |
-| `scripts/forecast/backtest.py` | Rolling-origin CV driver, gate writer, conformal calibration | EXISTS, BL-01 + BL-02 | File exists with all required constants and helpers. R7 baseline-skip guard verified. **However**, `_gate_decision` (lines 344-347) silently passes challengers when baselines missing (BL-01); `_cleanup_sentinel_rows` not in `finally:` block (BL-02). |
-| `scripts/forecast/run_all.py` | feature_flags AND-intersect + DEFAULT_MODELS includes naive_dow_with_holidays | VERIFIED | `_get_enabled_models` helper (line 60) + `env_set & db_set` intersect (line 262) + DEFAULT_MODELS extended (line 35). Graceful fallback on DB read failure. 6/6 tests pass. |
-| `.github/workflows/forecast-backtest.yml` | Weekly cron + commit-back of ACCURACY-LOG.md | DRIFT vs SC4 wording | Has `push: paths: data/**` + `workflow_dispatch`, NO schedule. SC4 mandates "weekly Tuesday 23:00 UTC". Documented in 17-10 as merge-deferred PARTIAL with owner-driven cadence justification, but the disk file does NOT match the SC4 contract verbatim. The phase has accepted this; flagged here for visibility, not as a blocker. |
+| `scripts/forecast/naive_dow_with_holidays_fit.py` | Regressor-aware naive baseline; STEP_NAME='forecast_naive_dow_with_holidays'; honors FORECAST_TRACK env var | VERIFIED | Renamed (defect 119ad45). MODEL_NAME, STEP_NAME, FORECAST_TRACK env read all confirmed. 6/6 helper tests pass. |
+| `scripts/forecast/{sarimax,prophet,ets,theta,naive_dow}_fit.py` argparse retrofit | --train-end/--eval-start/--fold-index + FORECAST_TRACK env var | VERIFIED | 15/15 parametrized tests in `test_fit_scripts_argparse.py` pass. |
+| `scripts/forecast/backtest.py` | Rolling-origin CV driver, gate writer, conformal calibration | VERIFIED (BL-01 + BL-02 closed) | File exists with all required constants and helpers. R7 baseline-skip guard verified. **BL-01 fix (`5fdcb2e`)**: `_gate_decision` lines 343-358 returns PENDING when baseline is None/NaN/inf — 5 regression tests at `test_backtest.py:221-290`. **BL-02 fix (`9afd7f5`)**: `_cleanup_sentinel_rows` now in `finally:` block at lines 701-716 — 3 regression tests at `test_backtest.py:351,384,410`. **WR-04 fix (`ed68b8b`)**: NaN qhat → NULL at write boundary, lines 601-604. |
+| `scripts/forecast/run_all.py` | feature_flags AND-intersect + DEFAULT_MODELS includes naive_dow_with_holidays | VERIFIED | `_get_enabled_models` helper + `env_set & db_set` intersect + DEFAULT_MODELS extended. Graceful fallback on DB read failure. 6/6 tests pass. |
+| `.github/workflows/forecast-backtest.yml` | Weekly cron + commit-back of ACCURACY-LOG.md | DEVIATION ACCEPTED | Has `push: paths: data/**` + `workflow_dispatch`. Owner-driven cadence per 17-10. WR-03 fix reconciled docstring + ACCURACY-LOG header to match this trigger. SC4 cadence-redefinition deferred to ship time. |
 | `.github/workflows/forecast-quality-gate.yml` | PR-time gate, <5 min, contents:read | VERIFIED | All correct. Cold-start safety in `quality_gate_check.py` returns 0 when no rolling_origin_cv rows yet. |
-| `docs/forecast/ACCURACY-LOG.md` | Skeleton + append-only weekly history + honest-failure copy | VERIFIED (skeleton only) | File exists with valid Markdown structure. History section empty until first auto-update fires post-merge. Honest-failure canonical string defined in `write_accuracy_log.py:29-30`. |
-| `scripts/forecast/quality_gate_check.py` | Read-only DB gate; <5 min; cold-start PASS | VERIFIED | Cold-start handled (empty enabled_models -> []; empty verdicts -> []). 9/9 tests pass. |
-| `scripts/forecast/write_accuracy_log.py` | Render ACCURACY-LOG from forecast_quality with verdicts + qhat | VERIFIED (qhat=0 placeholder) | Function-level rendering correct; `qhat = 0.0` hardcoded at line 224 (REVIEW WR-04) — published log will show "qhat_95 = 0 EUR" until a future plan wires the real value. Not a blocker. |
-| `src/lib/components/ModelAvailabilityDisclosure.svelte` | Backtest verdict pills column with 4 horizon cells per model | VERIFIED | 5th column added (line 143) with 4 pills per row using `verdictColorClass()` + i18n. **Header is hardcoded English `Backtest`** (REVIEW WR-07) — not localised; not a blocker but inconsistent with other column headers. |
+| `docs/forecast/ACCURACY-LOG.md` | Skeleton + append-only weekly history + honest-failure copy | VERIFIED | File exists with valid Markdown structure. **WR-03 fix (`e684dbb`)**: header line 3 now reads "Auto-generated by `.github/workflows/forecast-backtest.yml` on `workflow_dispatch` and on every `data/**` push (owner-driven cadence — no scheduled cron)." History section empty until first auto-update fires post-merge. |
+| `scripts/forecast/quality_gate_check.py` | Read-only DB gate; <5 min; cold-start PASS | VERIFIED | Cold-start handled; **WR-05 fix (`ccf857c`)**: imports list trimmed to `import sys` + `from scripts.forecast.db import make_client`. **WR-06 fix (same commit)**: comprehension tightened to `if row['flag_key'].startswith('model_') and row.get('enabled') is True` — no more loose `else row['flag_key']` fallthrough or truthy `get('enabled', True)` admit-by-default. 9/9 tests pass. |
+| `scripts/forecast/write_accuracy_log.py` | Render ACCURACY-LOG from forecast_quality with verdicts + qhat | VERIFIED | **WR-03 fix (`e684dbb`)**: docstring now describes the actual `workflow_dispatch + data/** push` trigger, not a fictional Tuesday cron. **WR-04 fix (`ed68b8b`)**: `_render_latest_run` accepts `qhat: float \| None`, renders `qhat_95 = NULL` when None / NaN / inf; `main()` passes `qhat = None` until BCK-02 wires the DB read. **WR-08 fix (`344ce91`)**: `_parse_pg_timestamp` helper + datetime-space comparison `dt >= cutoff` — no more lexicographic wrong-by-a-day filter on Z vs +00:00 mixed inputs. **WR-09 fix (`506305a`)**: `production_model` selected by `sorted(... key=lambda m: (h7_rmse_raw or inf, m))` — deterministic by lowest h=7 RMSE with alphabetical tie-break. |
+| `src/lib/components/ModelAvailabilityDisclosure.svelte` | Backtest verdict pills column with 4 horizon cells per model | VERIFIED | 5th column with 4 pills per row using `verdictColorClass()` + i18n. **WR-07 fix (`3933c82`)**: line 143 now uses `{t(page.data.locale, 'model_avail_col_backtest')}` — header is localised in all 5 locales (`messages.ts:235, 492, 744, 997, 1250` confirmed via grep). |
 | `src/lib/components/FreshnessLabel.svelte` | Yellow >24h, red >30h thresholds | VERIFIED | Line 16: `hours > 30 ? ... : ''`; Line 19: `hours > 30 ? text-red-600 : hours > 24 ? text-yellow-600 : text-zinc-500`. |
+| `src/lib/forecastOverlay.svelte.ts` | Overlay state machine with /api/forecast hydration | VERIFIED | **WR-01 fix (`51a03bf`)**: line 141 logs `console.error('[forecastOverlay] /api/forecast failed:', err)` BEFORE `forecastData = null`. The 2026-04-17 silent-error pattern (memory: feedback_silent_error_isolation) is no longer re-introduced. |
 | `src/routes/api/forecast/+server.ts` | `modelBacktestStatus` field returned | VERIFIED | Reads `forecast_quality WHERE evaluation_window='rolling_origin_cv'`, deduplicates latest verdict per (model, horizon), returns `Record<model, {h7,h35,h120,h365}>`. |
 
 ### Key Link Verification
 
 | From | To | Via | Status | Details |
 |---|---|---|---|---|
-| `backtest.py` | `conformal.py::calibrate_conformal_h35` | import | WIRED | Imported at line 30; called per (kpi, model) in conformal calibration phase. |
+| `backtest.py` | `conformal.py::calibrate_conformal_h35` | import | WIRED | Imported at line 30; called per (kpi, model) in conformal calibration phase; result NaN/None-normalised before DB write. |
 | `backtest.py` | `last_7_eval.py::compute_metrics` | import | WIRED | Imported at line 28; called per fold to compute RMSE/MAPE/bias. |
-| `backtest.py` | `public.forecast_quality` | client.upsert | WIRED | `_write_quality_row` upserts diagnostic columns including `gate_verdict='PENDING'` initially, then UPDATEd with PASS/FAIL in second pass. Verified at lines 600-624. |
-| `backtest.py` | `public.feature_flags` | `.update({'enabled': False})` on FAIL | WIRED (but conditioned on broken gate) | `_apply_gate_to_feature_flags` writes the flip correctly; **upstream gate decision is broken (BL-01)** so this WIRED behavior receives the wrong inputs. Mechanism PASS, semantics FAIL. |
+| `backtest.py` | `public.forecast_quality` | client.upsert | WIRED | `_write_quality_row` upserts diagnostic columns including `gate_verdict='PENDING'` initially, then UPDATEd with PASS/FAIL in second pass (or PENDING when baselines missing — BL-01 fix). |
+| `backtest.py` | `public.feature_flags` | `.update({'enabled': False})` on FAIL | WIRED (gate now correct) | `_apply_gate_to_feature_flags` writes the flip; **upstream gate decision is now correct (BL-01 closed)** so the WIRED behavior receives the right inputs. |
 | `backtest.py` subprocess fits | `forecast_daily` track-scoped rows | `FORECAST_TRACK=backtest_fold_{N}` env var | WIRED | All 5 fit scripts honor FORECAST_TRACK; `_fetch_fold_yhats` reads back by `forecast_track=backtest_fold_{N}`. |
+| `backtest.py` | `_cleanup_sentinel_rows` | called in `finally:` block | WIRED (BL-02 closed) | Lines 701-716 — cleanup unconditional on success/failure, with inner try/except so cleanup-failure logs without raising. |
 | `run_all.py` | `feature_flags` AND-intersect | `_get_enabled_models` | WIRED | Verified via grep + tests. Graceful fallback to env_set on DB read failure. |
 | `forecast-quality-gate.yml` | `quality_gate_check.py` | `python -m scripts.forecast.quality_gate_check` | WIRED | Workflow runs the script; script exits 1 on enabled FAIL. |
 | `+page.server.ts` | `data_freshness_v` (with forecast cascade UNION) | `.from('data_freshness_v').select('last_ingested_at')` | WIRED | View contract preserved; SSR call unchanged; cascade stages now feed the badge. |
 | `ModelAvailabilityDisclosure.svelte` | `/api/forecast::modelBacktestStatus` | prop wired in CalendarRevenueCard + CalendarCountsCard | WIRED | `backtestStatus={overlay.forecastData?.modelBacktestStatus ?? null}` on both Calendar cards. Pill renders `verdictColorClass(status)` with cold-start gray fallback. |
+| `forecastOverlay.svelte.ts` | `/api/forecast` (error path) | console.error before state clear | WIRED (WR-01 closed) | Errors visible in browser console for DEV-time / QA debugging. |
 
 ### Data-Flow Trace (Level 4)
 
 | Artifact | Data Variable | Source | Produces Real Data | Status |
 |---|---|---|---|---|
-| `ModelAvailabilityDisclosure.svelte` backtest pills | `backtestStatus` prop | `/api/forecast` returns `modelBacktestStatus` from `forecast_quality WHERE evaluation_window='rolling_origin_cv'` | DEV round-trip showed cold-start (no rolling_origin_cv rows in DEV yet) — pills correctly fall back to gray PENDING. Round B per 17-10 wrote >0 rolling_origin_cv rows during a live workflow_dispatch run; pills were verified live. | FLOWING |
+| `ModelAvailabilityDisclosure.svelte` backtest pills | `backtestStatus` prop | `/api/forecast` returns `modelBacktestStatus` from `forecast_quality WHERE evaluation_window='rolling_origin_cv'` | DEV round-trip Round B per 17-10 wrote >0 rolling_origin_cv rows during a live workflow_dispatch run; pills verified live. | FLOWING |
 | `FreshnessLabel.svelte` | `lastIngestedAt` | `data_freshness_v.last_ingested_at` (now MIN over transactions + pipeline_runs forecast steps) | UNION branch returns real `MAX(finished_at)` from real `pipeline_runs` rows on DEV; threshold logic verified in unit tests. | FLOWING |
-| `ACCURACY-LOG.md` | rendered Markdown | `forecast_quality` rolling_origin_cv rows + `latest evaluated_at week filter` | Function correctly groups by (model, horizon) + verdict — but `qhat = 0.0` is hardcoded; published number is meaningless until wired (REVIEW WR-04). | STATIC (qhat) / FLOWING (RMSE+verdict) |
+| `ACCURACY-LOG.md` | rendered Markdown | `forecast_quality` rolling_origin_cv rows + datetime-space cutoff filter | Function correctly groups by (model, horizon) + verdict. **qhat now renders NULL when source is None / NaN / inf** (WR-04 fix) instead of placeholder `0 EUR`. **production_model deterministic** by h=7 RMSE asc + alphabetical tie-break (WR-09 fix). **Cutoff filter correct** across mixed Z / +00:00 suffix formats (WR-08 fix). | FLOWING |
 
 ### Behavioral Spot-Checks
 
 | Behavior | Command | Result | Status |
 |---|---|---|---|
-| Phase 17 pytest suite green | `python3 -m pytest scripts/forecast/tests/test_{backtest,gate,conformal,naive_dow_with_holidays,quality_gate_check,run_all_feature_flags,workflow_yaml,accuracy_log,fit_scripts_argparse}.py` | 89 passed in 15.26s | PASS |
+| Phase 17 pytest suite green (post-fix +8 regression) | `python3 -m pytest scripts/forecast/tests/ -q` | 139 passed in 16.76s | PASS |
 | Phase 17 vitest UI suite green | `npm run test -- --run tests/unit/ModelAvailabilityDisclosure.test.ts tests/unit/cards.test.ts` | Test Files 2 passed (2); Tests 20 passed (20) | PASS |
-| `backtest.py --help` exits 0 | `python -m scripts.forecast.backtest --help` | (per 17-05-SUMMARY) usage shown with --models / --run-date | PASS (verified in summary; not re-run here) |
-| `quality_gate_check.py` cold-start exits 0 | `python -m scripts.forecast.quality_gate_check` (against DEV with no rolling_origin_cv rows) | per 17-08-SUMMARY: `[quality_gate_check] PASS — ... or no rolling_origin_cv rows yet.` | PASS |
+| BL-01 regression tests cover all 4 missing-baseline modes | grep `test_backtest.py` for None / NaN / inf / both-missing assertions | 5 tests at lines 221-290 — all assert `verdicts['sarimax'] == 'PENDING'`; explicit "NO model gets PASS when a baseline is missing" comment | PASS |
+| BL-02 regression tests cover exception-during-fold path | grep `test_backtest.py` for monkeypatch + cleanup spy assertions | 3 tests at lines 351, 384, 410 — assert `_cleanup_sentinel_rows` called even when fold raises, and that cleanup-failure swallows itself in the finally block | PASS |
+| WR-03 cron-claim removal | `grep -n "Tuesday\|cron\|0 23" docs/forecast/ACCURACY-LOG.md scripts/forecast/write_accuracy_log.py` | No Tuesday claims; remaining "cron" mentions are explicit denials ("no scheduled cron") and a placeholder-skeleton fallback string | PASS |
+| WR-07 i18n key present in all 5 locales | `grep -n "model_avail_col_backtest" src/lib/i18n/messages.ts` | 5 hits at lines 235 / 492 / 744 / 997 / 1250 (en/de/ja/es/fr) | PASS |
 | Migration 0067 + 0068 applied to DEV | DB MCP information_schema check | per 17-10-SUMMARY Round-A evidence: 5 new columns visible; 6 model_% rows seeded; data_freshness_v references pipeline_runs | PASS |
 
 ### Requirements Coverage
 
 | Requirement | Source Plan(s) | Description | Status | Evidence |
 |---|---|---|---|---|
-| BCK-01 | 17-04, 17-05 | Rolling-origin CV at 4 horizons; RMSE+MAPE per (model × horizon × fold) → forecast_quality | SATISFIED (with D-03 deviation) | Manual numpy loop replaces statsforecast.cross_validation per documented D-03 lock; same observable contract (4 folds, 4 horizons, RMSE/MAPE/bias rows in forecast_quality with evaluation_window='rolling_origin_cv'). |
-| BCK-02 | 17-02, 17-05, 17-09 | Conformal CI calibration at h=35 (n_windows=4); UI badge for UNCALIBRATED at h=120/365 | SATISFIED | `conformal.py::calibrate_conformal_h35` uses split-conformal absolute-residual quantile (Vovk/Shafer); pooled across N_FOLDS=4 fold residuals at h=35; result written to `forecast_quality.qhat`. UNCALIBRATED verdict applied to h=120/365 unconditionally in `_gate_decision`. UI: 4-horizon pills with i18n'd `model_avail_backtest_uncalibrated` rendering. |
-| BCK-03 | 17-03, 17-05 | Regressor-aware naive baseline; gate uses higher of two naive RMSEs | PARTIALLY SATISFIED | `naive_dow_with_holidays_fit.py` correctly implements multiplicative holiday-flag-combo multiplier with same exog regressors as competing models. Gate `max(naive_dow, naive_dow_with_holidays)` formula present at backtest.py:346. **HOWEVER:** baseline-missing path silently bypasses the comparison (BL-01 — see gap #1). Spec is satisfied when both baselines run successfully; spec is NOT satisfied when either fails. |
-| BCK-04 | 17-01, 17-05, 17-06 | Promotion gate: ≥10% RMSE improvement vs naive baseline; gate failure flips feature_flags; run_all honors flags | PARTIALLY SATISFIED | feature_flags seed (0067) + AND-intersect read in run_all.py + R7 baseline-skip guard all VERIFIED. Gate-flip MECHANISM correct. **Gate DECISION broken via BL-01** — when a baseline RMSE is missing, threshold becomes infinite and every challenger PASSes. The promotion gate is not actually a gate under that failure mode. See gap #1. |
-| BCK-05 | 17-07 | `forecast-backtest.yml` weekly Tuesday 23:00 UTC | DEVIATION ACCEPTED | Workflow exists with `push: paths: data/**` + `workflow_dispatch`. No schedule:cron. Owner-driven cadence (per 17-10 SUMMARY decision). Documentation in `ACCURACY-LOG.md:3` and `write_accuracy_log.py:36` still claim Tuesday cron — REVIEW WR-03 doc/code drift. Phase explicitly accepts this in 17-10. SC4 wording is not literally satisfied; phase decided to redefine the cadence. |
-| BCK-06 | 17-08 | `forecast-quality-gate.yml` PR-time gate, <5 min | SATISFIED | Workflow + script + tests all green. PARTIAL on workflow_dispatch verification (404 on feature ref) is merge-deferred. Logic verified locally. |
-| BCK-07 | 17-07 | `docs/forecast/ACCURACY-LOG.md` auto-committed weekly with PASS/FAIL/PENDING verdicts; honest-failure copy when no challenger | SATISFIED (skeleton + first run merge-deferred) | Skeleton committed; `write_accuracy_log.py` renders correctly per 6 unit tests. qhat=0 placeholder is a known follow-up (WR-04). First auto-commit fires post-merge on first `data/**` push. |
+| BCK-01 | 17-04, 17-05 | Rolling-origin CV at 4 horizons; RMSE+MAPE per (model × horizon × fold) → forecast_quality | SATISFIED (with D-03 deviation) | Manual numpy loop replaces statsforecast.cross_validation per documented D-03 lock; same observable contract. |
+| BCK-02 | 17-02, 17-05, 17-09 | Conformal CI calibration at h=35 (n_windows=4); UI badge for UNCALIBRATED at h=120/365 | SATISFIED | `conformal.py::calibrate_conformal_h35` uses split-conformal absolute-residual quantile; pooled across N_FOLDS=4 fold residuals at h=35; result written to `forecast_quality.qhat` (NULL on cold-start post-WR-04). UNCALIBRATED verdict applied to h=120/365 unconditionally in `_gate_decision`. UI: 4-horizon pills with i18n'd `model_avail_backtest_uncalibrated` rendering. |
+| BCK-03 | 17-03, 17-05 | Regressor-aware naive baseline; gate uses higher of two naive RMSEs | SATISFIED | `naive_dow_with_holidays_fit.py` correctly implements multiplicative holiday-flag-combo multiplier with same exog regressors as competing models. Gate `max(naive_dow, naive_dow_with_holidays)` formula present at backtest.py:359. **BL-01 fix:** missing-baseline path now returns PENDING (not silent pass). 5 regression tests cover the 4 missing-baseline modes. |
+| BCK-04 | 17-01, 17-05, 17-06 | Promotion gate: ≥10% RMSE improvement vs naive baseline; gate failure flips feature_flags; run_all honors flags | SATISFIED | feature_flags seed (0067) + AND-intersect read in run_all.py + R7 baseline-skip guard all VERIFIED. Gate-flip MECHANISM correct. **Gate DECISION now correct via BL-01 fix** — when a baseline RMSE is missing, all models in the slice get PENDING; threshold is computed only when both baselines are present and finite. |
+| BCK-05 | 17-07 | `forecast-backtest.yml` weekly Tuesday 23:00 UTC | DEVIATION ACCEPTED (cadence redefined) | Workflow exists with `push: paths: data/**` + `workflow_dispatch`. Owner-driven cadence (per 17-10 SUMMARY decision). **WR-03 fix:** documentation in `ACCURACY-LOG.md:3` and `write_accuracy_log.py:4,39` now correctly describes the actual trigger — no more Tuesday cron claim. SC4 wording redefined with explicit phase-level acceptance. |
+| BCK-06 | 17-08 | `forecast-quality-gate.yml` PR-time gate, <5 min | SATISFIED | Workflow + script + tests all green. WR-05+06 closed (dead imports removed; comprehension tightened). PARTIAL on workflow_dispatch verification (404 on feature ref) is structural — auto-resolves at ship to main. |
+| BCK-07 | 17-07 | `docs/forecast/ACCURACY-LOG.md` auto-committed weekly with PASS/FAIL/PENDING verdicts; honest-failure copy when no challenger | SATISFIED (skeleton + first run merge-deferred) | Skeleton committed; `write_accuracy_log.py` renders correctly per 6 unit tests. WR-03 / WR-04 / WR-08 / WR-09 all closed. First auto-commit fires post-merge on first `data/**` push. |
 | BCK-08 | 17-01, 17-09 | Freshness-SLO badge when any cascade stage >24h stale; CI fault-injection verifies | SATISFIED at data layer | data_freshness_v UNION branch + FreshnessLabel 24h threshold verified end-to-end on DEV. CI fault-injection test (SC6 sub-clause) not implemented; not a blocker per phase scope. |
 
-**Coverage:** 8/8 BCK requirements accounted for. 5 SATISFIED outright, 2 PARTIALLY SATISFIED (BCK-03 + BCK-04, both blocked on BL-01), 1 with accepted deviation (BCK-05 cadence redefined).
+**Coverage:** 8/8 BCK requirements accounted for. 7 SATISFIED outright, 1 with accepted deviation (BCK-05 cadence redefined; doc/code drift now reconciled).
 
-### Anti-Patterns Found
+### Anti-Patterns Found (post-fix re-scan)
 
-| File | Line | Pattern | Severity | Impact |
+| File | Line | Pattern | Severity | Status |
 |---|---|---|---|---|
-| `scripts/forecast/backtest.py` | 344-347 | `float('inf')` default for missing baseline → silent gate bypass | BLOCKER | Gate fails open. Source of gap #1. |
-| `scripts/forecast/backtest.py` | 435-676 | `_cleanup_sentinel_rows` outside `finally:` | BLOCKER | Fold rows leak into forecast_daily on exception; `forecast_daily_mv DISTINCT ON` keeps stale rows visible. Source of gap #2. |
-| `src/lib/forecastOverlay.svelte.ts` | 135 | `.catch(() => { forecastData = null })` swallows error silently | WARNING (REVIEW WR-01) | Re-introduces the 2026-04-17 incident pattern. Already in project memory `feedback_silent_error_isolation`. Not a blocker but a regression risk against an existing lesson. |
-| `src/lib/components/CalendarRevenueCard.svelte` | 219-244 | RAF chain has no cancellation → race on rapid effect re-runs | WARNING (REVIEW WR-02) | UX scroll jitter; `lastSetScrollLeft` desync. Not a blocker. |
-| `docs/forecast/ACCURACY-LOG.md` & `scripts/forecast/write_accuracy_log.py:36` | 3 / 36 | Claim "Tuesday 23:00 UTC cron" that doesn't exist in workflow | WARNING (REVIEW WR-03) | Doc/code drift. Misleads future maintainers. Cosmetic but persistent. |
-| `scripts/forecast/backtest.py` | 594 (call site) + `conformal.py:34,42` | NaN written to `forecast_quality.qhat` on cold-start | WARNING (REVIEW WR-04) | Postgres accepts NaN in double precision but downstream consumers querying `WHERE qhat IS NOT NULL` see it as "present"; format-time crashes possible. |
-| `scripts/forecast/quality_gate_check.py` | 13-15 | Dead imports (`defaultdict`, `datetime`, `Optional`) | INFO (REVIEW WR-05) | Linter trip; cold-start time penalty on 5-min PR gate. Cosmetic. |
-| `scripts/forecast/quality_gate_check.py` | 30-33 | `else row['flag_key']` branch can leak unprefixed flag keys; `if row.get('enabled', True)` admits unknown rows | WARNING (REVIEW WR-06) | Defense-in-depth comprehension is the OPPOSITE of defensive. Not a blocker because `.like('flag_key', 'model_%')` filter at line 25 currently makes the path unreachable. |
-| `src/lib/components/ModelAvailabilityDisclosure.svelte` | 143 | Hardcoded English `Backtest` column header in i18n'd table | WARNING (REVIEW WR-07) | Non-EN locales (DE/JA/ES/FR) see English header above localised pills. Cosmetic. |
-| `scripts/forecast/write_accuracy_log.py` | 78-82 | String comparison of timestamps with mixed `Z` vs `+00:00` suffixes | WARNING (REVIEW WR-08) | Wrong-by-a-day filter possible when PostgREST mixes formats. |
-| `scripts/forecast/write_accuracy_log.py` | 224 | `qhat = 0.0` hardcoded placeholder | WARNING (REVIEW WR-04 cont.) | Published "qhat_95 = 0 EUR" is a placeholder lie until BCK-02 wired. |
-| `scripts/forecast/write_accuracy_log.py` | 231-235 | `production_model` non-deterministic on multi-PASS challengers | WARNING (REVIEW WR-09) | ACCURACY-LOG header could flicker between sarimax/ets across runs without an actual model change. |
+| `scripts/forecast/backtest.py` | 343-358 | Missing-baseline → PENDING (was: `float('inf')` silent pass-through) | RESOLVED | BL-01 fix `5fdcb2e` |
+| `scripts/forecast/backtest.py` | 701-716 | `_cleanup_sentinel_rows` in `finally:` block (was: only on happy path) | RESOLVED | BL-02 fix `9afd7f5` |
+| `scripts/forecast/backtest.py` | 595-604 | NaN qhat → NULL at DB write boundary (was: NaN persisted to forecast_quality.qhat) | RESOLVED | WR-04 fix `ed68b8b` |
+| `src/lib/forecastOverlay.svelte.ts` | 135-143 | `console.error` before state clear (was: silent `.catch(() => null)`) | RESOLVED | WR-01 fix `51a03bf` |
+| `src/lib/components/CalendarRevenueCard.svelte` | 219-244 | RAF chain has no cancellation on rapid effect re-runs | INFO (skipped) | WR-02 — explicit non-fix; chains self-terminate at scroll-clamp; refactor not blocker |
+| `docs/forecast/ACCURACY-LOG.md` & `scripts/forecast/write_accuracy_log.py` | 3 / 4, 39 | Doc/code drift on cron schedule | RESOLVED | WR-03 fix `e684dbb` |
+| `scripts/forecast/quality_gate_check.py` | 1-15 | Imports list minimal (was: 3 dead imports) | RESOLVED | WR-05 fix `ccf857c` |
+| `scripts/forecast/quality_gate_check.py` | 34-38 | Tightened comprehension (was: leaky else fallthrough + truthy enabled default) | RESOLVED | WR-06 fix `ccf857c` |
+| `src/lib/components/ModelAvailabilityDisclosure.svelte` | 143 | i18n'd column header (was: hardcoded English "Backtest") | RESOLVED | WR-07 fix `3933c82` |
+| `scripts/forecast/write_accuracy_log.py` | 65-101 | Datetime-space timestamp comparison via `_parse_pg_timestamp` (was: lexicographic compare across mixed Z / +00:00) | RESOLVED | WR-08 fix `344ce91` |
+| `scripts/forecast/write_accuracy_log.py` | 285-297 | Deterministic `production_model` selection (was: dict-order-dependent) | RESOLVED | WR-09 fix `506305a` |
+
+**Net:** 2 BLOCKERS resolved, 8 of 9 warnings resolved, 1 warning explicitly skipped (WR-02 — non-defect).
 
 ### Human Verification Required
 
-None. All required behaviors are either programmatically verifiable in the test suite or covered by the 17-10 phase-final QA Round-trip evidence on DEV. The two BLOCKERS surfaced by the code review are observable failure modes in the code itself and require code fixes, not human judgement.
+None. All required behaviors are programmatically verified in the test suite or covered by the 17-10 phase-final QA Round-trip evidence on DEV. Both BLOCKERS surfaced by the prior verification have been fixed and are covered by 8 new regression tests.
+
+### Deferred Items
+
+Items addressed structurally by ship-to-main; not actionable in-phase gaps.
+
+| # | Item | Addressed In | Evidence |
+|---|---|---|---|
+| 1 | `forecast-backtest.yml` + `forecast-quality-gate.yml` verified live via `gh workflow run` on a feature ref | Phase 17 ship to main | `gh workflow run --ref feature/...` returns 404 because workflow files aren't on main yet — auto-resolves on merge. Logic verified locally (139/139 pytest); DEV round-trip Round B per 17-10 already exercised both workflows via workflow_dispatch on a separate ref. |
 
 ### Gaps Summary
 
-Phase 17 ships a structurally complete backtest + gate + freshness pipeline. 4 of 6 ROADMAP success criteria are verified in code and tests; 1 has an accepted owner-cadence deviation (SC4); the remaining 2 (SC2 + SC3 — the gate's central correctness contract) are FAILED through a single root cause: the `_gate_decision` function silently passes any challenger when a baseline RMSE is missing.
+**No gaps remain.** Phase 17 ships a structurally complete and behaviorally correct backtest + gate + freshness pipeline:
 
-The two BLOCKERS share a theme: **the happy path is well-tested, the failure path is not**. BL-01 turns a missing baseline (a data-quality signal) into a pass-through. BL-02 turns an exception during fold execution into pollution of the BAU dashboard's `forecast_daily` reads. Plan 17-05's 33-test suite (TestFoldCutoffs, TestUncalibratedHorizons, TestGateDecision, TestGate*) covers the math and the happy-path mechanics but does not exercise either of these failure paths.
+- 6 of 6 ROADMAP success criteria verified (SC4 with explicit cadence-redefinition acceptance + drift now fixed).
+- 8 of 8 BCK requirements satisfied.
+- Both prior BLOCKERS (BL-01 gate-bypass, BL-02 fold-row leak) are fixed with comprehensive regression test coverage in the failure paths that were previously untested.
+- 8 of 9 prior warnings resolved; WR-02 explicitly skipped as a refactor opportunity, not a defect.
+- Test suite grew from 131 → 139 pytest (the 8 new tests target exactly the previously-untested failure paths).
 
-Both fixes are small (≤10 LOC each) and well-localised:
+The "happy path well tested, failure path not" theme that produced both BLOCKERS has been directly addressed: BL-01 now has 5 missing-baseline regression tests (None / NaN / inf / both-missing); BL-02 now has 3 exception-during-fold regression tests (forced exception + cleanup spy + cleanup-self-failure). Plan 17-05's existing TestFoldCutoffs / TestUncalibratedHorizons / TestGateDecision suite continues to cover the math; the new tests bolt on the failure-mode coverage that was missing.
 
-1. **BL-01 (gap #1):** Replace `float('inf')` defaults with explicit None checks in `_gate_decision`. When either baseline is missing, return PENDING for all models in that (kpi, horizon) slice. Add a regression test.
-2. **BL-02 (gap #2):** Move `_cleanup_sentinel_rows` into a `finally:` block. Add a test that simulates an exception during the fold loop and asserts cleanup still runs.
+The cadence redefinition (BCK-05 cron → `push:data/**`) remains a phase-level decision with explicit acceptance in 17-10; WR-03 reconciled the documentation so future maintainers see the actual trigger. The workflow-on-feature-ref structural deferral resolves on ship to main.
 
-The phase's 89/89 pytest + 20/20 vitest green status is real — the bugs are in untested code paths. The R7 baseline-never-flipped guard and the FORECAST_TRACK scope-isolation are both correctly implemented and well-tested. The 119ad45 defect (subprocess module-name + FORECAST_TRACK env honor) is a third lesson in the same theme: subprocess pathway hidden from unit tests; surfaced only on live DEV run.
-
-The cadence redefinition (BCK-05 cron → push:data/**) is a phase-level decision recorded in 17-10 — flagged here for transparency but not as a blocker. The ACCURACY-LOG and `write_accuracy_log.py` docstrings still claim the original cadence; that should be reconciled (REVIEW WR-03) before next ship.
-
-**Recommendation:** /gsd-plan-phase --gaps to close BL-01 and BL-02 before /gsd-ship. Both are 5-minute fixes with test additions; not worth deferring the way SC4's cadence change was deferred.
+**Recommendation:** Proceed to `/gsd-ship`. Phase goal is achieved.
 
 ---
 
-_Verified: 2026-05-06T19:08:05Z_
+_Verified: 2026-05-06T21:35:00Z_
 _Verifier: Claude (gsd-verifier)_
+_Re-verification: post-gap-closure for BL-01 + BL-02 + 7 of 8 warnings_
