@@ -208,7 +208,7 @@
             {/if}
           {/each}
         </Svg>
-        <Tooltip.Root contained={false}>
+        <Tooltip.Root contained={false} classes={{ root: "w-48" }}>
           {#snippet children({ data: row })}
             {@const bucketIdx = chartData.findIndex((r) => r.bucket === row?.bucket)}
             {@const fullRow = bucketIdx >= 0 ? chartData[bucketIdx] : row}

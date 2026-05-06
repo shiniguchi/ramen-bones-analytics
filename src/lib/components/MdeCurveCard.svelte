@@ -80,7 +80,7 @@
                Spline's single-x dataset via Chart series-state inference. -->
           <Spline data={curve} x="n2" y="mde" class="stroke-zinc-900 stroke-[2]" />
         </Svg>
-        <Tooltip.Root contained={false}>
+        <Tooltip.Root contained={false} classes={{ root: "w-48" }}>
           {#snippet children({ data: row })}
             <Tooltip.Header>
               {t(page.data.locale, 'mde_tooltip_day', { n2: row.n2 })}
