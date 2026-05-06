@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: External Data & Forecasting Foundation
-status: ready_to_execute
-stopped_at: "Phase 16.3 context gathered 2026-05-06 — 8 decisions locked across 4 gray areas (past-bucket events feed, strip placement, multi-event badge visual, EventMarker fate) + 4 follow-up specifics (API range, empty-bucket behavior, popup positioning, DailyHeatmap exclusion). All Recommended accepted per follow-recs-first. Ready for /gsd-plan-phase 16.3 on a fresh feature/phase-16.3-dashboard-cleanup-events-everywhere branch off main AFTER the 16+16.1+16.2 PR merges. Resume file: .planning/phases/16.3-dashboard-cleanup-events-everywhere/16.3-CONTEXT.md"
-last_updated: "2026-05-06T01:00:00.000Z"
+status: executing
+stopped_at: Phase 14 complete. Ready for Phase 15 (Forecast Chart UI).
+last_updated: "2026-05-06T08:10:36.028Z"
 last_activity: 2026-05-06
 progress:
   total_phases: 20
-  completed_phases: 18
-  total_plans: 98
+  completed_phases: 14
+  total_plans: 106
   completed_plans: 86
-  percent: 88
+  percent: 81
 ---
 
 # STATE: Ramen Bones Analytics
@@ -35,6 +35,7 @@ Plan: 0 of TBD (awaiting /gsd-plan-phase 16.2)
 Phase 16.1 implementation 100% complete 2026-05-04 (5/5 plans). SC3 + SC8 PASSED on 2026-05-05 via Chrome MCP localhost QA. SC9 persona test on 2026-05-05 surfaced 7 owner-reported issues captured in `.planning/feedback/16.1-friend-2026-05-05/HANDOFF.md` with 3 screenshots. Phase 16.2 inserted to close those 7 gaps before v1.3 friend-persona acceptance signs off.
 
 Phase 16.2 context captured (2026-05-05): 20 implementation decisions across 7 items + phase execution; 11 carry-forward decisions from Phase 16.1 + memory + CLAUDE.md. Per `.claude/memory/feedback_follow_recs_first.md`, HANDOFF.md's clear-cut triage was locked as defaults inline; only 3 genuinely undecided gray areas surfaced via single AskUserQuestion call:
+
 - **G1 (Item 6 Prophet):** Path B revert — drop `window_start` kwarg from `scripts/forecast/prophet_fit.py`. Past-Spline becomes empty for Prophet only; future keeps rendering.
 - **G2 (Item 1 perf):** Investigate-first via Chrome MCP perf trace at 375×667 with April + day grain BEFORE applying any fix.
 - **G3 (Item 5 coverage):** Verify-only SQL audit on `forecast_with_actual_v` for week/month sarimax/ets/theta presence; conditional UI fix-up only if DB has the rows.
@@ -43,13 +44,13 @@ User accepted all 3 Recommended options. Phase 16+16.1+16.2 ship as ONE PR on `f
 
 Next recommended run: /gsd-plan-phase 16.2
 
-- **Status:** Phase 16.2 ready for planning
+- **Status:** Ready to execute
 - **Phase 16.1:** 5/5 plans implementation done 2026-05-04; SC3 + SC8 PASSED 2026-05-05; SC9 surfaced 7 issues now scoped into Phase 16.2.
 - **Phase 15:** v2 (Forecast Backtest Overlay) merged via PR #26 on 2026-05-01.
 - **Phase 14:** Shipped via [PR #22](https://github.com/shiniguchi/ramen-bones-analytics/pull/22). 34 commits, 31 files, +2978 lines. UAT 12/12. 5/5 models producing 365-day forecasts on DEV.
 - **Phase 13:** Shipped via [PR #17](https://github.com/shiniguchi/ramen-bones-analytics/pull/17). 41 commits, 52 files, +6892 lines. EXT-01..EXT-09 complete.
 - **Progress:** [█████████░] 87% (79/91 plans done; v1.0+v1.1+v1.2+Phase 12-16+16.1 implementation done; Phase 16.1 phase-final QA partial (SC3+SC8 PASSED, SC9 → folded into 16.2); Phase 16.2 context captured, planning next)
-- **Last activity:** 2026-05-05
+- **Last activity:** 2026-05-06
 - **v1.2 closed:** 11 phases, 60 plans, 100% — Phase 11 SSR fix landed 2026-04-21
 - **v1.0 status:** Shipped to friend (97% plans complete; repo flipped PUBLIC 2026-04-15 with topics + description set; Plan 05-06 Task 2 fork walkthrough deferred out of v1 scope)
 
