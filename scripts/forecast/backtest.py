@@ -29,6 +29,64 @@ Exit codes:
 
 CLI:
     python -m scripts.forecast.backtest [--models sarimax,...] [--run-date YYYY-MM-DD]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+BACKTEST STRATEGY MEMO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+WHAT WE DO TODAY (v1.3, ~330 days of data as of May 2026)
+----------------------------------------------------------
+Method : Rolling-origin cross-validation, day grain only.
+Folds  : N_FOLDS = 4, non-overlapping (each fold steps back by `horizon` days).
+Horizons: h=7, h=35, h=120, h=365 (day-grain only).
+Gate   : challenger must beat best baseline by ≥10% RMSE (GATE_THRESHOLD=0.9).
+Limits :
+  - h=365 is PENDING until ≥369 days of history (currently ~330d).
+  - h=120 and h=365 are UNCALIBRATED until ≥730 days (BCK-02).
+  - Week and month grain are NOT backtested. Monthly Prophet in particular
+    trains on ~6 monthly buckets with no yearly seasonality and its upward
+    trend has zero cross-validation coverage. Treat monthly forecasts as
+    directional indicators only, not reliable point estimates.
+
+WHY THESE CHOICES (data scarcity constraints)
+---------------------------------------------
+4 non-overlapping folds at h=35 already consumes 4×35=140 days of eval
+data. With only ~330 days total, overlapping windows would give many more
+folds but the earliest folds would have <30 days of training data — too
+sparse to fit SARIMAX or ETS reliably. The current design trades fold count
+for training-set quality. It is a minimum-viable gate, not a mature signal.
+
+WHAT TO CHANGE WHEN DATA MATURES
+---------------------------------
+Threshold 1 — 369 days (≈ June 2026):
+  h=365 exits PENDING. No code change needed; the cold-start guard
+  in main() handles it automatically.
+
+Threshold 2 — 730 days (≈ June 2027):
+  • h=120 and h=365 exit UNCALIBRATED (BCK-02 flag removed).
+  • Prophet yearly_seasonality flips True at day grain automatically
+    (YEARLY_THRESHOLD_BY_GRAIN['day']=730 in prophet_fit.py).
+  • Switch backtest to overlapping windows: set FOLD_STEP_DAYS=7 and
+    derive N_FOLDS from (days_history - horizon) // FOLD_STEP_DAYS.
+    This yields ~37 folds for h=35 from the same dataset, giving a
+    statistically stable RMSE estimate. Example with your data at 730d:
+      h=7  → ~100 folds   (step=7d, each fold holds out 7 days)
+      h=35 → ~100 folds   (step=7d, each fold holds out 35 days)
+    Replace N_FOLDS=4 constant with the formula above.
+
+Threshold 3 — 104 weekly buckets / 24 monthly buckets (≈ mid-2027):
+  • SARIMAX, ETS, Theta unlock at week and month grain
+    (YEARLY_THRESHOLD_BY_GRAIN in grain_helpers.py).
+  • Add week-grain and month-grain backtest loops here. Use h=4w/h=13w
+    for weekly, h=3mo/h=6mo for monthly, step=1 bucket.
+  • With ~104 weekly buckets and step=1 week, h=13w gives ~91 folds —
+    enough for a reliable weekly RMSE. Monthly will still be thin
+    (~24 buckets, step=1mo, h=3mo → ~21 folds) but better than nothing.
+  • Monthly Prophet's yearly_seasonality flips True at 24 monthly
+    buckets automatically. At that point the upward-trend extrapolation
+    problem resolves — the model will have seen at least two Jan–Jun
+    cycles and will fit a repeating annual curve instead of a linear ramp.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 """
 from __future__ import annotations
 
