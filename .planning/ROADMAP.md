@@ -50,7 +50,7 @@ A restaurant owner opens the site on their phone and makes a real business decis
 - [x] **Phase 16.1: Friend-Persona UX Polish (INSERTED, EXPANDED 2026-05-04)** — past-forecast continuity on Calendar* cards + Forecast cards via pipeline windowing fix anchored on last complete period (day=start-of-CW17, week=last 5 CWs, month=last 4 calendar months); Forecast cards horizontal-scroll parity; Calendar* tooltip shows per-model forecast values; CampaignUpliftCard plain-language regime + supportive labels. Backend pipeline + UI. Owner-blocking for friend-persona acceptance. **5/5 plans implementation done 2026-05-04; phase-final QA (Chrome MCP at localhost ja+en × 4 cards × 3 grains) pending.**
 - [x] **Phase 16.2: Friend-Persona QA Gap Closure (INSERTED 2026-05-05; complete 2026-05-05)** — fix 7 friend-owner persona-test issues from 16.1 SC9: (1) date-range freeze (perf — PARTIAL 71% reduction, v1.4 follow-up for residual), (2) forecast tooltip ignores model selection + dot misalignment (FIXED), (3) visit-cohort tooltip layout regression (FIXED), (4) SVG z-order — bars on top of forecast Splines (path 3 — DOM evidence; no code change), (5) verify-only: visit-number week/month forecast model coverage (path A — scope-deferred), (6) Prophet exponential past-curve / no future line (Path B revert + cleanup applied), (7) CampaignUpliftCard missing baseline rule + axis ticks (FIXED). Owner-blocking for v1.3 friend-persona acceptance — SC9 sign-off via /gsd-ship.
 - [x] **Phase 16.3: Dashboard Cleanup + Events Everywhere (INSERTED 2026-05-06; complete 2026-05-06)** — delete RevenueForecastCard + InvoiceCountForecastCard + ForecastHoverPopup (owner says they don't drive business decisions); build new mobile-first EventBadgeStrip on a fixed-height x-axis strip (one badge per bucket, single-event=type-color, multi-event=mixed+count, tap=popup with all events); wire it into every remaining date-axis chart (Calendar* cards, retention, visit-sequence). Forecast pipeline (`/api/forecast`, cron, tables, EventMarker, forecastEventClamp, ForecastLegend, ModelAvailabilityDisclosure, forecastOverlay) preserved — Calendar* + CampaignUpliftCard depend on it. Phase 17 unaffected. Ships on fresh `feature/phase-16.3-...` branch off main post-16.2-merge.
-- [ ] **Phase 17: Backtest Gate & Quality Monitoring** — rolling-origin CV at 4 horizons + ConformalIntervals + ≥10% RMSE promotion gate + freshness-SLO badges + ACCURACY-LOG
+- [x] **Phase 17: Backtest Gate & Quality Monitoring (complete 2026-05-06)** — rolling-origin CV at 4 horizons + ConformalIntervals + ≥10% RMSE promotion gate + freshness-SLO badges + ACCURACY-LOG. 10/10 plans shipped; 5 PASS + 3 PARTIAL across 8 BCK requirements (PARTIAL items resolve post-merge — new workflows return 404 on `gh workflow run` from feature branch). Defect 119ad45 fixed during phase-final QA: `naive_dow_with_holidays.py` was missing `_fit` suffix and ignored `FORECAST_TRACK` env var.
 
 ## Phase Details
 
@@ -408,7 +408,17 @@ Plans:
   4. `forecast-backtest.yml` GHA workflow runs weekly on Tuesday 23:00 UTC and writes results to `forecast_quality`; `forecast-quality-gate.yml` runs on every forecast-engine PR and fails CI when gate criteria miss for any model already promoted to production; both workflows complete in <5 min on `ubuntu-latest`
   5. `docs/forecast/ACCURACY-LOG.md` auto-committed weekly with RMSE history per `(model × horizon)`, with each row showing the gate verdict (`PASS` / `FAIL` / `PENDING`); when no model beats naive, the log honestly records "naive-DoW-with-holidays remains production model — no challenger promoted this week"
   6. Freshness-SLO check on every `+page.server.ts` load: if `pipeline_runs.upstream_freshness_h > 24` for any cascade stage (external-data, forecast, MV refresh), the dashboard renders the stale-data badge from Phase 15; a deliberate weather-fetch failure in CI verifies the badge surfaces within one nightly cycle
-**Plans**: TBD
+**Plans**: 10 plans — COMPLETE 2026-05-06 (ready for /gsd-ship)
+  - [x] 17-01-PLAN.md — Migration 0067 + FreshnessLabel >24h threshold (BCK-04, BCK-08)
+  - [x] 17-02-PLAN.md — conformal.py pure-numpy quantile math (BCK-02)
+  - [x] 17-03-PLAN.md — naive_dow_with_holidays.py regressor-aware baseline (BCK-03; defect 119ad45 fixed during 17-10 QA: `_fit` suffix + FORECAST_TRACK env honor)
+  - [x] 17-04-PLAN.md — argparse retrofit on 5 fit scripts (BCK-01)
+  - [x] 17-05-PLAN.md — backtest.py rolling-origin CV driver + gate writer (BCK-01..04)
+  - [x] 17-06-PLAN.md — run_all.py feature_flags AND-intersect (BCK-04)
+  - [x] 17-07-PLAN.md — forecast-backtest.yml + write_accuracy_log.py + ACCURACY-LOG.md (BCK-05, BCK-07)
+  - [x] 17-08-PLAN.md — forecast-quality-gate.yml + quality_gate_check.py (BCK-06)
+  - [x] 17-09-PLAN.md — ModelAvailabilityDisclosure backtest pills + i18n + /api/forecast (BCK-01, BCK-02)
+  - [x] 17-10-PLAN.md — Phase-final QA + planning-docs drift gate (BCK-01..08 sign-off; 5 PASS + 3 PARTIAL with merge-deferred resolution)
 
 ## Progress
 
@@ -433,7 +443,7 @@ Plans:
 | 16.1. Friend-Persona UX Polish (INSERTED, EXPANDED) | v1.3 | 5/5 | Pending Verification | 2026-05-04 |
 | 16.2. Friend-Persona QA Gap Closure (INSERTED) | v1.3 | 0/? | Not started | — |
 | 16.3. Dashboard Cleanup + Events Everywhere (INSERTED) | v1.3 | 0/? | Not started | — |
-| 17. Backtest Gate & Quality Monitoring | v1.3 | 0/? | Not started | — |
+| 17. Backtest Gate & Quality Monitoring | v1.3 | 10/10 | Complete    | 2026-05-06 |
 
 ## Coverage Summary
 

@@ -23,6 +23,10 @@ export type ForecastRow = {
   horizon_days: number;
 };
 
+// Phase 17 BCK-01/BCK-02 — backtest verdict types mirrored from +server.ts.
+export type BacktestVerdict = 'PASS' | 'FAIL' | 'PENDING' | 'UNCALIBRATED' | null;
+export type ModelBacktestRow = { h7?: BacktestVerdict; h35?: BacktestVerdict; h120?: BacktestVerdict; h365?: BacktestVerdict };
+
 export type ForecastPayload = {
   rows: ForecastRow[];
   actuals: { date: string; value: number }[];
@@ -34,6 +38,9 @@ export type ForecastPayload = {
   last_run: string | null;
   kpi: 'revenue_eur' | 'invoice_count';
   granularity: Granularity;
+  // Phase 17 BCK-01/BCK-02 — backtest verdict per (model, horizon).
+  // Empty object on cold-start (before rolling_origin_cv rows exist).
+  modelBacktestStatus?: Record<string, ModelBacktestRow>;
 };
 
 // Default-visible models on first render. Other models (prophet/chronos/
@@ -125,7 +132,15 @@ export function createForecastOverlay(opts: ForecastOverlayInputs): ForecastOver
     const rsParam = rs ? `&range_start=${encodeURIComponent(rs)}` : '';
     clientFetch<ForecastPayload>(`/api/forecast?kpi=${opts.kpi}&granularity=${g}${rsParam}`)
       .then((d) => { forecastData = d; })
-      .catch(() => { forecastData = null; });
+      .catch((err) => {
+        // WR-01 fix (memory: feedback_silent_error_isolation, 2026-04-17):
+        // log the error before clearing state so a Postgres permission /
+        // RLS / 5xx failure doesn't silently degrade to a "no data" UI.
+        // Overlay is non-critical — DO NOT throw — but the error MUST be
+        // visible in the browser console for DEV-time / QA debugging.
+        console.error('[forecastOverlay] /api/forecast failed:', err);
+        forecastData = null;
+      });
   });
 
   // Group forecast rows per model, filtered by visibleModels. Each model's

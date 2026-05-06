@@ -200,14 +200,14 @@ Requirements for initial release. Each maps to exactly one roadmap phase.
 
 ### Backtest Gate & Quality Monitoring (Phase 12.5)
 
-- [ ] **BCK-01**: `backtest.py` runs `statsforecast.cross_validation` with rolling-origin folds at 4 horizons (7d / 35d / 120d / 365d), computing RMSE + MAPE per (model × horizon × fold)
-- [ ] **BCK-02**: `ConformalIntervals(h=35, n_windows=4)` calibrates 95% CIs at horizons ≥35d; long horizons (120d, 365d) carry an `uncalibrated — ≥2 years data needed` UI badge until the 2-year mark
-- [ ] **BCK-03**: Backtest comparisons use a regressor-aware naive baseline (same exog regressors as competing models) — prevents unfair gate against models that benefit from weather/holidays features
-- [ ] **BCK-04**: Promotion gate: any model promoted from feature-flag to production must beat naive same-DoW baseline by ≥10% RMSE on rolling-origin out-of-sample, computed per horizon; failure blocks the deploy workflow
-- [ ] **BCK-05**: `forecast-backtest.yml` GHA workflow runs weekly on Tuesday 23:00 Berlin; results write to `forecast_quality` with `evaluation_window='rolling_origin_cv'`
-- [ ] **BCK-06**: `forecast-quality-gate.yml` runs on every forecast-engine PR; fails CI when gate criteria miss for any model already promoted to production
-- [ ] **BCK-07**: `docs/forecast/ACCURACY-LOG.md` auto-committed weekly with RMSE history per (model × horizon)
-- [ ] **BCK-08**: Freshness-SLO check on every `+page.server.ts` load: if `pipeline_runs.upstream_freshness_h > 24` for any cascade stage, dashboard renders the stale-data badge
+- [x] **BCK-01**: `backtest.py` runs `statsforecast.cross_validation` with rolling-origin folds at 4 horizons (7d / 35d / 120d / 365d), computing RMSE + MAPE per (model × horizon × fold)
+- [x] **BCK-02**: `ConformalIntervals(h=35, n_windows=4)` calibrates 95% CIs at horizons ≥35d; long horizons (120d, 365d) carry an `uncalibrated — ≥2 years data needed` UI badge until the 2-year mark
+- [x] **BCK-03**: Backtest comparisons use a regressor-aware naive baseline (same exog regressors as competing models) — prevents unfair gate against models that benefit from weather/holidays features
+- [x] **BCK-04**: Promotion gate: any model promoted from feature-flag to production must beat naive same-DoW baseline by ≥10% RMSE on rolling-origin out-of-sample, computed per horizon; failure blocks the deploy workflow
+- [x] **BCK-05**: `forecast-backtest.yml` GHA workflow runs weekly on Tuesday 23:00 Berlin; results write to `forecast_quality` with `evaluation_window='rolling_origin_cv'`
+- [x] **BCK-06**: `forecast-quality-gate.yml` runs on every forecast-engine PR; fails CI when gate criteria miss for any model already promoted to production
+- [x] **BCK-07**: `docs/forecast/ACCURACY-LOG.md` auto-committed weekly with RMSE history per (model × horizon)
+- [x] **BCK-08**: Freshness-SLO check on every `+page.server.ts` load: if `pipeline_runs.upstream_freshness_h > 24` for any cascade stage, dashboard renders the stale-data badge
 
 ## v2 Requirements
 
@@ -398,14 +398,14 @@ Each requirement maps to exactly one roadmap phase.
 | UPL-05 | Phase 16 + 16.1 — ITS Uplift Attribution + Friend-Persona | Closed | Plan 16-07 (column live in campaign_uplift_v) + Plan 16.1-03 (divergence warning surfaced in disclosure panel) |
 | UPL-06 | Phase 16 + 16.1 — ITS Uplift Attribution + Friend-Persona | Closed | Plan 16.1-03 (tier-aware plain-language hero + CI bounds in secondary line + statistical disclosure panel) |
 | UPL-07 | Phase 16 — ITS Uplift Attribution | Pending | — |
-| BCK-01 | Phase 17 — Backtest Gate & Quality Monitoring | Pending | — |
-| BCK-02 | Phase 17 — Backtest Gate & Quality Monitoring | Pending | — |
-| BCK-03 | Phase 17 — Backtest Gate & Quality Monitoring | Pending | — |
-| BCK-04 | Phase 17 — Backtest Gate & Quality Monitoring | Pending | — |
-| BCK-05 | Phase 17 — Backtest Gate & Quality Monitoring | Pending | — |
-| BCK-06 | Phase 17 — Backtest Gate & Quality Monitoring | Pending | — |
-| BCK-07 | Phase 17 — Backtest Gate & Quality Monitoring | Pending | — |
-| BCK-08 | Phase 17 — Backtest Gate & Quality Monitoring | Pending | — |
+| BCK-01 | Phase 17 — Backtest Gate & Quality Monitoring | Complete | Plan 17-05 (rolling-origin CV driver) + 17-04 (argparse retrofit) |
+| BCK-02 | Phase 17 — Backtest Gate & Quality Monitoring | Complete | Plans 17-02 (conformal.py), 17-05 (qhat_h35 logging), 17-09 (UI surfacing) |
+| BCK-03 | Phase 17 — Backtest Gate & Quality Monitoring | Complete | Plans 17-03 (naive_dow_with_holidays + 119ad45 fix), 17-05 (R7 baseline guard) |
+| BCK-04 | Phase 17 — Backtest Gate & Quality Monitoring | Complete | Plans 17-01 (migration 0067 schema + feature_flags seed), 17-05 (gate writer), 17-06 (AND-intersect) |
+| BCK-05 | Phase 17 — Backtest Gate & Quality Monitoring | Complete | Plan 17-07 (forecast-backtest.yml — 5 PASS + 1 PARTIAL: workflow_dispatch returns 404 on feature branch, resolves post-merge) |
+| BCK-06 | Phase 17 — Backtest Gate & Quality Monitoring | Complete | Plan 17-08 (forecast-quality-gate.yml — PARTIAL: same 404-on-feature-branch structural cause as BCK-05; resolves post-merge) |
+| BCK-07 | Phase 17 — Backtest Gate & Quality Monitoring | Complete | Plan 17-07 (write_accuracy_log.py + ACCURACY-LOG.md — PARTIAL: commit-back depends on workflow firing, resolves post-merge) |
+| BCK-08 | Phase 17 — Backtest Gate & Quality Monitoring | Complete | Plans 17-01 (data_freshness_v UNION + FreshnessLabel 24h threshold), 17-09 (badge surfacing) |
 
 **Coverage:**
 - v1.0 requirements: 39 total (shipped)

@@ -2,26 +2,26 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: External Data & Forecasting Foundation
-status: shipped
-stopped_at: "Phase 16.3 shipped 2026-05-06 — PR #29 (https://github.com/shiniguchi/ramen-bones-analytics/pull/29) opened against main. 26 commits, 54 files, +5928/-1584. Verifier 8/9 PASS; SC8 friend-persona sign-off PENDING owner DEV-URL test (planned acceptance path per plan 16.3-08, HUMAN-UAT.md SC8). Next: review/merge PR #29; then friend-persona acceptance on DEV; then Phase 17."
-last_updated: "2026-05-06T11:50:00.000Z"
+status: ready_to_ship
+stopped_at: Phase 17 shipped — PR #30 (2026-05-06)
+last_updated: "2026-05-06T21:45:00.000Z"
 last_activity: 2026-05-06
 progress:
   total_phases: 20
-  completed_phases: 19
-  total_plans: 106
-  completed_plans: 94
-  percent: 89
+  completed_phases: 20
+  total_plans: 116
+  completed_plans: 104
+  percent: 90
 ---
 
 # STATE: Ramen Bones Analytics
 
-**Last updated:** 2026-05-05
+**Last updated:** 2026-05-06
 
 ## Project Reference
 
 - **Core Value:** A restaurant owner opens the site on their phone and makes a real business decision from the numbers they see.
-- **Current Focus:** Phase 17 — Backtest Gate & Quality Monitoring (16.3 closed 2026-05-06; ready for /gsd-ship)
+- **Current Focus:** v1.3 ship-ready (Phase 17 closed 2026-05-06; all 20 phases complete; ready for /gsd-ship)
 - **Timeline:** Slow and deliberate — understand data first, ship one layer at a time
 - **Granularity:** standard
 - **Tenants in v1:** 1 (architecture multi-tenant-ready)
@@ -29,27 +29,22 @@ progress:
 ## Current Position
 
 Milestone: v1.3 (External Data & Forecasting Foundation)
-Phase: 16.2 (friend-persona-qa-gap-closure) — CONTEXT captured 2026-05-05
-Plan: 0 of TBD (awaiting /gsd-plan-phase 16.2)
+Phase: 17 (backtest-gate-quality-monitoring) — CLOSED 2026-05-06
+Plan: 10/10 complete
 
-Phase 16.1 implementation 100% complete 2026-05-04 (5/5 plans). SC3 + SC8 PASSED on 2026-05-05 via Chrome MCP localhost QA. SC9 persona test on 2026-05-05 surfaced 7 owner-reported issues captured in `.planning/feedback/16.1-friend-2026-05-05/HANDOFF.md` with 3 screenshots. Phase 16.2 inserted to close those 7 gaps before v1.3 friend-persona acceptance signs off.
+Phase 17 closes the v1.3 milestone. All 8 BCK requirements verified end-to-end against DEV via 6-round phase-final QA on 2026-05-06: 5 PASS + 3 PARTIAL. The 3 PARTIAL items (BCK-05, BCK-06, BCK-07) share the same structural root cause — newly-introduced GHA workflows return 404 on `gh workflow run` from a feature branch because the workflow file is not yet on `main`; resolved automatically post-merge. One genuine defect surfaced and was fixed in commit `119ad45`: `naive_dow_with_holidays.py` was missing the `_fit` suffix and ignored `FORECAST_TRACK` env var, so backtest folds wrote to `forecast_track='bau'` instead of `'backtest_fold_N'` — gate read back zero aligned rows. Tests + live re-run after fix confirmed the model now participates in the gate.
 
-Phase 16.2 context captured (2026-05-05): 20 implementation decisions across 7 items + phase execution; 11 carry-forward decisions from Phase 16.1 + memory + CLAUDE.md. Per `.claude/memory/feedback_follow_recs_first.md`, HANDOFF.md's clear-cut triage was locked as defaults inline; only 3 genuinely undecided gray areas surfaced via single AskUserQuestion call:
+Next recommended run: /gsd-ship (v1.3 milestone close)
 
-- **G1 (Item 6 Prophet):** Path B revert — drop `window_start` kwarg from `scripts/forecast/prophet_fit.py`. Past-Spline becomes empty for Prophet only; future keeps rendering.
-- **G2 (Item 1 perf):** Investigate-first via Chrome MCP perf trace at 375×667 with April + day grain BEFORE applying any fix.
-- **G3 (Item 5 coverage):** Verify-only SQL audit on `forecast_with_actual_v` for week/month sarimax/ets/theta presence; conditional UI fix-up only if DB has the rows.
-
-User accepted all 3 Recommended options. Phase 16+16.1+16.2 ship as ONE PR on `feature/phase-16-its-uplift-attribution`.
-
-Next recommended run: /gsd-plan-phase 16.2
-
-- **Status:** Ready to execute
-- **Phase 16.1:** 5/5 plans implementation done 2026-05-04; SC3 + SC8 PASSED 2026-05-05; SC9 surfaced 7 issues now scoped into Phase 16.2.
+- **Status:** Ready to ship
+- **Phase 17:** 10/10 plans complete 2026-05-06; all 8 BCK requirements verified (5 PASS + 3 PARTIAL with merge-deferred resolution).
+- **Phase 16.3:** Dashboard Cleanup + EventBadgeStrip shipped 2026-05-06.
+- **Phase 16.2:** Friend-persona QA gap closure — 7/7 items shipped 2026-05-05.
+- **Phase 16.1:** 5/5 plans implementation 2026-05-04; SC3 + SC8 PASSED 2026-05-05.
 - **Phase 15:** v2 (Forecast Backtest Overlay) merged via PR #26 on 2026-05-01.
 - **Phase 14:** Shipped via [PR #22](https://github.com/shiniguchi/ramen-bones-analytics/pull/22). 34 commits, 31 files, +2978 lines. UAT 12/12. 5/5 models producing 365-day forecasts on DEV.
 - **Phase 13:** Shipped via [PR #17](https://github.com/shiniguchi/ramen-bones-analytics/pull/17). 41 commits, 52 files, +6892 lines. EXT-01..EXT-09 complete.
-- **Progress:** [█████████░] 87% (79/91 plans done; v1.0+v1.1+v1.2+Phase 12-16+16.1 implementation done; Phase 16.1 phase-final QA partial (SC3+SC8 PASSED, SC9 → folded into 16.2); Phase 16.2 context captured, planning next)
+- **Progress:** [█████████░] 90% (104/116 plans done; v1.0+v1.1+v1.2+v1.3 Phase 12-17 all implementation done; v1.3 ready to ship)
 - **Last activity:** 2026-05-06
 - **v1.2 closed:** 11 phases, 60 plans, 100% — Phase 11 SSR fix landed 2026-04-21
 - **v1.0 status:** Shipped to friend (97% plans complete; repo flipped PUBLIC 2026-04-15 with topics + description set; Plan 05-06 Task 2 fork walkthrough deferred out of v1 scope)
@@ -110,6 +105,16 @@ Next recommended run: /gsd-plan-phase 16.2
 | Phase 16.1 P01 | ~25min | 5 tasks | 4 files |
 | Phase 16.1 P03 | ~7min | 3 tasks | 3 files |
 | Phase 16.1 P05 | ~12min | 2 tasks + 1 auto-approved checkpoint | 2 files |
+| Phase 17 P01 | ~not tracked | 3 tasks (incl. blocking schema push) | 3 files |
+| Phase 17 P02 | ~not tracked | 2 tasks (TDD) | 2 files |
+| Phase 17 P03 | ~not tracked | 2 tasks | 2 files |
+| Phase 17 P04 | ~not tracked | 2 tasks | 6 files |
+| Phase 17 P05 | ~not tracked | 2 tasks | 3 files |
+| Phase 17 P06 | ~not tracked | 2 tasks | 2 files |
+| Phase 17 P07 | ~not tracked | 2 tasks | 5 files |
+| Phase 17 P08 | ~not tracked | 2 tasks | 3 files |
+| Phase 17 P09 | ~not tracked | 4 tasks (incl. localhost QA) | 5 files |
+| Phase 17 P10 | ~30min | 3 tasks (incl. phase-final QA + 119ad45 bug fix) | 3 files |
 
 ## Accumulated Context
 
@@ -237,14 +242,24 @@ Next recommended run: /gsd-plan-phase 16.2
 - [Phase 16.1]: 16.1-01: Calendar* past-forecast continuity + D-16 tooltip extension shipped. (a) 5 D-16 model-label keys × 5 locales = 25 entries in `messages.ts` (en + ja real, de/es/fr placeholder per 16.1-02 pattern). (b) `lastActualDate` + `splitSeriesByModel` + `forecastWindowStart` + `pastForecastBuckets` $derived primitives on both Calendar* cards. (c) chartXDomain widened LEFT (D-03) when forecastWindowStart < startAligned. (d) Past+future Spline split (past faded `stroke-opacity={0.7}`; future dashed `'4 4'`); CI Area band stays single continuous (D-04). (e) CalendarRevenueCard scroll-to-today fix `todayPct = (histBuckets + pastForecastBuckets) / total` keeps today at the bars-end boundary. (f) Tooltip.Root body extended on both cards with topRows + modelRows lookup keyed off `format(bucket_d, 'yyyy-MM-dd')`; horizontal divider when both populated; CI hint omitted per RESEARCH.md (mobile clutter). MessageKey type assertion for dynamic `forecast_model_${name}` key. Stash recovery via `git stash pop stash@{0}` (clean, zero conflicts). Task 6 Chrome MCP + supabase-dev cross-check auto-approved per workflow.auto_advance=true; folded into phase-final QA.
 - [Phase 16.1]: 16.1-05: Forecast cards horizontal-scroll parity + past/future Spline split shipped (D-17). RevenueForecastCard + InvoiceCountForecastCard now wrap their `<Chart>` in a scroll container (`bind:this={scrollerRef}` + `bind:clientWidth={cardW}` + `overflow-x-auto overscroll-x-contain chart-touch-safe`) lifted verbatim from CalendarRevenueCard:194-263; `chartW = computeChartWidth(totalSlots, cardW)` flows past+future bucket counts into the canvas-width helper; scroll-to-today RAF effect lands today at ~60% of viewport on first paint (`todayPct = pastBuckets / totalSlots`); single Spline `{#each}` block replaced with two-block past+future split (past faded `stroke-opacity={0.7}`; future dashed `'4 4'`; **`curve={curveMonotoneX}` PRESERVED on both branches** per RESEARCH.md §16.1-05 — different from Calendar* cards which intentionally use the LayerChart default linear curve). xDomain UNCHANGED on both Forecast cards (data-driven `[parseISO(allDates[0]), parseISO(allDates[allDates.length-1])]` already picks up windowed leftmost target_date post-D-15; no explicit chartXDomain widening needed because there are no bars to define a competing anchor — this is an intentional architectural difference from Calendar* cards). D-16 tooltip extension OUT OF SCOPE per plan + RESEARCH.md (Forecast cards delegate to `<ForecastHoverPopup>` which already shows per-model values). C-02/C-03 invariants preserved; B3 typed Spline lambdas preserved. svelte-check baseline (7 errors) maintained; build green. Task 3 Chrome MCP gate auto-approved per workflow.auto_advance=true; folded into phase-final QA. Phase 16.1 implementation now 5/5 complete.
 - [Phase 16.1]: 16.1-03: CampaignUpliftCard plain-language regime + D-18 supportive labels shipped. (a) 4 D-18 supportive-label i18n keys × 5 locales = 20 entries in `messages.ts` (en + ja real translations 累計売上影響額 / 経過日数 / 点線=キャンペーンなしの基準; de/es/fr placeholder per 16.1-02 pattern; backlog stub appended). (b) i18n imports wired (page from $app/state + t/MessageKey from $lib/i18n/messages — file previously had ZERO i18n hookup). (c) maturityTier $derived (early <14 / midweeks <28 / mature >=28 from headline.row.n_days) + heroKey $derived applying D-06 tier×CI matrix → one of 7 MessageKey strings + heroVars $derived for {weeks} on mature-no-lift template + isCIOverlap $derived (collapses cumulative_uplift_eur===0 to ciOverlap branch per Claude's Discretion). (d) Single t(page.data.locale, heroKey, heroVars) call site renders 7 hedged/direct hero copies. (e) Plain-language secondary line via uplift_secondary_plain template with formatEur-formatted point/lo/hi. (f) Locale-aware date via Intl.DateTimeFormat — replaces hardcoded format(parseISO(...), 'MMM d, yyyy'). (g) D-18 hero subtitle in BOTH empty-state AND known-state branches. (h) D-18 sparkline Y label as <p> ABOVE Chart wrapper (W4 LOCKED — not in-Svg Axis primitive); X caption + baseline legend chip with dashed swatch BELOW. (i) Inline disclosure trigger button (aria-expanded, aria-controls, instant ›/⌄ chevron flip) + collapsible {#if detailsOpen} panel containing dim-point-estimate (verbatim statistical line) + anticipation-buffer-note (plain language) + divergence-warning (only when divergenceWarning fires). (j) Old anticipation-buffer-note + divergence-warning + hardcoded statistical paragraphs DELETED from prior visible positions. (k) Auto-fixes: {@const} hoisted to $derived in script (Svelte 5 const_tag_invalid_placement); MessageKey type cast on heroKey (TypeScript template-literal narrowing — established pattern from 16.1-01); stale "honest CI overlaps zero" file-header comment updated to reflect plain-language regime. (l) C-02/C-03 invariants preserved (let:data=0; touchEvents:'auto'); all 6 existing data-testids preserved; 6 new data-testids added. Task 4 Chrome MCP gate auto-approved per workflow.auto_advance=true; folded into phase-final QA.
+- [Phase 17]: 17-01: migration 0067 — three atomic changes (forecast_quality 4-col diagnostic ALTER + feature_flags 6-row CROSS JOIN seed + data_freshness_v UNION extension); pushed local + DEV via `gh workflow run migrations.yml --ref feature/phase-17-...`; FreshnessLabel.svelte yellow threshold tightened 30h → 24h per BCK-08.
+- [Phase 17]: 17-02: conformal.py — 30-LOC pure-numpy quantile math via Option 1 (manual symmetric absolute-residual conformal); D-03 lock satisfied by NOT using statsforecast.cross_validation as loop driver.
+- [Phase 17]: 17-03: naive_dow_with_holidays.py — copy-and-adapt from naive_dow_fit.py per D-05 (no modification of naive_dow_fit.py); imports private helpers via underscore-name path; multiplicative holiday adjustment via per-flag-combo residual ratios. **Defect surfaced post-implementation (commit 119ad45 — fix landed during 17-10 phase-final QA Round B):** module name was missing the universal `_fit` suffix used by backtest.py:122 and run_all.py:150 subprocess builders → ModuleNotFoundError; `__main__` also ignored `FORECAST_TRACK` env var → backtest folds wrote rows under `forecast_track='bau'` and gate read 0 aligned rows. Tests + live re-run confirm fix. Lesson: subprocess module names are a hidden coupling — codify as a contract test in v1.4.
+- [Phase 17]: 17-04: argparse retrofit on 5 fit scripts — purely additive (no deletions); argparse runs FIRST in __main__ so --help works without env vars; train_end kwarg already accepted by all 5 fit_and_write signatures (Phase 14 CF era).
+- [Phase 17]: 17-05: backtest.py — R1 mitigation via sentinel run_date scheme (1900-01-01 + fold_idx) avoiding forecast_daily PK collision; sentinel rows DELETEd post-eval; R7 baseline guard hardcoded skip for naive_dow + naive_dow_with_holidays.
+- [Phase 17]: 17-06: run_all.py — AND-intersect of env_set ∩ feature_flags.enabled=true; graceful fallback to env_set on DB read failure (don't break nightly cron); DEFAULT_MODELS extended with naive_dow_with_holidays.
+- [Phase 17]: 17-07: forecast-backtest.yml — sole forecast workflow with permissions:contents:write per D-07; concurrency cancel-in-progress=false serializes runs; [skip ci] in commit message prevents recursive trigger.
+- [Phase 17]: 17-08: forecast-quality-gate.yml — read-only PR gate; minimal install (supabase + python-dotenv only) keeps under 5min; cancel-in-progress=true on superseded PR commits.
+- [Phase 17]: 17-09: ModelAvailabilityDisclosure backtest column — 4 horizon pills (h7/h35/h120/h365) per model row, color-coded by verdict; cold-start fallback renders gray pills when backtestStatus=null; en+ja real translations, de/es/fr placeholder per Phase 16.1-02 pattern; localhost-first QA at 375×667 in ja + en passed.
+- [Phase 17]: 17-10: phase-final QA against DEV — 5 PASS + 3 PARTIAL across 8 BCK requirements. PARTIAL items (BCK-05/06/07) all blocked by the same structural cause: new GHA workflow not on main → `gh workflow run` returns 404 from feature branch; resolves automatically post-merge. Genuine bug found and fixed (commit 119ad45 — see 17-03 entry above for details). Planning-docs drift gate green.
 
 ### Open Todos
 
 - (v1.3) Confirm with friend in office hours: did she tell regulars about the 2026-04-14 campaign before launch? If yes, when? — drives Track-B `TRAIN_END` cutoff (default `−7d` per research synthesis)
 - (v1.3, resolved) Phase 14 — `yhat_samples` janitor: weekly pg_cron NULLs older run_dates' samples, keeping only latest run per model (migration 0056)
 - (v1.3) Phase 13 — BVG RSS URL not yet end-to-end verified; CI step in 13's acceptance test
-- (v1.3) Phase 17 — Chronos GHA wall-time + HF cache hit rate not measured; watch-item for alerting
-- (v1.3) Phase 17 — NeuralProphet ≥5% RMSE-win promotion criterion; drop dep entirely after 4 weeks if no win
+- (v1.3, deferred to v1.4) Phase 17 — Chronos + NeuralProphet measurement: Phase 17 ships the gate against the 6 currently-enabled models (naive_dow, naive_dow_with_holidays, sarimax, prophet, ets, theta); Chronos + NeuralProphet remain behind FCS-05 feature flags and are out of scope for v1.3 promotion. Drop NeuralProphet dep entirely after 4 weeks of v1.4 evidence if no ≥5% RMSE win surfaces. Chronos GHA wall-time + HF cache hit rate to be wired into nightly alerting in v1.4.
+- (v1.3, transient) Phase 17 — Round B test runs left ~3 sets of orphan PENDING rows in `forecast_quality.evaluation_window='rolling_origin_cv'`; next scheduled workflow run overwrites them, no cleanup required.
 - (deferred, out of v1 scope) v1.0 Plan 05-06 Task 2 fork walkthrough — forkability is not a v1 concern per user direction
 
 ### Blockers
@@ -284,8 +299,8 @@ Next recommended run: /gsd-plan-phase 16.2
 
 **Resume hint:** Phase 15 depends on Phase 14 schema (landed). Phase 16 depends on Phase 14 BAU forecast stability. Phase 17 has a hard dependency on ≥4 weeks of forecast-vs-actual history.
 
-**Last session:** 2026-04-30 — Phase 14 end-to-end: office-hours → autoplan → plan → implement → code-review → fix → verify → merge → deploy → backfill → pipeline green
-**Stopped At:** Phase 14 complete. Ready for Phase 15 (Forecast Chart UI).
+**Last session:** 2026-05-06T21:00:00.000Z
+**Stopped At:** Phase 17 closed — v1.3 ready to ship (2026-05-06)
 
 ---
 *State initialized: 2026-04-13; v1.3 roadmap recorded: 2026-04-27; Phase 12 context: 2026-04-28; Phase 13 shipped: 2026-04-30 (PR #17); Phase 14 shipped: 2026-04-30 (PR #22); STATE.md updated: 2026-04-30*

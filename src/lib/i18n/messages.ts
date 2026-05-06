@@ -232,6 +232,7 @@ const en = {
   model_avail_col_status: 'Status',
   model_avail_col_min: 'Min data',
   model_avail_col_why: 'Why',
+  model_avail_col_backtest: 'Backtest',
   model_avail_status_available: 'Available',
   model_avail_status_phase17: 'Phase 17 backlog',
   model_avail_status_short_day: 'Need more daily history',
@@ -257,7 +258,19 @@ const en = {
   popup_event_count:            '{n} events',
   popup_show_all_events:        'Show all {n}',
   popup_show_fewer:             'Show fewer',
-  event_strip_open_popup:       '{count} events on {date}'
+  event_strip_open_popup:       '{count} events on {date}',
+
+  // --- Backtest verdict pills (Phase 17 BCK-01/BCK-02) ---
+  // Long-form (used in pill title/tooltip for a11y):
+  model_avail_backtest_pass:           'PASS',
+  model_avail_backtest_fail:           'FAIL',
+  model_avail_backtest_pending:        'PENDING',
+  model_avail_backtest_uncalibrated:   'UNCALIBRATED — 2y data needed',
+  // Short-form (used in compact pill label):
+  model_avail_backtest_short_pass:         '✓',
+  model_avail_backtest_short_fail:         '✗',
+  model_avail_backtest_short_pending:      '…',
+  model_avail_backtest_short_uncalibrated: '~'
 } as const;
 
 export type MessageKey = keyof typeof en;
@@ -476,6 +489,7 @@ const de: Record<MessageKey, string> = {
   model_avail_col_status: 'Status',
   model_avail_col_min: 'Min data',
   model_avail_col_why: 'Why',
+  model_avail_col_backtest: 'Backtest',
   model_avail_status_available: 'Available',
   model_avail_status_phase17: 'Phase 17 backlog',
   model_avail_status_short_day: 'Need more daily history',
@@ -501,7 +515,17 @@ const de: Record<MessageKey, string> = {
   popup_event_count:            '{n} events',
   popup_show_all_events:        'Show all {n}',
   popup_show_fewer:             'Show fewer',
-  event_strip_open_popup:       '{count} events on {date}'
+  event_strip_open_popup:       '{count} events on {date}',
+
+  // --- Backtest verdict pills (Phase 17 BCK-01/BCK-02 — DE placeholder = EN; v1.4 backlog) ---
+  model_avail_backtest_pass:           'PASS',
+  model_avail_backtest_fail:           'FAIL',
+  model_avail_backtest_pending:        'PENDING',
+  model_avail_backtest_uncalibrated:   'UNCALIBRATED — 2y data needed',
+  model_avail_backtest_short_pass:         '✓',
+  model_avail_backtest_short_fail:         '✗',
+  model_avail_backtest_short_pending:      '…',
+  model_avail_backtest_short_uncalibrated: '~'
 };
 
 // --- JA (日本語) ----------------------------------------------------------
@@ -717,6 +741,7 @@ const ja: Record<MessageKey, string> = {
   model_avail_col_status: '状態',
   model_avail_col_min: '最小データ',
   model_avail_col_why: '理由',
+  model_avail_col_backtest: 'バックテスト',
   model_avail_status_available: '利用可',
   model_avail_status_phase17: 'Phase 17で対応予定',
   model_avail_status_short_day: '日次履歴が不足',
@@ -742,7 +767,17 @@ const ja: Record<MessageKey, string> = {
   popup_event_count:            '{n}件のイベント',
   popup_show_all_events:        '{n}件すべて表示',
   popup_show_fewer:             '折りたたむ',
-  event_strip_open_popup:       '{date}に{count}件のイベント'
+  event_strip_open_popup:       '{date}に{count}件のイベント',
+
+  // --- Backtest verdict pills (Phase 17 BCK-01/BCK-02) ---
+  model_avail_backtest_pass:           '合格',
+  model_avail_backtest_fail:           '不合格',
+  model_avail_backtest_pending:        '集計中',
+  model_avail_backtest_uncalibrated:   '較正前（2年要）',
+  model_avail_backtest_short_pass:         '✓',
+  model_avail_backtest_short_fail:         '✗',
+  model_avail_backtest_short_pending:      '…',
+  model_avail_backtest_short_uncalibrated: '~'
 };
 
 // --- ES (Español) ---------------------------------------------------------
@@ -959,6 +994,7 @@ const es: Record<MessageKey, string> = {
   model_avail_col_status: 'Status',
   model_avail_col_min: 'Min data',
   model_avail_col_why: 'Why',
+  model_avail_col_backtest: 'Backtest',
   model_avail_status_available: 'Available',
   model_avail_status_phase17: 'Phase 17 backlog',
   model_avail_status_short_day: 'Need more daily history',
@@ -984,7 +1020,17 @@ const es: Record<MessageKey, string> = {
   popup_event_count:            '{n} events',
   popup_show_all_events:        'Show all {n}',
   popup_show_fewer:             'Show fewer',
-  event_strip_open_popup:       '{count} events on {date}'
+  event_strip_open_popup:       '{count} events on {date}',
+
+  // --- Backtest verdict pills (Phase 17 BCK-01/BCK-02 — ES placeholder = EN; v1.4 backlog) ---
+  model_avail_backtest_pass:           'PASS',
+  model_avail_backtest_fail:           'FAIL',
+  model_avail_backtest_pending:        'PENDING',
+  model_avail_backtest_uncalibrated:   'UNCALIBRATED — 2y data needed',
+  model_avail_backtest_short_pass:         '✓',
+  model_avail_backtest_short_fail:         '✗',
+  model_avail_backtest_short_pending:      '…',
+  model_avail_backtest_short_uncalibrated: '~'
 };
 
 // --- FR (Français) --------------------------------------------------------
@@ -1201,6 +1247,7 @@ const fr: Record<MessageKey, string> = {
   model_avail_col_status: 'Status',
   model_avail_col_min: 'Min data',
   model_avail_col_why: 'Why',
+  model_avail_col_backtest: 'Backtest',
   model_avail_status_available: 'Available',
   model_avail_status_phase17: 'Phase 17 backlog',
   model_avail_status_short_day: 'Need more daily history',
@@ -1226,7 +1273,17 @@ const fr: Record<MessageKey, string> = {
   popup_event_count:            '{n} events',
   popup_show_all_events:        'Show all {n}',
   popup_show_fewer:             'Show fewer',
-  event_strip_open_popup:       '{count} events on {date}'
+  event_strip_open_popup:       '{count} events on {date}',
+
+  // --- Backtest verdict pills (Phase 17 BCK-01/BCK-02 — FR placeholder = EN; v1.4 backlog) ---
+  model_avail_backtest_pass:           'PASS',
+  model_avail_backtest_fail:           'FAIL',
+  model_avail_backtest_pending:        'PENDING',
+  model_avail_backtest_uncalibrated:   'UNCALIBRATED — 2y data needed',
+  model_avail_backtest_short_pass:         '✓',
+  model_avail_backtest_short_fail:         '✗',
+  model_avail_backtest_short_pending:      '…',
+  model_avail_backtest_short_uncalibrated: '~'
 };
 
 export const messages: Record<Locale, Record<MessageKey, string>> = { en, de, ja, es, fr };
