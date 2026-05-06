@@ -107,26 +107,51 @@ describe('Phase 4 card components (RED stubs — flip to it() as cards land)', (
     expect(noData).toHaveClass('text-zinc-500');
   });
 
-  it('FreshnessLabel muted <=30h, yellow >30h, red >48h (D-10a)', () => {
-    // Muted (<=30h): 10 hours ago
+  it('FreshnessLabel muted <=24h, yellow >24h, red >30h (D-10a / BCK-08)', () => {
+    // Muted (<=24h): 10 hours ago
     const recent = new Date(Date.now() - 10 * 60 * 60 * 1000).toISOString();
     const { container: c1 } = render(FreshnessLabel, { lastIngestedAt: recent });
     const p1 = c1.querySelector('p');
     expect(p1).toHaveClass('text-zinc-500');
     expect(p1?.textContent).toMatch(/Last updated/);
 
-    // Yellow (>30h): 36 hours ago
-    const stale = new Date(Date.now() - 36 * 60 * 60 * 1000).toISOString();
+    // Yellow (>24h): 26 hours ago
+    const stale = new Date(Date.now() - 26 * 60 * 60 * 1000).toISOString();
     const { container: c2 } = render(FreshnessLabel, { lastIngestedAt: stale });
     const p2 = c2.querySelector('p');
     expect(p2).toHaveClass('text-yellow-600');
 
-    // Red (>48h): 50 hours ago
-    const veryStale = new Date(Date.now() - 50 * 60 * 60 * 1000).toISOString();
+    // Red (>30h): 32 hours ago
+    const veryStale = new Date(Date.now() - 32 * 60 * 60 * 1000).toISOString();
     const { container: c3 } = render(FreshnessLabel, { lastIngestedAt: veryStale });
     const p3 = c3.querySelector('p');
     expect(p3).toHaveClass('text-red-600');
     expect(p3?.textContent).toMatch(/data may be outdated/);
+  });
+
+  it('FreshnessLabel BCK-08 boundary: yellow at 25h', () => {
+    // Was gray at 25h under old >30h threshold; now yellow under >24h
+    const stale25h = new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString();
+    const { container } = render(FreshnessLabel, { lastIngestedAt: stale25h });
+    const p = container.querySelector('p');
+    expect(p).toHaveClass('text-yellow-600');
+  });
+
+  it('FreshnessLabel BCK-08 boundary: red at 31h', () => {
+    // Was yellow at 31h under old >48h threshold; now red under >30h
+    const stale31h = new Date(Date.now() - 31 * 60 * 60 * 1000).toISOString();
+    const { container } = render(FreshnessLabel, { lastIngestedAt: stale31h });
+    const p = container.querySelector('p');
+    expect(p).toHaveClass('text-red-600');
+  });
+
+  it('FreshnessLabel BCK-08 boundary: muted at 23h (under 24h threshold)', () => {
+    const fresh23h = new Date(Date.now() - 23 * 60 * 60 * 1000).toISOString();
+    const { container } = render(FreshnessLabel, { lastIngestedAt: fresh23h });
+    const p = container.querySelector('p');
+    expect(p).toHaveClass('text-zinc-500');
+    expect(p).not.toHaveClass('text-yellow-600');
+    expect(p).not.toHaveClass('text-red-600');
   });
 
   // ── CohortRetentionCard tests (flipped from todo in 04-04) ──────────────

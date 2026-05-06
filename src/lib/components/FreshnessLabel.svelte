@@ -1,6 +1,6 @@
 <script lang="ts">
   // D-10 / D-10a: humanized "Last updated Xh ago" with threshold coloring.
-  // Default muted, yellow >30h, red >48h, plus a stale-warning suffix.
+  // Default muted, yellow >24h (BCK-08), red >30h (BCK-08), plus a stale-warning suffix.
   import { formatDistanceToNowStrict, differenceInHours } from 'date-fns';
   import { page } from '$app/state';
   import { t } from '$lib/i18n/messages';
@@ -13,10 +13,10 @@
     const ts = new Date(lastIngestedAt);
     const hours = differenceInHours(new Date(), ts);
     const ago = formatDistanceToNowStrict(ts, { roundingMethod: 'floor' });
-    const suffix = hours > 48 ? t(loc, 'freshness_outdated_suffix') : '';
+    const suffix = hours > 30 ? t(loc, 'freshness_outdated_suffix') : '';
     const text = t(loc, 'freshness_last_updated', { ago }) + suffix;
     const color =
-      hours > 48 ? 'text-red-600' : hours > 30 ? 'text-yellow-600' : 'text-zinc-500';
+      hours > 30 ? 'text-red-600' : hours > 24 ? 'text-yellow-600' : 'text-zinc-500';
     return { text, color };
   });
 </script>
