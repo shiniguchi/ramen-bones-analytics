@@ -1,9 +1,9 @@
 // src/routes/api/forecast-quality/+server.ts
 // Phase 15 D-07 / FUI-04 / FUI-07.
-// Deferred endpoint for ForecastHoverPopup. Long-format accuracy metrics
-// per (model_name, kpi_name, horizon_days). Filtered to evaluation_window=
-// 'last_7_days' so Phase 17 rolling-origin CV rows (evaluation_window=
-// 'rolling_origin_cv') don't leak into the popup.
+// Long-format accuracy metrics per (model_name, kpi_name, horizon_days)
+// for any consumer that needs nightly forecast accuracy. Filtered to
+// evaluation_window='last_7_days' so Phase 17 rolling-origin CV rows
+// (evaluation_window='rolling_origin_cv') don't leak through.
 //
 // Empty array on first 24h after Phase 14 ships (no rows yet) — the
 // hover popup renders the 'forecast-quality-empty' empty-state copy

@@ -39,7 +39,8 @@ export const COHORT_LINE_PALETTE: readonly string[] = [
 ];
 
 /**
- * Phase 15 D-10: per-model line color for RevenueForecastCard.
+ * Per-model line color for forecast overlays (CalendarRevenueCard /
+ * CalendarCountsCard / CalendarItemsCard / CalendarItemRevenueCard).
  *
  * Categorical palette (no ranking implied — Phase 17 backtest gate is what
  * promotes models). Slice [0..3] of schemeTableau10 for the four BAU "smart"
