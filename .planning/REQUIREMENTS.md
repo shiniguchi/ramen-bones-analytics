@@ -398,14 +398,14 @@ Each requirement maps to exactly one roadmap phase.
 | UPL-05 | Phase 16 + 16.1 — ITS Uplift Attribution + Friend-Persona | Closed | Plan 16-07 (column live in campaign_uplift_v) + Plan 16.1-03 (divergence warning surfaced in disclosure panel) |
 | UPL-06 | Phase 16 + 16.1 — ITS Uplift Attribution + Friend-Persona | Closed | Plan 16.1-03 (tier-aware plain-language hero + CI bounds in secondary line + statistical disclosure panel) |
 | UPL-07 | Phase 16 — ITS Uplift Attribution | Pending | — |
-| BCK-01 | Phase 17 — Backtest Gate & Quality Monitoring | Pending | — |
-| BCK-02 | Phase 17 — Backtest Gate & Quality Monitoring | Pending | — |
-| BCK-03 | Phase 17 — Backtest Gate & Quality Monitoring | Pending | — |
-| BCK-04 | Phase 17 — Backtest Gate & Quality Monitoring | Pending | — |
-| BCK-05 | Phase 17 — Backtest Gate & Quality Monitoring | Pending | — |
-| BCK-06 | Phase 17 — Backtest Gate & Quality Monitoring | Pending | — |
-| BCK-07 | Phase 17 — Backtest Gate & Quality Monitoring | Pending | — |
-| BCK-08 | Phase 17 — Backtest Gate & Quality Monitoring | Pending | — |
+| BCK-01 | Phase 17 — Backtest Gate & Quality Monitoring | Complete | Plan 17-05 (rolling-origin CV driver) + 17-04 (argparse retrofit) |
+| BCK-02 | Phase 17 — Backtest Gate & Quality Monitoring | Complete | Plans 17-02 (conformal.py), 17-05 (qhat_h35 logging), 17-09 (UI surfacing) |
+| BCK-03 | Phase 17 — Backtest Gate & Quality Monitoring | Complete | Plans 17-03 (naive_dow_with_holidays + 119ad45 fix), 17-05 (R7 baseline guard) |
+| BCK-04 | Phase 17 — Backtest Gate & Quality Monitoring | Complete | Plans 17-01 (migration 0067 schema + feature_flags seed), 17-05 (gate writer), 17-06 (AND-intersect) |
+| BCK-05 | Phase 17 — Backtest Gate & Quality Monitoring | Complete | Plan 17-07 (forecast-backtest.yml — 5 PASS + 1 PARTIAL: workflow_dispatch returns 404 on feature branch, resolves post-merge) |
+| BCK-06 | Phase 17 — Backtest Gate & Quality Monitoring | Complete | Plan 17-08 (forecast-quality-gate.yml — PARTIAL: same 404-on-feature-branch structural cause as BCK-05; resolves post-merge) |
+| BCK-07 | Phase 17 — Backtest Gate & Quality Monitoring | Complete | Plan 17-07 (write_accuracy_log.py + ACCURACY-LOG.md — PARTIAL: commit-back depends on workflow firing, resolves post-merge) |
+| BCK-08 | Phase 17 — Backtest Gate & Quality Monitoring | Complete | Plans 17-01 (data_freshness_v UNION + FreshnessLabel 24h threshold), 17-09 (badge surfacing) |
 
 **Coverage:**
 - v1.0 requirements: 39 total (shipped)
