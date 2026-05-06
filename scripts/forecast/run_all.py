@@ -32,7 +32,7 @@ from scripts.forecast.last_7_eval import evaluate_last_7
 from scripts.forecast import counterfactual_fit
 from scripts.external.pipeline_runs_writer import write_failure
 
-DEFAULT_MODELS = 'sarimax,prophet,ets,theta,naive_dow,naive_dow_with_holidays'
+DEFAULT_MODELS = 'sarimax,prophet,ets,theta,naive_dow'
 KPIS = ['revenue_eur', 'invoice_count']
 # 15-10: each model fits at 3 grains per refresh per KPI.
 GRANULARITIES = ['day', 'week', 'month']
@@ -55,27 +55,6 @@ def _get_restaurant_id(client) -> str:
     if not rows:
         raise RuntimeError('No restaurants found in the restaurants table')
     return rows[0]['id']
-
-
-def _get_enabled_models(client, restaurant_id: str) -> list[str]:
-    """Phase 17 BCK-04: read enabled-model rows from feature_flags.
-
-    Bulk single query (per RESEARCH §Codebase Reuse Map deliverable 6).
-    Returns list of bare model names (without 'model_' prefix), e.g.
-    ['sarimax', 'naive_dow']. Empty list if no rows enabled.
-    """
-    resp = (
-        client.table('feature_flags')
-        .select('flag_key,enabled')
-        .eq('restaurant_id', restaurant_id)
-        .like('flag_key', 'model_%')
-        .execute()
-    )
-    return [
-        row['flag_key'].removeprefix('model_')
-        for row in (resp.data or [])
-        if row.get('enabled') is True
-    ]
 
 
 def _get_last_actual_date(client, *, restaurant_id: str) -> Optional[date]:
@@ -248,23 +227,7 @@ def main(
     # Resolve models list
     if not models:
         env_models = os.environ.get('FORECAST_ENABLED_MODELS', DEFAULT_MODELS)
-        env_set = {m.strip() for m in env_models.split(',') if m.strip()}
-        # Phase 17 BCK-04: AND-intersect with feature_flags.enabled=true
-        # — preserves operator escape-hatch via env var, lets backtest gate veto via DB.
-        try:
-            db_set = set(_get_enabled_models(client, restaurant_id))
-        except Exception as e:
-            print(
-                f'[run_all] WARN: feature_flags read failed ({e}); falling back to env_set only',
-                file=sys.stderr,
-            )
-            db_set = env_set  # graceful fallback — never block nightly cron on DB read failure
-        models = sorted(env_set & db_set)
-        if not models:
-            print(
-                '[run_all] WARN: env_set ∩ feature_flags is empty — no models will run',
-                file=sys.stderr,
-            )
+        models = [m.strip() for m in env_models.split(',') if m.strip()]
 
     # Resolve run_date
     if run_date is None:
