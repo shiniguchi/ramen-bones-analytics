@@ -136,11 +136,11 @@
         <table class="w-full min-w-[840px] text-[11px]">
           <thead>
           <tr class="border-b border-zinc-200 text-zinc-500">
-            <th class="pb-1 text-left font-medium">{t(page.data.locale, 'model_avail_col_model')}</th>
-            <th class="pb-1 text-left font-medium">{t(page.data.locale, 'model_avail_col_status')}</th>
-            <th class="pb-1 pr-4 text-right font-medium">{t(page.data.locale, 'model_avail_col_min')}</th>
-            <th class="pb-1 pl-2 text-left font-medium">{t(page.data.locale, 'model_avail_col_why')}</th>
-            <th class="pb-1 pl-2 text-left font-medium">{t(page.data.locale, 'model_avail_col_backtest')}</th>
+            <th class="pb-1 text-left font-medium whitespace-nowrap">{t(page.data.locale, 'model_avail_col_model')}</th>
+            <th class="pb-1 text-left font-medium whitespace-nowrap">{t(page.data.locale, 'model_avail_col_status')}</th>
+            <th class="pb-1 pr-4 text-right font-medium whitespace-nowrap">{t(page.data.locale, 'model_avail_col_min')}</th>
+            <th class="pb-1 pl-2 text-left font-medium whitespace-nowrap">{t(page.data.locale, 'model_avail_col_why')}</th>
+            <th class="pb-1 pl-2 text-left font-medium whitespace-nowrap">{t(page.data.locale, 'model_avail_col_backtest')}</th>
           </tr>
         </thead>
         <tbody>
@@ -186,6 +186,12 @@
         </tbody>
         </table>
       </div>
+      <!-- Backtest methodology footnote (Phase 17 BCK-01 memo) -->
+      <p class="mt-3 text-[11px] text-zinc-500 space-y-0.5">
+        <span class="block">{t(page.data.locale, 'model_avail_backtest_memo_day')}</span>
+        <span class="block">{t(page.data.locale, 'model_avail_backtest_memo_week_month')}</span>
+        <span class="block">{t(page.data.locale, 'model_avail_backtest_memo_improves')}</span>
+      </p>
     </div>
   {/if}
 </div>

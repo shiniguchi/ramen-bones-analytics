@@ -148,7 +148,7 @@
             {/snippet}
           </Calendar>
         </Svg>
-        <Tooltip.Root>
+        <Tooltip.Root contained={false}>
           {#snippet children({ data: cell })}
             <Tooltip.Header>{format(cell.date, 'EEE, MMM d, yyyy')}</Tooltip.Header>
             <Tooltip.List>
