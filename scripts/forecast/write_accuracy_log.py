@@ -121,12 +121,20 @@ def _group_for_render(rows):
 
     rendered = {}
     for model, h_map in by_model.items():
+        # WR-09: stash the raw mean h=7 RMSE alongside the formatted cell so
+        # production_model selection can break ties deterministically by lowest
+        # h=7 RMSE rather than relying on dict-insertion order.
+        h7_list = h_map.get(7) or []
+        h7_rmse_raw: float | None = (
+            float(np.mean(h7_list)) if h7_list else None
+        )
         rendered[model] = {
             'h7':   _format_cell(h_map.get(7),   verdicts_by_model_h.get((model, 7))),
             'h35':  _format_cell(h_map.get(35),  verdicts_by_model_h.get((model, 35))),
             'h120': _format_cell(h_map.get(120), verdicts_by_model_h.get((model, 120))),
             'h365': _format_cell(h_map.get(365), verdicts_by_model_h.get((model, 365))),
             'verdict': _aggregate_verdict(verdicts_by_model_h, model),
+            'h7_rmse_raw': h7_rmse_raw,
         }
     return rendered
 
@@ -264,11 +272,28 @@ def main() -> int:
     existing_text = ACCURACY_LOG.read_text() if ACCURACY_LOG.exists() else ''
     _, prior_latest = _move_existing_latest_to_history(existing_text)
 
-    # Determine production model: first PASS challenger or naive_dow_with_holidays
-    challengers_pass = [
-        m for m, info in rendered.items()
-        if m not in ('naive_dow', 'naive_dow_with_holidays') and info['verdict'] == 'PASS'
-    ]
+    # WR-09 fix: deterministic production_model selection.
+    # Pre-fix: `challengers_pass[0]` depended on dict-insertion order, which
+    # tracked Supabase row arrival order — effectively random when multiple
+    # PASS challengers had millisecond-resolution timestamps from parallel
+    # folds. Result: ACCURACY-LOG header could flicker between sarimax/ets
+    # week-to-week with no actual change in accuracy.
+    # Post-fix: sort PASS challengers by lowest mean h=7 RMSE; break ties
+    # alphabetically by model_name. (Models with no h=7 RMSE — e.g.,
+    # PASSed only at h=35 because h=7 was UNCALIBRATED — sort to the end
+    # via float('inf') sentinel.)
+    challengers_pass = sorted(
+        (
+            m for m, info in rendered.items()
+            if m not in ('naive_dow', 'naive_dow_with_holidays')
+            and info['verdict'] == 'PASS'
+        ),
+        key=lambda m: (
+            rendered[m].get('h7_rmse_raw') if rendered[m].get('h7_rmse_raw') is not None
+            else float('inf'),
+            m,  # tie-break alphabetically by model name
+        ),
+    )
     production_model = challengers_pass[0] if challengers_pass else 'naive_dow_with_holidays'
 
     new_text = HEADER.format(production_model=production_model) + '\n' + latest_run_md + '\n'
