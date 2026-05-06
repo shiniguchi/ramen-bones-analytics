@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: External Data & Forecasting Foundation
-status: executing
-stopped_at: "Phase 16.3 Dashboard Cleanup + Events Everywhere starting 2026-05-06 — 8 plans across 5 sub-waves (W1, W2a, W2b, W2c, W3). Branch: feature/phase-16.3-dashboard-cleanup-events-everywhere. Phase 16.2 (7/7 plans) shipped via PR #28 (merged 2026-05-05)."
-last_updated: "2026-05-06T08:10:36.028Z"
+status: ready_to_ship
+stopped_at: "Phase 16.3 Dashboard Cleanup + Events Everywhere closed locally 2026-05-06 — 8/8 plans done (5 sub-waves), 22 commits on feature/phase-16.3-dashboard-cleanup-events-everywhere. SC1-SC7 + SC9 PASS; SC8 owner-side sign-off PENDING (awaits DEV merge per plan 16.3-08 acceptance path). Next: /gsd-ship to open PR + DEV smoke + friend-persona acceptance."
+last_updated: "2026-05-06T09:30:00.000Z"
 last_activity: 2026-05-06
 progress:
   total_phases: 20
-  completed_phases: 18
+  completed_phases: 19
   total_plans: 106
-  completed_plans: 86
-  percent: 81
+  completed_plans: 94
+  percent: 89
 ---
 
 # STATE: Ramen Bones Analytics
@@ -21,7 +21,7 @@ progress:
 ## Project Reference
 
 - **Core Value:** A restaurant owner opens the site on their phone and makes a real business decision from the numbers they see.
-- **Current Focus:** Phase 16.2 — friend-persona-qa-gap-closure (CONTEXT captured, ready for planning)
+- **Current Focus:** Phase 17 — Backtest Gate & Quality Monitoring (16.3 closed 2026-05-06; ready for /gsd-ship)
 - **Timeline:** Slow and deliberate — understand data first, ship one layer at a time
 - **Granularity:** standard
 - **Tenants in v1:** 1 (architecture multi-tenant-ready)
