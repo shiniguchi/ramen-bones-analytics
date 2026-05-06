@@ -26,7 +26,7 @@
     thursday:  { is_open: true,  open_at: "12:00", close_at: "23:00" }
     friday:    { is_open: true,  open_at: "12:00", close_at: "23:00" }
     saturday:  { is_open: true,  open_at: "12:00", close_at: "23:00" }
-    sunday:    { is_open: false }
+    sunday:    { is_open: true,  open_at: "12:00", close_at: "23:00" }
   overrides:
     - { date: "2026-12-24", is_open: false, reason: "Heiligabend (placeholder — confirm with friend)" }
     - { date: "2026-12-25", is_open: false, reason: "1. Weihnachtstag (placeholder)" }
