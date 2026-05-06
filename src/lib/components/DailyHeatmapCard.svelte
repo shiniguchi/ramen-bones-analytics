@@ -154,7 +154,7 @@
             <Tooltip.List>
               <Tooltip.Item label={t(page.data.locale, 'tooltip_revenue')} value={formatEUR(cell.revenue_cents ?? 0)} />
               {#if cell.tx_count}
-                <Tooltip.Item label={t(page.data.locale, 'tooltip_transactions')} value={`${cell.tx_count} ${t(page.data.locale, 'txn_suffix')}`} />
+                <Tooltip.Item label={t(page.data.locale, 'tooltip_transactions')} value={`${cell.tx_count} ${t(page.data.locale, 'txn_suffix')}`} />
               {/if}
             </Tooltip.List>
           {/snippet}

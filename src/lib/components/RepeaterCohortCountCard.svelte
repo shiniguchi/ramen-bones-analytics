@@ -188,10 +188,10 @@
             <Tooltip.List>
               {#each REPEATER_BUCKET_KEYS as k, i (k)}
                 {#if ((fullRow?.[k] as number) ?? 0) > 0}
-                  <Tooltip.Item label={k} color={VISIT_SEQ_COLORS[i + 1]} value={`${fullRow[k]} cust`} />
+                  <Tooltip.Item label={k} color={VISIT_SEQ_COLORS[i + 1]} value={`${fullRow[k]} cust`} />
                 {/if}
               {/each}
-              <Tooltip.Item label="Total" value={`${bucketIdx >= 0 ? totals[bucketIdx] : 0} cust`} />
+              <Tooltip.Item label="Total" value={`${bucketIdx >= 0 ? totals[bucketIdx] : 0} cust`} />
             </Tooltip.List>
           {/snippet}
         </Tooltip.Root>
