@@ -23,6 +23,18 @@ Surface for out-of-scope discoveries during plan execution.
 - `src/lib/components/CalendarRevenueCard.svelte:195:28` — `'w' is possibly 'undefined'`
 **Recommended action:** Address in a future maintenance plan; they pre-date 16.3 (file mtimes confirm — most are May 1 / May 6 from earlier phases).
 
+## From Plan 16.3-05 (2026-05-06)
+
+### tests/unit/sparseFilter.test.ts — stale expectation against MAX_COHORT_LINES
+
+**Found during:** 16.3-05 Task 1 full-suite regression run after `+server.ts` edit.
+**Status:** Out of scope for 16.3-05 (pre-existing; unrelated to /api/forecast).
+**Symptom:** 2 failing assertions in `tests/unit/sparseFilter.test.ts`:
+- `expected 100 to be 12` — `MAX_COHORT_LINES === 12` constant test
+- `expected 20 to be 100` — `pickVisibleCohorts respects MAX_COHORT_LINES` slice test
+**Why pre-existing:** `src/lib/sparseFilter.ts:13` was raised to `MAX_COHORT_LINES = 100` in commit `36b2232` ("fix(quick-260418-ret): unlimit retention cohort lines"). The unit-test file still encodes the old `12` value. Verified by stashing my edit and re-running — same 2 failures.
+**Recommended action:** A docs-only / test-only sweep plan to update `tests/unit/sparseFilter.test.ts` to match the current `MAX_COHORT_LINES = 100` value (or to assert the constant matches the source by import). Could fold into 16.3-08 (Wave 3 QA) or a separate quick fix.
+
 ### Comment-only references in 6 source files
 
 **Found during:** `grep -rln` cross-check.
