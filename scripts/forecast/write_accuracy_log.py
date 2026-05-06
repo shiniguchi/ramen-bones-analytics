@@ -62,6 +62,17 @@ LATEST_RUN_TEMPLATE = """## Latest run: {run_date_utc}
 HISTORY_PLACEHOLDER = '\n(empty until first weekly run)\n'
 
 
+def _parse_pg_timestamp(s: str) -> datetime:
+    """Parse a PostgREST-serialised timestamp into a tz-aware datetime.
+
+    Handles both `'...Z'` and `'...+00:00'` suffix formats — PostgREST may
+    serialise either depending on the PG / PostgREST version. Normalises
+    `'Z'` → `'+00:00'` before passing to fromisoformat (Python <3.11
+    fromisoformat doesn't accept the literal `'Z'` suffix).
+    """
+    return datetime.fromisoformat(s.replace('Z', '+00:00'))
+
+
 def _fetch_latest_run_quality(client, restaurant_id):
     """Fetch all rolling_origin_cv rows from the latest evaluation_at week."""
     resp = (
@@ -76,12 +87,17 @@ def _fetch_latest_run_quality(client, restaurant_id):
     rows = resp.data or []
     if not rows:
         return [], None
-    # Find latest evaluated_at timestamp
-    latest = max(r['evaluated_at'] for r in rows)
-    latest_dt = datetime.fromisoformat(latest.replace('Z', '+00:00'))
+    # WR-08 fix: compare timestamps in DATETIME space, not string space.
+    # PostgREST may serialise evaluated_at with either 'Z' or '+00:00' suffix
+    # depending on PG/PostgREST version. Lexicographic comparison breaks
+    # because 'Z' (0x5A) > '+' (0x2B), so a Z-suffixed timestamp at the
+    # cutoff would falsely pass a '+00:00'-formatted cutoff filter — wrong
+    # by up to a day when input formats are mixed.
+    parsed_rows = [(r, _parse_pg_timestamp(r['evaluated_at'])) for r in rows]
+    latest_dt = max(dt for _, dt in parsed_rows)
     # Filter to the latest evaluation day (within 24h of most recent row)
     cutoff = latest_dt.replace(hour=0, minute=0, second=0, microsecond=0)
-    week_rows = [r for r in rows if r['evaluated_at'] >= cutoff.isoformat()]
+    week_rows = [r for r, dt in parsed_rows if dt >= cutoff]
     return week_rows, latest_dt
 
 
