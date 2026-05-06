@@ -443,7 +443,7 @@ Plans:
 | 16.1. Friend-Persona UX Polish (INSERTED, EXPANDED) | v1.3 | 5/5 | Pending Verification | 2026-05-04 |
 | 16.2. Friend-Persona QA Gap Closure (INSERTED) | v1.3 | 0/? | Not started | — |
 | 16.3. Dashboard Cleanup + Events Everywhere (INSERTED) | v1.3 | 0/? | Not started | — |
-| 17. Backtest Gate & Quality Monitoring | v1.3 | 10/10 | Pending Verification | 2026-05-06 |
+| 17. Backtest Gate & Quality Monitoring | v1.3 | 10/10 | Complete    | 2026-05-06 |
 
 ## Coverage Summary
 
