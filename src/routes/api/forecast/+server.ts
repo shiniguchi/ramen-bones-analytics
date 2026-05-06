@@ -75,6 +75,29 @@ export const GET: RequestHandler = async ({ locals, url }) => {
   }
   const kpi = kpiRaw as Kpi;
 
+  // Phase 16.3 D-01: optional range_start backfills the events feed window.
+  // Caller-supplied (each card knows its own chart x-domain). Reject malformed
+  // and future dates with 400 BEFORE any DB query — events feed is past +
+  // forecast only, never synthetic future-only.
+  const rangeStartRaw = url.searchParams.get('range_start');
+  let rangeStart: string | null = null;
+  if (rangeStartRaw && rangeStartRaw.length > 0) {
+    // Strict format gate (parseISO is lenient — accepts "2025-1-1" etc).
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(rangeStartRaw)) {
+      return json({ error: 'range_start must be YYYY-MM-DD' }, { status: 400, headers: NO_STORE });
+    }
+    const parsed = parseISO(rangeStartRaw);
+    if (Number.isNaN(parsed.getTime())) {
+      return json({ error: 'range_start must be YYYY-MM-DD' }, { status: 400, headers: NO_STORE });
+    }
+    // Both YYYY-MM-DD strings → lexicographic == chronological.
+    const todayCheck = format(new Date(), 'yyyy-MM-dd');
+    if (rangeStartRaw > todayCheck) {
+      return json({ error: 'range_start must be ≤ today' }, { status: 400, headers: NO_STORE });
+    }
+    rangeStart = rangeStartRaw;
+  }
+
   try {
     // Forecast rows + sibling event tables + pipeline runs all in parallel.
     // The MV holds the latest run per (target_date, model, grain) so no
@@ -87,9 +110,18 @@ export const GET: RequestHandler = async ({ locals, url }) => {
     // trims to 50 anyway.
     const eventsEnd = format(subDays(today, -365), 'yyyy-MM-dd');
 
-    // Phase 16 D-12: campaign_calendar window — 90d back to eventsEnd. Pre-filter
-    // before clampEvents to keep payload bounded; clampEvents priority 5 still trims.
-    const campaignsStart = format(subDays(today, 90), 'yyyy-MM-dd');
+    // Phase 16.3 D-01: events feed lower bound. Caller-supplied range_start
+    // backfills past events; absent = today (existing behavior preserved).
+    const eventsStart = rangeStart ?? todayStr;
+
+    // Phase 16 D-12: campaign_calendar window — defaults to 90d back, but
+    // widens to range_start when caller supplied an older lower bound (so a
+    // card asking for 2024-01-01 gets that far back of campaigns too).
+    // clampEvents priority 5 still trims to the 50-event ceiling.
+    const campaignsDefault = format(subDays(today, 90), 'yyyy-MM-dd');
+    const campaignsStart = rangeStart && rangeStart < campaignsDefault
+      ? rangeStart
+      : campaignsDefault;
 
     const [forecastRows, holidayRows, schoolRows, recurRows, transitRows, pipelineRows, campaignRows] = await Promise.all([
       fetchAll<ForecastViewRow>(() =>
@@ -105,7 +137,7 @@ export const GET: RequestHandler = async ({ locals, url }) => {
         locals.supabase
           .from('holidays')
           .select('date,name,country_code,subdiv_code')
-          .gte('date', todayStr)
+          .gte('date', eventsStart)
           .lte('date', eventsEnd)
           .or('subdiv_code.is.null,subdiv_code.eq.BE')
       ),
@@ -114,21 +146,21 @@ export const GET: RequestHandler = async ({ locals, url }) => {
           .from('school_holidays')
           .select('state_code,block_name,start_date,end_date')
           .eq('state_code', 'BE')
-          .gte('start_date', todayStr)
+          .gte('start_date', eventsStart)
           .lte('start_date', eventsEnd)
       ),
       fetchAll<RecurringEventRow>(() =>
         locals.supabase
           .from('recurring_events')
           .select('event_id,name,start_date,end_date,impact_estimate')
-          .gte('start_date', todayStr)
+          .gte('start_date', eventsStart)
           .lte('start_date', eventsEnd)
       ),
       fetchAll<TransitAlertRow>(() =>
         locals.supabase
           .from('transit_alerts')
           .select('alert_id,title,pub_date,matched_keyword')
-          .gte('pub_date', todayStr)
+          .gte('pub_date', eventsStart)
           .lte('pub_date', eventsEnd)
       ),
       fetchAll<PipelineRunRow>(() =>
@@ -202,8 +234,9 @@ export const GET: RequestHandler = async ({ locals, url }) => {
       .sort((a, b) => a.date.localeCompare(b.date));
 
     // Sibling events array — Phase 16 D-12 adds 5th source (campaign_start).
-    // EventMarker.svelte already supports campaign_start (red 3px line, C-09).
-    // clampEvents priority 5 already covers campaign_start (Phase 15 carry-forward).
+    // EventBadgeStrip (Plan 16.3-03) renders campaign_start as red 44px badge
+    // with corner-count multi-event indicator; clampEvents priority 5 already
+    // covers campaign_start (Phase 15 carry-forward).
     const events: ForecastEvent[] = [
       ...holidayRows .map((h) => ({ type: 'holiday' as const,         date: h.date,       label: h.name })),
       ...schoolRows  .map((s) => ({ type: 'school_holiday' as const,  date: s.start_date, label: s.block_name, end_date: s.end_date })),

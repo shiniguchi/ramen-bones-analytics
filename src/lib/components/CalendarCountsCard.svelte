@@ -17,6 +17,7 @@
   import ForecastOverlay from './ForecastOverlay.svelte';
   import ForecastTooltipRows from './ForecastTooltipRows.svelte';
   import ModelAvailabilityDisclosure from './ModelAvailabilityDisclosure.svelte';
+  import EventBadgeStrip from './EventBadgeStrip.svelte';
   import { VISIT_SEQ_COLORS, CASH_COLOR } from '$lib/chartPalettes';
   import { formatIntShort } from '$lib/format';
   import { bucketTotals, bucketTrend } from '$lib/trendline';
@@ -109,6 +110,20 @@
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let chartCtx = $state<any>();
 
+  // Phase 16.3 D-05: rangeStart for events-feed backfill — earlier of
+  // historical-leftmost OR forecast-window-leftmost (16.1 widening).
+  function rangeStartIso(): string | null {
+    const histFirst = chartData[0]?.bucket_d;
+    const fcFirst = overlay.forecastWindowStart;
+    if (!histFirst && !fcFirst) return null;
+    if (!histFirst) return format(fcFirst!, 'yyyy-MM-dd');
+    if (!fcFirst) return format(histFirst, 'yyyy-MM-dd');
+    return format(
+      histFirst.getTime() < fcFirst.getTime() ? histFirst : fcFirst,
+      'yyyy-MM-dd'
+    );
+  }
+
   // Shared forecast-overlay state (fetch + reactive derivations + bucketCenter
   // + hoveredBucketIso). Identical shape across CalendarCountsCard and
   // CalendarRevenueCard — only the kpi key differs.
@@ -117,7 +132,8 @@
     grain: () => getFilters().grain as Granularity,
     chartData: () => chartData,
     xInterval: () => xInterval,
-    chartCtx: () => chartCtx
+    chartCtx: () => chartCtx,
+    rangeStart: rangeStartIso // Phase 16.3 D-05
   });
 
   // X-domain: bars span [from, to]; forecast lines render in the +365d gap.
@@ -153,6 +169,21 @@
     return chartData.length + fcDates.size + pastForecastBuckets;
   });
   const chartW = $derived(computeChartWidth(totalSlots, cardW));
+
+  // Phase 16.3 D-02 / D-06: pixel slots for EventBadgeStrip — caller-owned
+  // band-position math (see EventBadgeStrip §"caller owns scale"). chartW is
+  // `number | undefined` (computeChartWidth returns undefined when the chart
+  // fits without scroll); fall back to cardW.
+  const stripWidth = $derived(chartW ?? cardW);
+  const eventBuckets = $derived.by(() => {
+    if (chartData.length === 0 || stripWidth === 0) return [];
+    const slotWidth = stripWidth / chartData.length;
+    return chartData.map((row, i) => ({
+      iso: format(row.bucket_d, 'yyyy-MM-dd'),
+      left: i * slotWidth,
+      width: slotWidth
+    }));
+  });
 </script>
 
 <div data-testid="calendar-counts-card" class="rounded-xl border border-zinc-200 bg-white p-4">
@@ -253,6 +284,18 @@
           {/snippet}
         </Tooltip.Root>
       </Chart>
+
+      <!-- Phase 16.3 D-02 / D-06: EventBadgeStrip mounts inside the
+           horizontal-scroll wrapper (scrolls in sync with bars). Below the
+           chart canvas, above x-axis tick labels (which render inside the SVG
+           via Axis placement="bottom"). 44px fixed height — empty events
+           array still occupies the space (D-06 prevents card-height jitter). -->
+      <EventBadgeStrip
+        events={overlay.events}
+        buckets={eventBuckets}
+        grain={getFilters().grain as 'day' | 'week' | 'month'}
+        width={stripWidth}
+      />
     </div>
     <VisitSeqLegend {showCash} />
     {#if overlay.forecastData && overlay.availableModels.length > 0}

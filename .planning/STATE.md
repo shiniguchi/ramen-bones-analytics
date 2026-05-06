@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: External Data & Forecasting Foundation
-status: ready_to_execute
-stopped_at: "Phase 16.2 Friend-Persona QA Gap Closure complete 2026-05-05. All 7 owner-reported issues from 2026-05-05 SC9 closed: Item 1 date-range freeze (71% reduction PARTIAL, user-accepted; v1.4 follow-up for the residual single-cascade weight), Item 2 forecast tooltip multi-model + per-Spline Highlight, Items 3+4 cohort tooltip layout fix + Spline z-order verified (path 3 — DOM evidence), Item 5 visit-number week/month coverage SQL audit (path A — scope-deferred; selector already data-driven), Item 6 Prophet Path B revert + cleanup + pipeline regen + learning entry, Item 7 CampaignUpliftCard Rule baseline + Y/X axis ticks (W4 Y-label preserved). 7/7 plans shipped. Phase 16+16.1+16.2 ship as ONE PR on feature/phase-16-its-uplift-attribution. Next: /gsd-ship to open PR + run DEV QA + friend persona re-acceptance (SC9)."
-last_updated: "2026-05-05T11:00:00.000Z"
-last_activity: 2026-05-05
+status: shipped
+stopped_at: "Phase 16.3 shipped 2026-05-06 — PR #29 (https://github.com/shiniguchi/ramen-bones-analytics/pull/29) opened against main. 26 commits, 54 files, +5928/-1584. Verifier 8/9 PASS; SC8 friend-persona sign-off PENDING owner DEV-URL test (planned acceptance path per plan 16.3-08, HUMAN-UAT.md SC8). Next: review/merge PR #29; then friend-persona acceptance on DEV; then Phase 17."
+last_updated: "2026-05-06T11:50:00.000Z"
+last_activity: 2026-05-06
 progress:
-  total_phases: 19
-  completed_phases: 18
-  total_plans: 98
-  completed_plans: 86
-  percent: 88
+  total_phases: 20
+  completed_phases: 19
+  total_plans: 106
+  completed_plans: 94
+  percent: 89
 ---
 
 # STATE: Ramen Bones Analytics
@@ -21,7 +21,7 @@ progress:
 ## Project Reference
 
 - **Core Value:** A restaurant owner opens the site on their phone and makes a real business decision from the numbers they see.
-- **Current Focus:** Phase 16.2 — friend-persona-qa-gap-closure (CONTEXT captured, ready for planning)
+- **Current Focus:** Phase 17 — Backtest Gate & Quality Monitoring (16.3 closed 2026-05-06; ready for /gsd-ship)
 - **Timeline:** Slow and deliberate — understand data first, ship one layer at a time
 - **Granularity:** standard
 - **Tenants in v1:** 1 (architecture multi-tenant-ready)
@@ -35,6 +35,7 @@ Plan: 0 of TBD (awaiting /gsd-plan-phase 16.2)
 Phase 16.1 implementation 100% complete 2026-05-04 (5/5 plans). SC3 + SC8 PASSED on 2026-05-05 via Chrome MCP localhost QA. SC9 persona test on 2026-05-05 surfaced 7 owner-reported issues captured in `.planning/feedback/16.1-friend-2026-05-05/HANDOFF.md` with 3 screenshots. Phase 16.2 inserted to close those 7 gaps before v1.3 friend-persona acceptance signs off.
 
 Phase 16.2 context captured (2026-05-05): 20 implementation decisions across 7 items + phase execution; 11 carry-forward decisions from Phase 16.1 + memory + CLAUDE.md. Per `.claude/memory/feedback_follow_recs_first.md`, HANDOFF.md's clear-cut triage was locked as defaults inline; only 3 genuinely undecided gray areas surfaced via single AskUserQuestion call:
+
 - **G1 (Item 6 Prophet):** Path B revert — drop `window_start` kwarg from `scripts/forecast/prophet_fit.py`. Past-Spline becomes empty for Prophet only; future keeps rendering.
 - **G2 (Item 1 perf):** Investigate-first via Chrome MCP perf trace at 375×667 with April + day grain BEFORE applying any fix.
 - **G3 (Item 5 coverage):** Verify-only SQL audit on `forecast_with_actual_v` for week/month sarimax/ets/theta presence; conditional UI fix-up only if DB has the rows.
@@ -43,13 +44,13 @@ User accepted all 3 Recommended options. Phase 16+16.1+16.2 ship as ONE PR on `f
 
 Next recommended run: /gsd-plan-phase 16.2
 
-- **Status:** Phase 16.2 ready for planning
+- **Status:** Ready to execute
 - **Phase 16.1:** 5/5 plans implementation done 2026-05-04; SC3 + SC8 PASSED 2026-05-05; SC9 surfaced 7 issues now scoped into Phase 16.2.
 - **Phase 15:** v2 (Forecast Backtest Overlay) merged via PR #26 on 2026-05-01.
 - **Phase 14:** Shipped via [PR #22](https://github.com/shiniguchi/ramen-bones-analytics/pull/22). 34 commits, 31 files, +2978 lines. UAT 12/12. 5/5 models producing 365-day forecasts on DEV.
 - **Phase 13:** Shipped via [PR #17](https://github.com/shiniguchi/ramen-bones-analytics/pull/17). 41 commits, 52 files, +6892 lines. EXT-01..EXT-09 complete.
 - **Progress:** [█████████░] 87% (79/91 plans done; v1.0+v1.1+v1.2+Phase 12-16+16.1 implementation done; Phase 16.1 phase-final QA partial (SC3+SC8 PASSED, SC9 → folded into 16.2); Phase 16.2 context captured, planning next)
-- **Last activity:** 2026-05-05
+- **Last activity:** 2026-05-06
 - **v1.2 closed:** 11 phases, 60 plans, 100% — Phase 11 SSR fix landed 2026-04-21
 - **v1.0 status:** Shipped to friend (97% plans complete; repo flipped PUBLIC 2026-04-15 with topics + description set; Plan 05-06 Task 2 fork walkthrough deferred out of v1 scope)
 
@@ -115,6 +116,7 @@ Next recommended run: /gsd-plan-phase 16.2
 ### Roadmap Evolution
 
 - 2026-05-04: Phase 16.1 (Friend-Persona UX Polish) inserted after Phase 16 (URGENT). Source: 2026-05-04 owner Chrome MCP localhost review surfaced two persona-acceptance gaps — (1) CalendarRevenueCard + CalendarCountsCard missing past-forecast overlay (dashboard looks broken on T+N days after manual upload, even though /api/forecast already ships windowed past-forecast), (2) CampaignUpliftCard hero copy unreadable for non-statistical reader. Both UI-only, no backend changes. Inserted before qa-gate / code-review / ship so Phase 16 + 16.1 ship together as one PR.
+- 2026-05-06: Phase 16.3 (Dashboard Cleanup + Events Everywhere) inserted after Phase 16.2 (URGENT). Source: 2026-05-06 owner conversation — `RevenueForecastCard` + `InvoiceCountForecastCard` don't drive any business decision, owner asks to delete them; vertical event markers (currently only on those two cards) DO help her reason about the calendar, owner asks to bring them to every remaining dashboard chart. Pure UI simplification + cross-chart event overlay; forecast pipeline (`/api/forecast`, `forecast_daily`, cron, `forecast_quality`, `EventMarker.svelte`, `forecastEventClamp.ts`, `ForecastLegend.svelte`, `ModelAvailabilityDisclosure.svelte`, `forecastOverlay.svelte.ts`) preserved because Calendar* + CampaignUpliftCard depend on it. Slots between 16.2 (ready_to_ship) and 17 (Backtest Gate). Ships on a fresh `feature/phase-16.3-dashboard-cleanup-events-everywhere` branch off main post-16.2-merge — does NOT block the 16+16.1+16.2 PR. Phase 17 unaffected.
 
 ### Key Decisions (from PROJECT.md)
 

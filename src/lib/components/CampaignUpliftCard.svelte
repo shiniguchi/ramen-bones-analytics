@@ -6,7 +6,7 @@
   // Y label, X caption, counterfactual baseline legend chip). Statistical
   // detail (point estimate, CI bounds, anticipation note, divergence) lives
   // INSIDE the disclosure panel — it is no longer the default visible read.
-  // Slots between InvoiceCountForecastCard and the KPI tiles on +page.svelte.
+  // Slotted on +page.svelte alongside the calendar cards and KPI tiles.
   // Wrapped in LazyMount per Phase 11 D-03.
   //
   // Reads campaign_start, ci bounds, and the per-day trajectory from

@@ -12,6 +12,7 @@
 import { format, parseISO } from 'date-fns';
 import { clientFetch } from '$lib/clientFetch';
 import { type Granularity } from '$lib/forecastValidation';
+import type { ForecastEvent } from '$lib/forecastEventClamp';
 
 export type ForecastRow = {
   target_date: string;
@@ -25,7 +26,11 @@ export type ForecastRow = {
 export type ForecastPayload = {
   rows: ForecastRow[];
   actuals: { date: string; value: number }[];
-  events: unknown[];
+  // Phase 16.3 D-04 / Claude's Discretion: tightened from `unknown[]` to
+  // `ForecastEvent[]` so downstream consumers (EventBadgeStrip, hover popups)
+  // get end-to-end TS narrowing. Server already returns `clampEvents()` output
+  // of exactly this shape.
+  events: ForecastEvent[];
   last_run: string | null;
   kpi: 'revenue_eur' | 'invoice_count';
   granularity: Granularity;
@@ -49,6 +54,11 @@ export type ForecastOverlayInputs = {
   xInterval: () => { offset: (d: Date, n: number) => Date };
   /** Reactive LayerChart context getter (exposes tooltip.data + scales). */
   chartCtx: () => { tooltip?: { data?: { bucket?: string } } } | undefined;
+  /** Phase 16.3 D-05: optional past-events backfill window. When the
+   *  getter returns a YYYY-MM-DD string, /api/forecast events feed extends
+   *  back to that date. Null = forecast-window only (existing behavior).
+   *  Re-fetches when grain OR rangeStart change. */
+  rangeStart?: () => string | null;
 };
 
 export type ForecastOverlay = {
@@ -59,6 +69,10 @@ export type ForecastOverlay = {
   readonly lastActualDate: string | null;
   readonly forecastWindowStart: Date | null;
   readonly hoveredBucketIso: string | null;
+  /** Phase 16.3 D-04: clamped event list (max 50; priority-sorted upstream).
+   *  Pass-through of `forecastData.events` so consumers (EventBadgeStrip,
+   *  hover popups) read events without re-fetching. */
+  readonly events: readonly ForecastEvent[];
   toggleModel(name: string): void;
   bucketCenter(d: Date): Date;
 };
@@ -82,7 +96,10 @@ export type ForecastOverlay = {
 export function createForecastOverlay(opts: ForecastOverlayInputs): ForecastOverlay {
   let forecastData = $state<ForecastPayload | null>(null);
   let visibleModels = $state(new Set<string>(DEFAULT_VISIBLE_MODELS));
-  let lastFetchedGrain: Granularity | null = null;
+  // Phase 16.3 D-05: cache key widens from `grain` to `grain|rangeStart` so a
+  // caller updating rangeStart re-fires the fetch even if grain stays the same.
+  // Without this widening the existing grain guard would block the new fetch.
+  let lastFetchedKey: string | null = null;
 
   function toggleModel(name: string) {
     // Always create a NEW Set to trigger Svelte 5 reactivity.
@@ -92,13 +109,21 @@ export function createForecastOverlay(opts: ForecastOverlayInputs): ForecastOver
     visibleModels = next;
   }
 
-  // Re-fetch /api/forecast when grain changes. Guard with lastFetchedGrain
-  // to prevent reactive loops if the response itself touches reactive state.
+  // Re-fetch /api/forecast when grain OR rangeStart changes. Guard with
+  // lastFetchedKey (composite of both) to prevent reactive loops if the
+  // response itself touches reactive state. Phase 16.3 D-05 threads the
+  // optional `range_start` query param through so each card can backfill
+  // events to its earliest visible bucket. encodeURIComponent applied
+  // defensively even though the server (Plan 16.3-05) gates on a strict
+  // YYYY-MM-DD regex + future-date check.
   $effect(() => {
     const g = opts.grain();
-    if (lastFetchedGrain === g) return;
-    lastFetchedGrain = g;
-    clientFetch<ForecastPayload>(`/api/forecast?kpi=${opts.kpi}&granularity=${g}`)
+    const rs = opts.rangeStart?.() ?? null;
+    const key = `${g}|${rs ?? ''}`;
+    if (lastFetchedKey === key) return;
+    lastFetchedKey = key;
+    const rsParam = rs ? `&range_start=${encodeURIComponent(rs)}` : '';
+    clientFetch<ForecastPayload>(`/api/forecast?kpi=${opts.kpi}&granularity=${g}${rsParam}`)
       .then((d) => { forecastData = d; })
       .catch(() => { forecastData = null; });
   });
@@ -168,6 +193,9 @@ export function createForecastOverlay(opts: ForecastOverlayInputs): ForecastOver
     get lastActualDate() { return lastActualDate; },
     get forecastWindowStart() { return forecastWindowStart; },
     get hoveredBucketIso() { return hoveredBucketIso; },
+    // Phase 16.3 D-04: pass-through clamped events for EventBadgeStrip / popup
+    // consumers — empty array on cold start so callers never have to null-guard.
+    get events() { return forecastData?.events ?? []; },
     toggleModel,
     bucketCenter
   };

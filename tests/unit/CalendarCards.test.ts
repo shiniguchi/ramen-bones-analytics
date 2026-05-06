@@ -233,8 +233,8 @@ describe('forecastOverlay.svelte.ts factory contract', () => {
   it('fetches /api/forecast?kpi=${kpi}&granularity=${grain}', () => {
     expect(src).toMatch(/\/api\/forecast\?kpi=\$\{[^}]*\}&granularity=\$\{[^}]*\}/);
   });
-  it('lastFetchedGrain guard prevents reactive loops', () => {
-    expect(src).toMatch(/lastFetchedGrain/);
+  it('lastFetchedKey guard prevents reactive loops (composite grain|rangeStart key per 16.3-06 D-05)', () => {
+    expect(src).toMatch(/lastFetchedKey/);
   });
   it('seriesByModel sorts each model rows ascending by target_date', () => {
     expect(src).toMatch(/\.sort\(\(a,\s*b\)\s*=>\s*a\.target_date\.localeCompare\(b\.target_date\)\)/);

@@ -12,8 +12,8 @@
   // HorizonToggle's segmented pattern.
   //
   // Default visible state ({sarimax, naive_dow}) is owned by the
-  // parent (RevenueForecastCard in 15-08) — this component is purely
-  // presentational + reactive to its props.
+  // parent card — this component is purely presentational + reactive
+  // to its props.
   import { page } from '$app/state';
   import { t, type MessageKey } from '$lib/i18n/messages';
   import { FORECAST_MODEL_COLORS } from '$lib/chartPalettes';

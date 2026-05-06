@@ -4,7 +4,7 @@
 // headline rows) and campaign_uplift_daily_v (per-day trajectory powering
 // the dashboard sparkline). The endpoint URL stays stable across Phase 15
 // → 16 — Phase 15's `campaign_start` and `cumulative_deviation_eur` fields
-// are preserved at the top level for ForecastHoverPopup back-compat (C-08).
+// are preserved at the top level for any historical-tooltip consumer (C-08).
 //
 // Threat T-16-04 (sample-path leak): the endpoint reads ONLY aggregate
 // columns from the wrapper views — never raw `yhat_samples` or path arrays.
