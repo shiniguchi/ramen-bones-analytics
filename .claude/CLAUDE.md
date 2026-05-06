@@ -26,13 +26,13 @@ Always work against **DEV** unless the user says "local" or "prod".
 
 ### 🚨 Exception — Frontend / UI changes: LOCALHOST FIRST
 
-Any change to `src/routes/**`, `src/lib/components/**`, or any `.svelte` / `.css` / CSS-in-JS file **MUST** be verified via Chrome MCP against `http://localhost:5173` BEFORE you claim the task is done. DEV is for FINAL QA after push — never for the per-edit feedback loop. `.claude/hooks/verify-targets.json` encodes this rule literally, and `.claude/hooks/localhost-qa-gate.js` (Stop hook) blocks turn-end if a frontend file was edited without a localhost navigate in the session transcript.
+Any change to `src/routes/**`, `src/lib/components/**`, or any `.svelte` / `.css` / CSS-in-JS file **MUST** be verified via Playwright MCP against `http://localhost:5173` BEFORE you claim the task is done. DEV is for FINAL QA after push — never for the per-edit feedback loop. `.claude/hooks/verify-targets.json` encodes this rule literally, and `.claude/hooks/localhost-qa-gate.js` (Stop hook) blocks turn-end if a frontend file was edited without a localhost navigate in the session transcript.
 
 **Order is non-negotiable:**
 1. Edit the frontend file
 2. If no dev server is running, start one (`npm run dev` → localhost:5173)
-3. Chrome MCP navigate → interact → read console → state `Visual verification: PASS/FAIL/PARTIAL`
-4. (optional) Push branch → DEV deploy → Chrome MCP DEV URL for final QA
+3. Playwright MCP: `mcp__playwright__browser_navigate` → `browser_click`/`browser_type` → `browser_console_messages` → state `Visual verification: PASS/FAIL/PARTIAL`
+4. (optional) Push branch → DEV deploy → Playwright MCP DEV URL for final QA
 
 <!-- TODO: Fill in environment table for this project.
 | Resource     | DEV                    | PROD                   |
@@ -57,7 +57,7 @@ Before ANY work (planning, coding, reviewing, debugging), gather context:
 
 - **Code**: GitHub CLI (`gh`)
 - **Database**: your DB MCP (if configured)
-- **UI/UX**: Chrome MCP (`mcp__claude-in-chrome__*`)
+- **UI/UX**: Playwright MCP (`mcp__playwright__*`)
 - **Library docs**: Context7 MCP
 - **Logs**: never miss ❌ or `"severity": "ERROR"` when reading service logs
 
@@ -106,7 +106,7 @@ Before ANY work (planning, coding, reviewing, debugging), gather context:
 
 After each task, test it BEFORE moving on. **Always verify against DEV** (never local only).
 
-**Workflow: push → deploy to DEV → verify via Chrome MCP / DB MCP / curl.**
+**Workflow: push → deploy to DEV → verify via Playwright MCP / DB MCP / curl.**
 
 1. Push changes and deploy to DEV
 2. Pick the matching row from the table and verify
@@ -124,7 +124,7 @@ Code is NOT complete until verified in DEV. Before reporting done:
 
 | What changed   | Verification method                                                         |
 | -------------- | --------------------------------------------------------------------------- |
-| Frontend / UI  | Open DEV URL via Chrome MCP → interact → screenshot                         |
+| Frontend / UI  | Open DEV URL via Playwright MCP (`browser_navigate` → `browser_screenshot` → `browser_click`) |
 | Backend API    | `curl` the DEV endpoint → confirm response                                  |
 | Background job | Trigger job → trace logs → query DB for result                              |
 | DB schema      | Query affected table via DB MCP → confirm structure and data                |

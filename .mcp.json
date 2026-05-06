@@ -1,12 +1,12 @@
 {
   "mcpServers": {
+    "playwright": {
+      "command": "npx",
+      "args": ["@playwright/mcp"]
+    },
     "Context7": {
       "command": "npx",
       "args": ["-y", "@upstash/context7-mcp"]
-    },
-    "claude-in-chrome": {
-      "command": "npx",
-      "args": ["-y", "@anthropic/claude-in-chrome-mcp"]
     },
     "supabase-dev": {
       "command": "npx",
