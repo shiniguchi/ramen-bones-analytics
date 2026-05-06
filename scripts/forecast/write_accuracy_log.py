@@ -53,8 +53,7 @@ LATEST_RUN_TEMPLATE = """## Latest run: {run_date_utc}
 |---|---|---|---|---|---|
 {rows}
 
-**Conformal CI calibration (h=35):** qhat_95 = {qhat:.0f} EUR (revenue_eur)
-
+{qhat_line}
 ---
 
 ## History
@@ -158,8 +157,13 @@ def _pick_honest_failure_line(rendered: dict) -> str:
     return HONEST_FAILURE_NO_CHALLENGER
 
 
-def _render_latest_run(rendered: dict, run_date_utc: str, qhat: float) -> str:
-    """Render the '## Latest run' Markdown block."""
+def _render_latest_run(rendered: dict, run_date_utc: str, qhat: float | None) -> str:
+    """Render the '## Latest run' Markdown block.
+
+    WR-04 fix: when qhat is None / NaN / inf, render qhat_95 = NULL instead
+    of '0 EUR' (the prior placeholder lie). NaN is normalised to NULL at the
+    backtest.py write boundary, but accept it here defensively too.
+    """
     rows_md = ''
     # Stable order: naive baselines first, then alphabetical challengers
     order = ['naive_dow', 'naive_dow_with_holidays'] + sorted(
@@ -173,11 +177,22 @@ def _render_latest_run(rendered: dict, run_date_utc: str, qhat: float) -> str:
             f"| {m} | {info['h7']} | {info['h35']} | "
             f"{info['h120']} | {info['h365']} | {info['verdict']} |\n"
         )
+    # Conditional qhat line — NULL placeholder until BCK-02 wires the real value
+    if qhat is None or not np.isfinite(qhat):
+        qhat_line = (
+            '**Conformal CI calibration (h=35):** qhat_95 = NULL '
+            '(no calibration data yet)\n'
+        )
+    else:
+        qhat_line = (
+            f'**Conformal CI calibration (h=35):** qhat_95 = '
+            f'{int(round(float(qhat)))} EUR (revenue_eur)\n'
+        )
     return LATEST_RUN_TEMPLATE.format(
         run_date_utc=run_date_utc,
         honest_failure_line=_pick_honest_failure_line(rendered),
         rows=rows_md.rstrip('\n'),
-        qhat=qhat,
+        qhat_line=qhat_line,
     )
 
 
@@ -223,8 +238,11 @@ def main() -> int:
     rendered = _group_for_render(week_rows)
     run_date_utc = latest_dt.strftime('%Y-%m-%d %H:%M UTC')
 
-    # qhat: best-effort from forecast_quality if backtest writes it; else 0
-    qhat = 0.0
+    # WR-04 fix: pass qhat=None (renders 'qhat_95 = NULL') instead of the
+    # prior `qhat = 0.0` placeholder which produced '0 EUR' — a placeholder
+    # lie that misled readers. The real value flows in once a future plan
+    # wires write_accuracy_log to read forecast_quality.qhat at horizon=35.
+    qhat = None
     latest_run_md = _render_latest_run(rendered, run_date_utc, qhat)
 
     existing_text = ACCURACY_LOG.read_text() if ACCURACY_LOG.exists() else ''

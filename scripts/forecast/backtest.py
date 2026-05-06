@@ -592,6 +592,17 @@ def main(models: list[str], run_date: date) -> int:
                 f'{qhat_val:.4f}' if not np.isnan(qhat_val) else
                 f'[backtest] conformal qhat_h35[{kpi}/{model}] = nan (cold-start)'
             )
+            # WR-04 fix: convert NaN/inf qhat → NULL at the write boundary so
+            # downstream consumers querying `WHERE qhat IS NOT NULL` don't
+            # incorrectly include cold-start rows, and `ORDER BY qhat` stays
+            # well-defined. (Postgres accepts NaN in double precision but
+            # treats it as a "real" value in indexes / ORDER BY — surprising
+            # behavior we want to avoid.)
+            qhat_val_for_db = (
+                None
+                if qhat_val is None or not np.isfinite(qhat_val)
+                else float(qhat_val)
+            )
             # Write a sentinel conformal row (fold_idx=None, no metrics)
             _write_quality_row(
                 client,
@@ -604,7 +615,7 @@ def main(models: list[str], run_date: date) -> int:
                 eval_start=None,
                 metrics=None,
                 gate_verdict='PENDING',  # conformal row: no gate verdict per se
-                qhat=qhat_val,
+                qhat=qhat_val_for_db,
             )
 
         # ------------------------------------------------------------------- #
