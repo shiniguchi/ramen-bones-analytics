@@ -140,7 +140,7 @@
             <th class="pb-1 text-left font-medium">{t(page.data.locale, 'model_avail_col_status')}</th>
             <th class="pb-1 pr-4 text-right font-medium">{t(page.data.locale, 'model_avail_col_min')}</th>
             <th class="pb-1 pl-2 text-left font-medium">{t(page.data.locale, 'model_avail_col_why')}</th>
-            <th class="pb-1 pl-2 text-left font-medium">Backtest</th>
+            <th class="pb-1 pl-2 text-left font-medium">{t(page.data.locale, 'model_avail_col_backtest')}</th>
           </tr>
         </thead>
         <tbody>
