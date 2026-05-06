@@ -23,13 +23,17 @@ const buckets = [
   { iso: '2026-04-16', left: 90,  width: 30 }
 ];
 
+// `events` collides with a reserved @testing-library/svelte v5 render option,
+// so all props must be wrapped in `{ props: {...} }`.
 describe('EventBadgeStrip', () => {
   it('renders nothing inside an empty bucket but keeps strip height', () => {
     const { container } = render(EventBadgeStrip, {
-      events: [] as ForecastEvent[],
-      buckets,
-      grain: 'day' as const,
-      width: 120
+      props: {
+        events: [] as ForecastEvent[],
+        buckets,
+        grain: 'day' as const,
+        width: 120
+      }
     });
     const strip = container.querySelector('[data-testid="event-badge-strip"]') as HTMLElement;
     expect(strip).not.toBeNull();
@@ -45,10 +49,7 @@ describe('EventBadgeStrip', () => {
       { type: 'holiday',        date: '2026-04-15', label: 'Easter' }
     ];
     const { container } = render(EventBadgeStrip, {
-      events,
-      buckets,
-      grain: 'day' as const,
-      width: 120
+      props: { events, buckets, grain: 'day' as const, width: 120 }
     });
     const badges = container.querySelectorAll<HTMLButtonElement>('[data-testid="event-strip-badge"]');
     expect(badges.length).toBe(2);
@@ -78,10 +79,7 @@ describe('EventBadgeStrip', () => {
       { type: 'campaign_start',  date: '2026-04-14', label: 'Spring launch' }
     ];
     const { container } = render(EventBadgeStrip, {
-      events,
-      buckets,
-      grain: 'day' as const,
-      width: 120
+      props: { events, buckets, grain: 'day' as const, width: 120 }
     });
     const badge = container.querySelector<HTMLButtonElement>(
       '[data-testid="event-strip-badge"][data-bucket-iso="2026-04-14"]'
@@ -99,10 +97,7 @@ describe('EventBadgeStrip', () => {
       label: `H${i}`
     }));
     const { container } = render(EventBadgeStrip, {
-      events,
-      buckets,
-      grain: 'day' as const,
-      width: 120
+      props: { events, buckets, grain: 'day' as const, width: 120 }
     });
     const counter = container.querySelector('[data-testid="event-strip-count"]');
     expect(counter?.textContent?.trim()).toBe('5+');
@@ -113,10 +108,7 @@ describe('EventBadgeStrip', () => {
       { type: 'holiday', date: '2026-04-14', label: 'Easter' }
     ];
     const { container } = render(EventBadgeStrip, {
-      events,
-      buckets,
-      grain: 'day' as const,
-      width: 120
+      props: { events, buckets, grain: 'day' as const, width: 120 }
     });
     const badge = container.querySelector<HTMLButtonElement>(
       '[data-testid="event-strip-badge"]'
@@ -133,10 +125,7 @@ describe('EventBadgeStrip', () => {
       { type: 'campaign_start', date: '2026-04-14', label: 'Spring launch' }
     ];
     const { container } = render(EventBadgeStrip, {
-      events,
-      buckets,
-      grain: 'day' as const,
-      width: 120
+      props: { events, buckets, grain: 'day' as const, width: 120 }
     });
     const badge = container.querySelector<HTMLButtonElement>(
       '[data-testid="event-strip-badge"]'
@@ -153,10 +142,7 @@ describe('EventBadgeStrip', () => {
       { type: 'campaign_start', date: '2026-04-14', label: 'Spring launch' }
     ];
     const { container } = render(EventBadgeStrip, {
-      events,
-      buckets,
-      grain: 'day' as const,
-      width: 120
+      props: { events, buckets, grain: 'day' as const, width: 120 }
     });
     const badge = container.querySelector<HTMLButtonElement>(
       '[data-testid="event-strip-badge"]'

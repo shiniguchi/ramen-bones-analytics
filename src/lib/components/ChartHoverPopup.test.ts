@@ -36,12 +36,12 @@ const manyEvents: ForecastEvent[] = Array.from({ length: 12 }, (_, i) => ({
   label: `Recurring #${i + 1}`
 }));
 
+// `events` collides with a reserved @testing-library/svelte v5 render option,
+// so all props must be wrapped in `{ props: {...} }`.
 describe('ChartHoverPopup', () => {
   it('renders header with bucket date and count', () => {
     const { container } = render(ChartHoverPopup, {
-      events: threeEvents,
-      bucketDate: '2026-04-14',
-      grain: 'day'
+      props: { events: threeEvents, bucketDate: '2026-04-14', grain: 'day' }
     });
     const popup = container.querySelector('[data-testid="chart-hover-popup"]');
     expect(popup).not.toBeNull();
@@ -51,9 +51,7 @@ describe('ChartHoverPopup', () => {
 
   it('renders one row per event with type label and event label (text interpolation only)', () => {
     const { container } = render(ChartHoverPopup, {
-      events: threeEvents,
-      bucketDate: '2026-04-14',
-      grain: 'day'
+      props: { events: threeEvents, bucketDate: '2026-04-14', grain: 'day' }
     });
     const text = container.textContent ?? '';
     expect(text).toContain('Campaign');
@@ -66,9 +64,7 @@ describe('ChartHoverPopup', () => {
 
   it('renders all events on day grain even when count > 10 (no expander)', () => {
     const { container } = render(ChartHoverPopup, {
-      events: manyEvents,
-      bucketDate: '2026-04-01',
-      grain: 'day'
+      props: { events: manyEvents, bucketDate: '2026-04-01', grain: 'day' }
     });
     // All 12 labels rendered; no expander button.
     expect(container.textContent).toContain('Recurring #12');
@@ -77,9 +73,7 @@ describe('ChartHoverPopup', () => {
 
   it('caps to 10 rows on month grain and exposes a show-all toggle', async () => {
     const { container } = render(ChartHoverPopup, {
-      events: manyEvents,
-      bucketDate: '2026-04-01',
-      grain: 'month'
+      props: { events: manyEvents, bucketDate: '2026-04-01', grain: 'month' }
     });
     expect(container.textContent).toContain('Recurring #10');
     expect(container.textContent).not.toContain('Recurring #11');
@@ -96,9 +90,7 @@ describe('ChartHoverPopup', () => {
 
   it('renders a single-event bucket without an expander on any grain', () => {
     const { container } = render(ChartHoverPopup, {
-      events: oneEvent,
-      bucketDate: '2026-04-14',
-      grain: 'month'
+      props: { events: oneEvent, bucketDate: '2026-04-14', grain: 'month' }
     });
     expect(container.textContent).toContain('Spring ramen launch');
     expect(container.querySelector('[data-testid="popup-show-all-toggle"]')).toBeNull();
@@ -106,9 +98,7 @@ describe('ChartHoverPopup', () => {
 
   it('marks the popup as a tooltip role with aria-live', () => {
     const { container } = render(ChartHoverPopup, {
-      events: oneEvent,
-      bucketDate: '2026-04-14',
-      grain: 'day'
+      props: { events: oneEvent, bucketDate: '2026-04-14', grain: 'day' }
     });
     const popup = container.querySelector('[data-testid="chart-hover-popup"]');
     expect(popup?.getAttribute('role')).toBe('tooltip');
