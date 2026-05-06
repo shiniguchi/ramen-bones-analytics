@@ -283,7 +283,7 @@
             </Points>
           {/if}
         </Svg>
-        <Tooltip.Root contained={false} classes={{ root: "w-48" }}>
+        <Tooltip.Root contained={false}>
           {#snippet children({ data })}
             {@const period = data?.[xKey] as number | undefined}
             {@const rowsAtPeriod = period == null ? [] : series
