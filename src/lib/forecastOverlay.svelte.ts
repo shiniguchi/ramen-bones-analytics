@@ -23,6 +23,10 @@ export type ForecastRow = {
   horizon_days: number;
 };
 
+// Phase 17 BCK-01/BCK-02 — backtest verdict types mirrored from +server.ts.
+export type BacktestVerdict = 'PASS' | 'FAIL' | 'PENDING' | 'UNCALIBRATED' | null;
+export type ModelBacktestRow = { h7?: BacktestVerdict; h35?: BacktestVerdict; h120?: BacktestVerdict; h365?: BacktestVerdict };
+
 export type ForecastPayload = {
   rows: ForecastRow[];
   actuals: { date: string; value: number }[];
@@ -34,6 +38,9 @@ export type ForecastPayload = {
   last_run: string | null;
   kpi: 'revenue_eur' | 'invoice_count';
   granularity: Granularity;
+  // Phase 17 BCK-01/BCK-02 — backtest verdict per (model, horizon).
+  // Empty object on cold-start (before rolling_origin_cv rows exist).
+  modelBacktestStatus?: Record<string, ModelBacktestRow>;
 };
 
 // Default-visible models on first render. Other models (prophet/chronos/

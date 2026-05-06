@@ -266,6 +266,35 @@ export const GET: RequestHandler = async ({ locals, url }) => {
       ? forecastRows
       : forecastRows.filter((r) => r.target_date >= windowStartIso);
 
+    // Phase 17 BCK-01 / BCK-02 — backtest verdict per (model, horizon).
+    // Reads forecast_quality rows with rolling_origin_cv evaluation,
+    // picks the LATEST evaluated_at per (model_name, horizon_days),
+    // and projects into {h7, h35, h120, h365} shape per model.
+    // Empty table (cold-start before weekly cron fires) -> modelBacktestStatus: {}.
+    type BacktestVerdict = 'PASS' | 'FAIL' | 'PENDING' | 'UNCALIBRATED' | null;
+    type ModelBacktestRow = { h7?: BacktestVerdict; h35?: BacktestVerdict; h120?: BacktestVerdict; h365?: BacktestVerdict };
+
+    const { data: backtestRows } = await locals.supabase
+      .from('forecast_quality')
+      .select('model_name,horizon_days,gate_verdict,evaluated_at')
+      .eq('evaluation_window', 'rolling_origin_cv')
+      .order('evaluated_at', { ascending: false })
+      .limit(2000);
+
+    // Latest verdict per (model, horizon) — skip duplicates from earlier runs.
+    const HORIZON_KEY: Record<number, keyof ModelBacktestRow> = { 7: 'h7', 35: 'h35', 120: 'h120', 365: 'h365' };
+    const seen = new Set<string>();
+    const modelBacktestStatus: Record<string, ModelBacktestRow> = {};
+    for (const r of backtestRows ?? []) {
+      const horizonKey = HORIZON_KEY[r.horizon_days];
+      if (!horizonKey) continue;
+      const dedupeKey = `${r.model_name}|${r.horizon_days}`;
+      if (seen.has(dedupeKey)) continue;
+      seen.add(dedupeKey);
+      if (!modelBacktestStatus[r.model_name]) modelBacktestStatus[r.model_name] = {};
+      modelBacktestStatus[r.model_name][horizonKey] = (r.gate_verdict ?? null) as BacktestVerdict;
+    }
+
     return json(
       {
         rows: visibleForecastRows.map((r) => ({
@@ -280,7 +309,8 @@ export const GET: RequestHandler = async ({ locals, url }) => {
         events: clampEvents(events, 50),
         last_run,
         kpi,
-        granularity
+        granularity,
+        modelBacktestStatus
       },
       { headers: NO_STORE }
     );

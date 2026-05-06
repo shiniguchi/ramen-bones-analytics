@@ -17,13 +17,44 @@
   import { t, type MessageKey } from '$lib/i18n/messages';
   import { FORECAST_MODEL_COLORS } from '$lib/chartPalettes';
 
+  // Phase 17 BCK-01/BCK-02 — backtest verdict types.
+  type BacktestVerdict = 'PASS' | 'FAIL' | 'PENDING' | 'UNCALIBRATED' | null;
+  type ModelBacktestRow = { h7?: BacktestVerdict; h35?: BacktestVerdict; h120?: BacktestVerdict; h365?: BacktestVerdict };
+
   let {
     availableModels,
-    grain
+    grain,
+    backtestStatus = null
   }: {
     availableModels: readonly string[];
     grain: 'day' | 'week' | 'month';
+    backtestStatus?: { [model: string]: ModelBacktestRow } | null;
   } = $props();
+
+  // Phase 17 — horizon list and key map for pill rendering.
+  const HORIZONS = [7, 35, 120, 365] as const;
+  const HORIZON_KEY: Record<number, keyof ModelBacktestRow> = { 7: 'h7', 35: 'h35', 120: 'h120', 365: 'h365' };
+
+  // Returns Tailwind bg+text classes for a given verdict (or null/undefined fallback).
+  function verdictColorClass(status: BacktestVerdict | undefined): string {
+    switch (status) {
+      case 'PASS':         return 'bg-emerald-100 text-emerald-800';
+      case 'FAIL':         return 'bg-rose-100 text-rose-800';
+      case 'PENDING':      return 'bg-zinc-100 text-zinc-700';
+      case 'UNCALIBRATED': return 'bg-amber-100 text-amber-800';
+      default:             return 'bg-zinc-50 text-zinc-400';
+    }
+  }
+
+  // Returns the i18n MessageKey for the compact short-form verdict symbol.
+  function verdictShortKey(status: BacktestVerdict | undefined): MessageKey {
+    switch (status) {
+      case 'PASS':         return 'model_avail_backtest_short_pass';
+      case 'FAIL':         return 'model_avail_backtest_short_fail';
+      case 'UNCALIBRATED': return 'model_avail_backtest_short_uncalibrated';
+      default:             return 'model_avail_backtest_short_pending';
+    }
+  }
 
   type ModelInfo = {
     key: string;
@@ -102,13 +133,14 @@
            pattern). -mx-3 lets the table extend slightly past the panel's px-3
            padding for max usable width. -->
       <div class="-mx-3 overflow-x-auto overscroll-x-contain px-3">
-        <table class="w-full min-w-[640px] text-[11px]">
+        <table class="w-full min-w-[840px] text-[11px]">
           <thead>
           <tr class="border-b border-zinc-200 text-zinc-500">
             <th class="pb-1 text-left font-medium">{t(page.data.locale, 'model_avail_col_model')}</th>
             <th class="pb-1 text-left font-medium">{t(page.data.locale, 'model_avail_col_status')}</th>
             <th class="pb-1 pr-4 text-right font-medium">{t(page.data.locale, 'model_avail_col_min')}</th>
             <th class="pb-1 pl-2 text-left font-medium">{t(page.data.locale, 'model_avail_col_why')}</th>
+            <th class="pb-1 pl-2 text-left font-medium">Backtest</th>
           </tr>
         </thead>
         <tbody>
@@ -133,6 +165,21 @@
               </td>
               <td class="py-0.5 pl-2 align-top text-zinc-500">
                 {t(page.data.locale, `model_avail_why_${info.key}` as MessageKey)}
+              </td>
+              <!-- Phase 17 BCK-01/BCK-02 — 4 horizon verdict pills (h=7/35/120/365) -->
+              <td class="py-0.5 pl-2 align-top">
+                <div class="flex gap-1 text-[10px]">
+                  {#each HORIZONS as h}
+                    {@const status = backtestStatus?.[info.key]?.[HORIZON_KEY[h]] ?? null}
+                    <span
+                      class="rounded px-1.5 py-0.5 whitespace-nowrap {verdictColorClass(status)}"
+                      data-testid="backtest-pill-{info.key}-h{h}"
+                      title={t(page.data.locale, `model_avail_backtest_${(status ?? 'pending').toLowerCase()}` as MessageKey)}
+                    >
+                      {h}d {t(page.data.locale, verdictShortKey(status))}
+                    </span>
+                  {/each}
+                </div>
               </td>
             </tr>
           {/each}
