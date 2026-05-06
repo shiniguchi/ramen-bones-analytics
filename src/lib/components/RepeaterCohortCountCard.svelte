@@ -13,6 +13,7 @@
   import { page } from '$app/state';
   import { t } from '$lib/i18n/messages';
   import EmptyState from './EmptyState.svelte';
+  import EventBadgeStrip from './EventBadgeStrip.svelte';
   import {
     cohortRepeaterCountByVisitBucket,
     recomputeCustomerLtvFromTx,
@@ -30,6 +31,8 @@
     computeChartWidth,
     MAX_X_TICKS
   } from '$lib/dashboardStore.svelte';
+  import { clientFetch } from '$lib/clientFetch';
+  import type { ForecastEvent } from '$lib/forecastEventClamp';
 
   let { data, repeaterTx }: { data: CustomerLtvRow[]; repeaterTx: RepeaterTxRow[] } = $props();
 
@@ -56,6 +59,9 @@
     const aggs = cohortRepeaterCountByVisitBucket(effectiveData, cohortGrain);
     return aggs.map((a) => {
       const row: Record<string, string | number> = {
+        // Phase 16.3: keep raw ISO cohort key for EventBadgeStrip alignment
+        // (a.cohort is yyyy-MM-dd for both week and month from cohortAgg).
+        cohort_iso: a.cohort,
         cohort: formatBucketLabel(a.cohort, cohortGrain)
       };
       for (const k of REPEATER_BUCKET_KEYS) row[k] = a[k];
@@ -77,6 +83,39 @@
   const chartW = $derived(computeChartWidth(chartData.length, cardW));
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let chartCtx = $state<any>();
+
+  // Phase 16.3 D-09: VA-09 visit-sequence chart wires EventBadgeStrip via a
+  // standalone /api/forecast call reading only the events field. Locked
+  // option (a) per CONTEXT.md (no useEvents() factory — single-purpose call).
+  // Granularity = cohortGrain (week | month) per planner direction.
+  let events = $state<ForecastEvent[]>([]);
+  let lastFetchedKey: string | null = null;
+  $effect(() => {
+    const earliestIso = chartData[0]?.cohort_iso;
+    const g = cohortGrain;
+    if (typeof earliestIso !== 'string') return;
+    const key = `${g}|${earliestIso}`;
+    if (lastFetchedKey === key) return;
+    lastFetchedKey = key;
+    clientFetch<{ events: ForecastEvent[] }>(
+      `/api/forecast?kpi=revenue_eur&granularity=${g}&range_start=${encodeURIComponent(earliestIso)}`
+    )
+      .then((d) => { events = d.events ?? []; })
+      .catch(() => { events = []; });
+  });
+
+  // Phase 16.3 D-02: pixel slots for EventBadgeStrip — caller-owned band
+  // position math. chartW is `number | undefined`; fall back to cardW.
+  const stripWidth = $derived(chartW ?? cardW);
+  const eventBuckets = $derived.by(() => {
+    if (chartData.length === 0 || stripWidth === 0) return [];
+    const slotWidth = stripWidth / chartData.length;
+    return chartData.map((row, i) => ({
+      iso: row.cohort_iso as string,
+      left: i * slotWidth,
+      width: slotWidth
+    }));
+  });
 </script>
 
 <div
@@ -157,6 +196,17 @@
           {/snippet}
         </Tooltip.Root>
       </Chart>
+
+      <!-- Phase 16.3 D-02 / D-06: EventBadgeStrip mounts inside scroll wrapper.
+           VA-09 visit-sequence card uses cohortGrain (week|month) as both the
+           server fetch grain and the strip render grain. Fixed 44px height
+           (D-06 prevents card-height jitter on filter changes). -->
+      <EventBadgeStrip
+        events={events}
+        buckets={eventBuckets}
+        grain={cohortGrain}
+        width={stripWidth}
+      />
     </div>
 
     <!-- 7-bucket gradient legend (2nd..8x+) below chart — aligned with the
