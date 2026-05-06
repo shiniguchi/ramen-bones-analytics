@@ -1,22 +1,16 @@
-name: Forecast Backtest (Phase 17 BCK-05)
+name: Forecast Backtest
 on:
-  schedule:
-    - cron: '0 23 * * 2'   # Tuesday 23:00 UTC (CONTEXT.md specifics + BCK-05)
-  workflow_dispatch:
-    inputs:
-      models:
-        description: 'Comma-separated model list (omit for all enabled)'
-        required: false
-        default: ''
+  push:
+    paths:
+      - 'data/**'   # fire when owner drops a new data file
+  workflow_dispatch: {}   # manual trigger when needed; models driven by feature_flags
 
-# D-07: ACCURACY-LOG.md commit needs write. All other forecast workflows are
-# contents:read; this is the SOLE write-permitted forecast workflow.
+# Commit-back of ACCURACY-LOG.md needs write access.
+# All other forecast workflows are contents:read.
 permissions:
   contents: write
 
-# Single-flight: prevent two scheduled+manual runs from racing on forecast_quality
-# rows or interleaving the ACCURACY-LOG commit. cancel-in-progress=false so a
-# manual workflow_dispatch waits behind the cron rather than killing it.
+# Queue runs; never cancel in-flight to avoid half-written forecast_quality rows.
 concurrency:
   group: forecast-backtest
   cancel-in-progress: false
@@ -24,9 +18,7 @@ concurrency:
 jobs:
   backtest:
     runs-on: ubuntu-latest
-    timeout-minutes: 30   # R5: 5 models × 4 horizons × 4 folds × 2 KPIs = 160 fits; conservative
-    env:
-      GITHUB_SHA: ${{ github.sha }}
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
         with:
@@ -45,25 +37,12 @@ jobs:
         run: pip install -r scripts/forecast/requirements.txt
 
       - name: Run backtest
-        # Inputs piped through env: vars (NOT direct ${{ }} in the script) so a
-        # malicious workflow_dispatch caller cannot inject shell metacharacters.
-        # Validate models input against a safe pattern before forwarding to argparse.
-        # Service-role key scoped to THIS step only.
         env:
           SUPABASE_URL: ${{ secrets.DEV_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.DEV_SUPABASE_SERVICE_ROLE_KEY }}
-          MODELS: ${{ inputs.models }}
         run: |
           set -euo pipefail
-          ARGS=()
-          if [ -n "${MODELS:-}" ]; then
-            if ! echo "$MODELS" | grep -qE '^[a-z_]+(,[a-z_]+)*$'; then
-              echo "ERROR: MODELS must be comma-separated lowercase identifiers" >&2
-              exit 1
-            fi
-            ARGS+=("--models" "$MODELS")
-          fi
-          python -m scripts.forecast.backtest "${ARGS[@]}"
+          python -m scripts.forecast.backtest
 
       - name: Generate ACCURACY-LOG.md
         env:
@@ -74,9 +53,9 @@ jobs:
           python -m scripts.forecast.write_accuracy_log
 
       - name: Commit ACCURACY-LOG.md
-        # github-actions[bot] commits the regenerated log. No-op if no changes.
-        # [skip ci] prevents recursive trigger of forecast-quality-gate.yml on
-        # this auto-commit (T-17-09 mitigation from threat model).
+        # No-op when file is byte-identical (idempotent run).
+        # [skip ci] prevents the push from re-triggering this workflow
+        # (docs/forecast/ is outside data/** but belt-and-suspenders).
         run: |
           set -euo pipefail
           git config user.name 'github-actions[bot]'
@@ -86,5 +65,5 @@ jobs:
             echo "No ACCURACY-LOG changes to commit"
             exit 0
           fi
-          git commit -m "docs(forecast): weekly ACCURACY-LOG update [skip ci]"
+          git commit -m "docs(forecast): update ACCURACY-LOG after data push [skip ci]"
           git push origin HEAD:main

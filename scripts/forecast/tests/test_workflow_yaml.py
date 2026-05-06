@@ -1,7 +1,7 @@
 """Phase 17 BCK-05/BCK-06: parse the new GHA workflows and assert critical settings.
 
 Catches regressions where a future refactor accidentally removes:
-  - Tuesday 23:00 UTC cron on forecast-backtest.yml
+  - push: paths: ['data/**'] trigger on forecast-backtest.yml
   - permissions: contents: write on forecast-backtest.yml
   - permissions: contents: read on forecast-quality-gate.yml (read-only PR check)
   - concurrency.cancel-in-progress=false on backtest, =true on gate
@@ -22,14 +22,15 @@ def _load(p: Path) -> dict:
     return yaml.safe_load(p.read_text())
 
 
-def test_backtest_cron_tuesday_2300_utc():
-    """BCK-05: cron MUST be '0 23 * * 2' (Tuesday 23:00 UTC)."""
+def test_backtest_data_push_trigger():
+    """BCK-05: workflow fires on push to data/** (owner drops a new data file)."""
     cfg = _load(BACKTEST_YML)
-    # YAML parsing 'on' is tricky — boolean-key issue. We accept both 'on' and True keys.
     on_block = cfg.get('on') or cfg.get(True) or {}
-    schedule = on_block.get('schedule') or []
-    crons = [s.get('cron') for s in schedule]
-    assert '0 23 * * 2' in crons, f'BCK-05 cron missing; found {crons}'
+    push = on_block.get('push') or {}
+    paths = push.get('paths') or []
+    assert any('data/' in p for p in paths), f'data/** push trigger missing; found {paths}'
+    # Must NOT have a cron schedule (user controls upload cadence)
+    assert not on_block.get('schedule'), 'forecast-backtest.yml must not use a cron schedule'
 
 
 def test_backtest_permissions_write():
@@ -52,14 +53,6 @@ def test_backtest_timeout_minutes():
     cfg = _load(BACKTEST_YML)
     job = cfg['jobs']['backtest']
     assert job.get('timeout-minutes') == 30
-
-
-def test_backtest_models_input_validated():
-    """REVIEW C-1/MS-1: MODELS input regex-validated before forwarding to subprocess."""
-    body = BACKTEST_YML.read_text()
-    assert 'grep -qE' in body, (
-        'MODELS input must be regex-validated before subprocess invocation'
-    )
 
 
 def test_backtest_skip_ci_in_commit():
