@@ -461,7 +461,19 @@ def fit_and_write(
 
 
 if __name__ == '__main__':
-    # Read env vars
+    # Phase 17 BCK-01 — argparse retrofit so backtest.py can subprocess us per fold.
+    # argparse runs FIRST (before env-var reads) so --help works without env vars set.
+    import argparse
+    _parser = argparse.ArgumentParser(description='Phase 14/17 ets_fit script')
+    _parser.add_argument('--train-end', type=str, default=None,
+        help='YYYY-MM-DD. Override default train_end_for_grain. Used by backtest.py per fold.')
+    _parser.add_argument('--eval-start', type=str, default=None,
+        help='YYYY-MM-DD. First date of evaluation window (recorded only).')
+    _parser.add_argument('--fold-index', type=int, default=None,
+        help='0-indexed fold number. Optional.')
+    _args = _parser.parse_args()
+
+    # Read env vars (UNCHANGED from Phase 14 BAU behavior)
     restaurant_id = os.environ.get('RESTAURANT_ID', '').strip()
     kpi_name = os.environ.get('KPI_NAME', '').strip()
     run_date_str = os.environ.get('RUN_DATE', '').strip()
@@ -476,6 +488,13 @@ if __name__ == '__main__':
         sys.exit(1)
 
     run_date = date.fromisoformat(run_date_str)
+    # Phase 17: resolve per-fold overrides from CLI args.
+    # When omitted, defaults preserve Phase 14 BAU behavior (train_end=None → computed inside fit_and_write).
+    train_end_override = date.fromisoformat(_args.train_end) if _args.train_end else None
+    # Issue 1: FORECAST_TRACK env-var override for backtest fold scope-isolation.
+    # Default 'bau' preserves Phase 14 BAU pipeline behavior when env var is unset.
+    track = os.environ.get('FORECAST_TRACK', 'bau').strip() or 'bau'
+
     started_at = datetime.now(timezone.utc)
     client = make_client()
 
@@ -486,6 +505,8 @@ if __name__ == '__main__':
             kpi_name=kpi_name,
             run_date=run_date,
             granularity=granularity,
+            track=track,                   # Issue 1: FORECAST_TRACK env var
+            train_end=train_end_override,  # Phase 17 BCK-01
         )
         write_success(
             client,
