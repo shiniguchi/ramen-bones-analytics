@@ -340,9 +340,22 @@ def _gate_decision(
     # Compute mean RMSE per model
     mean_rmse = {m: float(np.mean(rs)) for m, rs in rmses_by_model.items()}
 
-    # Baseline: max of naive_dow and naive_dow_with_holidays means
-    baseline_dow = mean_rmse.get('naive_dow', float('inf'))
-    baseline_dow_h = mean_rmse.get('naive_dow_with_holidays', float('inf'))
+    # Baseline: max of naive_dow and naive_dow_with_holidays means.
+    # BL-01 fix: when EITHER baseline RMSE is missing/None/NaN/inf, the gate is
+    # undecidable — refuse to compute a verdict and return PENDING for ALL
+    # models in this slice. Baselines are R7 always-on; their absence is a
+    # data-quality signal (subprocess crash, zero aligned rows, etc.), NOT a
+    # free pass. Defaulting to float('inf') would silently set
+    # threshold = inf * 0.9 = inf and pass every challenger.
+    baseline_dow = mean_rmse.get('naive_dow')
+    baseline_dow_h = mean_rmse.get('naive_dow_with_holidays')
+    if (
+        baseline_dow is None
+        or baseline_dow_h is None
+        or not np.isfinite(baseline_dow)
+        or not np.isfinite(baseline_dow_h)
+    ):
+        return {m: 'PENDING' for m in mean_rmse}
     baseline = max(baseline_dow, baseline_dow_h)
     threshold = baseline * GATE_THRESHOLD
 

@@ -205,12 +205,86 @@ class TestGateDecision:
     def test_kpi_filter_independent(self):
         """Gate filters by kpi; invoice_count rows not mixed with revenue_eur."""
         rows = [
+            # revenue_eur side — both baselines provided so the slice is decidable
             self._row('naive_dow', 7, 100.0, kpi='revenue_eur'),
+            self._row('naive_dow_with_holidays', 7, 90.0, kpi='revenue_eur'),
             self._row('sarimax', 7, 50.0, kpi='revenue_eur'),
             # invoice_count rows should NOT influence revenue_eur gate
             self._row('naive_dow', 7, 10.0, kpi='invoice_count'),
+            self._row('naive_dow_with_holidays', 7, 9.0, kpi='invoice_count'),
             self._row('sarimax', 7, 100.0, kpi='invoice_count'),
         ]
         rev_verdicts = _gate_decision(rows, kpi='revenue_eur', horizon=7)
-        # revenue_eur: baseline=100, threshold=90; sarimax=50 → PASS
+        # revenue_eur: baseline = max(100, 90) = 100; threshold = 90; sarimax=50 → PASS
         assert rev_verdicts['sarimax'] == 'PASS'
+
+    # --- BL-01 regression tests: missing-baseline path must NOT silent-pass ---
+
+    def test_missing_naive_dow_with_holidays_returns_pending_not_pass(self):
+        """BL-01: when naive_dow_with_holidays is missing, ALL challengers must be
+        PENDING (gate undecidable) — NEVER PASS. Baselines must also be PENDING
+        because the slice is undecidable.
+
+        Pre-fix bug: `mean_rmse.get('naive_dow_with_holidays', float('inf'))` made
+        threshold = inf * 0.9 = inf; sarimax_rmse <= inf is always True → silent PASS.
+        """
+        rows = [
+            self._row('naive_dow', 7, 100.0),
+            # naive_dow_with_holidays MISSING — simulates baseline subprocess crash
+            self._row('sarimax', 7, 60.0),
+            self._row('prophet', 7, 9999.0),  # would-be FAIL becomes PENDING
+        ]
+        verdicts = _gate_decision(rows, kpi='revenue_eur', horizon=7)
+        # Sanity: missing baseline path was reached
+        assert verdicts, 'expected non-empty verdict dict'
+        # CRITICAL: NO model gets PASS when a baseline is missing
+        assert 'PASS' not in verdicts.values(), (
+            f'silent gate bypass — got PASS verdicts with missing baseline: {verdicts}'
+        )
+        # All present models must be PENDING (slice undecidable)
+        assert verdicts['sarimax'] == 'PENDING'
+        assert verdicts['prophet'] == 'PENDING'
+        assert verdicts['naive_dow'] == 'PENDING'
+
+    def test_missing_naive_dow_returns_pending_not_pass(self):
+        """BL-01 mirror: when naive_dow is missing, same PENDING-for-all behavior."""
+        rows = [
+            # naive_dow MISSING
+            self._row('naive_dow_with_holidays', 7, 90.0),
+            self._row('sarimax', 7, 50.0),
+        ]
+        verdicts = _gate_decision(rows, kpi='revenue_eur', horizon=7)
+        assert 'PASS' not in verdicts.values()
+        assert verdicts['sarimax'] == 'PENDING'
+        assert verdicts['naive_dow_with_holidays'] == 'PENDING'
+
+    def test_both_baselines_missing_returns_pending(self):
+        """BL-01: both baselines missing → all PENDING."""
+        rows = [
+            self._row('sarimax', 7, 50.0),
+            self._row('prophet', 7, 60.0),
+        ]
+        verdicts = _gate_decision(rows, kpi='revenue_eur', horizon=7)
+        assert verdicts == {'sarimax': 'PENDING', 'prophet': 'PENDING'}
+
+    def test_nan_baseline_rmse_returns_pending(self):
+        """BL-01: a NaN baseline RMSE must NOT collapse to PASS via comparison."""
+        rows = [
+            self._row('naive_dow', 7, float('nan')),
+            self._row('naive_dow_with_holidays', 7, 90.0),
+            self._row('sarimax', 7, 50.0),
+        ]
+        verdicts = _gate_decision(rows, kpi='revenue_eur', horizon=7)
+        assert 'PASS' not in verdicts.values()
+        assert verdicts['sarimax'] == 'PENDING'
+
+    def test_inf_baseline_rmse_returns_pending(self):
+        """BL-01: an inf baseline RMSE must NOT silently pass every challenger."""
+        rows = [
+            self._row('naive_dow', 7, float('inf')),
+            self._row('naive_dow_with_holidays', 7, 90.0),
+            self._row('sarimax', 7, 50.0),
+        ]
+        verdicts = _gate_decision(rows, kpi='revenue_eur', horizon=7)
+        assert 'PASS' not in verdicts.values()
+        assert verdicts['sarimax'] == 'PENDING'
