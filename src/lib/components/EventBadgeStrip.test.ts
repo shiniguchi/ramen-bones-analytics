@@ -18,7 +18,7 @@ import type { ForecastEvent } from '$lib/forecastEventClamp';
 
 const buckets = [
   { iso: '2026-04-13', left: 0,   width: 30 },
-  { iso: '2026-04-14', left: 30,  width: 30 },
+  { iso: '2026-03-15', left: 30,  width: 30 },
   { iso: '2026-04-15', left: 60,  width: 30 },
   { iso: '2026-04-16', left: 90,  width: 30 }
 ];
@@ -45,7 +45,7 @@ describe('EventBadgeStrip', () => {
 
   it('renders ONE badge per bucket (not one per event) with single-event color', () => {
     const events: ForecastEvent[] = [
-      { type: 'campaign_start', date: '2026-04-14', label: 'Spring launch' },
+      { type: 'campaign_start', date: '2026-03-15', label: 'Spring launch' },
       { type: 'holiday',        date: '2026-04-15', label: 'Easter' }
     ];
     const { container } = render(EventBadgeStrip, {
@@ -55,7 +55,7 @@ describe('EventBadgeStrip', () => {
     expect(badges.length).toBe(2);
 
     const apr14 = container.querySelector<HTMLButtonElement>(
-      '[data-testid="event-strip-badge"][data-bucket-iso="2026-04-14"]'
+      '[data-testid="event-strip-badge"][data-bucket-iso="2026-03-15"]'
     )!;
     const apr15 = container.querySelector<HTMLButtonElement>(
       '[data-testid="event-strip-badge"][data-bucket-iso="2026-04-15"]'
@@ -72,17 +72,17 @@ describe('EventBadgeStrip', () => {
   it('multi-event bucket uses the highest-priority colour and shows a count corner', () => {
     const events: ForecastEvent[] = [
       // recurring_event = priority 1
-      { type: 'recurring_event', date: '2026-04-14', label: 'Live music' },
+      { type: 'recurring_event', date: '2026-03-15', label: 'Live music' },
       // holiday = priority 2
-      { type: 'holiday',         date: '2026-04-14', label: 'Easter' },
+      { type: 'holiday',         date: '2026-03-15', label: 'Easter' },
       // campaign_start = priority 5 — should win
-      { type: 'campaign_start',  date: '2026-04-14', label: 'Spring launch' }
+      { type: 'campaign_start',  date: '2026-03-15', label: 'Spring launch' }
     ];
     const { container } = render(EventBadgeStrip, {
       props: { events, buckets, grain: 'day' as const, width: 120 }
     });
     const badge = container.querySelector<HTMLButtonElement>(
-      '[data-testid="event-strip-badge"][data-bucket-iso="2026-04-14"]'
+      '[data-testid="event-strip-badge"][data-bucket-iso="2026-03-15"]'
     )!;
     expect(badge.style.backgroundColor).toBe('rgb(220, 38, 38)'); // campaign_start = #dc2626 wins
     expect(badge.dataset.eventCount).toBe('3');
@@ -93,7 +93,7 @@ describe('EventBadgeStrip', () => {
   it('rolls counts ≥5 to the literal "5+" string per D-03', () => {
     const events: ForecastEvent[] = Array.from({ length: 7 }, (_, i) => ({
       type: 'holiday' as const,
-      date: '2026-04-14',
+      date: '2026-03-15',
       label: `H${i}`
     }));
     const { container } = render(EventBadgeStrip, {
@@ -105,7 +105,7 @@ describe('EventBadgeStrip', () => {
 
   it('badge meets ≥44×44 tap-target minimum and is keyboard reachable', () => {
     const events: ForecastEvent[] = [
-      { type: 'holiday', date: '2026-04-14', label: 'Easter' }
+      { type: 'holiday', date: '2026-03-15', label: 'Easter' }
     ];
     const { container } = render(EventBadgeStrip, {
       props: { events, buckets, grain: 'day' as const, width: 120 }
@@ -117,12 +117,12 @@ describe('EventBadgeStrip', () => {
     const widthPx = parseInt(badge.style.width, 10);
     expect(widthPx).toBeGreaterThanOrEqual(44);
     expect(badge.tabIndex).toBe(0);
-    expect(badge.getAttribute('aria-label')).toMatch(/2026-04-14/);
+    expect(badge.getAttribute('aria-label')).toMatch(/2026-03-15/);
   });
 
   it('opens the popup on click and toggles closed on second click', async () => {
     const events: ForecastEvent[] = [
-      { type: 'campaign_start', date: '2026-04-14', label: 'Spring launch' }
+      { type: 'campaign_start', date: '2026-03-15', label: 'Spring launch' }
     ];
     const { container } = render(EventBadgeStrip, {
       props: { events, buckets, grain: 'day' as const, width: 120 }
@@ -139,7 +139,7 @@ describe('EventBadgeStrip', () => {
 
   it('opens the popup via Enter / Space keys for keyboard users', async () => {
     const events: ForecastEvent[] = [
-      { type: 'campaign_start', date: '2026-04-14', label: 'Spring launch' }
+      { type: 'campaign_start', date: '2026-03-15', label: 'Spring launch' }
     ];
     const { container } = render(EventBadgeStrip, {
       props: { events, buckets, grain: 'day' as const, width: 120 }
