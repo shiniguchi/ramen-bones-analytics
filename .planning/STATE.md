@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: External Data & Forecasting Foundation
 status: ready_to_ship
-stopped_at: Phase 17 shipped (2026-05-06)
-last_updated: "2026-05-06T21:00:00.000Z"
+stopped_at: Phase 17 shipped — PR #30 (2026-05-06)
+last_updated: "2026-05-06T21:45:00.000Z"
 last_activity: 2026-05-06
 progress:
   total_phases: 20
