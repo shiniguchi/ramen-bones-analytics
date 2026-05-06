@@ -2,7 +2,7 @@
 
 ## What This Is
 
-A free, forkable, mobile-first analytics web app that turns Orderbird POS transactions into banking-grade growth metrics (cohorts, retention, LTV) for non-technical restaurant owners. V1 serves a single ramen restaurant (the founder's friend); the architecture is built multi-tenant-ready so any restaurant owner can eventually fork or self-host.
+A free, forkable, mobile-first analytics platform that turns Orderbird POS transactions into banking-grade growth metrics (cohorts, retention, LTV, forecasting, and campaign uplift attribution) for non-technical restaurant owners. Shipped through v1.3 to a single ramen restaurant; built multi-tenant-ready so any restaurant owner can fork or self-host. Features a nightly forecasting engine (5 statistical models), external-signal ingestion (weather/holidays/events), ITS campaign attribution, and a backtest gate for honest model promotion.
 
 ## Core Value
 
@@ -12,38 +12,47 @@ A restaurant owner opens the site on their phone and makes a real business decis
 
 ### Validated
 
-(None yet — ship to validate)
+- ✓ Automated extraction of per-transaction Orderbird data with card-hash customer ID (daily refresh) — v1.0
+- ✓ Supabase Postgres as single source of truth, with SQL models for cohorts/retention/LTV as materialized views refreshed nightly via pg_cron — v1.0
+- ✓ First-visit acquisition cohorts (daily / weekly / monthly) with retention curves — v1.0
+- ✓ Customer LTV per segment — v1.2
+- ✓ Revenue trend KPIs (daily / weekly / monthly, avg ticket, tx count) — v1.0
+- ✓ Repeat visit rate and visit-frequency distribution — v1.2
+- ✓ Mobile-first SvelteKit frontend on Cloudflare Pages with interactive date/segment filters — v1.0
+- ✓ Login-protected access (Supabase Auth), scoped per restaurant — v1.0
+- ✓ Multi-tenant-ready data model from day 1 (RLS policies in place) — v1.0
+- ✓ Forkable open-source repo (one-click deploy) so other restaurant owners can self-host — v1.0
+- ✓ External data ingestion (weather, holidays, school breaks, events, transit strikes) backfilled from 2025-06-11 — v1.3
+- ✓ Multi-horizon forecasting engine (SARIMAX/Prophet/ETS/Theta/Naive) with nightly refit and 95% CI — v1.3
+- ✓ ITS campaign uplift attribution with Track-B counterfactual and honest "CI overlaps zero" labeling — v1.3
+- ✓ Backtest gate: rolling-origin CV at 4 horizons, ≥10% RMSE vs regressor-aware naive required for model promotion — v1.3
+- ✓ Event overlay (campaigns/holidays/events) wired into every date-axis chart via EventBadgeStrip — v1.3
 
 ### Active
 
-- [ ] Automated extraction of per-transaction Orderbird data with card-hash customer ID (daily refresh)
-- [ ] Supabase Postgres as single source of truth, with SQL models for cohorts/retention/LTV as materialized views refreshed nightly via pg_cron
-- [ ] First-visit acquisition cohorts (daily / weekly / monthly) with retention curves
-- [ ] Customer LTV per segment
-- [ ] Revenue trend KPIs (daily / weekly / monthly, avg ticket, tx count)
-- [ ] Repeat visit rate and visit-frequency distribution
-- [ ] Mobile-first SvelteKit frontend on Cloudflare Pages with interactive date/segment filters
-- [ ] Login-protected access (Supabase Auth), scoped per restaurant
-- [ ] Multi-tenant-ready data model from day 1 (RLS policies in place) even while v1 serves one tenant
-- [ ] Forkable open-source repo (one-click deploy) so other restaurant owners can self-host
+- [ ] Admin UI for campaign calendar entry (currently Supabase Studio manual — low-friction for v1.3 single campaign, but next campaign needs a form)
+- [ ] Date-range filter performance — residual single-cascade latency after 71% improvement in v1.3 Phase 16.2; owner notices the lag on April day-grain queries
+- [ ] SARIMAX/ETS/Theta at week/month grain via sample-path aggregation (currently only Prophet + Naive_DoW available at non-day grain until ~mid-2027 when 104-week threshold met)
+- [ ] At-risk customer identification — regulars gone quiet (follow-up to existing cohort analytics)
 
 ### Out of Scope
 
 - Real-time / streaming data — daily refresh covers 99% of decisions, webhooks add complexity
-- Onboarding flow / signup UI for v1 — single tenant, manual provisioning is fine
+- Onboarding flow / signup UI — single tenant, manual provisioning is fine
 - Paid tier / billing — free and forkable is the business model
 - Slide/PDF report generation — phone dashboard is the delivery vehicle
-- Embedded notebooks in the user-facing UI — notebooks are the dev environment, not the product
 - Non-Orderbird POS integrations — scope creep risk
 - Desktop-first layout — phone is the primary viewing surface
-- Looker / Metabase / external BI tools — product requirement is a custom web UI
+- Full Marketing Mix Modeling — need ≥3 marketing channels; Instagram-only in v1.x
+- Deep-learning forecasters (TFT, DeepAR) — need ≥2 years data + GPU; SARIMAX wins at current scale
+- Per-customer churn predictions — sparse card-hash tracking + low signal at 1 location
 
 ## Context
 
 - **Founder background:** Growth analyst at a bank, expert in acquisition/retention/LTV modeling. Applying banking playbooks to restaurants.
 - **Origin:** Helping a friend who owns a ramen restaurant. Friend is non-technical.
 - **Data source:** Orderbird POS. No public API; ISV Partner API requires application (weeks). Fallback: Playwright scraper against `my.orderbird.com` CSV export; email parsing for tax/DATEV as last resort.
-- **Data depth:** 3–12 months of history available — enough for meaningful first-visit cohorts and short-range retention curves, not enough for 12-month LTV yet.
+- **Data depth:** ~330 days / ~46 weeks / ~11 months (as of 2026-05-06). Enough for SARIMAX/ETS/Theta at day grain; Prophet + Naive_DoW only at week/month grain until ~mid-2027 (104-week threshold). LTV-to-date only, no 12-month projection yet.
 - **Customer identity:** Card hash / payment token (anonymized, no opt-in required).
 - **User device:** Friend (and future owners) will open this on a phone. Mobile UX is non-negotiable.
 - **Prior research (completed in pre-init conversation):**
@@ -68,36 +77,35 @@ A restaurant owner opens the site on their phone and makes a real business decis
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Single-tenant v1, multi-tenant architecture | Validate KPIs matter before building onboarding UX; avoid rewrite | — Pending |
-| SvelteKit over Next.js on Cloudflare | First-class CF adapter, smaller mobile bundle, no edge-runtime workarounds | — Pending |
-| Supabase Postgres over Cloudflare D1 | Postgres window functions + CTEs + generate_series needed for cohort SQL; RLS for multi-tenancy | — Pending |
-| Materialized views + pg_cron (not dbt) | Simpler at current scale; revisit dbt past 50+ models | — Pending |
-| Playwright CSV scraper as v1 extract path | ISV API approval takes weeks; need data flowing day 1 | — Pending |
-| Daily refresh cadence | 99% of decisions don't need intraday; simpler cron | — Pending |
-| Card hash as customer ID | Works without opt-in, captures all repeat visits | — Pending |
-| Forkable open-source, no paid tier | Product philosophy — give the banking playbook away | — Pending |
+| Single-tenant v1, multi-tenant architecture | Validate KPIs matter before building onboarding UX; avoid rewrite | ✓ Good — RLS + restaurant_id from day 1 paid off; no schema rewrite needed across 17 phases |
+| SvelteKit over Next.js on Cloudflare | First-class CF adapter, smaller mobile bundle, no edge-runtime workarounds | ✓ Good — adapter-cloudflare worked cleanly; LazyMount pattern resolved CF Workers CPU limit |
+| Supabase Postgres over Cloudflare D1 | Postgres window functions + CTEs + generate_series needed for cohort SQL; RLS for multi-tenancy | ✓ Good — window functions essential for every v1.x phase; D1 would have been fatal |
+| Materialized views + pg_cron (not dbt) | Simpler at current scale; revisit dbt past 50+ models | ✓ Good — ~15 MVs manageable without dbt; refresh DAG in refresh_analytics_mvs() sufficient |
+| Playwright CSV scraper as v1 extract path | ISV API approval takes weeks; need data flowing day 1 | ✓ Good — still active extract path; ISV API still pending as of v1.3 |
+| Daily refresh cadence | 99% of decisions don't need intraday; simpler cron | ✓ Good — nightly cron covers all use cases; owner hasn't requested intraday |
+| Card hash as customer ID | Works without opt-in, captures all repeat visits | ✓ Good — Worldline blackout (Apr 2026) only limitation; cohort linkage preserved for 10-month pre-campaign era |
+| Forkable open-source, no paid tier | Product philosophy — give the banking playbook away | ✓ Good — repo public since v1.0; $0/month preserved through v1.3 |
+| Two-track architecture (forecast_track discriminator) | Single forecast_daily table serves BAU + counterfactual; one MV, one wrapper view | ✓ Good — clean separation; Track-B never leaks campaign-era data into BAU |
+| Hybrid RLS (shared location tables vs tenant-scoped) | Weather/holidays are public data; pipeline_runs/shop_calendar/campaign_calendar are tenant data | ✓ Good — no accidental PII in shared tables; audit confirmed |
+| revenue_comparable_eur for ITS attribution | Coincident menu launches (Onsen EGG, Tantan, Hell beer) contaminate raw revenue | ✓ Good — ITS validity audit confirmed contamination; comparable revenue is the correct baseline |
+| Honest "CI overlaps zero" labeling | No detectable lift doesn't mean the campaign failed — just underpowered at current sample size | ✓ Good — friend accepted the honest framing; sensitivity log PASS in [0.8, 1.25] |
 
-## Current Milestone: v1.3 External Data & Forecasting Foundation
+## Current State: v1.3 SHIPPED 2026-05-06
 
-**Goal:** Ingest free external signals (weather, holidays, events), build a multi-horizon forecasting engine, render forecast overlays on the revenue chart, and attribute campaign uplift via Interrupted Time Series counterfactuals.
+v1.3 complete. All 9 phases (12–17 + 16.1/16.2/16.3) shipped across 6 PRs (#17, #22, #26, #28, #29, #30).
 
-**Target features:**
-- ✓ **External data ingestion** — shipped Phase 13 (PR #17, 2026-04-21). Open-Meteo weather, `python-holidays` federal+state, `ferien-api.de` school breaks, BVG transit-strike RSS, hand-curated recurring events — backfilled from 2025-06-11.
-- ✓ **Multi-horizon forecasting engine** — shipped Phase 14 (PR #22, 2026-05-01). SARIMAX + Prophet + ETS + Theta + Naive at +7d / +35d / +120d / +365d; daily refit; 5/5 models producing forecasts on DEV.
-- ✓ **Forecast chart UI** — shipped Phase 15 (PR #26, 2026-05-01). LayerChart overlay with horizon toggle, event markers (5 sources), backtest overlay v2.
-- ✓ **ITS-based uplift attribution** — shipped Phase 16 (2026-05-04). Track-B counterfactual fit on pre-campaign era only; `campaign_uplift_v` exposes per-campaign cumulative `actual − Track-B` with 95% Monte Carlo CIs from 1000 sample paths; `CampaignUpliftCard.svelte` renders honest "CI overlaps zero — no detectable lift" labeling when 95% CI straddles 0; sensitivity log at `tests/forecast/cutoff_sensitivity.md` confirms sarimax 1.139 + prophet 0.890 ratios PASS in [0.8, 1.25] healthy band. UPL-01..07 validated.
-- [ ] Backtest gate (Phase 17): rolling-origin CV at 4 horizons, 12-week harness, ≥10% RMSE improvement vs naive same-DoW required to deploy a new model
-- [ ] Last-7-actual-days nightly accuracy log surfaced on hover tooltip (freshness ≤24h)
+**Shipped this milestone:**
+- External data ingestion — 5 sources (weather/holidays/school/transit/events), nightly GHA, backfill from 2025-06-11
+- Multi-horizon forecasting engine — SARIMAX/Prophet/ETS/Theta/Naive, 365d forward, 1000-path sample CI
+- ITS campaign attribution — Track-B on pre-campaign era, revenue_comparable_eur, CampaignUpliftCard with honest CI labeling
+- EventBadgeStrip — event overlay on every date-axis chart (replaced deleted forecast cards per owner feedback)
+- Backtest gate — rolling-origin CV at 4 horizons, conformal 95% CI, ≥10% RMSE promotion gate, weekly ACCURACY-LOG
 
-**Shipped this milestone (in order):** 13 → 14 → 15 → 16. Phase 17 (Backtest Gate & Quality Monitoring) is the final v1.3 phase.
+**Empirical headline:** 2026-04-14 friend campaign — cumulative deviation −€565 over 14 days, 95% CI [−€3,745, +€2,298]. Statistically indistinguishable from null. Sensitivity sarimax 1.139 + prophet 0.890, both PASS in [0.8, 1.25].
 
-**Key context:**
-- Friend-owner started a marketing campaign on 2026-04-14; she needs a "did it work?" answer that current MDE analysis cannot give (lift detection requires ≥6 weeks at current σ)
-- Pre-campaign era (10 months, 2025-06-11 → 2026-04-13) is the natural control period — Track-B counterfactual on pre-period only enables causal inference without a customer holdout (Instagram channel = no per-follower exclusion possible)
-- Driving artifact: `.planning/phases/12-forecasting-foundation/12-PROPOSAL.md` (1484-line pre-baked proposal — verified data sources, schema sketches, GHA cron pattern, failure modes, backtest fairness rules, hover-popup spec, ITS validity audit)
-- $0/month budget preserved: Open-Meteo + python-holidays + ferien-api.de + BVG RSS + GitHub Actions = $0
-- Out of scope: full Marketing Mix Modeling (defer to v1.4+ when 3+ channels exist), real-time/hourly forecasting, item-level demand, multi-shop scaling
-- Phase numbering continues from 11 → Phases 12-N (no `--reset-phase-numbers`)
+**Budget:** $0/month preserved. All external data sources free. No new paid tiers added in v1.3.
+
+**Next:** `/gsd-new-milestone` to plan v1.4
 
 ## Forecast Model Availability Matrix
 
@@ -123,7 +131,7 @@ The pipeline runs separate fits per `(model, kpi, granularity)` tuple. Each mode
 
 **The "just sum daily forecasts" question** (raised by the friend 2026-05-05): summing daily yhat point estimates is mathematically fine; **summing daily yhat_lower / yhat_upper is a documented anti-pattern** because daily errors are correlated and pointwise CIs assume independence. The pipeline already stores 200 sample paths per daily forecast in `forecast_daily.yhat_samples jsonb` (written by `paths_to_jsonb` in every `*_fit.py`). A future v1.3 polish could aggregate those daily paths to weekly/monthly buckets server-side and expose SARIMAX/ETS/Theta at non-day grain via path aggregation rather than native fit — half-day work, cleanest as a SQL view + Edge Function. Not blocking v1.3 friend-persona acceptance; flagged as a v1.4 candidate.
 
-**In-product surface:** `ModelAvailabilityDisclosure` component renders this matrix as an inline `<details>`-style disclosure under the legend chip row on RevenueForecastCard, InvoiceCountForecastCard, CalendarRevenueCard, and CalendarCountsCard. The status column reads available/Phase-17/short-history dynamically based on the current grain + the API's `availableModels` shape. i18n keys `model_avail_*` in `src/lib/i18n/messages.ts` (en + ja real, de/es/fr placeholder per 16.1-02 pattern).
+**In-product surface:** `ModelAvailabilityDisclosure` component renders this matrix as an inline `<details>`-style disclosure under the legend chip row on CalendarRevenueCard and CalendarCountsCard. (RevenueForecastCard and InvoiceCountForecastCard were deleted in Phase 16.3 per owner feedback — they didn't drive business decisions.) The status column reads available/Phase-17/short-history dynamically based on the current grain + the API's `availableModels` shape. i18n keys `model_avail_*` in `src/lib/i18n/messages.ts` (en + ja real, de/es/fr placeholder per 16.1-02 pattern).
 
 ## Evolution
 
@@ -143,4 +151,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-04 — Phase 16 (ITS Uplift Attribution) complete. Track-B counterfactual pipeline, campaign_uplift_v + CampaignUpliftCard with honest "CI overlaps zero" labeling shipped. UPL-01..07 validated. Headline empirical result for the 2026-04-14 friend campaign: −€565 cumulative deviation over 14 post-launch days, 95% CI [−€3,745, +€2,298] — statistically indistinguishable from null effect. Sensitivity log: sarimax 1.139 + prophet 0.890 ratios PASS in [0.8, 1.25] band. Wave 4 also folded in 4 Wave-2 spec-gap hotfixes (mig 0065/0066, pred_dates anchor, started_at probe). Phase 17 (Backtest Gate) is the only remaining v1.3 phase.*
+*Last updated: 2026-05-06 after v1.3 milestone close. All 47 v1.3 requirements validated. All Active requirements moved to Validated. Key Decisions updated with outcomes. Next milestone: /gsd-new-milestone.*

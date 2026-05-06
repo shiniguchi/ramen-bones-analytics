@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: External Data & Forecasting Foundation
-status: ready_to_ship
-stopped_at: Phase 17 shipped — PR #30 (2026-05-06)
-last_updated: "2026-05-06T21:45:00.000Z"
+status: archived
+stopped_at: v1.3 milestone closed 2026-05-06 — tagged v1.3; ready for /gsd-new-milestone
+last_updated: "2026-05-06T22:00:00.000Z"
 last_activity: 2026-05-06
 progress:
   total_phases: 20
   completed_phases: 20
   total_plans: 116
-  completed_plans: 104
-  percent: 90
+  completed_plans: 116
+  percent: 100
 ---
 
 # STATE: Ramen Bones Analytics
@@ -21,7 +21,7 @@ progress:
 ## Project Reference
 
 - **Core Value:** A restaurant owner opens the site on their phone and makes a real business decision from the numbers they see.
-- **Current Focus:** v1.3 ship-ready (Phase 17 closed 2026-05-06; all 20 phases complete; ready for /gsd-ship)
+- **Current Focus:** v1.3 archived (milestone closed 2026-05-06; tagged v1.3; run /gsd-new-milestone for v1.4)
 - **Timeline:** Slow and deliberate — understand data first, ship one layer at a time
 - **Granularity:** standard
 - **Tenants in v1:** 1 (architecture multi-tenant-ready)

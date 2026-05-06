@@ -4,6 +4,7 @@
 **Granularity:** standard
 **Parallelization:** enabled
 **Coverage:** 39/39 v1 + 14/14 v1.1 + 13/13 v1.2 + 47/47 v1.3 requirements mapped
+**v1.3 shipped:** 2026-05-06 (Phases 12–17; PRs #17, #22, #26, #28, #29, #30)
 
 ## Core Value
 
@@ -40,17 +41,20 @@ A restaurant owner opens the site on their phone and makes a real business decis
 
 </details>
 
-### v1.3 External Data & Forecasting Foundation
+<details>
+<summary>✅ v1.3 External Data & Forecasting Foundation (Phases 12–17) — SHIPPED 2026-05-06</summary>
 
 - [x] **Phase 12: Foundation — Decisions & Guards** — ITS validity audit script + CI grep guard (`tenant_id` → `restaurant_id`) + UTC-anchored cron schedule contract
-- [x] **Phase 13: External Data Ingestion** — 5 ingest tables (weather/holidays/school/transit/events) + pipeline_runs + shop_calendar + GHA workflow + backfill from 2025-06-11
-- [x] **Phase 14: Forecasting Engine — BAU Track** — SARIMAX/Prophet/ETS/Theta/Naive nightly fits + sample-path resampling + last_7_eval + forecast_daily_mv
-- [x] **Phase 15: Forecast Chart UI** — v2 (Forecast Backtest Overlay) merged via PR #26 on 2026-05-01. Plans 15-09..15-16 shipped; per-grain forecasts, RevenueForecastCard + InvoiceCountForecastCard + CalendarRevenueCard overlay. Post-merge QA fixes: grain-aware empty-state copy and CalendarRevenueCard auto-scroll-to-today. Plan 15-17 (retire dedicated cards) remains deferred
-- [x] **Phase 16: ITS Uplift Attribution** — campaign_calendar + Track-B counterfactual fit + campaign_uplift_v + CampaignUpliftCard with honest "CI overlaps zero" labeling
-- [x] **Phase 16.1: Friend-Persona UX Polish (INSERTED, EXPANDED 2026-05-04)** — past-forecast continuity on Calendar* cards + Forecast cards via pipeline windowing fix anchored on last complete period (day=start-of-CW17, week=last 5 CWs, month=last 4 calendar months); Forecast cards horizontal-scroll parity; Calendar* tooltip shows per-model forecast values; CampaignUpliftCard plain-language regime + supportive labels. Backend pipeline + UI. Owner-blocking for friend-persona acceptance. **5/5 plans implementation done 2026-05-04; phase-final QA (Chrome MCP at localhost ja+en × 4 cards × 3 grains) pending.**
-- [x] **Phase 16.2: Friend-Persona QA Gap Closure (INSERTED 2026-05-05; complete 2026-05-05)** — fix 7 friend-owner persona-test issues from 16.1 SC9: (1) date-range freeze (perf — PARTIAL 71% reduction, v1.4 follow-up for residual), (2) forecast tooltip ignores model selection + dot misalignment (FIXED), (3) visit-cohort tooltip layout regression (FIXED), (4) SVG z-order — bars on top of forecast Splines (path 3 — DOM evidence; no code change), (5) verify-only: visit-number week/month forecast model coverage (path A — scope-deferred), (6) Prophet exponential past-curve / no future line (Path B revert + cleanup applied), (7) CampaignUpliftCard missing baseline rule + axis ticks (FIXED). Owner-blocking for v1.3 friend-persona acceptance — SC9 sign-off via /gsd-ship.
-- [x] **Phase 16.3: Dashboard Cleanup + Events Everywhere (INSERTED 2026-05-06; complete 2026-05-06)** — delete RevenueForecastCard + InvoiceCountForecastCard + ForecastHoverPopup (owner says they don't drive business decisions); build new mobile-first EventBadgeStrip on a fixed-height x-axis strip (one badge per bucket, single-event=type-color, multi-event=mixed+count, tap=popup with all events); wire it into every remaining date-axis chart (Calendar* cards, retention, visit-sequence). Forecast pipeline (`/api/forecast`, cron, tables, EventMarker, forecastEventClamp, ForecastLegend, ModelAvailabilityDisclosure, forecastOverlay) preserved — Calendar* + CampaignUpliftCard depend on it. Phase 17 unaffected. Ships on fresh `feature/phase-16.3-...` branch off main post-16.2-merge.
-- [x] **Phase 17: Backtest Gate & Quality Monitoring (complete 2026-05-06)** — rolling-origin CV at 4 horizons + ConformalIntervals + ≥10% RMSE promotion gate + freshness-SLO badges + ACCURACY-LOG. 10/10 plans shipped; 5 PASS + 3 PARTIAL across 8 BCK requirements (PARTIAL items resolve post-merge — new workflows return 404 on `gh workflow run` from feature branch). Defect 119ad45 fixed during phase-final QA: `naive_dow_with_holidays.py` was missing `_fit` suffix and ignored `FORECAST_TRACK` env var.
+- [x] **Phase 13: External Data Ingestion** — 5 ingest tables (weather/holidays/school/transit/events) + pipeline_runs + shop_calendar + GHA workflow + backfill from 2025-06-11 — PR #17
+- [x] **Phase 14: Forecasting Engine — BAU Track** — SARIMAX/Prophet/ETS/Theta/Naive nightly fits + sample-path resampling + last_7_eval + forecast_daily_mv — PR #22
+- [x] **Phase 15: Forecast Chart UI** — v2 (Forecast Backtest Overlay) shipped 2026-05-01 — PR #26
+- [x] **Phase 16: ITS Uplift Attribution** — campaign_calendar + Track-B counterfactual fit + campaign_uplift_v + CampaignUpliftCard — PR #28
+- [x] **Phase 16.1: Friend-Persona UX Polish** — past-forecast continuity + Forecast card scroll parity + Calendar* tooltip forecast data + CampaignUpliftCard plain-language regime — PR #28
+- [x] **Phase 16.2: Friend-Persona QA Gap Closure** — 7 issues fixed (date-range perf, tooltip multi-model, SVG z-order, Prophet revert, CampaignUpliftCard chart primitives) — PR #28
+- [x] **Phase 16.3: Dashboard Cleanup + Events Everywhere** — deleted RevenueForecastCard/InvoiceCountForecastCard/ForecastHoverPopup; EventBadgeStrip wired into every date-axis chart — PR #29
+- [x] **Phase 17: Backtest Gate & Quality Monitoring** — rolling-origin CV at 4 horizons + ConformalIntervals + ≥10% RMSE gate + freshness-SLO badges + ACCURACY-LOG — PR #30
+
+</details>
 
 ## Phase Details
 
@@ -435,15 +439,15 @@ Plans:
 | 9. Filter Simplification & Performance | v1.2 | 5/5 | Complete   | 2026-04-17 |
 | 10. Charts | v1.2 | 7/8 | Complete    | 2026-04-17 |
 | 11. SSR Performance & Recovery | v1.2 | 3/3 | Complete | 2026-04-21 |
-| 12. Foundation — Decisions & Guards | v1.3 | 0/? | Not started | — |
-| 13. External Data Ingestion | v1.3 | 0/? | Not started | — |
-| 14. Forecasting Engine — BAU Track | v1.3 | 0/? | Not started | — |
-| 15. Forecast Chart UI | v1.3 | 0/? | Not started | — |
-| 16. ITS Uplift Attribution | v1.3 | 13/13 | Pending Verification|  |
-| 16.1. Friend-Persona UX Polish (INSERTED, EXPANDED) | v1.3 | 5/5 | Pending Verification | 2026-05-04 |
-| 16.2. Friend-Persona QA Gap Closure (INSERTED) | v1.3 | 0/? | Not started | — |
-| 16.3. Dashboard Cleanup + Events Everywhere (INSERTED) | v1.3 | 0/? | Not started | — |
-| 17. Backtest Gate & Quality Monitoring | v1.3 | 10/10 | Complete    | 2026-05-06 |
+| 12. Foundation — Decisions & Guards | v1.3 | 4/4 | Complete | 2026-04-28 |
+| 13. External Data Ingestion | v1.3 | 8/8 | Complete | 2026-04-30 |
+| 14. Forecasting Engine — BAU Track | v1.3 | 10/10 | Complete | 2026-04-30 |
+| 15. Forecast Chart UI | v1.3 | 9/9 | Complete | 2026-05-01 |
+| 16. ITS Uplift Attribution | v1.3 | 13/13 | Complete | 2026-05-04 |
+| 16.1. Friend-Persona UX Polish (INSERTED) | v1.3 | 5/5 | Complete | 2026-05-04 |
+| 16.2. Friend-Persona QA Gap Closure (INSERTED) | v1.3 | 7/7 | Complete | 2026-05-05 |
+| 16.3. Dashboard Cleanup + Events Everywhere (INSERTED) | v1.3 | 3/3 | Complete | 2026-05-06 |
+| 17. Backtest Gate & Quality Monitoring | v1.3 | 10/10 | Complete | 2026-05-06 |
 
 ## Coverage Summary
 
