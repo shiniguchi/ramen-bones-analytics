@@ -10,9 +10,6 @@ no cmdstan, no numpy, no pandas. Just supabase + python-dotenv.
 from __future__ import annotations
 
 import sys
-from collections import defaultdict
-from datetime import datetime
-from typing import Optional
 
 from scripts.forecast.db import make_client
 
@@ -26,10 +23,18 @@ def _find_enabled_failures(client) -> list[tuple[str, int, str]]:
         .eq('enabled', True)
         .execute()
     )
+    # WR-06 fix: tightened comprehension —
+    #   * only strip the 'model_' prefix when present (no else fall-through that
+    #     could leak unprefixed flag names like 'offweek_reminder' if the SQL
+    #     `.like('flag_key', 'model_%')` filter ever loosens or is bypassed);
+    #   * `enabled is True` (NOT `row.get('enabled', True)`) so unknown rows
+    #     with missing `enabled` are EXCLUDED, not admitted. The prior comment
+    #     called this 'defense-in-depth' but the logic was the opposite —
+    #     truthy default-to-True admits any row that lacks the column.
     enabled_models = {
-        row['flag_key'][len('model_'):] if row['flag_key'].startswith('model_') else row['flag_key']
+        row['flag_key'][len('model_'):]
         for row in (flags_resp.data or [])
-        if row.get('enabled', True)  # defense-in-depth: re-check even if DB filter applied
+        if row['flag_key'].startswith('model_') and row.get('enabled') is True
     }
     if not enabled_models:
         # No models gated — gate trivially PASSes (e.g., feature_flags not seeded yet)
