@@ -10,11 +10,14 @@
   import { page } from '$app/state';
   import { t } from '$lib/i18n/messages';
   import EmptyState from './EmptyState.svelte';
+  import EventBadgeStrip from './EventBadgeStrip.svelte';
   import { ITEM_COLORS, OTHER_COLOR } from '$lib/chartPalettes';
   import { rollupTopNWithOther } from '$lib/itemCountsRollup';
   import { formatIntShort } from '$lib/format';
   import { bucketKey, bucketRange, getFilters, getWindow, formatBucketLabel, computeChartWidth, MAX_X_TICKS } from '$lib/dashboardStore.svelte';
   import { integerTicks } from '$lib/trendline';
+  import { clientFetch } from '$lib/clientFetch';
+  import type { ForecastEvent } from '$lib/forecastEventClamp';
   import { parseISO } from 'date-fns';
 
   const yAxisFormat = (n: number) => formatIntShort(n, 'items');
@@ -84,7 +87,13 @@
       return row;
     })
       .sort((a, b) => String(a.bucket).localeCompare(String(b.bucket)))
-      .map(row => ({ ...row, bucket: formatBucketLabel(row.bucket as string, grain) }));
+      // Phase 16.3: keep raw ISO key as bucket_iso BEFORE replacing `bucket`
+      // with the display label — EventBadgeStrip aligns events to bucket dates.
+      .map(row => ({
+        ...row,
+        bucket_iso: row.bucket as string,
+        bucket: formatBucketLabel(row.bucket as string, grain)
+      }));
   });
 
   // Series config: ITEM_COLORS for top-8, OTHER_COLOR for "Other".
@@ -113,6 +122,43 @@
 
   let cardW = $state(0);
   const chartW = $derived(computeChartWidth(chartData.length, cardW));
+
+  // Phase 16.3 D-09: actuals-only chart wires EventBadgeStrip via a standalone
+  // /api/forecast call reading only the events field. Option (a) per CONTEXT.md
+  // (no useEvents() factory extracted — single-purpose call). The card's grain
+  // is propagated so the server returns events bucketed appropriately.
+  let events = $state<ForecastEvent[]>([]);
+  let lastFetchedKey: string | null = null;
+  $effect(() => {
+    const grain = getFilters().grain as 'day' | 'week' | 'month';
+    const earliestIso = chartData[0]?.bucket_iso;
+    if (!earliestIso) return;
+    // For month-grain buckets ('YYYY-MM'), anchor at first of month for the
+    // server's strict YYYY-MM-DD regex; day/week buckets are already YYYY-MM-DD.
+    const rs = earliestIso.length === 7 ? `${earliestIso}-01` : earliestIso;
+    const key = `${grain}|${rs}`;
+    if (lastFetchedKey === key) return;
+    lastFetchedKey = key;
+    clientFetch<{ events: ForecastEvent[] }>(
+      `/api/forecast?kpi=revenue_eur&granularity=${grain}&range_start=${encodeURIComponent(rs)}`
+    )
+      .then((d) => { events = d.events ?? []; })
+      .catch(() => { events = []; });
+  });
+
+  // Phase 16.3 D-02: pixel slots for EventBadgeStrip — caller-owned band-position
+  // math (D-02 keeps strip generic). chartW is `number | undefined`; fall back
+  // to cardW for the strip width when bars fit without scroll.
+  const stripWidth = $derived(chartW ?? cardW);
+  const eventBuckets = $derived.by(() => {
+    if (chartData.length === 0 || stripWidth === 0) return [];
+    const slotWidth = stripWidth / chartData.length;
+    return chartData.map((row, i) => ({
+      iso: row.bucket_iso,
+      left: i * slotWidth,
+      width: slotWidth
+    }));
+  });
 </script>
 
 <div data-testid="calendar-items-card" class="rounded-xl border border-zinc-200 bg-white p-4">
@@ -131,6 +177,16 @@
         yDomain={[0, Math.max(1, yMax)]}
         props={{ xAxis: { ticks: MAX_X_TICKS }, yAxis: { format: yAxisFormat, ticks: yTicks } }}
         tooltipContext={{ touchEvents: 'auto' }}
+      />
+
+      <!-- Phase 16.3 D-02 / D-06: EventBadgeStrip mounts inside scroll wrapper.
+           Below the chart, fixed 44px (D-06 prevents card-height jitter on
+           filter changes). Strip width derived from chartW or cardW fallback. -->
+      <EventBadgeStrip
+        events={events}
+        buckets={eventBuckets}
+        grain={getFilters().grain as 'day' | 'week' | 'month'}
+        width={stripWidth}
       />
     </div>
   {/if}

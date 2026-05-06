@@ -8,6 +8,7 @@
   import { t } from '$lib/i18n/messages';
   import { formatEUR } from '$lib/format';
   import EmptyState from './EmptyState.svelte';
+  import EventBadgeStrip from './EventBadgeStrip.svelte';
   import { ITEM_COLORS, OTHER_COLOR } from '$lib/chartPalettes';
   import { rollupTopNWithOther } from '$lib/itemCountsRollup';
   import { formatEURShort } from '$lib/format';
@@ -21,6 +22,8 @@
     computeChartWidth,
     MAX_X_TICKS
   } from '$lib/dashboardStore.svelte';
+  import { clientFetch } from '$lib/clientFetch';
+  import type { ForecastEvent } from '$lib/forecastEventClamp';
   import { parseISO } from 'date-fns';
 
   type ItemCountRow = {
@@ -90,7 +93,13 @@
         return row;
       })
       .sort((a, b) => String(a.bucket).localeCompare(String(b.bucket)))
-      .map((row) => ({ ...row, bucket: formatBucketLabel(row.bucket as string, grain) }));
+      // Phase 16.3: keep raw ISO key as bucket_iso BEFORE replacing `bucket`
+      // with the display label — EventBadgeStrip aligns events to bucket dates.
+      .map((row) => ({
+        ...row,
+        bucket_iso: row.bucket as string,
+        bucket: formatBucketLabel(row.bucket as string, grain)
+      }));
   });
 
   const series = $derived.by(() =>
@@ -108,6 +117,38 @@
   const chartW = $derived(computeChartWidth(chartData.length, cardW));
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let chartCtx = $state<any>();
+
+  // Phase 16.3 D-09: actuals-only chart wires EventBadgeStrip via a standalone
+  // /api/forecast call reading only the events field. Option (a) per CONTEXT.md.
+  let events = $state<ForecastEvent[]>([]);
+  let lastFetchedKey: string | null = null;
+  $effect(() => {
+    const grain = getFilters().grain as 'day' | 'week' | 'month';
+    const earliestIso = chartData[0]?.bucket_iso;
+    if (!earliestIso) return;
+    const rs = earliestIso.length === 7 ? `${earliestIso}-01` : earliestIso;
+    const key = `${grain}|${rs}`;
+    if (lastFetchedKey === key) return;
+    lastFetchedKey = key;
+    clientFetch<{ events: ForecastEvent[] }>(
+      `/api/forecast?kpi=revenue_eur&granularity=${grain}&range_start=${encodeURIComponent(rs)}`
+    )
+      .then((d) => { events = d.events ?? []; })
+      .catch(() => { events = []; });
+  });
+
+  // Phase 16.3 D-02: pixel slots for EventBadgeStrip — caller-owned band-position
+  // math. chartW is `number | undefined`; fall back to cardW.
+  const stripWidth = $derived(chartW ?? cardW);
+  const eventBuckets = $derived.by(() => {
+    if (chartData.length === 0 || stripWidth === 0) return [];
+    const slotWidth = stripWidth / chartData.length;
+    return chartData.map((row, i) => ({
+      iso: row.bucket_iso,
+      left: i * slotWidth,
+      width: slotWidth
+    }));
+  });
 </script>
 
 <div
@@ -187,6 +228,15 @@
           {/snippet}
         </Tooltip.Root>
       </Chart>
+
+      <!-- Phase 16.3 D-02 / D-06: EventBadgeStrip mounts inside scroll wrapper.
+           44px fixed (D-06 prevents card-height jitter on filter changes). -->
+      <EventBadgeStrip
+        events={events}
+        buckets={eventBuckets}
+        grain={getFilters().grain as 'day' | 'week' | 'month'}
+        width={stripWidth}
+      />
     </div>
   {/if}
 </div>
