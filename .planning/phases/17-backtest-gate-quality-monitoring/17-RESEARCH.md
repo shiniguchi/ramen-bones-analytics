@@ -1052,22 +1052,22 @@ Plan should include a timing budget step: time the first run, then adjust.
 | A7 | naive_dow_with_holidays `model_name` will be the literal string `'naive_dow_with_holidays'` | §Codebase Reuse Map deliverable 2, §Schema Impact | If shorter name preferred (e.g., `'naive_dow_h'`), seed row description fields trivially update |
 | A8 | Per-restaurant flag-key seeding for the single v1 tenant is fine; no admin form needed | §Schema Impact migration | Multi-tenant rollout would need an admin tool to seed flags for new tenants |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **`forecast_daily` PK shape vs. backtest fold collision (A1)**
    - What we know: Phase 14/15 PK includes `forecast_track`; folds are stored as separate rows already in the CF case
    - What's unclear: whether `forecast_track='backtest_fold_0..3'` is a clean addition or pollutes downstream views (`forecast_with_actual_v` etc.)
-   - Recommendation: write yhats in-memory only (option b in §R1); only `forecast_quality` rows get persisted
+   - RESOLVED: per-fold `FORECAST_TRACK='backtest_fold_{N}'` discriminator is the chosen approach (forecast_track IS in PK position 6 per 0050_forecast_daily.sql:15 — verified). RUN_DATE=eval_start (the day after train_end) is set per fold so the spawned fit's pred_dates anchor correctly. backtest.py reads back yhats from forecast_daily filtered by (model_name, run_date, forecast_track) and DELETES backtest_fold_* rows post-eval. See §R1 option (a). Plan 17-04 threads FORECAST_TRACK into 5 fit scripts; plan 17-05 sets RUN_DATE=eval_start + FORECAST_TRACK=backtest_fold_{N} per spawned subprocess.
 
 2. **Multi-grain backtest scope**
    - What we know: BCK-01 specifies "4 horizons (7d/35d/120d/365d)" — all in days
    - What's unclear: whether the gate should also evaluate week/month grain forecasts
-   - Recommendation: daily grain only for Phase 17. Week/month evaluation is Phase 18+
+   - RESOLVED: daily grain only for Phase 17. Week/month evaluation is Phase 18+ (deferred per §Phase Boundary).
 
 3. **`run_all.py` env var × `feature_flags` precedence**
    - What we know: env var `FORECAST_ENABLED_MODELS` is the current source of truth
    - What's unclear: whether feature_flags should override env (DB-first) or AND-intersect (both required)
-   - Recommendation: AND-intersect — preserves operator escape hatch via env var, lets gate veto via DB
+   - RESOLVED: AND-intersect — preserves operator escape hatch via env var, lets gate veto via DB. See plan 17-06 implementation.
 
 ## Environment Availability
 
