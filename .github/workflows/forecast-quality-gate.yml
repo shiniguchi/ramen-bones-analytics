@@ -1,0 +1,36 @@
+name: Forecast Quality Gate (Phase 17 BCK-06)
+on:
+  pull_request:
+    paths:
+      - 'scripts/forecast/**'
+
+# Read-only: PR gate only checks DB; never commits.
+permissions:
+  contents: read
+
+# Cancel superseded runs on the same PR (pushes new commits).
+concurrency:
+  group: forecast-quality-gate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5   # BCK-06: <5 min hard cap
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+      - name: Install minimal deps (no cmdstan — read-only check)
+        run: pip install supabase python-dotenv
+
+      - name: Check gate verdicts on enabled models
+        env:
+          SUPABASE_URL: ${{ secrets.DEV_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.DEV_SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          set -euo pipefail
+          python -m scripts.forecast.quality_gate_check
+          # Script exits 1 if any enabled model has FAIL verdict at any horizon
