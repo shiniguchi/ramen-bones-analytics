@@ -1,42 +1,49 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.3
-milestone_name: Coverage Map
-status: Ready to ship
-stopped_at: context exhaustion at 75% (2026-05-06)
-last_updated: "2026-05-06T22:30:06.621Z"
-last_activity: 2026-05-06
+milestone: v1.4
+milestone_name: Weekly Campaign Read
+status: planning
+stopped_at: null
+last_updated: "2026-05-07T00:00:00.000Z"
+last_activity: 2026-05-07
 progress:
-  total_phases: 9
-  completed_phases: 5
-  total_plans: 56
-  completed_plans: 44
-  percent: 79
+  total_phases: 21
+  completed_phases: 20
+  total_plans: 116
+  completed_plans: 104
+  percent: 90
 ---
 
 # STATE: Ramen Bones Analytics
 
-**Last updated:** 2026-05-06
+**Last updated:** 2026-05-07
 
 ## Project Reference
 
 - **Core Value:** A restaurant owner opens the site on their phone and makes a real business decision from the numbers they see.
-- **Current Focus:** v1.3 archived (milestone closed 2026-05-06; tagged v1.3; run /gsd-new-milestone for v1.4)
+- **Current Focus:** v1.4 Weekly Campaign Read — single-feature milestone (Phase 18: replace CampaignUpliftCard cumulative-since-launch headline with per-ISO-week counterfactual + bar-chart history)
 - **Timeline:** Slow and deliberate — understand data first, ship one layer at a time
 - **Granularity:** standard
 - **Tenants in v1:** 1 (architecture multi-tenant-ready)
 
 ## Current Position
 
-Milestone: v1.3 (External Data & Forecasting Foundation)
-Phase: 17 (backtest-gate-quality-monitoring) — CLOSED 2026-05-06
-Plan: 10/10 complete
+Milestone: v1.4 (Weekly Campaign Read)
+Phase: 18 (weekly-counterfactual-window) — defining plans
+Plan: —
 
-Phase 17 closes the v1.3 milestone. All 8 BCK requirements verified end-to-end against DEV via 6-round phase-final QA on 2026-05-06: 5 PASS + 3 PARTIAL. The 3 PARTIAL items (BCK-05, BCK-06, BCK-07) share the same structural root cause — newly-introduced GHA workflows return 404 on `gh workflow run` from a feature branch because the workflow file is not yet on `main`; resolved automatically post-merge. One genuine defect surfaced and was fixed in commit `119ad45`: `naive_dow_with_holidays.py` was missing the `_fit` suffix and ignored `FORECAST_TRACK` env var, so backtest folds wrote to `forecast_track='bau'` instead of `'backtest_fold_N'` — gate read back zero aligned rows. Tests + live re-run after fix confirmed the model now participates in the gate.
+v1.4 opened 2026-05-07 as single-feature milestone. Scope: replace CampaignUpliftCard's cumulative-since-launch headline with per-ISO-week (Mon–Sun) counterfactual + tap-scrubbable bar-chart history. Friend-owner gets a fresh weekly read instead of a cumulative number that drifts toward "no detectable lift" as the campaign window grows. Touches DB (new window_kind value), Python pipeline (cumulative_uplift.py — bootstrap CI re-fit on 7-day slice, NOT derived from daily cumulative), API (/api/campaign-uplift returns weekly_history), and Svelte component (CampaignUpliftCard rewrite).
 
-Next recommended run: /gsd-ship (v1.3 milestone close)
+Locked design decisions (carried over from 2026-05-07 conversation, no /gsd-discuss-phase needed):
+1. Replace headline (not add-alongside) — user phrasing "instead of since April 14th"
+2. ISO Mon–Sun weeks only
+3. Skip in-progress trailing week + skip partial launch leading week (Apr 14 was Tue, so first bar = week of Apr 20–26)
+4. Bar chart with CI whiskers, color-coded by significance, tap-to-scrub hero
+5. CI re-fit per week via bootstrap (NOT subtract daily cumulative bounds — correlated samples)
 
-- **Status:** Ready to ship
+Next recommended run: /gsd-plan-phase 18
+
+- **Status:** Planning
 - **Phase 17:** 10/10 plans complete 2026-05-06; all 8 BCK requirements verified (5 PASS + 3 PARTIAL with merge-deferred resolution).
 - **Phase 16.3:** Dashboard Cleanup + EventBadgeStrip shipped 2026-05-06.
 - **Phase 16.2:** Friend-persona QA gap closure — 7/7 items shipped 2026-05-05.

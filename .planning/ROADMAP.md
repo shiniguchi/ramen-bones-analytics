@@ -3,8 +3,9 @@
 **Created:** 2026-04-13
 **Granularity:** standard
 **Parallelization:** enabled
-**Coverage:** 39/39 v1 + 14/14 v1.1 + 13/13 v1.2 + 47/47 v1.3 requirements mapped
+**Coverage:** 39/39 v1 + 14/14 v1.1 + 13/13 v1.2 + 47/47 v1.3 + 2/2 v1.4 requirements mapped
 **v1.3 shipped:** 2026-05-06 (Phases 12–17; PRs #17, #22, #26, #28, #29, #30)
+**v1.4 opened:** 2026-05-07 (Phase 18 — single-feature milestone)
 
 ## Core Value
 
@@ -53,6 +54,13 @@ A restaurant owner opens the site on their phone and makes a real business decis
 - [x] **Phase 16.2: Friend-Persona QA Gap Closure** — 7 issues fixed (date-range perf, tooltip multi-model, SVG z-order, Prophet revert, CampaignUpliftCard chart primitives) — PR #28
 - [x] **Phase 16.3: Dashboard Cleanup + Events Everywhere** — deleted RevenueForecastCard/InvoiceCountForecastCard/ForecastHoverPopup; EventBadgeStrip wired into every date-axis chart — PR #29
 - [x] **Phase 17: Backtest Gate & Quality Monitoring** — rolling-origin CV at 4 horizons + ConformalIntervals + ≥10% RMSE gate + freshness-SLO badges + ACCURACY-LOG — PR #30
+
+</details>
+
+<details open>
+<summary>v1.4 Weekly Campaign Read (Phase 18) — IN PLANNING (opened 2026-05-07)</summary>
+
+- [ ] **Phase 18: Weekly Counterfactual Window** — replace CampaignUpliftCard cumulative-since-launch headline with per-ISO-week (Mon–Sun) counterfactual + bar-chart history of all completed weeks (CI whiskers, color-coded by significance, tap-to-scrub hero)
 
 </details>
 
@@ -424,6 +432,21 @@ Plans:
   - [x] 17-09-PLAN.md — ModelAvailabilityDisclosure backtest pills + i18n + /api/forecast (BCK-01, BCK-02)
   - [x] 17-10-PLAN.md — Phase-final QA + planning-docs drift gate (BCK-01..08 sign-off; 5 PASS + 3 PARTIAL with merge-deferred resolution)
 
+### Phase Details — Current Milestone (v1.4)
+
+### Phase 18: Weekly Counterfactual Window
+**Goal**: Replace CampaignUpliftCard's cumulative-since-launch headline with a per-ISO-week (Mon–Sun) counterfactual answer plus a tap-scrubbable bar-chart history of all completed weeks since campaign launch — friend-owner gets a fresh weekly read on whether the campaign is working, not a cumulative number that drifts toward "no detectable lift" the longer it runs.
+**Depends on**: Phase 16 (`campaign_uplift` table + `CampaignUpliftCard` exist; `cumulative_uplift.py` pipeline writes nightly)
+**Requirements**: UPL-08, UPL-09
+**Success Criteria** (what must be TRUE):
+  1. `scripts/forecast/cumulative_uplift.py` writes one `campaign_uplift` row per (campaign_id × model × completed-ISO-week × as_of_date) with `window_kind = 'iso_week'`; bootstrap CI (1000 paths, 95%) is RE-FIT on the 7-day slice — never derived by subtracting daily cumulative bounds (correlated samples don't subtract additively); partial launch week (Apr 13–19 for friend's 2026-04-14 campaign — campaign-day-1 is Tue) is excluded by symmetry with the trailing-edge "skip in-progress week" rule
+  2. `/api/campaign-uplift` returns `weekly_history: Array<{iso_week_start, iso_week_end, point_eur, ci_lower_eur, ci_upper_eur, n_days, model_name}>` for each model, plus `headline_week` pointing to the most recent completed ISO week; service-role bypass for `last_completed_week` does not leak across tenants (verified by RLS audit)
+  3. CampaignUpliftCard hero replaces "Since April 14th" with "Week of [Mon] – [Sun]" — same maturity-tier × CI-overlap matrix logic from UPL-06 reused; current 7-key i18n hero set retains semantics, with date label now per-week instead of per-launch
+  4. Bar chart below hero: one bar per fully-completed ISO week since campaign launch, rendered with LayerChart (matching existing sparkline tech); CI whiskers overlay each bar; bars colored by significance — gray (CI straddles 0), green (CI > 0 fully), red (CI < 0 fully); tap a bar → hero updates to that week's read; dashed y=0 baseline preserved (matches existing `Rule y={0}`); X axis = ISO week labels, Y axis = € uplift
+  5. ModelAvailabilityDisclosure / regime-tier copy continue to work — the maturity tier is now derived from `n_days` of the selected week (always 7 for fully-completed weeks → "mature" tier kicks in immediately for any week with full data, but card hides until first ISO week completes per Q3 rule)
+  6. Mobile-first: bar chart usable on 375×667 phone canvas; horizontal scroll once weeks exceed ~10 (matches Calendar* card pattern); touch events do not block vertical page scroll (`touchEvents: 'auto'` per existing memory)
+**Plans**: TBD via /gsd-plan-phase
+
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
@@ -448,6 +471,7 @@ Plans:
 | 16.2. Friend-Persona QA Gap Closure (INSERTED) | v1.3 | 7/7 | Complete | 2026-05-05 |
 | 16.3. Dashboard Cleanup + Events Everywhere (INSERTED) | v1.3 | 3/3 | Complete | 2026-05-06 |
 | 17. Backtest Gate & Quality Monitoring | v1.3 | 10/10 | Complete | 2026-05-06 |
+| 18. Weekly Counterfactual Window | v1.4 | 0/TBD | Planning | — |
 
 ## Coverage Summary
 
@@ -455,7 +479,8 @@ Plans:
 - **v1.1 requirements:** 14 (Phases 6-7 complete; Phases 8-11 superseded by v1.2)
 - **v1.2 requirements:** 13
 - **v1.3 requirements:** 47 (FND-09..11, EXT-01..09, FCS-01..11, FUI-01..09, UPL-01..07, BCK-01..08)
-- **Mapped:** 113 (100%)
+- **v1.4 requirements:** 2 (UPL-08, UPL-09)
+- **Mapped:** 115 (100%)
 - **Orphaned:** 0
 - **Duplicated:** 0
 
@@ -528,6 +553,17 @@ Plans:
 | BCK-06 | Phase 17 — Backtest Gate & Quality Monitoring |
 | BCK-07 | Phase 17 — Backtest Gate & Quality Monitoring |
 | BCK-08 | Phase 17 — Backtest Gate & Quality Monitoring |
+
+### v1.4 Coverage Map
+
+| Requirement | Phase |
+|-------------|-------|
+| UPL-08 | Phase 18 — Weekly Counterfactual Window |
+| UPL-09 | Phase 18 — Weekly Counterfactual Window |
+
+**UPL-08:** Pipeline computes per-ISO-week counterfactual uplift with bootstrap CI re-fit on the 7-day slice; persists weekly history rows (one per fully-completed Mon–Sun week since campaign launch).
+
+**UPL-09:** Dashboard CampaignUpliftCard replaces cumulative-since-launch hero with last-completed-week read + bar-chart history (CI whiskers, color-coded by significance, tap-to-scrub).
 
 ### v1.3 Dependencies & Parallelism
 
