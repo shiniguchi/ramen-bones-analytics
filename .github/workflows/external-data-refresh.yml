@@ -1,7 +1,8 @@
 name: External Data Refresh
 on:
-  schedule:
-    - cron: '0 0 * * *'        # 00:00 UTC nightly (CET 01:00, CEST 02:00) — D-12 + Guard 8
+  push:
+    paths:
+      - 'data/**'   # run alongside backtest when owner uploads a new data file
   workflow_dispatch:
     inputs:
       start_date:

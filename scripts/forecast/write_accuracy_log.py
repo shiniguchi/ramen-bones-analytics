@@ -59,7 +59,7 @@ LATEST_RUN_TEMPLATE = """## Latest run: {run_date_utc}
 ## History
 """
 
-HISTORY_PLACEHOLDER = '\n(empty until first weekly run)\n'
+HISTORY_PLACEHOLDER = '\n(empty until first data push)\n'
 
 
 def _parse_pg_timestamp(s: str) -> datetime:
@@ -236,8 +236,8 @@ def _move_existing_latest_to_history(existing_text: str) -> tuple:
     if not m:
         return existing_text, ''
     prior_latest = m.group(1).strip()
-    # Skip the placeholder skeleton "(pending first cron)"
-    if 'pending first cron' in prior_latest:
+    # Skip the placeholder skeleton "(pending first run)"
+    if 'pending first run' in prior_latest:
         return existing_text, ''
     return existing_text, prior_latest
 

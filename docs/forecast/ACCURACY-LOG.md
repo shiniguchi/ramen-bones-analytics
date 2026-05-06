@@ -15,4 +15,4 @@ Do not edit by hand — the next backtest run will overwrite manual edits.
 
 ## History
 
-(empty until first weekly run)
+(empty until first data push)

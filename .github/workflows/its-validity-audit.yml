@@ -1,7 +1,8 @@
 name: ITS Validity Audit
 on:
-  schedule:
-    - cron: '0 9 * * 1'
+  push:
+    paths:
+      - 'data/**'   # re-audit ITS validity when owner uploads new transaction data
   workflow_dispatch:
 jobs:
   audit:
