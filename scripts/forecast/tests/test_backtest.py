@@ -288,3 +288,139 @@ class TestGateDecision:
         verdicts = _gate_decision(rows, kpi='revenue_eur', horizon=7)
         assert 'PASS' not in verdicts.values()
         assert verdicts['sarimax'] == 'PENDING'
+
+
+# ---------------------------------------------------------------------------
+# 4. BL-02 regression: cleanup runs on exception path (finally:)
+# ---------------------------------------------------------------------------
+
+class TestCleanupOnException:
+    """BL-02: `_cleanup_sentinel_rows` must run even when fold/gate phases raise.
+
+    Pre-fix: cleanup was inside the `try:` block, so any exception during fold
+    runs / conformal calibration / gate update leaked `backtest_fold_*` rows
+    into `forecast_daily`. Those rows then surfaced in BAU dashboard reads via
+    `forecast_daily_mv DISTINCT ON ... ORDER BY run_date DESC`.
+
+    Post-fix: cleanup is in a `finally:` block; runs on both success and failure.
+    """
+
+    def _build_main_mocks(self, monkeypatch):
+        """Common scaffolding: mock make_client, _last_actual_date,
+        _days_of_history, write_failure, write_success so the only varying
+        piece per test is what raises. Returns (bt module, client mock)."""
+        from unittest.mock import MagicMock
+        from datetime import date
+
+        from scripts.forecast import backtest as bt
+
+        client = MagicMock(name='supabase_client')
+        # restaurants lookup chain (id resolves cleanly)
+        rest_chain = MagicMock(name='rest_chain')
+        rest_chain.select.return_value = rest_chain
+        rest_chain.limit.return_value = rest_chain
+        rest_chain.execute.return_value = MagicMock(data=[{'id': 'r1'}])
+        # generic chain (covers anything else if a code path slips through)
+        generic = MagicMock(name='generic_chain')
+        generic.select.return_value = generic
+        generic.update.return_value = generic
+        generic.upsert.return_value = generic
+        generic.delete.return_value = generic
+        generic.eq.return_value = generic
+        generic.gte.return_value = generic
+        generic.like.return_value = generic
+        generic.order.return_value = generic
+        generic.limit.return_value = generic
+        generic.execute.return_value = MagicMock(data=[])
+
+        def table_router(name):
+            if name == 'restaurants':
+                return rest_chain
+            return generic
+
+        client.table.side_effect = table_router
+
+        monkeypatch.setattr(bt, 'make_client', lambda: client)
+        # Pre-try DB reads succeed so the exception is forced INSIDE the try block.
+        monkeypatch.setattr(bt, '_last_actual_date', lambda *a, **kw: date(2026, 5, 6))
+        monkeypatch.setattr(bt, '_days_of_history', lambda *a, **kw: 10)  # cold-start
+        monkeypatch.setattr(bt, 'write_failure', lambda *a, **kw: None)
+        monkeypatch.setattr(bt, 'write_success', lambda *a, **kw: None)
+        return bt, client
+
+    def test_cleanup_runs_on_exception_during_fold_phase(self, monkeypatch):
+        """Simulate a crash INSIDE main()'s try-block and assert cleanup still ran.
+
+        Strategy: with `_days_of_history=10` (cold-start at every horizon), the
+        very first thing the try-block does is call `_write_quality_row` to
+        write PENDING for all models. We stub that to raise — exception
+        propagates to the except-handler, which writes pipeline_runs failure;
+        the finally-block then must still call `_cleanup_sentinel_rows`.
+        """
+        from unittest.mock import MagicMock
+        from datetime import date
+
+        bt, client = self._build_main_mocks(monkeypatch)
+
+        # Force an exception on the first DB write inside the try block
+        def explode_on_write(*a, **kw):
+            raise RuntimeError('simulated DB hiccup mid-fold')
+        monkeypatch.setattr(bt, '_write_quality_row', explode_on_write)
+
+        # Spy on _cleanup_sentinel_rows so we can assert it ran on the exception path
+        cleanup_spy = MagicMock(name='cleanup_spy')
+        monkeypatch.setattr(bt, '_cleanup_sentinel_rows', cleanup_spy)
+
+        rc = bt.main(models=['sarimax'], run_date=date(2026, 5, 6))
+
+        # main() must have caught the exception and returned 1 (failure)
+        assert rc == 1
+        # CRITICAL: cleanup must have run on the exception path
+        cleanup_spy.assert_called_once()
+        # Check the call was scoped to the right restaurant
+        kwargs = cleanup_spy.call_args.kwargs
+        assert kwargs.get('restaurant_id') == 'r1'
+
+    def test_cleanup_swallows_its_own_exception(self, monkeypatch):
+        """If cleanup itself fails, main() must not blow up on top of an
+        already-failed run — finally-block logs and main() returns the
+        original failure exit code."""
+        from datetime import date
+
+        bt, client = self._build_main_mocks(monkeypatch)
+
+        # Force an exception inside the try block
+        def explode_on_write(*a, **kw):
+            raise RuntimeError('fold crash')
+        monkeypatch.setattr(bt, '_write_quality_row', explode_on_write)
+
+        # Cleanup itself raises — finally-block's inner try/except must swallow it
+        def cleanup_explodes(*a, **kw):
+            raise RuntimeError('cleanup also failed')
+        monkeypatch.setattr(bt, '_cleanup_sentinel_rows', cleanup_explodes)
+
+        # Should not raise; should still return 1 (the original failure code)
+        rc = bt.main(models=['sarimax'], run_date=date(2026, 5, 6))
+        assert rc == 1
+
+    def test_cleanup_runs_on_happy_path(self, monkeypatch):
+        """Sanity: cleanup must STILL run on the success path (no regression).
+
+        Pre-fix the cleanup was on the happy path inside the try block; post-fix
+        it's in finally. Both paths must call cleanup exactly once.
+        """
+        from unittest.mock import MagicMock
+        from datetime import date
+
+        bt, client = self._build_main_mocks(monkeypatch)
+        # Stub _write_quality_row to be a no-op so cold-start path completes
+        monkeypatch.setattr(bt, '_write_quality_row', lambda *a, **kw: None)
+
+        cleanup_spy = MagicMock(name='cleanup_spy')
+        monkeypatch.setattr(bt, '_cleanup_sentinel_rows', cleanup_spy)
+
+        rc = bt.main(models=['sarimax'], run_date=date(2026, 5, 6))
+        # Cold-start with no successful folds → exit code 1 (no folds succeeded)
+        # but cleanup should still have run.
+        assert rc in (0, 1)  # depends on total_succeeded count; cold-start = 1
+        cleanup_spy.assert_called_once()

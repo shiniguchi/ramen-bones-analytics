@@ -657,10 +657,10 @@ def main(models: list[str], run_date: date) -> int:
         )
 
         # ------------------------------------------------------------------- #
-        # Phase 4: Cleanup + pipeline_runs                                      #
+        # Phase 4: pipeline_runs success                                        #
+        # (Cleanup of backtest_fold_* rows now runs unconditionally in the      #
+        # `finally` block below — BL-02 fix.)                                   #
         # ------------------------------------------------------------------- #
-        _cleanup_sentinel_rows(client, restaurant_id=restaurant_id)
-
         write_success(
             client,
             step_name=STEP_NAME,
@@ -687,6 +687,22 @@ def main(models: list[str], run_date: date) -> int:
         except Exception:  # noqa: BLE001
             pass
         return 1
+    finally:
+        # BL-02 fix: ALWAYS clean up backtest_fold_* rows from forecast_daily,
+        # even when an exception escaped from any of phases 1-4 above. Without
+        # this, a DB hiccup, NaN cascade, or gate-update failure leaves stale
+        # `forecast_track='backtest_fold_N'` rows in forecast_daily — and
+        # forecast_daily_mv's `DISTINCT ON ... ORDER BY run_date DESC` can
+        # surface those leaked rows in BAU dashboard reads indefinitely
+        # (BAU writes use `track='bau'`, a different PK partition, so they
+        # never overwrite the leaked sentinel rows).
+        try:
+            _cleanup_sentinel_rows(client, restaurant_id=restaurant_id)
+        except Exception as cleanup_err:  # noqa: BLE001
+            print(
+                f'[backtest] cleanup failed: {cleanup_err}',
+                file=sys.stderr,
+            )
 
 
 if __name__ == '__main__':
