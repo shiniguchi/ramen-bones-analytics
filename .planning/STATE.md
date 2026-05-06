@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: External Data & Forecasting Foundation
 status: executing
-stopped_at: Phase 17 plans complete (2026-05-06) — ready for /gsd-execute-phase 17
-last_updated: "2026-05-06T17:00:00.000Z"
+stopped_at: Phase 17 execution started 2026-05-06
+last_updated: "2026-05-06T18:00:00.000Z"
 last_activity: 2026-05-06
 progress:
   total_phases: 20
   completed_phases: 15
-  total_plans: 106
+  total_plans: 116
   completed_plans: 94
-  percent: 89
+  percent: 81
 ---
 
 # STATE: Ramen Bones Analytics
@@ -284,7 +284,7 @@ Next recommended run: /gsd-plan-phase 16.2
 
 **Resume hint:** Phase 15 depends on Phase 14 schema (landed). Phase 16 depends on Phase 14 BAU forecast stability. Phase 17 has a hard dependency on ≥4 weeks of forecast-vs-actual history.
 
-**Last session:** 2026-05-06T12:00:24.831Z
+**Last session:** 2026-05-06T16:47:30.888Z
 **Stopped At:** context exhaustion at 75% (2026-05-06)
 
 ---

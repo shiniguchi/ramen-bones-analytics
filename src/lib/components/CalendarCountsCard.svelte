@@ -195,6 +195,7 @@
     <EmptyState card="calendar-counts" />
   {:else}
     <div bind:clientWidth={cardW} class="mt-4 h-64 overflow-x-auto overscroll-x-contain chart-touch-safe">
+      {#if cardW > 0}
       <Chart
         bind:context={chartCtx}
         data={chartData}
@@ -244,12 +245,19 @@
             {#if totals[i] > 0 && chartCtx && row.bucket_d instanceof Date}
               {@const x0 = chartCtx.xScale(row.bucket_d) ?? 0}
               {@const x1 = chartCtx.xScale(xInterval.offset(row.bucket_d, 1)) ?? x0}
+              {@const _today = new Date()}
+              {@const _grain = getFilters().grain as Granularity}
+              {@const isPartial = _grain === 'month'
+                ? row.bucket_d.getFullYear() === _today.getFullYear() && row.bucket_d.getMonth() === _today.getMonth()
+                : _grain === 'week'
+                ? startOfWeek(row.bucket_d, { weekStartsOn: 1 }).getTime() === startOfWeek(_today, { weekStartsOn: 1 }).getTime()
+                : false}
               <Text
                 x={(x0 + x1) / 2}
                 y={(chartCtx.yScale(totals[i]) ?? 0) - 6}
-                value={formatIntShort(totals[i])}
+                value={isPartial ? `~${formatIntShort(totals[i])}` : formatIntShort(totals[i])}
                 textAnchor="middle"
-                class="pointer-events-none fill-zinc-700 text-[10px] font-medium"
+                class="pointer-events-none text-[10px] font-medium {isPartial ? 'fill-zinc-400' : 'fill-zinc-700'}"
               />
             {/if}
           {/each}
@@ -296,6 +304,7 @@
         grain={getFilters().grain as 'day' | 'week' | 'month'}
         width={stripWidth}
       />
+      {/if}
     </div>
     <VisitSeqLegend {showCash} />
     {#if overlay.forecastData && overlay.availableModels.length > 0}
