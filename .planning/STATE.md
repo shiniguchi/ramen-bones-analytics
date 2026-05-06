@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: External Data & Forecasting Foundation
 status: executing
-stopped_at: Phase 14 complete. Ready for Phase 15 (Forecast Chart UI).
+stopped_at: "Phase 16.3 Dashboard Cleanup + Events Everywhere starting 2026-05-06 — 8 plans across 5 sub-waves (W1, W2a, W2b, W2c, W3). Branch: feature/phase-16.3-dashboard-cleanup-events-everywhere. Phase 16.2 (7/7 plans) shipped via PR #28 (merged 2026-05-05)."
 last_updated: "2026-05-06T08:10:36.028Z"
 last_activity: 2026-05-06
 progress:
   total_phases: 20
-  completed_phases: 14
+  completed_phases: 18
   total_plans: 106
   completed_plans: 86
   percent: 81
