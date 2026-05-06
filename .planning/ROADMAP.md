@@ -408,7 +408,17 @@ Plans:
   4. `forecast-backtest.yml` GHA workflow runs weekly on Tuesday 23:00 UTC and writes results to `forecast_quality`; `forecast-quality-gate.yml` runs on every forecast-engine PR and fails CI when gate criteria miss for any model already promoted to production; both workflows complete in <5 min on `ubuntu-latest`
   5. `docs/forecast/ACCURACY-LOG.md` auto-committed weekly with RMSE history per `(model × horizon)`, with each row showing the gate verdict (`PASS` / `FAIL` / `PENDING`); when no model beats naive, the log honestly records "naive-DoW-with-holidays remains production model — no challenger promoted this week"
   6. Freshness-SLO check on every `+page.server.ts` load: if `pipeline_runs.upstream_freshness_h > 24` for any cascade stage (external-data, forecast, MV refresh), the dashboard renders the stale-data badge from Phase 15; a deliberate weather-fetch failure in CI verifies the badge surfaces within one nightly cycle
-**Plans**: TBD
+**Plans**: 10 plans — PLANNED 2026-05-06 (ready for /gsd-execute-phase 17)
+  - [ ] 17-01-PLAN.md — Migration 0067 + FreshnessLabel >24h threshold (BCK-04, BCK-08)
+  - [ ] 17-02-PLAN.md — conformal.py pure-numpy quantile math (BCK-02)
+  - [ ] 17-03-PLAN.md — naive_dow_with_holidays.py regressor-aware baseline (BCK-03)
+  - [ ] 17-04-PLAN.md — argparse retrofit on 5 fit scripts (BCK-01)
+  - [ ] 17-05-PLAN.md — backtest.py rolling-origin CV driver + gate writer (BCK-01..04)
+  - [ ] 17-06-PLAN.md — run_all.py feature_flags AND-intersect (BCK-04)
+  - [ ] 17-07-PLAN.md — forecast-backtest.yml + write_accuracy_log.py + ACCURACY-LOG.md (BCK-05, BCK-07)
+  - [ ] 17-08-PLAN.md — forecast-quality-gate.yml + quality_gate_check.py (BCK-06)
+  - [ ] 17-09-PLAN.md — ModelAvailabilityDisclosure backtest pills + i18n + /api/forecast (BCK-01, BCK-02)
+  - [ ] 17-10-PLAN.md — Phase-final QA + planning-docs drift gate (BCK-01..08 sign-off)
 
 ## Progress
 
