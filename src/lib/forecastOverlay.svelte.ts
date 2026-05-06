@@ -43,9 +43,10 @@ export type ForecastPayload = {
   modelBacktestStatus?: Record<string, ModelBacktestRow>;
 };
 
-// Default-visible models on first render. chronos/neuralprophet stay off
-// (feature-flagged, Phase 17+). All other models show by default.
-export const DEFAULT_VISIBLE_MODELS = ['sarimax', 'prophet', 'ets', 'theta', 'naive_dow'] as const;
+// Default-visible models on first render. Other models (prophet/chronos/
+// neuralprophet) stay off until the user toggles them in ForecastLegend —
+// see ModelAvailabilityDisclosure for per-grain availability rationale.
+export const DEFAULT_VISIBLE_MODELS = ['sarimax', 'naive_dow', 'ets', 'theta'] as const;
 
 export type ChartDataRow = { bucket: string; bucket_d: Date };
 

@@ -319,7 +319,7 @@
             />
             <Spline y="cum_uplift" class="stroke-2" curve={curveMonotoneX} />
           </Svg>
-          <Tooltip.Root contained={false} class="text-xs">
+          <Tooltip.Root contained="window" class="max-w-[80vw] text-xs">
             {#snippet children({ data: pt })}
               {#if pt}
                 <Tooltip.Header value={format(pt.date as Date, 'MMM d')} />

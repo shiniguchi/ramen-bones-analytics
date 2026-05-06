@@ -270,11 +270,7 @@ const en = {
   model_avail_backtest_short_pass:         '✓',
   model_avail_backtest_short_fail:         '✗',
   model_avail_backtest_short_pending:      '…',
-  model_avail_backtest_short_uncalibrated: '~',
-  // Backtest methodology footnote (shown below the model table)
-  model_avail_backtest_memo_day:        'Backtest: day grain, 4 rolling-origin folds (h = 7 / 35 / 120 / 365 d)',
-  model_avail_backtest_memo_week_month: 'Week/month: no CV yet — rolling-origin folds (h = 4/13/26 w; h = 3/6 mo) added at 104 weekly / 24 monthly buckets',
-  model_avail_backtest_memo_improves:   'Improves automatically at 730 days of data'
+  model_avail_backtest_short_uncalibrated: '~'
 } as const;
 
 export type MessageKey = keyof typeof en;
@@ -529,10 +525,7 @@ const de: Record<MessageKey, string> = {
   model_avail_backtest_short_pass:         '✓',
   model_avail_backtest_short_fail:         '✗',
   model_avail_backtest_short_pending:      '…',
-  model_avail_backtest_short_uncalibrated: '~',
-  model_avail_backtest_memo_day:        'Backtest: day grain, 4 rolling-origin folds (h = 7 / 35 / 120 / 365 d)',
-  model_avail_backtest_memo_week_month: 'Week/month: no CV yet — rolling-origin folds (h = 4/13/26 w; h = 3/6 mo) added at 104 weekly / 24 monthly buckets',
-  model_avail_backtest_memo_improves:   'Improves automatically at 730 days of data'
+  model_avail_backtest_short_uncalibrated: '~'
 };
 
 // --- JA (日本語) ----------------------------------------------------------
@@ -784,10 +777,7 @@ const ja: Record<MessageKey, string> = {
   model_avail_backtest_short_pass:         '✓',
   model_avail_backtest_short_fail:         '✗',
   model_avail_backtest_short_pending:      '…',
-  model_avail_backtest_short_uncalibrated: '~',
-  model_avail_backtest_memo_day:        'バックテスト：日次粒度・4つのローリング起点折（h = 7 / 35 / 120 / 365日）',
-  model_avail_backtest_memo_week_month: '週次・月次：CVなし — 104週/24ヶ月到達後にローリング起点折（h = 4/13/26週・h = 3/6ヶ月）追加予定',
-  model_avail_backtest_memo_improves:   '730日分のデータで自動的に精度向上'
+  model_avail_backtest_short_uncalibrated: '~'
 };
 
 // --- ES (Español) ---------------------------------------------------------
@@ -1040,10 +1030,7 @@ const es: Record<MessageKey, string> = {
   model_avail_backtest_short_pass:         '✓',
   model_avail_backtest_short_fail:         '✗',
   model_avail_backtest_short_pending:      '…',
-  model_avail_backtest_short_uncalibrated: '~',
-  model_avail_backtest_memo_day:        'Backtest: day grain, 4 rolling-origin folds (h = 7 / 35 / 120 / 365 d)',
-  model_avail_backtest_memo_week_month: 'Week/month: no CV yet — rolling-origin folds (h = 4/13/26 w; h = 3/6 mo) added at 104 weekly / 24 monthly buckets',
-  model_avail_backtest_memo_improves:   'Improves automatically at 730 days of data'
+  model_avail_backtest_short_uncalibrated: '~'
 };
 
 // --- FR (Français) --------------------------------------------------------
@@ -1296,10 +1283,7 @@ const fr: Record<MessageKey, string> = {
   model_avail_backtest_short_pass:         '✓',
   model_avail_backtest_short_fail:         '✗',
   model_avail_backtest_short_pending:      '…',
-  model_avail_backtest_short_uncalibrated: '~',
-  model_avail_backtest_memo_day:        'Backtest: day grain, 4 rolling-origin folds (h = 7 / 35 / 120 / 365 d)',
-  model_avail_backtest_memo_week_month: 'Week/month: no CV yet — rolling-origin folds (h = 4/13/26 w; h = 3/6 mo) added at 104 weekly / 24 monthly buckets',
-  model_avail_backtest_memo_improves:   'Improves automatically at 730 days of data'
+  model_avail_backtest_short_uncalibrated: '~'
 };
 
 export const messages: Record<Locale, Record<MessageKey, string>> = { en, de, ja, es, fr };

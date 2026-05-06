@@ -1,17 +1,17 @@
 ---
 gsd_state_version: 1.0
 milestone: v1.3
-milestone_name: Coverage Map
-status: Ready to ship
-stopped_at: context exhaustion at 75% (2026-05-06)
-last_updated: "2026-05-06T22:30:06.621Z"
+milestone_name: External Data & Forecasting Foundation
+status: archived
+stopped_at: v1.3 milestone closed 2026-05-06 — tagged v1.3; ready for /gsd-new-milestone
+last_updated: "2026-05-06T22:00:00.000Z"
 last_activity: 2026-05-06
 progress:
-  total_phases: 9
-  completed_phases: 5
-  total_plans: 56
-  completed_plans: 44
-  percent: 79
+  total_phases: 20
+  completed_phases: 20
+  total_plans: 116
+  completed_plans: 116
+  percent: 100
 ---
 
 # STATE: Ramen Bones Analytics
@@ -299,8 +299,8 @@ Next recommended run: /gsd-ship (v1.3 milestone close)
 
 **Resume hint:** Phase 15 depends on Phase 14 schema (landed). Phase 16 depends on Phase 14 BAU forecast stability. Phase 17 has a hard dependency on ≥4 weeks of forecast-vs-actual history.
 
-**Last session:** 2026-05-06T22:30:06.588Z
-**Stopped At:** context exhaustion at 75% (2026-05-06)
+**Last session:** 2026-05-06T21:00:00.000Z
+**Stopped At:** Phase 17 closed — v1.3 ready to ship (2026-05-06)
 
 ---
 *State initialized: 2026-04-13; v1.3 roadmap recorded: 2026-04-27; Phase 12 context: 2026-04-28; Phase 13 shipped: 2026-04-30 (PR #17); Phase 14 shipped: 2026-04-30 (PR #22); STATE.md updated: 2026-04-30*
