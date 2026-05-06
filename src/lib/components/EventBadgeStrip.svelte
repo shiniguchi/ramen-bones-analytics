@@ -58,7 +58,7 @@
     grain,
     width
   }: {
-    events: ForecastEvent[];
+    events: readonly ForecastEvent[];
     buckets: readonly BucketSlot[];
     grain: 'day' | 'week' | 'month';
     width: number;
