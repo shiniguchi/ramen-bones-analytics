@@ -180,7 +180,7 @@
             {/if}
           {/each}
         </Svg>
-        <Tooltip.Root>
+        <Tooltip.Root contained={false}>
           {#snippet children({ data: row })}
             {@const bucketIdx = chartData.findIndex((r) => r.cohort === row?.cohort)}
             {@const fullRow = bucketIdx >= 0 ? chartData[bucketIdx] : row}
