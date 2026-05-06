@@ -234,8 +234,9 @@ export const GET: RequestHandler = async ({ locals, url }) => {
       .sort((a, b) => a.date.localeCompare(b.date));
 
     // Sibling events array — Phase 16 D-12 adds 5th source (campaign_start).
-    // EventMarker.svelte already supports campaign_start (red 3px line, C-09).
-    // clampEvents priority 5 already covers campaign_start (Phase 15 carry-forward).
+    // EventBadgeStrip (Plan 16.3-03) renders campaign_start as red 44px badge
+    // with corner-count multi-event indicator; clampEvents priority 5 already
+    // covers campaign_start (Phase 15 carry-forward).
     const events: ForecastEvent[] = [
       ...holidayRows .map((h) => ({ type: 'holiday' as const,         date: h.date,       label: h.name })),
       ...schoolRows  .map((s) => ({ type: 'school_holiday' as const,  date: s.start_date, label: s.block_name, end_date: s.end_date })),

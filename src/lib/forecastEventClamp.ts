@@ -33,8 +33,9 @@ export const EVENT_PRIORITY: Record<EventType, number> = {
 // `holidays` with `subdiv_code.is.null OR subdiv_code.eq.BE`, which can return
 // two rows for the same calendar date when a federal holiday overlaps a Berlin
 // state observance (both labeled "Tag der Arbeit", "Karfreitag", etc).
-// Without dedupe, EventMarker's keyed-each `(e.type + '|' + e.date)` would
-// duplicate-key-crash Svelte 5 at runtime. Beyond the crash, the chart cannot
+// Without dedupe, downstream `(e.type + '|' + e.date + '|' + e.label)`
+// keyed-each blocks in EventBadgeStrip / ChartHoverPopup would
+// duplicate-key-crash Svelte 5 at runtime. Beyond the crash, a chart cannot
 // legibly render two markers stacked at one x — so dedupe is also a UX fix.
 function dedupe(events: readonly ForecastEvent[]): ForecastEvent[] {
   const seen = new Set<string>();
