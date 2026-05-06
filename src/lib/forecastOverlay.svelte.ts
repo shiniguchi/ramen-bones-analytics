@@ -132,7 +132,15 @@ export function createForecastOverlay(opts: ForecastOverlayInputs): ForecastOver
     const rsParam = rs ? `&range_start=${encodeURIComponent(rs)}` : '';
     clientFetch<ForecastPayload>(`/api/forecast?kpi=${opts.kpi}&granularity=${g}${rsParam}`)
       .then((d) => { forecastData = d; })
-      .catch(() => { forecastData = null; });
+      .catch((err) => {
+        // WR-01 fix (memory: feedback_silent_error_isolation, 2026-04-17):
+        // log the error before clearing state so a Postgres permission /
+        // RLS / 5xx failure doesn't silently degrade to a "no data" UI.
+        // Overlay is non-critical — DO NOT throw — but the error MUST be
+        // visible in the browser console for DEV-time / QA debugging.
+        console.error('[forecastOverlay] /api/forecast failed:', err);
+        forecastData = null;
+      });
   });
 
   // Group forecast rows per model, filtered by visibleModels. Each model's
