@@ -22,7 +22,7 @@ if 'supabase' not in sys.modules:
     _supabase_stub.Client = type('Client', (), {})
     sys.modules['supabase'] = _supabase_stub
 
-from scripts.forecast.naive_dow_with_holidays import (  # noqa: E402
+from scripts.forecast.naive_dow_with_holidays_fit import (  # noqa: E402
     _compute_holiday_multipliers,
     _apply_holiday_multipliers,
     MODEL_NAME,

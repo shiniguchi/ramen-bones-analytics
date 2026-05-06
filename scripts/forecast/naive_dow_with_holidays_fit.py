@@ -9,7 +9,7 @@ naive_dow_fit RMSE and naive_dow_with_holidays RMSE — preventing unfair
 gains for models that benefit from weather/holidays exog access.
 
 Subprocess entry point — run as:
-    python -m scripts.forecast.naive_dow_with_holidays
+    python -m scripts.forecast.naive_dow_with_holidays_fit
 
 Reads RESTAURANT_ID, KPI_NAME, RUN_DATE, GRANULARITY from env vars.
 CLI flags --train-end / --eval-start / --fold-index accepted for backtest.py
@@ -394,6 +394,7 @@ if __name__ == '__main__':
 
     run_date = date.fromisoformat(run_date_str)
     train_end_override = date.fromisoformat(args.train_end) if args.train_end else None
+    track = os.environ.get('FORECAST_TRACK', 'bau').strip() or 'bau'
     started_at = datetime.now(timezone.utc)
     client = make_client()
 
@@ -404,6 +405,7 @@ if __name__ == '__main__':
             kpi_name=kpi_name,
             run_date=run_date,
             granularity=granularity,
+            track=track,
             train_end=train_end_override,
         )
         print(
