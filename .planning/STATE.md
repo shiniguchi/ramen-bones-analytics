@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: External Data & Forecasting Foundation
-status: ready_to_ship
-stopped_at: "Phase 16.3 Dashboard Cleanup + Events Everywhere closed locally 2026-05-06 — 8/8 plans done (5 sub-waves), 22 commits on feature/phase-16.3-dashboard-cleanup-events-everywhere. SC1-SC7 + SC9 PASS; SC8 owner-side sign-off PENDING (awaits DEV merge per plan 16.3-08 acceptance path). Next: /gsd-ship to open PR + DEV smoke + friend-persona acceptance."
-last_updated: "2026-05-06T09:30:00.000Z"
+status: shipped
+stopped_at: "Phase 16.3 shipped 2026-05-06 — PR #29 (https://github.com/shiniguchi/ramen-bones-analytics/pull/29) opened against main. 26 commits, 54 files, +5928/-1584. Verifier 8/9 PASS; SC8 friend-persona sign-off PENDING owner DEV-URL test (planned acceptance path per plan 16.3-08, HUMAN-UAT.md SC8). Next: review/merge PR #29; then friend-persona acceptance on DEV; then Phase 17."
+last_updated: "2026-05-06T11:50:00.000Z"
 last_activity: 2026-05-06
 progress:
   total_phases: 20
