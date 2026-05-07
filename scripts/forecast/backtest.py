@@ -96,6 +96,7 @@ import subprocess
 import sys
 import traceback
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import date, datetime, timedelta, timezone
 from typing import Optional
 
@@ -545,6 +546,11 @@ def main(models: list[str], run_date: date) -> int:
     total_attempted = 0
     total_succeeded = 0
 
+    # GHA ubuntu-latest has 4 vCPUs. Each fit subprocess is CPU-bound but runs
+    # in a child process, so ThreadPoolExecutor I/O-waits are fine here — the GIL
+    # is released while waiting for subprocess.run to return.
+    MAX_WORKERS = 4
+
     try:
         # Phase 1: Rolling-origin fold spawning across all grains.
         for granularity in ('day', 'week', 'month'):
@@ -557,6 +563,29 @@ def main(models: list[str], run_date: date) -> int:
 
             for kpi in KPIS:
                 for horizon in horizons_g:
+                    # Skip horizons that will always be UNCALIBRATED until ≥730 days.
+                    # No subprocess needed — write the marker row directly and move on.
+                    if horizon in UNCALIBRATED_HORIZONS and days_history < 730:
+                        print(
+                            f'[backtest] grain={granularity} kpi={kpi} h={horizon}: '
+                            f'UNCALIBRATED (days_history={days_history} < 730); skipping fits'
+                        )
+                        for model in models:
+                            _write_quality_row(
+                                client,
+                                restaurant_id=restaurant_id,
+                                kpi_name=kpi,
+                                model=model,
+                                horizon=horizon,
+                                fold_idx=None,
+                                train_end=None,
+                                eval_start=None,
+                                metrics=None,
+                                gate_verdict='UNCALIBRATED',
+                                grain=granularity,
+                            )
+                        continue
+
                     # Cold-start guard: insufficient history → write PENDING for all models
                     required = horizon + n_folds_g
                     if buckets_history < required:
@@ -582,40 +611,67 @@ def main(models: list[str], run_date: date) -> int:
 
                     # Rolling-origin folds — fold 0 is the most recent.
                     # Date arithmetic uses bucket_days so fold steps are grain-native.
+                    #
+                    # Build the full work list for this (kpi, horizon, grain) then
+                    # submit all (model, fold) pairs in parallel. Each subprocess is
+                    # independent: different forecast_track + train_end ensures no
+                    # shared forecast_daily rows between concurrent fits.
+                    work_items = []
                     for fold_idx in range(n_folds_g):
                         fold_offset = fold_idx * horizon * bucket_days
                         eval_end = last_actual - timedelta(days=fold_offset)
                         eval_start = eval_end - timedelta(days=horizon * bucket_days - 1)
                         train_end = eval_start - timedelta(days=1)
-
                         for model in models:
-                            total_attempted += 1
+                            work_items.append((model, fold_idx, train_end, eval_start, eval_end))
 
-                            # Spawn the fit subprocess for this fold
-                            ok = _spawn_fit(
+                    # Submit all fits in parallel, collect results keyed by work item.
+                    spawn_results: dict[tuple, bool] = {}
+                    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+                        future_to_item = {
+                            executor.submit(
+                                _spawn_fit,
                                 model=model,
                                 restaurant_id=restaurant_id,
                                 kpi_name=kpi,
+                                train_end=t_end,
+                                eval_start=e_start,
+                                fold_idx=f_idx,
+                                granularity=granularity,
+                            ): (model, f_idx, t_end, e_start, e_end)
+                            for (model, f_idx, t_end, e_start, e_end) in work_items
+                        }
+                        for future in as_completed(future_to_item):
+                            item = future_to_item[future]
+                            try:
+                                spawn_results[item] = future.result()
+                            except Exception as exc:
+                                print(
+                                    f'[backtest] spawn raised exception for {item}: {exc}',
+                                    file=sys.stderr,
+                                )
+                                spawn_results[item] = False
+
+                    # Process results sequentially (DB reads/writes, not CPU-bound).
+                    for (model, fold_idx, train_end, eval_start, eval_end) in work_items:
+                        total_attempted += 1
+                        ok = spawn_results.get((model, fold_idx, train_end, eval_start, eval_end), False)
+
+                        if not ok:
+                            _write_quality_row(
+                                client,
+                                restaurant_id=restaurant_id,
+                                kpi_name=kpi,
+                                model=model,
+                                horizon=horizon,
+                                fold_idx=fold_idx,
                                 train_end=train_end,
                                 eval_start=eval_start,
-                                fold_idx=fold_idx,
-                                granularity=granularity,
+                                metrics=None,
+                                gate_verdict='PENDING',
+                                grain=granularity,
                             )
-                            if not ok:
-                                _write_quality_row(
-                                    client,
-                                    restaurant_id=restaurant_id,
-                                    kpi_name=kpi,
-                                    model=model,
-                                    horizon=horizon,
-                                    fold_idx=fold_idx,
-                                    train_end=train_end,
-                                    eval_start=eval_start,
-                                    metrics=None,
-                                    gate_verdict='PENDING',
-                                    grain=granularity,
-                                )
-                                continue
+                            continue
 
                             # Read actuals and yhats for this fold's eval window.
                             # NOTE: _fetch_actuals returns daily rows; for week/month grain
