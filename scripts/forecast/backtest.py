@@ -521,12 +521,13 @@ def main(models: list[str], run_date: date) -> int:
     # evaluated_at=now() so upserts always INSERT; without this purge, multiple runs
     # accumulate duplicate fold rows with inconsistent RMSE values. The GHA workflow
     # uses cancel-in-progress: false so no two runs overlap — safe to delete first.
-    print('[backtest] purging stale rolling_origin_cv rows…')
-    client.table('forecast_quality') \
-        .delete() \
-        .eq('restaurant_id', restaurant_id) \
-        .eq('evaluation_window', 'rolling_origin_cv') \
-        .execute()
+    print('[backtest] purging stale rolling_origin_cv* rows…')
+    for ew in ('rolling_origin_cv', 'rolling_origin_cv_week', 'rolling_origin_cv_month'):
+        client.table('forecast_quality') \
+            .delete() \
+            .eq('restaurant_id', restaurant_id) \
+            .eq('evaluation_window', ew) \
+            .execute()
     print('[backtest] purge done')
 
     last_actual = _last_actual_date(client, restaurant_id)

@@ -11,16 +11,17 @@
 --      NULL as distinct so multiple NULL-fold rows never violate this constraint.
 
 -- ─────────────────────────────────────────────────────────────────────────
--- 1. Deduplicate rolling_origin_cv rows — keep best per fold
+-- 1. Deduplicate all rolling_origin_cv* rows — keep best per fold
+--    Covers: rolling_origin_cv, rolling_origin_cv_week, rolling_origin_cv_month
 -- ─────────────────────────────────────────────────────────────────────────
 DELETE FROM public.forecast_quality
-WHERE evaluation_window = 'rolling_origin_cv'
+WHERE evaluation_window LIKE 'rolling_origin_cv%'
   AND fold_index IS NOT NULL
   AND ctid NOT IN (
     SELECT DISTINCT ON (restaurant_id, kpi_name, model_name, horizon_days, evaluation_window, fold_index)
       ctid
     FROM public.forecast_quality
-    WHERE evaluation_window = 'rolling_origin_cv'
+    WHERE evaluation_window LIKE 'rolling_origin_cv%'
       AND fold_index IS NOT NULL
     ORDER BY
       restaurant_id, kpi_name, model_name, horizon_days, evaluation_window, fold_index,
