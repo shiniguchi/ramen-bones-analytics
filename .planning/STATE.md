@@ -4,8 +4,8 @@ milestone: v1.4
 milestone_name: Coverage Map
 status: Complete
 stopped_at: Phase 18 complete (2026-05-07)
-last_updated: "2026-05-07T12:30:00.000Z"
-last_activity: 2026-05-07 (Phase 18 complete — v1.4 Weekly Campaign Read shipped)
+last_updated: "2026-05-07T13:00:00.000Z"
+last_activity: 2026-05-07 (Phase 18 shipped — PR #31 open)
 progress:
   total_phases: 21
   completed_phases: 21
