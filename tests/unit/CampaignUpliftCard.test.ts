@@ -298,29 +298,39 @@ function readSource(): string {
 
 describe('CampaignUpliftCard', () => {
   it('shows hero number when CI does not overlap zero', async () => {
+    // Phase 18 Plan 04: hero now reads from weekly_history. FIXTURE_HEADLINE_NORMAL
+    // has weeklyHistory3 with last entry point_eur=880 (W19: May 4-10, ci_lower=210>0).
+    // campaign.start_date is 2026-04-14 (~23 days ago → 3 weeks → midweeks tier).
+    // midweeks + CI lower>0 + point_eur>0 → uplift_hero_early_added copy ("Looks like...").
+    // Hero number: formatEur(880) = "+€880".
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (clientFetchSpy as any).__activeFixture.current = FIXTURE_HEADLINE_NORMAL;
     const { container } = render(CampaignUpliftCard);
     await flush();
     const text = container.textContent ?? '';
-    expect(text).toMatch(/€\s?1[.,]?500/);
+    // Hero shows the weekly point_eur=880.
+    expect(text).toMatch(/880/);
+    // No legacy jargon.
     expect(text).not.toMatch(/CI overlaps zero/);
+    // hero-uplift testid present (CI does not overlap).
+    expect(container.querySelector('[data-testid="hero-uplift"]')).not.toBeNull();
   });
 
   it('shows plain-language hero + isCIOverlap testid when CI overlaps zero (UPL-06 — 16.1-03 D-05..D-12)', async () => {
-    // 16.1-03 replaced the "CI overlaps zero — no detectable lift" jargon with a
-    // tier-aware plain-language hero. n_days=7 → tier='early' → heroKey='uplift_hero_too_early'.
-    // The dim-point-estimate testid still exists, but moved inside the {#if detailsOpen} disclosure
-    // panel — not visible by default. The hero element gets data-testid="hero-ci-overlaps" when
-    // isCIOverlap (CI bounds straddle zero).
+    // Phase 18 Plan 04: hero reads from weekly_history. FIXTURE_WEEKLY_CI_STRADDLES_ZERO
+    // has one entry with ci_lower=-300 < 0, ci_upper=460 > 0 → ciOverlapsZero=true.
+    // campaign.start_date is today-21d → 3 weeks → midweeks tier.
+    // midweeks + CI straddles zero → heroKey='uplift_hero_early_not_measurable'.
+    // The dim-point-estimate testid still exists but lives inside the {#if detailsOpen}
+    // disclosure panel — not visible by default. hero-ci-overlaps testid is rendered.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (clientFetchSpy as any).__activeFixture.current = FIXTURE_HEADLINE_ZERO_OVERLAP;
+    (clientFetchSpy as any).__activeFixture.current = FIXTURE_WEEKLY_CI_STRADDLES_ZERO;
     const { container } = render(CampaignUpliftCard);
     await flush();
     const text = container.textContent ?? '';
-    // Plain-language hero (early-tier copy, locale=en default).
-    expect(text).toMatch(/Too early to tell/);
-    // CI-overlap testid present (early branch always hero-ci-overlaps when CI straddles zero OR cum=0).
+    // Plain-language hero for midweeks + CI-overlap: "Probably not measurable yet".
+    expect(text).toMatch(/Probably not measurable yet|measurable/i);
+    // CI-overlap testid present.
     expect(container.querySelector('[data-testid="hero-ci-overlaps"]')).not.toBeNull();
     // Old jargon is GONE from the visible read.
     expect(text).not.toMatch(/CI overlaps zero — no detectable lift/);
@@ -386,26 +396,26 @@ describe('CampaignUpliftCard', () => {
   });
 
   it('shows divergence warning inside disclosure panel when sarimax vs naive_dow disagree by sign (D-09 — 16.1-03 disclosure pattern)', async () => {
-    // 16.1-03 moved the divergence-warning testid from inline-visible to INSIDE
-    // the {#if detailsOpen} disclosure panel. Test must click the trigger first,
-    // then verify the warning is present with the new plain-language copy.
+    // Phase 18 Plan 04 — Claude's Discretion: divergence warning is disabled on per-week reads.
+    // Per-week rows have naive_dow_uplift_eur=null by construction (Plan 02/PATTERNS §2c).
+    // The divergenceWarning derived is hardcoded false for per-week reads.
+    // Test updated to verify the disclosure panel still works but divergence-warning is absent.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (clientFetchSpy as any).__activeFixture.current = FIXTURE_DIVERGENCE;
     const { container } = render(CampaignUpliftCard);
     await flush();
-    // Before opening: divergence-warning is hidden (lives in collapsed panel).
+    // divergence-warning is always absent (per-week reads have no naive_dow cross-check).
     expect(container.querySelector('[data-testid="divergence-warning"]')).toBeNull();
-    // Open the disclosure panel.
+    // Disclosure trigger still present.
     const trigger = container.querySelector<HTMLButtonElement>('[data-testid="uplift-details-trigger"]');
     expect(trigger).not.toBeNull();
     trigger!.click();
     await flush();
-    // After opening: panel + divergence warning visible with new plain-language copy.
+    // After opening: panel is present; anticipation note is there; divergence-warning absent.
     expect(container.querySelector('[data-testid="uplift-details-panel"]')).not.toBeNull();
-    const warn = container.querySelector('[data-testid="divergence-warning"]');
-    expect(warn).not.toBeNull();
-    // Plain-language D-09 copy: "Two of our checks disagree — we'd want more weeks of data..."
-    expect(warn?.textContent ?? '').toMatch(/Two of our checks disagree|disagree.*more weeks/i);
+    expect(container.querySelector('[data-testid="anticipation-buffer-note"]')).not.toBeNull();
+    // Phase 18 Plan 04: divergence-warning NOT rendered on per-week hero reads.
+    expect(container.querySelector('[data-testid="divergence-warning"]')).toBeNull();
   });
 
   it('sparkline_data_contract — sparklineData consumes API daily[] (NOT a 2-point synthesized line)', () => {
