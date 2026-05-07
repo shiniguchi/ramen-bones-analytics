@@ -274,17 +274,27 @@ export const GET: RequestHandler = async ({ locals, url }) => {
     type BacktestVerdict = 'PASS' | 'FAIL' | 'PENDING' | 'UNCALIBRATED' | null;
     type ModelBacktestRow = { h7?: BacktestVerdict; h35?: BacktestVerdict; h120?: BacktestVerdict; h365?: BacktestVerdict };
 
+    // Revenue RMSE only (disclosure shows "7d RMSE €"). Null-rmse rows (folds
+    // with no eval actuals) are excluded so they don't shadow real data in the
+    // dedupeKey loop below.
     const { data: backtestRows } = await locals.supabase
       .from('forecast_quality')
-      .select('model_name,horizon_days,gate_verdict,evaluated_at')
+      .select('model_name,horizon_days,gate_verdict,rmse,evaluated_at')
       .eq('evaluation_window', 'rolling_origin_cv')
+      .eq('kpi_name', 'revenue_eur')
+      .not('rmse', 'is', null)
       .order('evaluated_at', { ascending: false })
       .limit(2000);
 
-    // Latest verdict per (model, horizon) — skip duplicates from earlier runs.
+    // Latest verdict + RMSE per (model, horizon) — skip duplicates from earlier runs.
     const HORIZON_KEY: Record<number, keyof ModelBacktestRow> = { 7: 'h7', 35: 'h35', 120: 'h120', 365: 'h365' };
     const seen = new Set<string>();
     const modelBacktestStatus: Record<string, ModelBacktestRow> = {};
+    type BacktestMetric = { rmse: number | null; evaluatedAt: string | null };
+    type ModelBacktestMetrics = { h7?: BacktestMetric; h35?: BacktestMetric; h120?: BacktestMetric; h365?: BacktestMetric };
+    const modelBacktestMetrics: Record<string, ModelBacktestMetrics> = {};
+    let backtestLastMeasured: string | null = null;
+
     for (const r of backtestRows ?? []) {
       const horizonKey = HORIZON_KEY[r.horizon_days];
       if (!horizonKey) continue;
@@ -293,6 +303,14 @@ export const GET: RequestHandler = async ({ locals, url }) => {
       seen.add(dedupeKey);
       if (!modelBacktestStatus[r.model_name]) modelBacktestStatus[r.model_name] = {};
       modelBacktestStatus[r.model_name][horizonKey] = (r.gate_verdict ?? null) as BacktestVerdict;
+      if (!modelBacktestMetrics[r.model_name]) modelBacktestMetrics[r.model_name] = {};
+      modelBacktestMetrics[r.model_name][horizonKey] = {
+        rmse: r.rmse ?? null,
+        evaluatedAt: r.evaluated_at ?? null
+      };
+      if (r.evaluated_at && (!backtestLastMeasured || r.evaluated_at > backtestLastMeasured)) {
+        backtestLastMeasured = r.evaluated_at;
+      }
     }
 
     return json(
@@ -310,7 +328,9 @@ export const GET: RequestHandler = async ({ locals, url }) => {
         last_run,
         kpi,
         granularity,
-        modelBacktestStatus
+        modelBacktestStatus,
+        modelBacktestMetrics,
+        backtestLastMeasured
       },
       { headers: NO_STORE }
     );
