@@ -330,7 +330,7 @@
       <!-- D-18 Y-axis label (W4 LOCKED: above-Chart <p>, not in-Svg Axis primitive) -->
       <p class="text-[11px] text-zinc-500 mb-1 mt-3">{t(page.data.locale, 'uplift_sparkline_y_label')}</p>
       <div
-        class="chart-touch-safe"
+        class="chart-touch-safe overflow-hidden"
         style:width="280px"
         style:height="100px"
         data-testid="uplift-week-bar-chart"
@@ -341,6 +341,10 @@
           x="iso_week_start"
           y="point_eur"
           xScale={scaleBand().padding(0.1)}
+          yDomain={[
+            Math.min(0, ...weeklyHistory.map((w) => w.ci_lower_eur)),
+            Math.max(0, ...weeklyHistory.map((w) => w.ci_upper_eur))
+          ]}
           yNice={3}
           padding={{ left: 36, right: 4, top: 4, bottom: 20 }}
           tooltipContext={{ mode: 'band', touchEvents: 'auto' }}
