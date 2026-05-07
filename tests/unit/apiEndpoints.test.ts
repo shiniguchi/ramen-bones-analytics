@@ -889,14 +889,18 @@ describe('/api/campaign-uplift', () => {
   // .eq('model_name','sarimax'), filters to headline campaign_id, sorts
   // ascending by as_of_date, and derives iso_week_start = as_of_date − 6 days.
   describe('weekly_history (Phase 18 UPL-08)', () => {
+    // Mock supabase returns rows in fixture order (the chainable mock does NOT
+    // apply `.order()` — Postgres does, in production). So the fixture is
+    // already ordered ascending here; the API's ordering contract is asserted
+    // separately by the "queries .... with ascending order" test below
+    // (verifies the .order(as_of_date, {ascending:true}) call landed on the view).
     const weeklyRows = [
-      // Out-of-order so we verify ascending sort happens at the API layer.
-      { campaign_id: 'friend-2026-04-14', model_name: 'sarimax',
-        cumulative_uplift_eur: -149, ci_lower_eur: -620, ci_upper_eur: 340,
-        n_days: 7, as_of_date: '2026-05-03' },
       { campaign_id: 'friend-2026-04-14', model_name: 'sarimax',
         cumulative_uplift_eur:  450, ci_lower_eur: -100, ci_upper_eur: 980,
-        n_days: 7, as_of_date: '2026-04-26' }
+        n_days: 7, as_of_date: '2026-04-26' },
+      { campaign_id: 'friend-2026-04-14', model_name: 'sarimax',
+        cumulative_uplift_eur: -149, ci_lower_eur: -620, ci_upper_eur: 340,
+        n_days: 7, as_of_date: '2026-05-03' }
     ];
 
     it('weekly_history populated when campaign_uplift_weekly_v returns sarimax rows for headline', async () => {
