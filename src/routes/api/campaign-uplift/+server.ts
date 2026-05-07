@@ -80,11 +80,18 @@ export const GET: RequestHandler = async ({ locals }) => {
   if (!claims) return json({ error: 'unauthorized' }, { status: 401, headers: NO_STORE });
 
   try {
-    // Three queries:
-    // campaign_uplift_v        = headline rows (per-window aggregates).
-    // campaign_uplift_weekly_v = per-ISO-week trajectory (Phase 18 UPL-08).
-    // forecast_with_actual_v   = CF track: actual revenue vs SARIMAX yhat (Phase 20).
-    const [rows, weeklyRows, cfDailyLineRows] = await Promise.all([
+    // today computed before Promise.all so the kpi query can filter server-side.
+    const today = format(new Date(), 'yyyy-MM-dd');
+
+    // Four queries:
+    // campaign_uplift_v          = headline rows (per-window aggregates).
+    // campaign_uplift_weekly_v   = per-ISO-week trajectory (Phase 18 UPL-08).
+    // forecast_with_actual_v     = CF track: SARIMAX yhat/CI per day (Phase 20).
+    // kpi_daily_with_comparable_v = total revenue_eur per day — used as the
+    //   actual line in the chart. revenue_comparable_eur (from the CF view) only
+    //   covers baseline menu items; total revenue_eur matches what the owner sees
+    //   in the KPI tiles and heatmap.
+    const [rows, weeklyRows, cfDailyLineRows, kpiDailyRows] = await Promise.all([
       fetchAll<UpliftRow>(() =>
         locals.supabase
           .from('campaign_uplift_v')
@@ -112,6 +119,13 @@ export const GET: RequestHandler = async ({ locals }) => {
           .eq('kpi_name', 'revenue_comparable_eur')
           .eq('granularity', 'day')
           .order('target_date', { ascending: true })
+      ),
+      fetchAll<{ business_date: string; revenue_eur: number }>(() =>
+        locals.supabase
+          .from('kpi_daily_with_comparable_v')
+          .select('business_date,revenue_eur')
+          .lte('business_date', today)
+          .order('business_date', { ascending: true })
       )
     ]);
 
@@ -149,16 +163,18 @@ export const GET: RequestHandler = async ({ locals }) => {
     );
 
     // Phase 20: per-day actual vs CF yhat for the headline campaign (dual-line chart).
-    // Filters to [campaign_start, today] — future yhat rows excluded.
+    // actual_eur = total revenue_eur from kpi_daily_with_comparable_v (matches KPI tiles).
+    // cf_yhat_eur = SARIMAX CF baseline (trained on revenue_comparable_eur — comparable items only).
+    // Using total revenue for the actual line so numbers align with the heatmap / KPI tiles.
     const headlineCampaignId = campaigns[0]?.campaign_id;
-    const today = format(new Date(), 'yyyy-MM-dd');
+    const kpiByDate = new Map(kpiDailyRows.map((r) => [r.business_date, r.revenue_eur]));
     const daily_lines =
       headlineCampaignId && campaigns[0]?.start_date
         ? cfDailyLineRows
             .filter((r) => r.target_date >= campaigns[0]!.start_date && r.target_date <= today)
             .map((r) => ({
               date: r.target_date,
-              actual_eur: r.actual_value,
+              actual_eur: kpiByDate.get(r.target_date) ?? null,
               cf_yhat_eur: r.yhat,
               cf_lower_eur: r.yhat_lower,
               cf_upper_eur: r.yhat_upper
