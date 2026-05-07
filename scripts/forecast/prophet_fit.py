@@ -296,7 +296,11 @@ def fit_and_write(
         # 1. Fetch training history (BAU path: kpi_daily_mv).
         history = _fetch_history(client, restaurant_id=restaurant_id, kpi_name=kpi_name)
         last_actual = history['date'].iloc[-1]
-        train_end = train_end_for_grain(last_actual, granularity)
+        # BCK-03: honour provided train_end (backtest fold cutoff) instead of
+        # always recomputing from last_actual. Without this, all folds use the
+        # same BAU train_end and the rolling-origin isolation is lost.
+        if train_end is None:
+            train_end = train_end_for_grain(last_actual, granularity)
         print(
             f'[prophet_fit] grain={granularity} last_actual={last_actual} '
             f'train_end={train_end} horizon={horizon}'
@@ -306,6 +310,8 @@ def fit_and_write(
         history = history[history['date'] <= train_end].reset_index(drop=True)
     if history.empty:
         raise RuntimeError(f'Empty history after train_end cutoff {train_end}')
+
+    is_backtest = track.startswith('backtest_')
 
     if granularity == 'day':
         # 3a. Daily path keeps exog regressors.
@@ -322,16 +328,14 @@ def fit_and_write(
 
         train_df = _build_prophet_df(history, X_fit)
 
-        # Phase 16 D-07 / 16-12 follow-up: CF fits anchor pred_dates on train_end
-        # (Prophet's future_df rows must align with the post-train_end window
-        # we're counterfactually projecting). BAU keeps run_date anchor.
+        # Phase 16 D-07 / 16-12 follow-up: CF fits anchor pred_dates on train_end.
+        # BCK-03: backtest folds use run_date (=eval_start) as window_start so that
+        # pred_dates cover the fold's eval window. BAU emits past-forecast rows from
+        # window_start_for_grain for the chart display.
         pred_anchor = train_end if track == 'cf' else run_date
         pred_dates = pred_dates_for_grain(
             run_date=pred_anchor, granularity='day', horizon=horizon,
-            # 2026-05-05: window_start re-instated so prophet emits past-forecast
-            # rows over the latest complete week (matches sarimax/ets/theta/naive).
-            # Past curve is a model-trend projection, not a rolling-origin backtest.
-            window_start=window_start_for_grain(last_actual, 'day'),
+            window_start=run_date if is_backtest else window_start_for_grain(last_actual, 'day'),
             train_end=train_end,
         )
         pred_start = pred_dates[0]
@@ -372,9 +376,9 @@ def fit_and_write(
 
         pred_dates = pred_dates_for_grain(
             run_date=run_date, granularity=granularity, horizon=horizon,
-            # 2026-05-05: window_start re-instated for week/month, same caveat
-            # as day branch — past curve is model-trend projection, not backtest.
-            window_start=window_start_for_grain(last_actual, granularity),
+            # BCK-03: backtest uses run_date as window_start so pred_dates cover
+            # the fold's eval window. BAU uses window_start_for_grain for chart display.
+            window_start=run_date if is_backtest else window_start_for_grain(last_actual, granularity),
             train_end=train_end,
         )
         future_df = _build_future_df(pred_dates, None)
