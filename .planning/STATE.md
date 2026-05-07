@@ -1,17 +1,17 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.4
-milestone_name: Coverage Map
-status: Complete
-stopped_at: Phase 18 complete (2026-05-07)
-last_updated: "2026-05-07T14:00:00.000Z"
-last_activity: 2026-05-07 (v1.4 milestone archived — tag v1.4 created)
+milestone: v1.5
+milestone_name: Cold-Start Trim
+status: In Progress
+stopped_at: Phase 19 planned (2026-05-07) — awaiting /gsd-execute-phase 19
+last_updated: "2026-05-07T18:00:00.000Z"
+last_activity: 2026-05-07 (Phase 19 Cold-Start Trim planned — 4 sub-plans locked)
 progress:
-  total_phases: 21
+  total_phases: 22
   completed_phases: 21
-  total_plans: 123
+  total_plans: 127
   completed_plans: 111
-  percent: 90
+  percent: 87
 ---
 
 # STATE: Ramen Bones Analytics
@@ -28,9 +28,27 @@ progress:
 
 ## Current Position
 
-Milestone: v1.4 (Weekly Campaign Read)
-Phase: 18 (weekly-counterfactual-window) — implementing
-Plan: 06 (COMPLETE — 3 i18n keys × 5 locales, compatibility test 17/17, localhost QA PASS) — next: Plan 07 (phase-final QA on DEV + planning-docs drift gate)
+Milestone: v1.5 (Cold-Start Trim)
+Phase: 19 (cold-start-trim) — planned, awaiting execution
+Plan: 01 (PENDING — LazyMount loader prop + 5 eager chart cards deferred)
+
+**v1.5 opened 2026-05-07.** Scope: cut cold-start bundle weight. 5 chart cards (CalendarCounts, CalendarRevenue, CalendarItems, CalendarItemRevenue, MdeCurveCard) eager-mount LayerChart (4.9 MB transitive) on load. Two SSR queries (item_counts_daily_v, benchmark_*_v) fetch at SSR despite their sole consumers being lazy-mounted. The 76 KB `messages.ts` monolith ships all 5 locales to every user. Phase 19 fixes all three blockers via: (1) extending `LazyMount` with a `loader` prop for dynamic-import deferral, (2) two new deferred `/api/*` endpoints cutting SSR Promise.all 6→4, (3) per-locale dict files with `loadDict()` lazy cache cutting the i18n contribution from 76 KB to ~15 KB (en only) cold.
+
+**Design decisions locked (no /gsd-discuss-phase needed — see 19-DISCUSSION-LOG.md):**
+1. Extend existing `LazyMount` with `loader?: () => Promise<{ default: Component }>` — single idiom rule preserved
+2. No `manualChunks` in vite.config — Vite auto-splits dynamic imports
+3. `en` locale imported eagerly (needed for `MessageKey` type + fallback); `de/ja/es/fr` lazy
+4. `loadDict()` mirrors `clientFetch.ts:13` module-level Map cache pattern
+5. `t(locale, key)` signature unchanged; 19 call sites unmodified
+6. `/api/item-counts` accepts `?from=&to=` (window-scoped); `/api/benchmark` has no params (lifetime data)
+
+**Sub-plans:**
+- 19-01 (PENDING): LazyMount loader prop + 5 chart cards lazy-converted
+- 19-02 (PENDING): /api/item-counts + /api/benchmark deferred endpoints; SSR 6→4
+- 19-03 (PENDING): i18n per-locale dynamic imports (independent of 19-01/02)
+- 19-04 (PENDING): Phase-final QA + planning-docs drift gate
+
+**v1.4 milestone archived 2026-05-07:** Phase 18 (Weekly Counterfactual Window) complete. PR #31 merged.
 
 v1.4 opened 2026-05-07 as single-feature milestone. Scope: replace CampaignUpliftCard's cumulative-since-launch headline with per-ISO-week (Mon–Sun) counterfactual + tap-scrubbable bar-chart history. Friend-owner gets a fresh weekly read instead of a cumulative number that drifts toward "no detectable lift" as the campaign window grows. Touches DB (new window_kind value — landed in Plan 18-01 via migration 0069), Python pipeline (cumulative_uplift.py — bootstrap CI re-fit on 7-day slice, NOT derived from daily cumulative), API (/api/campaign-uplift returns weekly_history), and Svelte component (CampaignUpliftCard rewrite).
 

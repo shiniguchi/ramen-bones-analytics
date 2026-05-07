@@ -3,9 +3,10 @@
 **Created:** 2026-04-13
 **Granularity:** standard
 **Parallelization:** enabled
-**Coverage:** 39/39 v1 + 14/14 v1.1 + 13/13 v1.2 + 47/47 v1.3 + 2/2 v1.4 requirements mapped
+**Coverage:** 39/39 v1 + 14/14 v1.1 + 13/13 v1.2 + 47/47 v1.3 + 2/2 v1.4 + 3/3 v1.5 requirements mapped
 **v1.3 shipped:** 2026-05-06 (Phases 12–17; PRs #17, #22, #26, #28, #29, #30)
 **v1.4 shipped:** 2026-05-07 (Phase 18 — single-feature milestone; PR #31)
+**v1.5 opened:** 2026-05-07 (Phase 19 — Cold-Start Trim — planned)
 
 ## Core Value
 
@@ -61,6 +62,13 @@ A restaurant owner opens the site on their phone and makes a real business decis
 <summary>✅ v1.4 Weekly Campaign Read (Phase 18) — SHIPPED 2026-05-07</summary>
 
 - [x] **Phase 18: Weekly Counterfactual Window** — replace CampaignUpliftCard cumulative-since-launch headline with per-ISO-week (Mon–Sun) counterfactual + bar-chart history of all completed weeks (CI whiskers, color-coded by significance, tap-to-scrub hero)
+
+</details>
+
+<details>
+<summary>v1.5 Cold-Start Trim (Phase 19) — In Progress</summary>
+
+- [ ] **Phase 19: Cold-Start Trim** — extend `LazyMount` with `loader` prop for dynamic-import deferral; convert 5 eager chart cards; add `/api/item-counts` + `/api/benchmark` deferred endpoints (SSR 6→4); split `messages.ts` 76 KB monolith into 5 per-locale dict files with `loadDict()` lazy cache
 
 </details>
 
@@ -432,7 +440,7 @@ Plans:
   - [x] 17-09-PLAN.md — ModelAvailabilityDisclosure backtest pills + i18n + /api/forecast (BCK-01, BCK-02)
   - [x] 17-10-PLAN.md — Phase-final QA + planning-docs drift gate (BCK-01..08 sign-off; 5 PASS + 3 PARTIAL with merge-deferred resolution)
 
-### Phase Details — Current Milestone (v1.4)
+### Phase Details — v1.4 (archived)
 
 ### Phase 18: Weekly Counterfactual Window
 **Goal**: Replace CampaignUpliftCard's cumulative-since-launch headline with a per-ISO-week (Mon–Sun) counterfactual answer plus a tap-scrubbable bar-chart history of all completed weeks since campaign launch — friend-owner gets a fresh weekly read on whether the campaign is working, not a cumulative number that drifts toward "no detectable lift" the longer it runs.
@@ -453,6 +461,24 @@ Plans:
   - [x] 18-05-PLAN.md — bar chart + CI whiskers + tap-to-scrub (Option C fallback: manual <rect> via chartCtx) (UPL-08, UPL-09) — shipped 2026-05-07 (RED 462dbd7 → GREEN b25249c → fix 90fba8e; localhost QA PASS)
   - [x] 18-06-PLAN.md — i18n keys (uplift_week_label etc.) + ModelAvailabilityDisclosure compatibility check (UPL-09) — shipped 2026-05-07 (eba5000 / 1241dc3; localhost QA PASS)
   - [x] 18-07-PLAN.md — phase-final QA on DEV + planning-docs drift gate + overflow fix (fb97843) (UPL-08, UPL-09 sign-off)
+
+### Phase Details — Current Milestone (v1.5)
+
+### Phase 19: Cold-Start Trim
+**Goal**: Eliminate the three primary cold-start bundle blockers so the dashboard paints above-fold KPI tiles without downloading LayerChart (4.9 MB), the full i18n monolith (76 KB), or firing benchmark/item-count queries at SSR.
+**Depends on**: Phase 18 (CampaignUpliftCard already lazy-wrapped; deferred /api/* pattern established in Phase 11)
+**Requirements**: PERF-01, PERF-02, PERF-03
+**Success Criteria** (what must be TRUE):
+  1. Cold load shows skeleton placeholders for 5 deferred chart cards; KPI tiles paint without LayerChart in the critical path
+  2. Scrolling to each deferred card triggers its async chunk download (visible in Network panel filtered to `chunk-`)
+  3. SSR `Promise.all` reduced from 6 to 4; `/api/item-counts` and `/api/benchmark` return correct data when polled via curl
+  4. `messages.ts` on disk is ≤3 KB; 4 async locale chunks visible in build output; locale switch renders correct strings with no flash-of-english
+  5. `npm run check` + `npm run test:unit` exit 0 after all three implementation plans complete
+**Plans**: 4 plans
+  - [ ] 19-01-PLAN.md — LazyMount loader prop + 5 eager chart cards deferred
+  - [ ] 19-02-PLAN.md — /api/item-counts + /api/benchmark deferred endpoints; SSR 6→4
+  - [ ] 19-03-PLAN.md — i18n per-locale dynamic imports (5 dict files + loadDict() cache)
+  - [ ] 19-04-PLAN.md — phase-final QA + planning-docs drift gate
 
 ## Progress
 
@@ -479,6 +505,7 @@ Plans:
 | 16.3. Dashboard Cleanup + Events Everywhere (INSERTED) | v1.3 | 3/3 | Complete | 2026-05-06 |
 | 17. Backtest Gate & Quality Monitoring | v1.3 | 10/10 | Complete | 2026-05-06 |
 | 18. Weekly Counterfactual Window | v1.4 | 7/7 | Complete | 2026-05-07 |
+| 19. Cold-Start Trim | v1.5 | 0/4 | In Progress | — |
 
 ## Coverage Summary
 
@@ -487,7 +514,8 @@ Plans:
 - **v1.2 requirements:** 13
 - **v1.3 requirements:** 47 (FND-09..11, EXT-01..09, FCS-01..11, FUI-01..09, UPL-01..07, BCK-01..08)
 - **v1.4 requirements:** 2 (UPL-08, UPL-09)
-- **Mapped:** 115 (100%)
+- **v1.5 requirements:** 3 (PERF-01, PERF-02, PERF-03)
+- **Mapped:** 118 (100%)
 - **Orphaned:** 0
 - **Duplicated:** 0
 
@@ -571,6 +599,20 @@ Plans:
 **UPL-08:** Pipeline computes per-ISO-week counterfactual uplift with bootstrap CI re-fit on the 7-day slice; persists weekly history rows (one per fully-completed Mon–Sun week since campaign launch).
 
 **UPL-09:** Dashboard CampaignUpliftCard replaces cumulative-since-launch hero with last-completed-week read + bar-chart history (CI whiskers, color-coded by significance, tap-to-scrub).
+
+### v1.5 Coverage Map
+
+| Requirement | Phase |
+|-------------|-------|
+| PERF-01 | Phase 19 — Cold-Start Trim |
+| PERF-02 | Phase 19 — Cold-Start Trim |
+| PERF-03 | Phase 19 — Cold-Start Trim |
+
+**PERF-01:** Cold-start JS payload trimmed — 5 chart cards defer LayerChart via `LazyMount loader` prop; async chunks arrive on scroll.
+
+**PERF-02:** SSR Promise.all reduced 6→4 — `item_counts_daily_v` and `benchmark_*_v` moved to deferred `/api/*` endpoints.
+
+**PERF-03:** i18n bundle trimmed — `messages.ts` monolith (76 KB) split into 5 per-locale dict files; only `en` (~15 KB) shipped cold; remaining locales lazy-loaded via `loadDict()`.
 
 ### v1.3 Dependencies & Parallelism
 
