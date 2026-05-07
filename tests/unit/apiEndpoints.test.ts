@@ -879,4 +879,146 @@ describe('/api/campaign-uplift', () => {
     expect(res.status).toBe(500);
     expect(res.headers.get('cache-control')).toBe('private, no-store');
   });
+
+  // -------- Phase 18-03: weekly_history payload (UPL-08) --------
+  // /api/campaign-uplift adds a 3rd top-level array `weekly_history` (sister
+  // to `daily`). Each item shape per CONTEXT.md API §line 35-46:
+  //   { iso_week_start, iso_week_end, model_name, point_eur,
+  //     ci_lower_eur, ci_upper_eur, n_days }
+  // Endpoint reads campaign_uplift_weekly_v (Plan 18-01 wrapper view) with
+  // .eq('model_name','sarimax'), filters to headline campaign_id, sorts
+  // ascending by as_of_date, and derives iso_week_start = as_of_date − 6 days.
+  describe('weekly_history (Phase 18 UPL-08)', () => {
+    const weeklyRows = [
+      // Out-of-order so we verify ascending sort happens at the API layer.
+      { campaign_id: 'friend-2026-04-14', model_name: 'sarimax',
+        cumulative_uplift_eur: -149, ci_lower_eur: -620, ci_upper_eur: 340,
+        n_days: 7, as_of_date: '2026-05-03' },
+      { campaign_id: 'friend-2026-04-14', model_name: 'sarimax',
+        cumulative_uplift_eur:  450, ci_lower_eur: -100, ci_upper_eur: 980,
+        n_days: 7, as_of_date: '2026-04-26' }
+    ];
+
+    it('weekly_history populated when campaign_uplift_weekly_v returns sarimax rows for headline', async () => {
+      const state = freshState({
+        campaign_uplift_v: [headlineRow, headlineCampaignWindow],
+        campaign_uplift_daily_v: [],
+        campaign_uplift_weekly_v: weeklyRows
+      });
+      const res = await campaignUpliftGET(mkEvent(mkLocalsAuthed(state)));
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(Array.isArray(body.weekly_history)).toBe(true);
+      expect(body.weekly_history).toHaveLength(2);
+      // Sorted ascending by iso_week_end (= as_of_date):
+      expect(body.weekly_history.map((w: { iso_week_end: string }) => w.iso_week_end))
+        .toEqual(['2026-04-26', '2026-05-03']);
+      // iso_week_start = Sun − 6 days deterministically:
+      expect(body.weekly_history[0]).toEqual({
+        iso_week_start: '2026-04-20',
+        iso_week_end: '2026-04-26',
+        model_name: 'sarimax',
+        point_eur: 450,
+        ci_lower_eur: -100,
+        ci_upper_eur: 980,
+        n_days: 7
+      });
+      expect(body.weekly_history[1]).toEqual({
+        iso_week_start: '2026-04-27',
+        iso_week_end: '2026-05-03',
+        model_name: 'sarimax',
+        point_eur: -149,
+        ci_lower_eur: -620,
+        ci_upper_eur: 340,
+        n_days: 7
+      });
+    });
+
+    it('weekly_history is [] when campaign_uplift_weekly_v has zero rows', async () => {
+      const state = freshState({
+        campaign_uplift_v: [headlineRow, headlineCampaignWindow],
+        campaign_uplift_daily_v: [],
+        campaign_uplift_weekly_v: []
+      });
+      const res = await campaignUpliftGET(mkEvent(mkLocalsAuthed(state)));
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.weekly_history).toEqual([]);
+    });
+
+    it('weekly_history filters to the headline campaign only (other campaigns excluded)', async () => {
+      const otherCampaignRow = {
+        campaign_id: 'other-campaign', model_name: 'sarimax',
+        cumulative_uplift_eur: 9999, ci_lower_eur: 5000, ci_upper_eur: 14000,
+        n_days: 7, as_of_date: '2026-04-26'
+      };
+      const state = freshState({
+        campaign_uplift_v: [headlineRow, headlineCampaignWindow],
+        campaign_uplift_daily_v: [],
+        campaign_uplift_weekly_v: [...weeklyRows, otherCampaignRow]
+      });
+      const res = await campaignUpliftGET(mkEvent(mkLocalsAuthed(state)));
+      const body = await res.json();
+      expect(body.weekly_history).toHaveLength(2); // only friend-2026-04-14
+      expect(
+        body.weekly_history.some(
+          (w: { point_eur: number }) => w.point_eur === 9999
+        )
+      ).toBe(false);
+    });
+
+    it('queries campaign_uplift_weekly_v with .eq(model_name, sarimax) and ascending order', async () => {
+      const state = freshState({
+        campaign_uplift_v: [headlineRow, headlineCampaignWindow],
+        campaign_uplift_daily_v: [],
+        campaign_uplift_weekly_v: weeklyRows
+      });
+      await campaignUpliftGET(mkEvent(mkLocalsAuthed(state)));
+      const tables = state.queries.map((q) => q.table);
+      expect(tables).toContain('campaign_uplift_weekly_v');
+      const weeklyQ = state.queries.find((q) => q.table === 'campaign_uplift_weekly_v')!;
+      const eqCalls = weeklyQ.calls.filter((c) => c.method === 'eq');
+      const modelEq = eqCalls.find((c) => c.args[0] === 'model_name');
+      expect(modelEq?.args[1]).toBe('sarimax'); // headline-pick convention (matches daily)
+      const orderCall = weeklyQ.calls.find(
+        (c) => c.method === 'order' && c.args[0] === 'as_of_date'
+      );
+      expect(orderCall).toBeDefined();
+      expect((orderCall!.args[1] as { ascending: boolean }).ascending).toBe(true);
+    });
+
+    it('preserves back-compat top-level fields (cumulative_deviation_eur, daily, campaigns, weekly_history)', async () => {
+      const state = freshState({
+        campaign_uplift_v: [headlineRow, headlineCampaignWindow],
+        campaign_uplift_daily_v: [],
+        campaign_uplift_weekly_v: weeklyRows
+      });
+      const res = await campaignUpliftGET(mkEvent(mkLocalsAuthed(state)));
+      const body = await res.json();
+      // Existing fields MUST still appear (CONTEXT.md line 47-48 back-compat):
+      expect(body).toHaveProperty('campaign_start');
+      expect(body).toHaveProperty('cumulative_deviation_eur');
+      expect(body).toHaveProperty('as_of');
+      expect(body).toHaveProperty('model', 'sarimax');
+      expect(body).toHaveProperty('ci_lower_eur');
+      expect(body).toHaveProperty('ci_upper_eur');
+      expect(body).toHaveProperty('naive_dow_uplift_eur');
+      expect(body).toHaveProperty('daily');
+      expect(body).toHaveProperty('campaigns');
+      // NEW Phase 18 field:
+      expect(body).toHaveProperty('weekly_history');
+    });
+
+    it('weekly_history is [] when there is no headline campaign (empty campaign_uplift_v)', async () => {
+      const state = freshState({
+        campaign_uplift_v: [],
+        campaign_uplift_daily_v: [],
+        campaign_uplift_weekly_v: weeklyRows // would otherwise match, but no headline → []
+      });
+      const res = await campaignUpliftGET(mkEvent(mkLocalsAuthed(state)));
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.weekly_history).toEqual([]);
+    });
+  });
 });
