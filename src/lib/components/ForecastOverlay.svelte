@@ -30,7 +30,7 @@
      the bars stay legible behind them. -->
 {#each Array.from(seriesByModel.entries()) as [modelName, modelRows] (`band-${modelName}`)}
   <Area
-    data={modelRows.map((r) => ({ ...r, d: parseISO(r.target_date) }))}
+    data={modelRows.map((r) => { const d = parseISO(r.target_date); return { ...r, d, bucket_d: d }; })}
     x={(r: { d: Date }) => bucketCenter(r.d)}
     y0={(r: { yhat_lower: number }) => r.yhat_lower}
     y1={(r: { yhat_upper: number }) => r.yhat_upper}
@@ -45,7 +45,7 @@
   {@const isNaive = modelName === NAIVE_KEY}
   {#if modelRows.length > 0}
     <Spline
-      data={modelRows.map((r) => ({ ...r, d: parseISO(r.target_date) }))}
+      data={modelRows.map((r) => { const d = parseISO(r.target_date); return { ...r, d, bucket_d: d }; })}
       x={(r: { d: Date }) => bucketCenter(r.d)}
       y={(r: { yhat_mean: number }) => r.yhat_mean}
       stroke={FORECAST_MODEL_COLORS[modelName]}

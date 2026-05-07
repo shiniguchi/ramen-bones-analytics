@@ -1,17 +1,17 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.4
-milestone_name: Coverage Map
-status: Complete
-stopped_at: Phase 18 complete (2026-05-07)
-last_updated: "2026-05-07T14:00:00.000Z"
-last_activity: 2026-05-07 (v1.4 milestone archived — tag v1.4 created)
+milestone: v1.5
+milestone_name: Cold-Start Trim
+status: Archived
+stopped_at: v1.5 milestone archived — planning next milestone
+last_updated: "2026-05-07T16:00:00.000Z"
+last_activity: 2026-05-07 (v1.5 milestone archived — all 22 phases complete)
 progress:
-  total_phases: 21
-  completed_phases: 21
-  total_plans: 123
-  completed_plans: 111
-  percent: 90
+  total_phases: 22
+  completed_phases: 22
+  total_plans: 127
+  completed_plans: 127
+  percent: 100
 ---
 
 # STATE: Ramen Bones Analytics
@@ -20,17 +20,30 @@ progress:
 
 ## Project Reference
 
+See: .planning/PROJECT.md (updated 2026-05-07)
+
 - **Core Value:** A restaurant owner opens the site on their phone and makes a real business decision from the numbers they see.
-- **Current Focus:** v1.4 archived — planning next milestone
+- **Current Focus:** v1.5 archived — planning next milestone
 - **Timeline:** Slow and deliberate — understand data first, ship one layer at a time
 - **Granularity:** standard
 - **Tenants in v1:** 1 (architecture multi-tenant-ready)
 
 ## Current Position
 
-Milestone: v1.4 (Weekly Campaign Read)
-Phase: 18 (weekly-counterfactual-window) — implementing
-Plan: 06 (COMPLETE — 3 i18n keys × 5 locales, compatibility test 17/17, localhost QA PASS) — next: Plan 07 (phase-final QA on DEV + planning-docs drift gate)
+Milestone: v1.5 (Cold-Start Trim) — COMPLETE 2026-05-07
+Phase: 19 (cold-start-trim) — all 4 sub-plans complete
+Plan: 04 (COMPLETE — phase-final QA + planning-docs drift gate)
+
+**v1.5 shipped 2026-05-07.** Phase 19 cut cold-start bundle weight across three axes: (1) LazyMount `loader` prop defers all 9 chart-card modules + their LayerChart/d3 transitive deps until scroll-into-view; (2) `/api/item-counts` + `/api/benchmark` deferred SSR Promise.all from 6 → 3 promises; (3) per-locale dict files with `loadDict()` lazy cache cut i18n cold contribution from 76 KB to ~3.6 KB (`en` only). 30 async chunks in CF output. Per-locale chunks `de.js`/`ja.js`/`es.js`/`fr.js` emitted separately.
+
+**Sub-plans (all COMPLETE):**
+
+- 19-01 (COMPLETE): LazyMount loader prop + 9 chart cards lazy-converted (commits 4ba351b, 6cb26d7, 31bb070)
+- 19-02 (COMPLETE): /api/item-counts + /api/benchmark deferred endpoints; SSR Promise.all 6→3 (commits 08031b1, fb98e32, 565ade0, 5d2123d; restored in 5e648c8)
+- 19-03 (COMPLETE): i18n per-locale dynamic imports — messages.ts 76KB → 3.6KB (commits 9a40c24, 0600426, 871daec, 2881d8f, a5a41e6, c1c7852)
+- 19-04 (COMPLETE): Phase-final QA + planning-docs drift gate
+
+**v1.4 milestone archived 2026-05-07:** Phase 18 (Weekly Counterfactual Window) complete. PR #31 merged.
 
 v1.4 opened 2026-05-07 as single-feature milestone. Scope: replace CampaignUpliftCard's cumulative-since-launch headline with per-ISO-week (Mon–Sun) counterfactual + tap-scrubbable bar-chart history. Friend-owner gets a fresh weekly read instead of a cumulative number that drifts toward "no detectable lift" as the campaign window grows. Touches DB (new window_kind value — landed in Plan 18-01 via migration 0069), Python pipeline (cumulative_uplift.py — bootstrap CI re-fit on 7-day slice, NOT derived from daily cumulative), API (/api/campaign-uplift returns weekly_history), and Svelte component (CampaignUpliftCard rewrite).
 
@@ -60,8 +73,8 @@ Next recommended run: Plan 18-07 (phase-final QA on DEV + planning-docs drift ga
 - **Phase 15:** v2 (Forecast Backtest Overlay) merged via PR #26 on 2026-05-01.
 - **Phase 14:** Shipped via [PR #22](https://github.com/shiniguchi/ramen-bones-analytics/pull/22). 34 commits, 31 files, +2978 lines. UAT 12/12. 5/5 models producing 365-day forecasts on DEV.
 - **Phase 13:** Shipped via [PR #17](https://github.com/shiniguchi/ramen-bones-analytics/pull/17). 41 commits, 52 files, +6892 lines. EXT-01..EXT-09 complete.
-- **Progress:** [█████████░] 88% (108/123 plans done; v1.0+v1.1+v1.2+v1.3 Phase 12-17 shipped; Phase 18 plan 04 of 7 done)
-- **Last activity:** 2026-05-07 (Plan 18-04 complete — awaiting localhost QA checkpoint)
+- **Progress:** [██████████] 91% (115/127 plans done; v1.0+v1.1+v1.2+v1.3 Phase 12-17 shipped; v1.4 Phase 18 shipped; v1.5 Phase 19 shipped)
+- **Last activity:** 2026-05-07 (Phase 19 complete — all 4 sub-plans shipped; v1.5 Cold-Start Trim done)
 - **v1.2 closed:** 11 phases, 60 plans, 100% — Phase 11 SSR fix landed 2026-04-21
 - **v1.0 status:** Shipped to friend (97% plans complete; repo flipped PUBLIC 2026-04-15 with topics + description set; Plan 05-06 Task 2 fork walkthrough deferred out of v1 scope)
 
@@ -325,8 +338,8 @@ Next recommended run: Plan 18-07 (phase-final QA on DEV + planning-docs drift ga
 
 **Resume hint:** Phase 15 depends on Phase 14 schema (landed). Phase 16 depends on Phase 14 BAU forecast stability. Phase 17 has a hard dependency on ≥4 weeks of forecast-vs-actual history.
 
-**Last session:** 2026-05-07T10:41:26.857Z
-**Stopped At:** context exhaustion at 76% (2026-05-07)
+**Last session:** 2026-05-07T12:06:27.084Z
+**Stopped At:** context exhaustion at 75% (2026-05-07)
 
 ---
 *State initialized: 2026-04-13; v1.3 roadmap recorded: 2026-04-27; Phase 12 context: 2026-04-28; Phase 13 shipped: 2026-04-30 (PR #17); Phase 14 shipped: 2026-04-30 (PR #22); v1.3 shipped: 2026-05-06; v1.4 opened: 2026-05-07; Phase 18 P01 complete: 2026-05-07; Phase 18 P02 complete: 2026-05-07*

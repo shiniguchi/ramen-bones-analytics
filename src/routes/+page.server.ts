@@ -36,8 +36,9 @@ export const load: PageServerLoad = async ({ locals, url, depends }) => {
   // Phase 11-02: retention / customerLtv / repeaterTx / dailyKpi / monthsOfHistory
   // fields dropped — those payloads now come from /api/* endpoints that the
   // browser fetches client-side when the card scrolls into view.
+  // Phase 19-02: itemCounts / benchmarkAnchors / benchmarkSources also dropped
+  // from SSR — deferred to /api/item-counts + /api/benchmark.
   if (process.env.E2E_FIXTURES === '1' && url.searchParams.get('__e2e') === 'charts') {
-    const { E2E_ITEM_COUNTS_ROWS } = await import('$lib/e2eChartFixtures');
     return {
       range,
       grain,
@@ -56,10 +57,7 @@ export const load: PageServerLoad = async ({ locals, url, depends }) => {
         { business_date: '2026-04-08', gross_cents: 4200, sales_type: 'INHOUSE', is_cash: false, visit_seq: 2, card_hash: 'h3' },
       ] as DailyRow[],
       latestInsight: null,
-      isAdmin: false,
-      itemCounts: E2E_ITEM_COUNTS_ROWS,
-      benchmarkAnchors: [],
-      benchmarkSources: []
+      isAdmin: false
     };
   }
 
@@ -130,65 +128,18 @@ export const load: PageServerLoad = async ({ locals, url, depends }) => {
   // /api/kpi-daily, /api/customer-ltv, /api/repeater-lifetime — fetched
   // client-side via LazyMount when their cards scroll into view.
 
-  // Phase 10: item_counts_daily_v feeds VA-08 (calendar item counts) and
-  // the per-item revenue card (quick-260418-irc, migration 0029 added item_revenue_cents).
-  // Scoped to active window to keep payload <500kB (D-21).
-  type ItemCountRow = {
-    business_date: string;
-    item_name: string;
-    sales_type: string | null;
-    is_cash: boolean;
-    item_count: number;
-    item_revenue_cents: number;
-  };
-  const itemCountsP = fetchAll<ItemCountRow>(() => locals.supabase
-    .from('item_counts_daily_v')
-    .select('business_date,item_name,sales_type,is_cash,item_count,item_revenue_cents')
-    .gte('business_date', chipW.from)
-    .lte('business_date', chipW.to)
-  ).catch((e: unknown) => { console.error('[item_counts_daily_v]', e); return [] as ItemCountRow[]; });
-
   // Phase 11-02 D-03: retention_curve_v + retention_curve_monthly_v DEFERRED
   // to /api/retention. monthsOfHistory (previously computed from the first
   // cohort_week) is now derived client-side in +page.svelte once the deferred
   // fetch resolves.
 
-  // North-star benchmark anchors — weighted-quantile P20/P50/P80 curve for
-  // this tenant's curated sources (migrations 0030/0031, quick-260418-bm1/bm2).
-  // Empty array on error/no-data so the chart renders cohorts alone.
-  type BenchmarkAnchorRow = {
-    period_weeks: number;
-    lower_p20: number;
-    mid_p50: number;
-    upper_p80: number;
-    source_count: number;
-  };
-  const benchmarkAnchorsP = fetchAll<BenchmarkAnchorRow>(() => locals.supabase
-    .from('benchmark_curve_v')
-    .select('period_weeks,lower_p20,mid_p50,upper_p80,source_count')
-  ).catch((e: unknown) => { console.error('[benchmark_curve_v]', e); return [] as BenchmarkAnchorRow[]; });
+  // Phase 19-02: item_counts_daily_v DEFERRED to /api/item-counts — fetched
+  // client-side via LazyMount when CalendarItemsCard / CalendarItemRevenueCard
+  // scroll into view. Keeps SSR payload window-unbounded cards only.
 
-  // Benchmark source attribution — one row per (source, period) for the popover.
-  type BenchmarkSourceRow = {
-    period_weeks: number;
-    id: number;
-    label: string;
-    country: string;
-    segment: string;
-    credibility: 'HIGH' | 'MEDIUM' | 'LOW';
-    cuisine_match: number;
-    metric_type: string;
-    conversion_note: string | null;
-    sample_size: string | null;
-    year: number;
-    url: string | null;
-    raw_value: number;
-    normalized_value: number;
-  };
-  const benchmarkSourcesP = fetchAll<BenchmarkSourceRow>(() => locals.supabase
-    .from('benchmark_sources_v')
-    .select('period_weeks,id,label,country,segment,credibility,cuisine_match,metric_type,conversion_note,sample_size,year,url,raw_value,normalized_value')
-  ).catch((e: unknown) => { console.error('[benchmark_sources_v]', e); return [] as BenchmarkSourceRow[]; });
+  // Phase 19-02: benchmark_curve_v + benchmark_sources_v DEFERRED to
+  // /api/benchmark — fetched client-side via LazyMount when CohortRetentionCard
+  // scrolls into view. Lifetime data; no date params needed.
 
   // Insights — latest row only (05-01). action_points added in 260422-fz1.
   // generated_at surfaces on the card so viewers can spot stale rows when
@@ -220,37 +171,30 @@ export const load: PageServerLoad = async ({ locals, url, depends }) => {
       return r.data;
     });
 
-  // Parallel fan-out: 6 promises. Phase 11-02 D-03 moved the 4 lifetime
-  // unbounded queries (kpi-daily, customer-ltv, repeater-lifetime, retention
-  // weekly+monthly = 5 total fetchAlls) off SSR into deferred /api/* endpoints.
-  // SSR subrequest count: 6 here + freshness + earliest-business-date = 8
+  // Parallel fan-out: 3 promises. Phase 11-02 D-03 moved lifetime-unbounded
+  // queries (kpi-daily, customer-ltv, repeater-lifetime, retention) off SSR.
+  // Phase 19-02 moved item-counts + benchmark off SSR → /api/item-counts and
+  // /api/benchmark (deferred via LazyMount). SSR now owns only the 3 range-
+  // bounded row payloads that drive above-fold KPI tiles + InsightCard.
+  // SSR subrequest count: 3 here + freshness + earliest-business-date = 5
   // total, well under CF Pages Free 50-request ceiling.
-  // D-06: dev-only SSR timing log. Tree-shaken out of production builds
-  // (import.meta.env.DEV === false). Surfaces in `npm run dev` console
-  // and in `wrangler pages dev` preview; never runs on deployed CF Pages.
+  // D-06: dev-only SSR timing log. Tree-shaken out of production builds.
   const __ssrT0 = import.meta.env.DEV ? Date.now() : 0;
   const [
     dailyRows,
     priorDailyRows,
-    latestInsightRow,
-    itemCounts,
-    benchmarkAnchors,
-    benchmarkSources
+    latestInsightRow
   ] = await Promise.all([
     dailyRowsP,
     priorDailyRowsP,
-    insightP,
-    itemCountsP,
-    benchmarkAnchorsP,
-    benchmarkSourcesP
+    insightP
   ]);
   if (import.meta.env.DEV) {
     // LITERAL_COUNT is hard-coded rather than `promises.length` because
     // the array is already destructured above; re-referencing the source
     // array would require a second Promise.all declaration that can drift.
-    // If Plan 11-02 ever changes this shape, update this number in the
-    // same diff. Current state: 6 promises post-Plan 11-02.
-    const promises = 6;
+    // Phase 19-02: reduced from 6 → 3 (item-counts + benchmark now deferred).
+    const promises = 3;
     // eslint-disable-next-line no-console
     console.info(
       `[ssr-perf] Promise.all: ${promises} queries, ${Date.now() - __ssrT0}ms`
@@ -297,12 +241,11 @@ export const load: PageServerLoad = async ({ locals, url, depends }) => {
     priorDailyRows,
     latestInsight,
     isAdmin,
-    itemCounts,
-    benchmarkAnchors,
-    benchmarkSources,
     // Phase 11-01 D-01: surface the tenant's true earliest business_date so
     // client-side chipToRange('all') can resolve to the real data floor
     // (not FROM_FLOOR). Keeps the chip subtitle + cache window honest.
+    // Phase 19-02: itemCounts / benchmarkAnchors / benchmarkSources removed
+    // from SSR return — deferred to /api/item-counts + /api/benchmark.
     earliestBusinessDate
   };
 };

@@ -8,17 +8,11 @@
   import FilterBar from '$lib/components/FilterBar.svelte';
   import FreshnessLabel from '$lib/components/FreshnessLabel.svelte';
   import KpiTile from '$lib/components/KpiTile.svelte';
-  import CohortRetentionCard from '$lib/components/CohortRetentionCard.svelte';
   import InsightCard from '$lib/components/InsightCard.svelte';
   // Phase 10: 6 new chart cards (VA-04..VA-10) inserted in D-10 order below.
-  import DailyHeatmapCard from '$lib/components/DailyHeatmapCard.svelte';
-  import CalendarRevenueCard from '$lib/components/CalendarRevenueCard.svelte';
-  import CalendarCountsCard from '$lib/components/CalendarCountsCard.svelte';
-  import CalendarItemsCard from '$lib/components/CalendarItemsCard.svelte';
-  import CalendarItemRevenueCard from '$lib/components/CalendarItemRevenueCard.svelte';
-  import MdeCurveCard from '$lib/components/MdeCurveCard.svelte';
-  import RepeaterCohortCountCard from '$lib/components/RepeaterCohortCountCard.svelte';
-  import CampaignUpliftCard from '$lib/components/CampaignUpliftCard.svelte';
+  // Phase 19-01: static imports removed — all chart cards now load via LazyMount
+  // loader prop so their modules (+ LayerChart / d3 transitive deps) only download
+  // when the card scrolls into view.
   import LazyMount from '$lib/components/LazyMount.svelte';
   import { clientFetch } from '$lib/clientFetch';
   import {
@@ -45,11 +39,47 @@
   type RetentionRow      = { cohort_week: string; period_weeks: number; retention_rate: number; cohort_size_week: number; cohort_age_weeks: number };
   type RetentionMonthlyRow = { cohort_month: string; period_months: number; retention_rate: number; cohort_size_month: number; cohort_age_months: number };
 
+  // Phase 19-02: item-counts + benchmark deferred from SSR to /api/* endpoints.
+  type ItemCountRow = {
+    business_date: string;
+    item_name: string;
+    sales_type: string | null;
+    is_cash: boolean;
+    item_count: number;
+    item_revenue_cents: number;
+  };
+  type BenchmarkAnchorRow = {
+    period_weeks: number;
+    lower_p20: number;
+    mid_p50: number;
+    upper_p80: number;
+    source_count: number;
+  };
+  type BenchmarkSourceRow = {
+    period_weeks: number;
+    id: number;
+    label: string;
+    country: string;
+    segment: string;
+    credibility: 'HIGH' | 'MEDIUM' | 'LOW';
+    cuisine_match: number;
+    metric_type: string;
+    conversion_note: string | null;
+    sample_size: string | null;
+    year: number;
+    url: string | null;
+    raw_value: number;
+    normalized_value: number;
+  };
+
   let dailyKpi        = $state<DailyKpiRow[]>([]);
   let customerLtv     = $state<CustomerLtvRow[]>([]);
   let repeaterTx      = $state<RepeaterTxRow[]>([]);
   let retention         = $state<RetentionRow[]>([]);
   let retentionMonthly  = $state<RetentionMonthlyRow[]>([]);
+  let itemCounts        = $state<ItemCountRow[]>([]);
+  let benchmarkAnchors  = $state<BenchmarkAnchorRow[]>([]);
+  let benchmarkSources  = $state<BenchmarkSourceRow[]>([]);
 
   // D-04 no-regression: monthsOfHistory drives the caveat copy in
   // CohortRetentionCard. Derive from the earliest cohort_week in the
@@ -91,6 +121,26 @@
         monthsOfHistory = Math.max(0, differenceInMonths(new Date(), parseISO(earliest.cohort_week)));
       }
     } catch (e) { console.error('[LazyMount /api/retention]', e); }
+  }
+
+  // Phase 19-02: item-counts deferred from SSR. Passes current store window
+  // so the data matches whatever chip/range the user has selected.
+  async function loadItemCounts() {
+    const w = getWindow();
+    try {
+      itemCounts = await clientFetch<ItemCountRow[]>(
+        `/api/item-counts?from=${w.from}&to=${w.to}`
+      );
+    } catch (e) { console.error('[LazyMount /api/item-counts]', e); }
+  }
+
+  // Phase 19-02: benchmark deferred from SSR. Lifetime data — no date params.
+  async function loadBenchmark() {
+    try {
+      const r = await clientFetch<{ anchors: BenchmarkAnchorRow[]; sources: BenchmarkSourceRow[] }>('/api/benchmark');
+      benchmarkAnchors = r.anchors;
+      benchmarkSources = r.sources;
+    } catch (e) { console.error('[LazyMount /api/benchmark]', e); }
   }
 
   // Initialize store from SSR data on mount and when SSR data changes.
@@ -270,12 +320,12 @@
 
     <!-- Phase 16 D-11: CampaignUpliftCard. Slots between InsightCard and the
          KPI tiles. The card self-fetches /api/campaign-uplift on mount and
-         hides itself when no campaigns exist. -->
-    <LazyMount minHeight="180px">
-      {#snippet children()}
-        <CampaignUpliftCard />
-      {/snippet}
-    </LazyMount>
+         hides itself when no campaigns exist.
+         Phase 19-01: converted to loader form — defers CampaignUpliftCard module. -->
+    <LazyMount
+      minHeight="180px"
+      loader={() => import('$lib/components/CampaignUpliftCard.svelte')}
+    />
 
     <!-- D-10 cards 4-5: Revenue + Transactions KPI tiles -->
     <div class="grid grid-cols-2 gap-4">
@@ -298,54 +348,83 @@
     </div>
 
     <!-- feedback #4 (moved per feedback round F): heatmap sits right below the KPI tiles.
-         Phase 11-02 D-03: deferred to /api/kpi-daily via LazyMount. -->
-    <LazyMount minHeight="280px" onvisible={loadDailyKpi}>
-      {#snippet children()}
-        <DailyHeatmapCard data={dailyKpi} />
-      {/snippet}
-    </LazyMount>
+         Phase 11-02 D-03: deferred to /api/kpi-daily via LazyMount.
+         Phase 19-01: converted to loader form — defers DailyHeatmapCard module. -->
+    <LazyMount
+      minHeight="280px"
+      onvisible={loadDailyKpi}
+      loader={() => import('$lib/components/DailyHeatmapCard.svelte')}
+      props={{ data: dailyKpi }}
+    />
 
-    <!-- D-10 card 7: Calendar counts (VA-05) — self-subscribes to dashboardStore -->
-    <CalendarCountsCard />
+    <!-- D-10 card 7: Calendar counts (VA-05) — self-subscribes to dashboardStore
+         Phase 19-01: deferred to dynamic import via LazyMount loader. -->
+    <LazyMount
+      minHeight="320px"
+      loader={() => import('$lib/components/CalendarCountsCard.svelte')}
+    />
 
-    <!-- D-10 card 8: Calendar revenue (VA-04) — self-subscribes to dashboardStore -->
-    <CalendarRevenueCard />
+    <!-- D-10 card 8: Calendar revenue (VA-04) — self-subscribes to dashboardStore
+         Phase 19-01: deferred to dynamic import via LazyMount loader. -->
+    <LazyMount
+      minHeight="320px"
+      loader={() => import('$lib/components/CalendarRevenueCard.svelte')}
+    />
 
-    <!-- D-10 card 9: Calendar items (VA-08) — receives window-scoped rows from SSR -->
-    <CalendarItemsCard data={data.itemCounts} />
+    <!-- D-10 card 9: Calendar items (VA-08) — receives window-scoped rows from
+         /api/item-counts (deferred, Phase 19-02). loadItemCounts fires on scroll. -->
+    <LazyMount
+      minHeight="320px"
+      onvisible={loadItemCounts}
+      loader={() => import('$lib/components/CalendarItemsCard.svelte')}
+      props={{ data: itemCounts }}
+    />
 
-    <!-- feedback #4: per-item revenue stacked bars — same payload, revenue metric -->
-    <CalendarItemRevenueCard data={data.itemCounts} />
+    <!-- feedback #4: per-item revenue stacked bars — shares loadItemCounts with
+         CalendarItemsCard above (Phase 19-02). -->
+    <LazyMount
+      minHeight="320px"
+      loader={() => import('$lib/components/CalendarItemRevenueCard.svelte')}
+      props={{ data: itemCounts }}
+    />
 
     <!-- D-10 card 10: Cohort retention (VA-06)
          quick-260418-28j: monthly grain now reads from retention_curve_monthly_v
          instead of re-bucketing weekly rows client-side.
          Phase 11-02 D-03/D-04: deferred to /api/retention via LazyMount;
-         monthsOfHistory computed from the weekly payload on client. -->
-    <LazyMount minHeight="320px" onvisible={loadRetention}>
-      {#snippet children()}
-        <CohortRetentionCard
-          dataWeekly={retention}
-          dataMonthly={retentionMonthly}
-          benchmarkAnchors={data.benchmarkAnchors}
-          benchmarkSources={data.benchmarkSources}
-          monthsOfHistory={monthsOfHistory}
-        />
-      {/snippet}
-    </LazyMount>
+         monthsOfHistory computed from the weekly payload on client.
+         Phase 19-01: converted to loader form — defers CohortRetentionCard module. -->
+    <LazyMount
+      minHeight="320px"
+      onvisible={() => { loadRetention(); loadBenchmark(); }}
+      loader={() => import('$lib/components/CohortRetentionCard.svelte')}
+      props={{
+        dataWeekly: retention,
+        dataMonthly: retentionMonthly,
+        benchmarkAnchors: benchmarkAnchors,
+        benchmarkSources: benchmarkSources,
+        monthsOfHistory: monthsOfHistory
+      }}
+    />
 
     <!-- feedback #6: repeater customer count by first-visit cohort — lifetime, no range scoping.
          Phase 11-02 D-03: customerLtv deferred to /api/customer-ltv;
          repeaterTx deferred to /api/repeater-lifetime?days=… (skipped when
-         filters.days is the default [1..7]). -->
-    <LazyMount minHeight="320px" onvisible={() => { loadCustomerLtv(); loadRepeaterTx(); }}>
-      {#snippet children()}
-        <RepeaterCohortCountCard data={customerLtv} repeaterTx={repeaterTx} />
-      {/snippet}
-    </LazyMount>
+         filters.days is the default [1..7]).
+         Phase 19-01: converted to loader form — defers RepeaterCohortCountCard module. -->
+    <LazyMount
+      minHeight="320px"
+      onvisible={() => { loadCustomerLtv(); loadRepeaterTx(); }}
+      loader={() => import('$lib/components/RepeaterCohortCountCard.svelte')}
+      props={{ data: customerLtv, repeaterTx: repeaterTx }}
+    />
 
     <!-- quick-260424-mdc: Minimum Detectable Effect curve — last card by design
-         (decision-support, consulted after owner has absorbed the primary KPIs). -->
-    <MdeCurveCard />
+         (decision-support, consulted after owner has absorbed the primary KPIs).
+         Phase 19-01: deferred to dynamic import via LazyMount loader. -->
+    <LazyMount
+      minHeight="320px"
+      loader={() => import('$lib/components/MdeCurveCard.svelte')}
+    />
   </div>
 </main>
