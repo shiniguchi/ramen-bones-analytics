@@ -288,16 +288,11 @@ describe('+page.server load — PostgREST 1000-row cap regression (260417-o8a)',
     expect(allRangeCalls).toContainEqual([2000, 2999]);
   });
 
-  it('Regression B: paginates every large-result SSR query (transactions_filterable_v + item_counts_daily_v)', async () => {
-    // Phase 11-02 D-03: customer_ltv_v moved to /api/customer-ltv so the
-    // "every large-result query paginates" invariant now covers only the SSR
-    // queries that remain — transactions_filterable_v (dailyRows) + item_counts_daily_v.
+  it('Regression B: paginates every large-result SSR query (transactions_filterable_v only)', async () => {
+    // Phase 11-02 D-03: customer_ltv_v moved to /api/customer-ltv.
+    // Phase 19-02: item_counts_daily_v moved to /api/item-counts (deferred via LazyMount).
+    // SSR now owns only transactions_filterable_v (dailyRows + priorDailyRows).
     // 2-row fixtures trigger 1 range call (short page = stop), confirming pagination is wired.
-    // The key check: .range() IS called — not .then() on a raw chain.
-    state.canned.set('item_counts_daily_v', [
-      { business_date: '2026-04-10', item_name: 'Ramen', sales_type: 'INHOUSE', is_cash: false, item_count: 5 }
-    ]);
-
     await load({
       url: new URL('http://x/'),
       locals: mkLocals(state),
@@ -310,32 +305,29 @@ describe('+page.server load — PostgREST 1000-row cap regression (260417-o8a)',
     );
     expect(filterableRangeCalls.length, 'transactions_filterable_v must use .range() (pagination wired)').toBeGreaterThanOrEqual(1);
 
-    // item_counts_daily_v
-    const itemRangeCalls = callsFor(state, 'item_counts_daily_v').flatMap(q =>
-      q.calls.filter(c => c.method === 'range')
-    );
-    expect(itemRangeCalls.length, 'item_counts_daily_v must use .range() (pagination wired)').toBeGreaterThanOrEqual(1);
+    // item_counts_daily_v moved to /api/item-counts — verify NOT queried from SSR.
+    expect(callsFor(state, 'item_counts_daily_v').length).toBe(0);
 
-    // customer_ltv_v moved to /api/customer-ltv — verify it is NOT queried from SSR.
+    // customer_ltv_v moved to /api/customer-ltv — verify NOT queried from SSR.
     expect(callsFor(state, 'customer_ltv_v').length).toBe(0);
   });
 
-  it('Regression C: per-card error isolation preserved when item_counts_daily_v throws', async () => {
-    // Phase 11-02 D-03: customer_ltv_v no longer queried from SSR; the
-    // per-card isolation invariant now applies to the remaining SSR queries.
-    // item_counts_daily_v returns a PostgREST error — dailyRows must still populate.
-    // fetchAll throws on error; loader's .catch converts to [] (D-22 pattern).
+  it('Regression C: per-card error isolation — item_counts_daily_v deferred to /api/item-counts (Phase 19-02)', async () => {
+    // Phase 11-02 D-03: customer_ltv_v no longer queried from SSR.
+    // Phase 19-02: item_counts_daily_v also moved off SSR → /api/item-counts.
+    // Verify that even with a DB error for item_counts_daily_v, the SSR load resolves
+    // and dailyRows still populate (SSR only owns transactions_filterable_v).
     state.errors.set('item_counts_daily_v', { message: 'boom' });
 
-    // load() must resolve (not throw) — per-card .catch swallows the error
+    // load() must resolve (not throw) — item_counts_daily_v is no longer in Promise.all
     const data: any = await load({
       url: new URL('http://x/'),
       locals: mkLocals(state),
       depends: () => {}
     } as any);
 
-    // item_counts_daily_v error → fallback to []
-    expect(data.itemCounts).toEqual([]);
+    // item_counts_daily_v not in SSR return — deferred to /api/item-counts
+    expect(data.itemCounts).toBeUndefined();
     // dailyRows survive (transactions_filterable_v has no error)
     expect(Array.isArray(data.dailyRows)).toBe(true);
     expect(data.dailyRows.length).toBeGreaterThan(0);
