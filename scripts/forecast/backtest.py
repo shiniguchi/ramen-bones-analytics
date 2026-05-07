@@ -302,11 +302,13 @@ def _fetch_fold_yhats(
     fold_idx: int,
     eval_start: date,
     eval_end: date,
+    granularity: str,
 ) -> np.ndarray:
     """Read yhat rows written by the fold's subprocess (forecast_track-scoped).
 
-    The spawned fit writes to forecast_daily with FORECAST_TRACK='backtest_fold_{N}'.
-    We read them back here for metric computation, then DELETE them post-eval.
+    Filters by granularity and run_date (= eval_start, as set by _spawn_fit) to
+    avoid picking up week/month grain rows or rows from previous backtest runs that
+    share the same forecast_track but have different granularities or run_dates.
     """
     resp = (
         client.table('forecast_daily')
@@ -315,6 +317,8 @@ def _fetch_fold_yhats(
         .eq('kpi_name', kpi_name)
         .eq('model_name', model)
         .eq('forecast_track', f'backtest_fold_{fold_idx}')
+        .eq('granularity', granularity)
+        .eq('run_date', eval_start.isoformat())
         .gte('target_date', eval_start.isoformat())
         .lte('target_date', eval_end.isoformat())
         .order('target_date')
@@ -486,16 +490,17 @@ def _apply_gate_to_feature_flags(
             ).execute()
 
 
-def _cleanup_sentinel_rows(client, *, restaurant_id: str) -> None:
-    """DELETE forecast_daily rows written by this backtest run (backtest_fold_* tracks).
+def _cleanup_sentinel_rows(client, *, restaurant_id: str, n_folds: int = 8) -> None:
+    """DELETE forecast_daily rows for all backtest_fold_N tracks (N=0..n_folds-1).
 
-    Keeps forecast_daily clean — backtest fold rows are transient and should not
-    persist into the nightly BAU reads or dashboard queries.
+    Uses individual .eq() calls instead of .like() to avoid PostgREST URL-encoding
+    issues where '%' in the LIKE pattern fails to match correctly.
     """
-    client.table('forecast_daily').delete().eq(
-        'restaurant_id', restaurant_id
-    ).like('forecast_track', 'backtest_fold_%').execute()
-    print('[backtest] Cleaned up backtest_fold_* sentinel rows from forecast_daily.')
+    for fold_idx in range(n_folds):
+        client.table('forecast_daily').delete().eq(
+            'restaurant_id', restaurant_id
+        ).eq('forecast_track', f'backtest_fold_{fold_idx}').execute()
+    print(f'[backtest] Cleaned up backtest_fold_0..{n_folds-1} sentinel rows from forecast_daily.')
 
 
 # --------------------------------------------------------------------------- #
@@ -530,6 +535,14 @@ def main(models: list[str], run_date: date) -> int:
             .eq('evaluation_window', ew) \
             .execute()
     print('[backtest] purge done')
+
+    # Pre-run cleanup: delete any leftover backtest_fold_* rows from forecast_daily
+    # before spawning new folds. This prevents previous run's stale rows (including
+    # wrong-granularity rows written by week/month fold runs sharing the same
+    # backtest_fold_N track name) from contaminating _fetch_fold_yhats.
+    print('[backtest] pre-run cleanup of stale forecast_daily fold rows…')
+    _cleanup_sentinel_rows(client, restaurant_id=restaurant_id)
+    print('[backtest] pre-run cleanup done')
 
     last_actual = _last_actual_date(client, restaurant_id)
     days_history = _days_of_history(client, restaurant_id)
@@ -717,6 +730,7 @@ def main(models: list[str], run_date: date) -> int:
                             fold_idx=fold_idx,
                             eval_start=eval_start,
                             eval_end=eval_end,
+                            granularity=granularity,
                         )
 
                         # Align lengths defensively (closed days may produce gaps)
