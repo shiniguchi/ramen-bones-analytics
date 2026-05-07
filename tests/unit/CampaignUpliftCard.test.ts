@@ -449,9 +449,13 @@ describe('CampaignUpliftCard', () => {
     expect(src).toMatch(/weekly_history/);
     // Must NOT have the old synthesized 2-point start/end pattern.
     expect(src).not.toMatch(/\[\s*\{\s*date:\s*data\.campaigns\[0\]\.start_date[^]*\},\s*\{\s*date:[^}]*as_of[^}]*\}\s*\]/);
-    // Must import Bars (not Spline + Area which were the cumulative sparkline primitives).
-    expect(src).toMatch(/import\s*\{[^}]*Bars[^}]*\}\s*from\s*['"]layerchart['"]/);
+    // Must NOT use the old Spline + Area cumulative sparkline primitives.
     expect(src).not.toMatch(/import\s*\{[^}]*Spline[^}]*\}\s*from\s*['"]layerchart['"]/);
+    // Must use either Option B (<Bars> import) or Option C fallback (manual <rect> via chartCtx).
+    // Option B failed localhost QA (NaN band-scale) so Option C is expected, but both are valid.
+    const usesOptionB = /import\s*\{[^}]*Bars[^}]*\}\s*from\s*['"]layerchart['"]/.test(src);
+    const usesOptionC = /chartCtx\?\.xScale/.test(src) && /weekColorClass/.test(src);
+    expect(usesOptionB || usesOptionC).toBe(true);
   });
 
   // ----- Phase 18 Plan 04 — weekly_history hero contract tests -----

@@ -24,12 +24,12 @@
   // throws invalid_default_snippet on Svelte 5 — see
   // .claude/memory/feedback_svelte5_tooltip_snippet.md).
   //
-  // Decision B (Plan 18-05): Option B — three filtered <Bars> blocks per color class.
-  // Pre-flight Context7 query on 2026-05-07 found no per-bar render snippet API
-  // (no renderBar/bar/children snippet documented for <Bars> in LayerChart 2.x).
-  // Staying on Option B. If band-scale alignment misbehaves, fall back to Option C
-  // (manual <rect> via chartCtx referencing xScale/yScale directly).
-  import { Chart, Svg, Bars, Tooltip, Axis, Rule } from 'layerchart';
+  // Decision B (Plan 18-05): Option B (three filtered <Bars> blocks) FAILED localhost QA —
+  // each <Bars data={subset}> creates its own band-scale domain independently, producing
+  // NaN x/width on every <rect>. Falling back to Option C: manual <rect> elements rendered
+  // via {#each weeklyHistory} inside <Svg>, using chartCtx.xScale / chartCtx.yScale to
+  // compute positions. Colors via weekColorClass(). Bar onclick directly sets selectedWeekIndex.
+  import { Chart, Svg, Tooltip, Axis, Rule } from 'layerchart';
   import { scaleBand } from 'd3-scale';
   import { parseISO } from 'date-fns';
   import { clientFetch } from '$lib/clientFetch';
@@ -101,22 +101,6 @@
     const arr = data?.weekly_history?.filter((w) => w.model_name === 'sarimax') ?? [];
     return [...arr].sort((a, b) => a.iso_week_end.localeCompare(b.iso_week_end));
   });
-
-  // Decision B PRIMARY: three filtered arrays for per-color <Bars> blocks.
-  const greenBars = $derived(weeklyHistory.filter((w) => w.ci_lower_eur > 0));
-  const redBars   = $derived(weeklyHistory.filter((w) => w.ci_upper_eur < 0));
-  const grayBars  = $derived(
-    weeklyHistory.filter((w) => w.ci_lower_eur <= 0 && w.ci_upper_eur >= 0)
-  );
-
-  // handleBarClick: find clicked row in the FULL weeklyHistory array by iso_week_end.
-  // Using iso_week_end as the lookup key because each filtered <Bars> block has its own
-  // sub-array — the local index inside that sub-array is NOT the index in weeklyHistory.
-  // T-18-11 mitigation: guard idx >= 0 before assignment.
-  function handleBarClick(_e: MouseEvent, detail: { data: WeeklyHistoryPoint }) {
-    const idx = weeklyHistory.findIndex((w) => w.iso_week_end === detail.data.iso_week_end);
-    if (idx >= 0) selectedWeekIndex = idx;
-  }
 
   // weekColorClass: mirrors verdictColorClass() in ModelAvailabilityDisclosure.svelte:38-57.
   // Used in tooltip and any text-side color reuse.
@@ -398,14 +382,34 @@
               />
             {/each}
 
-            <!-- Decision B PRIMARY: three filtered <Bars> blocks per color class.
-                 Emitted in gray / green / red order so green/red paint OVER gray.
-                 onBarClick (camelCase — actual LayerChart 2.x prop name) finds row
-                 in FULL weeklyHistory by iso_week_end (sub-array local index ≠
-                 weeklyHistory index — T-18-11 guard in handleBarClick). -->
-            <Bars data={grayBars}  class="fill-zinc-400"    onBarClick={handleBarClick} />
-            <Bars data={greenBars} class="fill-emerald-500" onBarClick={handleBarClick} />
-            <Bars data={redBars}   class="fill-rose-500"    onBarClick={handleBarClick} />
+            <!-- Decision B FALLBACK — Option C: manual <rect> per week via chartCtx.
+                 Option B (three filtered <Bars>) failed: each <Bars data={subset}>
+                 computed its own band-scale domain, producing NaN x/width for all bars.
+                 Option C uses chartCtx.xScale/yScale directly — band domain is from
+                 the full weeklyHistory, so every iso_week_start maps to a valid pixel.
+                 T-18-11 guard: onclick sets selectedWeekIndex = i directly (no findIndex). -->
+            {#each weeklyHistory as wk, i (wk.iso_week_end)}
+              {@const bx = chartCtx?.xScale?.(wk.iso_week_start) ?? 0}
+              {@const bw = chartCtx?.xScale?.bandwidth?.() ?? 0}
+              {@const by = chartCtx?.yScale?.(Math.max(wk.point_eur, 0)) ?? 0}
+              {@const bh = chartCtx?.yScale
+                ? Math.abs(chartCtx.yScale(0) - chartCtx.yScale(wk.point_eur))
+                : 0}
+              <rect
+                x={bx}
+                y={by}
+                width={bw}
+                height={bh}
+                class={weekColorClass(wk)}
+                rx={2}
+                role="button"
+                tabindex="0"
+                onclick={() => (selectedWeekIndex = i)}
+                onkeydown={(e) => e.key === 'Enter' && (selectedWeekIndex = i)}
+                data-testid="uplift-week-bar"
+                data-week-index={i}
+              />
+            {/each}
 
             <!-- Selected-bar highlight overlay: 2px outline rect over the selected bar.
                  Only rendered when a bar has been tapped (selectedWeekIndex !== null)
