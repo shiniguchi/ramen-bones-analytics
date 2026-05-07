@@ -339,8 +339,11 @@ def fit_and_write(
         # 1. Fetch training history (BAU path: kpi_daily_mv).
         history = _fetch_history(client, restaurant_id=restaurant_id, kpi_name=kpi_name)
         last_actual = history['date'].iloc[-1]
-        train_end = train_end_for_grain(last_actual, granularity)
-        print(
+        # BCK-03: honour provided train_end (backtest fold cutoff) instead of
+        # always recomputing from last_actual.
+        if train_end is None:
+            train_end = train_end_for_grain(last_actual, granularity)
+print(
             f'[ets_fit] grain={granularity} last_actual={last_actual} '
             f'train_end={train_end} horizon={horizon} seasonal_periods={seasonal_periods}'
         )
@@ -369,7 +372,7 @@ def fit_and_write(
         pred_anchor = train_end if track == 'cf' else run_date
         all_pred_dates = pred_dates_for_grain(
             run_date=pred_anchor, granularity='day', horizon=horizon,
-            window_start=window_start_for_grain(last_actual, 'day'),  # D-15 Option B
+            window_start=run_date if track.startswith('backtest_') else window_start_for_grain(last_actual, 'day'),
             train_end=train_end,  # B2: drop dates < train_end + 1d from past-side output
         )
         shop_cal = _fetch_shop_calendar(
