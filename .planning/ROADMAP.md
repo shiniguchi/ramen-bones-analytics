@@ -449,7 +449,7 @@ Plans:
   - [x] 18-01-PLAN.md — migration 0069: campaign_uplift iso_week CHECK + weekly_v wrapper view (UPL-08) — applied to LOCAL+DEV 2026-05-07
   - [x] 18-02-PLAN.md — pipeline writer compute_iso_week_uplift_rows + bootstrap CI re-fit per 7-day slice (UPL-08) — shipped via TDD 2026-05-07 (RED 7fcd7ad → GREEN a20fb83)
   - [x] 18-03-PLAN.md — /api/campaign-uplift weekly_history payload field (UPL-08) — shipped via TDD 2026-05-07 (RED 14e9550 → GREEN 250a73a)
-  - [ ] 18-04-PLAN.md — CampaignUpliftCard hero rewrite (Decision A: weeks-since-launch tier source) (UPL-08, UPL-09)
+  - [x] 18-04-PLAN.md — CampaignUpliftCard hero rewrite (Decision A: weeks-since-launch tier source) (UPL-08, UPL-09) — shipped 2026-05-07 (RED 81ea4db → GREEN eca9696; localhost QA checkpoint pending)
   - [ ] 18-05-PLAN.md — bar chart + CI whiskers + tap-to-scrub (Decision B path) (UPL-08, UPL-09)
   - [ ] 18-06-PLAN.md — i18n keys (uplift_week_label etc.) + ModelAvailabilityDisclosure compatibility check (UPL-09)
   - [ ] 18-07-PLAN.md — phase-final QA on DEV + planning-docs drift gate (UPL-08, UPL-09 sign-off)
@@ -478,7 +478,7 @@ Plans:
 | 16.2. Friend-Persona QA Gap Closure (INSERTED) | v1.3 | 7/7 | Complete | 2026-05-05 |
 | 16.3. Dashboard Cleanup + Events Everywhere (INSERTED) | v1.3 | 3/3 | Complete | 2026-05-06 |
 | 17. Backtest Gate & Quality Monitoring | v1.3 | 10/10 | Complete | 2026-05-06 |
-| 18. Weekly Counterfactual Window | v1.4 | 3/7 | Implementing | — |
+| 18. Weekly Counterfactual Window | v1.4 | 4/7 | Implementing | — |
 
 ## Coverage Summary
 
