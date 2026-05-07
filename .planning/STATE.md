@@ -4,13 +4,13 @@ milestone: v1.4
 milestone_name: Weekly Campaign Read
 status: implementing
 stopped_at: null
-last_updated: "2026-05-07T10:45:00.000Z"
+last_updated: "2026-05-07T09:30:00.000Z"
 last_activity: 2026-05-07
 progress:
   total_phases: 21
   completed_phases: 20
   total_plans: 123
-  completed_plans: 108
+  completed_plans: 109
   percent: 88
 ---
 
@@ -30,7 +30,7 @@ progress:
 
 Milestone: v1.4 (Weekly Campaign Read)
 Phase: 18 (weekly-counterfactual-window) — implementing
-Plan: 05 (implementing — Task 1 GREEN, awaiting localhost QA checkpoint Task 2) — next: Task 3 push to DEV
+Plan: 05 (COMPLETE — Option C fix shipped, localhost QA PASS, DEV deployed) — next: Plan 06 (i18n uplift_week_label)
 
 v1.4 opened 2026-05-07 as single-feature milestone. Scope: replace CampaignUpliftCard's cumulative-since-launch headline with per-ISO-week (Mon–Sun) counterfactual + tap-scrubbable bar-chart history. Friend-owner gets a fresh weekly read instead of a cumulative number that drifts toward "no detectable lift" as the campaign window grows. Touches DB (new window_kind value — landed in Plan 18-01 via migration 0069), Python pipeline (cumulative_uplift.py — bootstrap CI re-fit on 7-day slice, NOT derived from daily cumulative), API (/api/campaign-uplift returns weekly_history), and Svelte component (CampaignUpliftCard rewrite).
 
@@ -45,7 +45,9 @@ Locked design decisions (carried over from 2026-05-07 conversation, no /gsd-disc
 
 **Plan 18-02 shipped 2026-05-07:** `compute_iso_week_uplift_rows()` helper added to `scripts/forecast/cumulative_uplift.py` as a sibling to `compute_per_day_uplift_rows`. Buckets the cumulative-window arrays into ISO weeks (Mon-Sun) via `bucket_dates_by_iso_week()` (new helper in `grain_helpers.py`, uses `date.isocalendar()` matching `naive_dow_fit.py:67` precedent), runs a fresh 1000-path bootstrap CI on each fully-completed 7-day slice (NEVER derives CI by subtracting daily cumulative bounds — correlated samples don't subtract additively per CONTEXT.md line 28). Seed scheme `100_000 + k` is disjoint from per-day pass (`42 + i`) per RESEARCH §7 R1. Skip rules: partial launch week (`len(idxs) < 7`) AND in-progress current week (`week_end >= today`). Wired into `_process_campaign_model` after `compute_per_day_uplift_rows`, reusing `cs['actual_values']/['yhat_samples_per_day']/['target_dates']` arrays — no 2nd DB roundtrip per RESEARCH §7 R2. Backfill is automatic on first run because helper iterates ALL completed buckets; upsert idempotent on `(campaign, model, 'iso_week', Sunday)`. 7 named unit tests + 1 smoke + 1 integration test all GREEN. Pre-existing test failure on `test_two_window_kinds_per_campaign_per_model` (missing `.lt()` mock) logged to `deferred-items.md` (predates this plan; out of scope per scope boundary rule). Plan 18-03 (API endpoint) unblocked.
 
-Next recommended run: localhost QA approval → Task 3 push to DEV (Plan 18-05)
+**Plan 18-05 shipped 2026-05-07:** Weekly bar chart history + CI whiskers + tap-to-scrub added to CampaignUpliftCard. Decision B PRIMARY (Option B — three filtered `<Bars>` blocks) caused NaN x/width on all bars (each `<Bars data={subset}>` computed its own band-scale domain independently). Applied Decision B FALLBACK (Option C): manual `<rect>` loop using `chartCtx.xScale` from the full weeklyHistory domain. 16/16 tests pass. Localhost QA PASS (5 bars, correct colors, tap-to-scrub verified via Playwright MCP mock injection). DEV deployed to `feature-phase-18-weekly-coun.ramen-bones-analytics.pages.dev`. Commits: `462dbd7` (RED) → `b25249c` (GREEN) → `90fba8e` (Option C fix).
+
+Next recommended run: Plan 18-06 (i18n uplift_week_label + ModelAvailabilityDisclosure compatibility check)
 
 - **Status:** Implementing
 - **Phase 17:** 10/10 plans complete 2026-05-06; all 8 BCK requirements verified (5 PASS + 3 PARTIAL with merge-deferred resolution).

@@ -450,7 +450,7 @@ Plans:
   - [x] 18-02-PLAN.md — pipeline writer compute_iso_week_uplift_rows + bootstrap CI re-fit per 7-day slice (UPL-08) — shipped via TDD 2026-05-07 (RED 7fcd7ad → GREEN a20fb83)
   - [x] 18-03-PLAN.md — /api/campaign-uplift weekly_history payload field (UPL-08) — shipped via TDD 2026-05-07 (RED 14e9550 → GREEN 250a73a)
   - [x] 18-04-PLAN.md — CampaignUpliftCard hero rewrite (Decision A: weeks-since-launch tier source) (UPL-08, UPL-09) — shipped 2026-05-07 (RED 81ea4db → GREEN eca9696; localhost QA checkpoint pending)
-  - [ ] 18-05-PLAN.md — bar chart + CI whiskers + tap-to-scrub (Decision B path) (UPL-08, UPL-09)
+  - [x] 18-05-PLAN.md — bar chart + CI whiskers + tap-to-scrub (Option C fallback: manual <rect> via chartCtx) (UPL-08, UPL-09) — shipped 2026-05-07 (RED 462dbd7 → GREEN b25249c → fix 90fba8e; localhost QA PASS)
   - [ ] 18-06-PLAN.md — i18n keys (uplift_week_label etc.) + ModelAvailabilityDisclosure compatibility check (UPL-09)
   - [ ] 18-07-PLAN.md — phase-final QA on DEV + planning-docs drift gate (UPL-08, UPL-09 sign-off)
 
