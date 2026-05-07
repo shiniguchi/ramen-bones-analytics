@@ -43,7 +43,8 @@
     minHeight?: string;
     rootMargin?: string;
     onvisible?: () => void;
-    loader?: () => Promise<{ default: Component }>;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    loader?: () => Promise<{ default: Component<any> }>;
     props?: Record<string, unknown>;
     children?: Snippet;
   } = $props();
@@ -51,7 +52,8 @@
   let sentinel: HTMLDivElement;
   let mounted = $state(false);
   // Holds the dynamically-imported component constructor once the module resolves.
-  let Loaded = $state<Component | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let Loaded = $state<Component<any> | null>(null);
 
   $effect(() => {
     if (!sentinel || mounted) return;
@@ -84,7 +86,8 @@
     <div class="animate-pulse bg-neutral-100 rounded-lg" style:min-height={minHeight}></div>
   {:else if loader}
     {#if Loaded}
-      <svelte:component this={Loaded} {...props} />
+      {@const DynComp = Loaded}
+      <DynComp {...props} />
     {:else}
       <!-- Dynamic import in-flight — show skeleton until module resolves -->
       <div class="animate-pulse bg-neutral-100 rounded-lg" style:min-height={minHeight}></div>
