@@ -283,7 +283,9 @@
   function formatEur(v: number | null | undefined): string {
     if (v === null || v === undefined) return '—';
     const sign = v >= 0 ? '+' : '−';
-    return `${sign}€${Math.abs(Math.round(v)).toLocaleString('de-DE')}`;
+    const abs = Math.abs(Math.round(v));
+    if (abs >= 1000) return `${sign}€${(abs / 1000).toFixed(1)}k`;
+    return `${sign}€${abs}`;
   }
 </script>
 
@@ -331,38 +333,9 @@
     class="rounded-2xl border border-zinc-200 bg-white p-4"
     data-testid="campaign-uplift-card"
   >
-    <h2 class="text-base font-semibold text-zinc-900 mb-1">
-      {t(page.data.locale, 'uplift_card_title_with_date', {
-        date: formatHeadlineDate(headline.campaign.start_date, page.data.locale)
-      })}
+    <h2 class="text-sm font-semibold text-zinc-600 mb-2" data-testid="uplift-chart-heading">
+      {t(page.data.locale, 'uplift_chart_title')}
     </h2>
-    <!-- D-18 hero subtitle — frames the card BEFORE the hero answer -->
-    <p class="text-xs text-zinc-500 mb-2" data-testid="uplift-card-subtitle">
-      {t(page.data.locale, 'uplift_card_subtitle')}
-    </p>
-
-    <!-- Phase 18 Plan 06 — Week date label via uplift_week_label i18n key. -->
-    <span class="text-sm text-zinc-600 block mb-1" data-testid="uplift-week-headline-range">
-      {t(page.data.locale, 'uplift_week_label', {
-        start: formatHeadlineWeekRange(headline.week, page.data.locale).split(' – ')[0],
-        end:   formatHeadlineWeekRange(headline.week, page.data.locale).split(' – ')[1]
-      })}
-    </span>
-
-    <p
-      class={isCIOverlap ? 'text-lg font-bold text-zinc-900' : 'text-2xl font-bold text-zinc-900'}
-      data-testid={isCIOverlap ? 'hero-ci-overlaps' : 'hero-uplift'}
-    >
-      {t(page.data.locale, heroKey, heroVars)}
-    </p>
-
-    <p class="text-sm text-zinc-500 mt-1" data-testid="uplift-secondary-plain">
-      {t(page.data.locale, 'uplift_secondary_plain', {
-        point: formatEur(headline.week.point_eur),
-        lo: formatEur(headline.week.ci_lower_eur),
-        hi: formatEur(headline.week.ci_upper_eur)
-      })}
-    </p>
 
     <!-- Phase 20: day-granularity dual-line counterfactual chart.
          Actual revenue (solid dark) vs SARIMAX CF yhat (dashed) with CI band.
@@ -370,7 +343,6 @@
          touchEvents:'auto' per feedback_layerchart_mobile_scroll.md.
          Tooltip.Root snippet form per feedback_svelte5_tooltip_snippet.md. -->
     {#if visibleDailyLines.length > 0}
-      <p class="text-[11px] text-zinc-500 mb-1 mt-3">{t(page.data.locale, 'uplift_sparkline_y_label')}</p>
       <!-- outer div: overflow-x allows horizontal scroll as weeks accumulate -->
       <div class="overflow-x-auto -mx-4 px-4" style:width="calc(100% + 2rem)">
       <div
@@ -410,18 +382,23 @@
             <!-- Completed-week verdict bands (green = positive CI, red = negative, gray = inconclusive).
                  Clickable to scrub the headline week selector. Uses chartCtx pixel coords. -->
             {#each visibleWeeklyHistory as wk, i (wk.iso_week_end)}
-              {@const x1 = chartCtx?.xScale?.(parseISO(wk.iso_week_start)) ?? 0}
-              {@const x2 = chartCtx?.xScale?.(parseISO(wk.iso_week_end)) ?? 0}
-              {@const [yTop, yBottom] = chartCtx?.yRange ?? [0, 100]}
+              {@const [ya, yb] = chartCtx?.yRange ?? [0, 100]}
+              {@const yPixelTop = Math.min(ya, yb)}
+              {@const yPixelBottom = Math.max(ya, yb)}
+              {@const dayPx = visibleDailyLines.length > 1
+                ? Math.abs((chartCtx?.xScale?.(parseISO(visibleDailyLines[1].date)) ?? 38) - (chartCtx?.xScale?.(parseISO(visibleDailyLines[0].date)) ?? 0))
+                : 38}
+              {@const x1 = (chartCtx?.xScale?.(parseISO(wk.iso_week_start)) ?? 0) - dayPx / 2 + 3}
+              {@const x2 = (chartCtx?.xScale?.(parseISO(wk.iso_week_end)) ?? 0) + dayPx / 2 - 3}
               {@const isSelected = selectedWeekIndex === i}
               <rect
                 x={x1}
-                y={yTop}
+                y={yPixelTop}
                 width={Math.max(0, x2 - x1)}
-                height={Math.max(0, yBottom - yTop)}
-                class={wk.ci_lower_eur > 0 ? 'fill-emerald-500' : wk.ci_upper_eur < 0 ? 'fill-rose-500' : 'fill-zinc-400'}
-                fill-opacity={isSelected ? 0.13 : 0.07}
-                stroke={isSelected ? '#52525b' : 'none'}
+                height={yPixelBottom - yPixelTop}
+                class={wk.ci_lower_eur > 0 ? 'fill-emerald-400' : wk.ci_upper_eur < 0 ? 'fill-rose-400' : 'fill-amber-300'}
+                fill-opacity={isSelected ? 0.35 : 0.18}
+                stroke={isSelected ? '#78716c' : 'none'}
                 stroke-width={1}
                 role="button"
                 tabindex={i}
@@ -433,16 +410,16 @@
               <!-- Week verdict label (€ delta) at top of band -->
               <text
                 x={(x1 + x2) / 2}
-                y={yTop + 12}
+                y={yPixelTop + 12}
                 text-anchor="middle"
                 class={wk.ci_lower_eur > 0
-                  ? 'fill-emerald-600 text-[9px] font-medium tabular-nums'
+                  ? 'fill-emerald-700 text-[9px] font-medium tabular-nums'
                   : wk.ci_upper_eur < 0
-                    ? 'fill-rose-600 text-[9px] font-medium tabular-nums'
-                    : 'fill-zinc-500 text-[9px] font-medium tabular-nums'}
+                    ? 'fill-rose-700 text-[9px] font-medium tabular-nums'
+                    : 'fill-amber-700 text-[9px] font-medium tabular-nums'}
                 pointer-events="none"
               >
-                {wk.point_eur >= 0 ? '+' : ''}€{Math.abs(Math.round(wk.point_eur)).toLocaleString('de-DE')}
+                {wk.point_eur >= 0 ? '+' : '−'}€{Math.abs(Math.round(wk.point_eur))}
               </text>
             {/each}
 
