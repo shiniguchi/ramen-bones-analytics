@@ -1,12 +1,12 @@
 <script lang="ts">
   // Phase 16 Plan 09 + Phase 16.1 Plan 03 — dashboard's campaign-uplift card.
   // Phase 18 Plan 04 — hero rewrite consuming weekly_history (Decision A LOCKED).
+  // Phase 18 Plan 05 — bar chart history (Decision B PRIMARY: three filtered
+  //   <Bars> blocks per color class). Replaces the Spline+Area cumulative sparkline.
   // Phase 16.1 D-05..D-11 + D-18: plain-language regime-tier hero (3 maturity
   // tiers × CI matrix → 7 i18n keys), plain secondary line, inline disclosure
-  // panel (collapsed by default), and 4 supportive labels (subtitle, sparkline
-  // Y label, X caption, counterfactual baseline legend chip). Statistical
-  // detail (point estimate, CI bounds, anticipation note, divergence) lives
-  // INSIDE the disclosure panel — it is no longer the default visible read.
+  // panel (collapsed by default), and 4 supportive labels. Statistical detail
+  // lives INSIDE the disclosure panel — not the default visible read.
   // Slotted on +page.svelte alongside the calendar cards and KPI tiles.
   // Wrapped in LazyMount per Phase 11 D-03.
   //
@@ -18,21 +18,20 @@
   // drop-tiering because the existing 7-key i18n set provides richer copy
   // variation in the first 1-2 weeks. Rationale: 18-04-PLAN.md §objective.
   //
-  // Reads campaign_start, ci bounds, and the per-day trajectory from
-  // /api/campaign-uplift (Plan 08 extended). The legacy hard-coded
-  // campaign-start constant in src/lib/forecastConfig.ts is retired —
-  // campaign date now comes from campaign_calendar via the API. Guard 10
-  // (Plan 11) prevents the date literal from re-appearing in src/.
-  //
   // Mobile-scroll fix: Chart.tooltipContext.touchEvents='auto' (NOT
   // 'pan-x') per .claude/memory/feedback_layerchart_mobile_scroll.md.
   // Tooltip.Root uses the snippet-children form (the older shorthand binding
   // throws invalid_default_snippet on Svelte 5 — see
   // .claude/memory/feedback_svelte5_tooltip_snippet.md).
-  import { Chart, Svg, Spline, Area, Tooltip, Axis, Rule } from 'layerchart';
-  import { scaleTime } from 'd3-scale';
-  import { curveMonotoneX } from 'd3-shape';
-  import { format, differenceInDays, parseISO } from 'date-fns';
+  //
+  // Decision B (Plan 18-05): Option B — three filtered <Bars> blocks per color class.
+  // Pre-flight Context7 query on 2026-05-07 found no per-bar render snippet API
+  // (no renderBar/bar/children snippet documented for <Bars> in LayerChart 2.x).
+  // Staying on Option B. If band-scale alignment misbehaves, fall back to Option C
+  // (manual <rect> via chartCtx referencing xScale/yScale directly).
+  import { Chart, Svg, Bars, Tooltip, Axis, Rule } from 'layerchart';
+  import { scaleBand } from 'd3-scale';
+  import { parseISO } from 'date-fns';
   import { clientFetch } from '$lib/clientFetch';
   import { page } from '$app/state';
   import { t, type MessageKey } from '$lib/i18n/messages';
@@ -91,6 +90,41 @@
   // Phase 18 Plan 04 — selectedWeekIndex for tap-to-scrub (Plan 05 wires bar tap).
   // Declared here so Plan 04's headline pick can reference it; null = use most recent.
   let selectedWeekIndex = $state<number | null>(null);
+
+  // Phase 18 Plan 05 — chart context for selected-bar highlight overlay.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let chartCtx = $state<any>(undefined);
+
+  // Phase 18 Plan 05 — weekly history sorted ascending by iso_week_end, sarimax model only.
+  // Plan 03 already returns rows ascending; sort is a belt-and-suspenders guard.
+  const weeklyHistory = $derived.by(() => {
+    const arr = data?.weekly_history?.filter((w) => w.model_name === 'sarimax') ?? [];
+    return [...arr].sort((a, b) => a.iso_week_end.localeCompare(b.iso_week_end));
+  });
+
+  // Decision B PRIMARY: three filtered arrays for per-color <Bars> blocks.
+  const greenBars = $derived(weeklyHistory.filter((w) => w.ci_lower_eur > 0));
+  const redBars   = $derived(weeklyHistory.filter((w) => w.ci_upper_eur < 0));
+  const grayBars  = $derived(
+    weeklyHistory.filter((w) => w.ci_lower_eur <= 0 && w.ci_upper_eur >= 0)
+  );
+
+  // handleBarClick: find clicked row in the FULL weeklyHistory array by iso_week_end.
+  // Using iso_week_end as the lookup key because each filtered <Bars> block has its own
+  // sub-array — the local index inside that sub-array is NOT the index in weeklyHistory.
+  // T-18-11 mitigation: guard idx >= 0 before assignment.
+  function handleBarClick(_e: MouseEvent, detail: { data: WeeklyHistoryPoint }) {
+    const idx = weeklyHistory.findIndex((w) => w.iso_week_end === detail.data.iso_week_end);
+    if (idx >= 0) selectedWeekIndex = idx;
+  }
+
+  // weekColorClass: mirrors verdictColorClass() in ModelAvailabilityDisclosure.svelte:38-57.
+  // Used in tooltip and any text-side color reuse.
+  function weekColorClass(wk: WeeklyHistoryPoint): string {
+    if (wk.ci_lower_eur > 0) return 'fill-emerald-500';
+    if (wk.ci_upper_eur < 0) return 'fill-rose-500';
+    return 'fill-zinc-400';
+  }
 
   $effect(() => {
     void clientFetch<Payload>('/api/campaign-uplift')
@@ -219,19 +253,6 @@
     }).format(parseISO(iso));
   }
 
-  // Sparkline source — per-day trajectory consumed directly from API daily[].
-  // CONTEXT.md D-11: shape-of-uplift requires the FULL trajectory across
-  // every day in the campaign window — NEVER a 2-point synthesized line.
-  const sparklineData = $derived.by(() => {
-    if (!data || !data.daily || data.daily.length === 0) return [];
-    return data.daily.map((d) => ({
-      date: parseISO(d.date),
-      cum_uplift: d.cumulative_uplift_eur,
-      ci_lower: d.ci_lower_eur,
-      ci_upper: d.ci_upper_eur
-    }));
-  });
-
   function formatEur(v: number | null | undefined): string {
     if (v === null || v === undefined) return '—';
     const sign = v >= 0 ? '+' : '−';
@@ -315,25 +336,32 @@
       })}
     </p>
 
-    {#if sparklineData.length > 0}
-      <!-- D-18 sparkline Y-axis label (W4 LOCKED above-Chart placement; not in-Svg Axis primitive) -->
+    <!-- Phase 18 Plan 05 — weekly bar chart history with CI whiskers + tap-to-scrub.
+         Replaces the Phase 16.1 Spline+Area cumulative sparkline.
+         Decision B PRIMARY (Option B): three filtered <Bars> blocks per color class.
+         touchEvents:'auto' + chart-touch-safe per feedback_layerchart_mobile_scroll.md.
+         Tooltip.Root snippet form per feedback_svelte5_tooltip_snippet.md. -->
+    {#if weeklyHistory.length > 0}
+      <!-- D-18 Y-axis label (W4 LOCKED: above-Chart <p>, not in-Svg Axis primitive) -->
       <p class="text-[11px] text-zinc-500 mb-1 mt-3">{t(page.data.locale, 'uplift_sparkline_y_label')}</p>
-      <div class="chart-touch-safe" style:width="280px" style:height="100px">
+      <div
+        class="chart-touch-safe"
+        style:width="280px"
+        style:height="100px"
+        data-testid="uplift-week-bar-chart"
+      >
         <Chart
-          data={sparklineData}
-          x="date"
-          y={['ci_lower', 'ci_upper']}
-          xScale={scaleTime()}
-          yNice={2}
+          bind:context={chartCtx}
+          data={weeklyHistory}
+          x="iso_week_start"
+          y="point_eur"
+          xScale={scaleBand().padding(0.1)}
+          yNice={3}
           padding={{ left: 36, right: 4, top: 4, bottom: 20 }}
-          tooltipContext={{ mode: 'bisect-x', touchEvents: 'auto' }}
+          tooltipContext={{ mode: 'band', touchEvents: 'auto' }}
         >
           <Svg>
-            <!-- 16.2-06 D-16: Y-axis tick marks (€). 3 ticks at 375px without
-                 crowding. cum_uplift is in EUR (line 183: `cum_uplift:
-                 d.cumulative_uplift_eur`), so format value directly without
-                 cents conversion. W4 LOCKED preserved — the rotated label
-                 text stays as <p> ABOVE Chart at line 268. -->
+            <!-- Y-axis: 3 ticks (€) matching existing sparkline tick density -->
             <Axis
               placement="left"
               ticks={3}
@@ -341,62 +369,96 @@
               rule
             />
 
-            <!-- 16.2-06 D-17: X-axis tick marks (days since campaign launch).
-                 X channel is Date (xScale=scaleTime). Format converts each
-                 tick's Date to integer days-since-headline.campaign.start_date.
-                 ticks={5} fits 4-5 day labels at 375px. -->
+            <!-- X-axis: ISO week short date labels (e.g. "Apr 20").
+                 Claude's Discretion: short date 'Apr 20' over 'W17' per CONTEXT.md line 80
+                 (mobile readability — week numbers are not self-explanatory for owners). -->
             <Axis
               placement="bottom"
-              ticks={5}
-              format={(v: Date) => String(differenceInDays(v, parseISO(headline.campaign.start_date)))}
+              format={(v: string) => {
+                const fmt = new Intl.DateTimeFormat(page.data.locale, { month: 'short', day: 'numeric' });
+                return fmt.format(parseISO(v));
+              }}
               rule
             />
 
-            <!-- 16.2-06 D-15: counterfactual baseline — horizontal dashed line
-                 at y=0 matching the legend chip "Dashed line = no campaign
-                 baseline" at line 316-318 below. Rule is a Line-based
-                 primitive (NOT Path-based like Spline/Area), so kebab-case
-                 stroke-dasharray flows through SVGAttributes<SVGPathElement>
-                 unchanged — the C-03 camelCase rule applies only to
-                 Path-derived components that destructure props internally. -->
+            <!-- Dashed y=0 baseline — preserved from previous sparkline (D-15).
+                 kebab-case stroke-dasharray flows through SVGAttributes unchanged. -->
             <Rule y={0} class="stroke-zinc-500" stroke-dasharray="4 4" />
 
-            <Area
-              y0="ci_lower"
-              y1="ci_upper"
-              fill="currentColor"
-              fillOpacity={0.06}
-              line={false}
-              curve={curveMonotoneX}
-            />
-            <Spline y="cum_uplift" class="stroke-2" curve={curveMonotoneX} />
+            <!-- CI whiskers — one Rule per data row inside <Svg>.
+                 Rule y={[lo, hi]} draws a vertical segment between two y-values
+                 at the bar's x-band center (RESEARCH §3 line 213-228).
+                 No built-in error-bar primitive in LayerChart 2.x — composed manually. -->
+            {#each weeklyHistory as wk (wk.iso_week_end)}
+              <Rule
+                x={wk.iso_week_start}
+                y={[wk.ci_lower_eur, wk.ci_upper_eur]}
+                class="stroke-zinc-700"
+                stroke-width={1.5}
+              />
+            {/each}
+
+            <!-- Decision B PRIMARY: three filtered <Bars> blocks per color class.
+                 Emitted in gray / green / red order so green/red paint OVER gray.
+                 onBarClick (camelCase — actual LayerChart 2.x prop name) finds row
+                 in FULL weeklyHistory by iso_week_end (sub-array local index ≠
+                 weeklyHistory index — T-18-11 guard in handleBarClick). -->
+            <Bars data={grayBars}  class="fill-zinc-400"    onBarClick={handleBarClick} />
+            <Bars data={greenBars} class="fill-emerald-500" onBarClick={handleBarClick} />
+            <Bars data={redBars}   class="fill-rose-500"    onBarClick={handleBarClick} />
+
+            <!-- Selected-bar highlight overlay: 2px outline rect over the selected bar.
+                 Only rendered when a bar has been tapped (selectedWeekIndex !== null)
+                 and chartCtx has been bound. -->
+            {#if selectedWeekIndex !== null && chartCtx?.xScale}
+              {@const selectedWk = weeklyHistory[selectedWeekIndex]}
+              {#if selectedWk}
+                <rect
+                  x={chartCtx.xScale(selectedWk.iso_week_start)}
+                  y={chartCtx.yScale(Math.max(selectedWk.point_eur, 0))}
+                  width={chartCtx.xScale.bandwidth()}
+                  height={Math.abs(chartCtx.yScale(0) - chartCtx.yScale(selectedWk.point_eur))}
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width={2}
+                  class="text-zinc-900"
+                  rx={2}
+                  pointer-events="none"
+                />
+              {/if}
+            {/if}
           </Svg>
-          <Tooltip.Root contained={false} class="text-xs">
+
+          <!-- Tooltip.Root: snippet form required per feedback_svelte5_tooltip_snippet.md.
+               The older shorthand binding (Svelte 4 slot syntax) throws
+               invalid_default_snippet at runtime on Svelte 5 — use snippet form only.
+               T-18-13 mitigation: all interpolations use Svelte auto-escaping; no {@html}. -->
+          <Tooltip.Root>
             {#snippet children({ data: pt })}
               {#if pt}
-                <Tooltip.Header value={format(pt.date as Date, 'MMM d')} />
-                <Tooltip.List>
-                  <Tooltip.Item
-                    label={`Day ${differenceInDays(pt.date as Date, parseISO(headline.campaign.start_date))}`}
-                    value={formatEur(pt.cum_uplift as number)}
-                  />
-                  <Tooltip.Item
-                    label="95% CI"
-                    value={`${formatEur(pt.ci_lower as number)} … ${formatEur(pt.ci_upper as number)}`}
-                  />
-                </Tooltip.List>
+                <div class="rounded-md bg-zinc-900 px-2 py-1 text-xs text-white shadow-md">
+                  <div class="font-medium">
+                    Week of {formatHeadlineWeekRange(pt as WeeklyHistoryPoint, page.data.locale)}
+                  </div>
+                  <div class="tabular-nums">
+                    {(pt as WeeklyHistoryPoint).point_eur >= 0 ? '+' : ''}{Math.round((pt as WeeklyHistoryPoint).point_eur)} €
+                  </div>
+                  <div class="text-[10px] text-zinc-300 tabular-nums">
+                    95% CI: {Math.round((pt as WeeklyHistoryPoint).ci_lower_eur)}–{Math.round((pt as WeeklyHistoryPoint).ci_upper_eur)} €
+                  </div>
+                </div>
               {/if}
             {/snippet}
           </Tooltip.Root>
         </Chart>
       </div>
 
-      <!-- D-18 X-axis caption -->
+      <!-- D-18 X-axis caption (preserved from old sparkline section) -->
       <p class="text-[11px] text-zinc-400 text-center mt-1" data-testid="uplift-sparkline-x-caption">
         {t(page.data.locale, 'uplift_sparkline_x_caption')}
       </p>
 
-      <!-- D-18 counterfactual baseline legend chip -->
+      <!-- D-18 counterfactual baseline legend chip (preserved) -->
       <div class="flex items-center gap-1 text-[11px] text-zinc-500 mt-1" data-testid="uplift-baseline-chip">
         <span aria-hidden="true" class="block w-3 h-px border-t border-dashed border-zinc-400"></span>
         {t(page.data.locale, 'uplift_baseline_label')}

@@ -439,13 +439,19 @@ describe('CampaignUpliftCard', () => {
     expect(container.querySelector('[data-testid="divergence-warning"]')).toBeNull();
   });
 
-  it('sparkline_data_contract — sparklineData consumes API daily[] (NOT a 2-point synthesized line)', () => {
+  it('sparkline_data_contract — bar chart consumes weekly_history[] (NOT a 2-point synthesized line)', () => {
+    // Phase 18 Plan 05: Spline+Area cumulative sparkline replaced by Bars weekly bar chart.
+    // D-11 intent preserved: chart source must use server-provided data, not a synthesized array.
+    // The weekly bar chart reads weeklyHistory (derived from data.weekly_history) — never a
+    // hardcoded literal 2-element array of {start, end} endpoints.
     const src = readSource();
-    // CONTEXT.md D-11: shape-of-uplift requires consuming the full daily[]
-    // trajectory from the API, not a 2-point start/end line.
-    expect(src).toMatch(/data\.daily\.map/);
-    // Negative: forbid a literal 2-element array of {date, cum_uplift}
+    // Must use weekly_history from the API payload (not the old data.daily.map).
+    expect(src).toMatch(/weekly_history/);
+    // Must NOT have the old synthesized 2-point start/end pattern.
     expect(src).not.toMatch(/\[\s*\{\s*date:\s*data\.campaigns\[0\]\.start_date[^]*\},\s*\{\s*date:[^}]*as_of[^}]*\}\s*\]/);
+    // Must import Bars (not Spline + Area which were the cumulative sparkline primitives).
+    expect(src).toMatch(/import\s*\{[^}]*Bars[^}]*\}\s*from\s*['"]layerchart['"]/);
+    expect(src).not.toMatch(/import\s*\{[^}]*Spline[^}]*\}\s*from\s*['"]layerchart['"]/);
   });
 
   // ----- Phase 18 Plan 04 — weekly_history hero contract tests -----
@@ -515,26 +521,32 @@ describe('CampaignUpliftCard', () => {
 
   it('bar_chart_contract — renders Bars + per-bar Rule whiskers when weekly_history is non-empty', async () => {
     // FIXTURE_WEEKLY_NORMAL has 3 weeks of sarimax data.
-    // Expects: uplift-week-bar-chart container + rect elements (bars) + line elements (whiskers).
+    // Expects: uplift-week-bar-chart container + SVG shapes (bars + whiskers).
+    // Note: LayerChart <Bars> renders <path> elements (not <rect>) when radius > 0
+    // or when rounded='all'. <Rule> whiskers render as <line> elements.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (clientFetchSpy as any).__activeFixture.current = FIXTURE_WEEKLY_NORMAL;
     const { container } = render(CampaignUpliftCard);
     await flush();
     const chart = container.querySelector('[data-testid="uplift-week-bar-chart"]');
     expect(chart).not.toBeNull();
-    // At least 2 rect/line shapes per data row (bars + whiskers).
-    const allShapes = chart!.querySelectorAll('rect, line');
+    // bars (path/rect) + whisker lines + axis lines — at least 2 SVG shapes per data row.
+    const allShapes = chart!.querySelectorAll('rect, path, line');
     expect(allShapes.length).toBeGreaterThanOrEqual(7);
   });
 
   it('bar_chart_color_coding — applies fill-emerald-500 / fill-rose-500 / fill-zinc-400 by CI band sign', async () => {
     // FIXTURE_WEEKLY_MIXED has 1 emerald (ci_lower>0), 1 rose (ci_upper<0), 1 zinc (straddles).
+    // LayerChart <Bars> passes `class` prop through to each Bar's path/rect element.
+    // The class propagates from <Bars class="fill-*"> → <Bar ...extractLayerProps(restProps)>
+    // → the SVG element (path or rect). Test checks the chart container for those classes.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (clientFetchSpy as any).__activeFixture.current = FIXTURE_WEEKLY_MIXED;
     const { container } = render(CampaignUpliftCard);
     await flush();
     const chart = container.querySelector('[data-testid="uplift-week-bar-chart"]')!;
     expect(chart).not.toBeNull();
+    // Color classes may appear on <g> wrappers (lc-bars group) or on individual bar elements.
     expect(chart.querySelector('.fill-emerald-500')).not.toBeNull();
     expect(chart.querySelector('.fill-rose-500')).not.toBeNull();
     expect(chart.querySelector('.fill-zinc-400')).not.toBeNull();
@@ -542,24 +554,29 @@ describe('CampaignUpliftCard', () => {
 
   it('tap_to_scrub — clicking a bar updates selectedWeekIndex; hero re-renders', async () => {
     // FIXTURE_WEEKLY_NORMAL: 3 weeks ascending — hero defaults to last (W19, point_eur=880).
-    // Clicking the FIRST bar (W17) should change the hero to W17's data (point_eur=450).
+    // Clicking the FIRST bar (W17, zinc-400 straddles-zero) should change hero to W17.
+    // Note: LayerChart <Bars> renders bars as <path> elements (radius causes Path branch
+    // in Bar.svelte). The onclick is spread via restProps → extractLayerProps → <path>.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (clientFetchSpy as any).__activeFixture.current = FIXTURE_WEEKLY_NORMAL;
     const { container, getByTestId } = render(CampaignUpliftCard);
     await flush();
     const heroBefore = getByTestId('uplift-week-headline-range').textContent;
-    // Pick the FIRST bar (oldest week — different from default last).
-    const allBars = container.querySelectorAll('[data-testid="uplift-week-bar-chart"] rect');
-    const barRects = [...allBars].filter((r) =>
-      r.classList.contains('fill-emerald-500') ||
-      r.classList.contains('fill-rose-500') ||
-      r.classList.contains('fill-zinc-400')
+    // Find bar elements: <path> or <rect> elements with fill color classes.
+    const chart = container.querySelector('[data-testid="uplift-week-bar-chart"]')!;
+    const allBarShapes = chart.querySelectorAll('path, rect');
+    const barShapes = [...allBarShapes].filter((el) =>
+      el.classList.contains('fill-emerald-500') ||
+      el.classList.contains('fill-rose-500') ||
+      el.classList.contains('fill-zinc-400') ||
+      el.classList.contains('lc-bar')
     );
-    expect(barRects.length).toBeGreaterThan(0);
-    barRects[0].dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(barShapes.length).toBeGreaterThan(0);
+    // Click the first bar — LayerChart wires onclick via restProps spread.
+    barShapes[0].dispatchEvent(new MouseEvent('click', { bubbles: true }));
     await flush();
     const heroAfter = getByTestId('uplift-week-headline-range').textContent;
-    expect(heroAfter).not.toBe(heroBefore);  // hero changed
+    expect(heroAfter).not.toBe(heroBefore);  // hero changed to a different week
   });
 
   it('empty_weekly_history — uplift-week-bar-chart not in DOM when weekly_history is []', async () => {
