@@ -60,6 +60,16 @@ export function getDict(locale: Locale): Dict {
   return dictCache.get(locale) ?? (en as Dict);
 }
 
+/**
+ * Compatibility shim — tests and legacy code that import `messages.en` keep
+ * working without changes. Only `en` is available synchronously; for other
+ * locales use `loadDict` + `t()` instead.
+ * @deprecated Use t() / getDict() / loadDict() directly.
+ */
+export const messages = {
+  get en() { return getDict('en'); }
+} as { en: Dict };
+
 function interpolate(template: string, vars?: Record<string, string | number>): string {
   if (!vars) return template;
   return template.replace(/\{(\w+)\}/g, (_, k) => k in vars ? String(vars[k]) : `{${k}}`);

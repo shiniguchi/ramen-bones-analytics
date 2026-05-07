@@ -4,10 +4,12 @@
 
   let { data, children } = $props();
 
-  // Hydrate the locale dict from the SSR payload on the client before any
-  // child component calls t(). On the server this is a no-op (cache already
-  // populated by loadDict in hooks.server.ts).
-  seedDict(data.locale, data.dict);
+  // Hydrate the locale dict from the SSR payload. $effect runs synchronously
+  // during SSR (no-op — cache already warm from loadDict in hooks.server.ts)
+  // and on the client before children mount, so t() is always safe to call.
+  $effect(() => {
+    seedDict(data.locale, data.dict);
+  });
 </script>
 
 <div class="min-h-screen bg-zinc-50 overflow-x-clip">
