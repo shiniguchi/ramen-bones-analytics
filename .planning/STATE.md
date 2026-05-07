@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Cold-Start Trim
-status: In Progress
-stopped_at: Phase 19 planned (2026-05-07) — awaiting /gsd-execute-phase 19
-last_updated: "2026-05-07T18:00:00.000Z"
-last_activity: 2026-05-07 (Phase 19 Cold-Start Trim planned — 4 sub-plans locked)
+status: Complete
+stopped_at: Phase 19 complete — all 4 sub-plans shipped
+last_updated: "2026-05-07T14:30:00.000Z"
+last_activity: 2026-05-07 (Plan 19-04 complete — phase-final QA + planning-docs drift gate)
 progress:
   total_phases: 22
-  completed_phases: 21
+  completed_phases: 22
   total_plans: 127
-  completed_plans: 111
-  percent: 87
+  completed_plans: 115
+  percent: 91
 ---
 
 # STATE: Ramen Bones Analytics
@@ -28,25 +28,18 @@ progress:
 
 ## Current Position
 
-Milestone: v1.5 (Cold-Start Trim)
-Phase: 19 (cold-start-trim) — planned, awaiting execution
-Plan: 01 (PENDING — LazyMount loader prop + 5 eager chart cards deferred)
+Milestone: v1.5 (Cold-Start Trim) — COMPLETE 2026-05-07
+Phase: 19 (cold-start-trim) — all 4 sub-plans complete
+Plan: 04 (COMPLETE — phase-final QA + planning-docs drift gate)
 
-**v1.5 opened 2026-05-07.** Scope: cut cold-start bundle weight. 5 chart cards (CalendarCounts, CalendarRevenue, CalendarItems, CalendarItemRevenue, MdeCurveCard) eager-mount LayerChart (4.9 MB transitive) on load. Two SSR queries (item_counts_daily_v, benchmark_*_v) fetch at SSR despite their sole consumers being lazy-mounted. The 76 KB `messages.ts` monolith ships all 5 locales to every user. Phase 19 fixes all three blockers via: (1) extending `LazyMount` with a `loader` prop for dynamic-import deferral, (2) two new deferred `/api/*` endpoints cutting SSR Promise.all 6→4, (3) per-locale dict files with `loadDict()` lazy cache cutting the i18n contribution from 76 KB to ~15 KB (en only) cold.
+**v1.5 shipped 2026-05-07.** Phase 19 cut cold-start bundle weight across three axes: (1) LazyMount `loader` prop defers all 9 chart-card modules + their LayerChart/d3 transitive deps until scroll-into-view; (2) `/api/item-counts` + `/api/benchmark` deferred SSR Promise.all from 6 → 3 promises; (3) per-locale dict files with `loadDict()` lazy cache cut i18n cold contribution from 76 KB to ~3.6 KB (`en` only). 30 async chunks in CF output. Per-locale chunks `de.js`/`ja.js`/`es.js`/`fr.js` emitted separately.
 
-**Design decisions locked (no /gsd-discuss-phase needed — see 19-DISCUSSION-LOG.md):**
-1. Extend existing `LazyMount` with `loader?: () => Promise<{ default: Component }>` — single idiom rule preserved
-2. No `manualChunks` in vite.config — Vite auto-splits dynamic imports
-3. `en` locale imported eagerly (needed for `MessageKey` type + fallback); `de/ja/es/fr` lazy
-4. `loadDict()` mirrors `clientFetch.ts:13` module-level Map cache pattern
-5. `t(locale, key)` signature unchanged; 19 call sites unmodified
-6. `/api/item-counts` accepts `?from=&to=` (window-scoped); `/api/benchmark` has no params (lifetime data)
+**Sub-plans (all COMPLETE):**
 
-**Sub-plans:**
-- 19-01 (PENDING): LazyMount loader prop + 5 chart cards lazy-converted
-- 19-02 (PENDING): /api/item-counts + /api/benchmark deferred endpoints; SSR 6→4
-- 19-03 (PENDING): i18n per-locale dynamic imports (independent of 19-01/02)
-- 19-04 (PENDING): Phase-final QA + planning-docs drift gate
+- 19-01 (COMPLETE): LazyMount loader prop + 9 chart cards lazy-converted (commits 4ba351b, 6cb26d7, 31bb070)
+- 19-02 (COMPLETE): /api/item-counts + /api/benchmark deferred endpoints; SSR Promise.all 6→3 (commits 08031b1, fb98e32, 565ade0, 5d2123d; restored in 5e648c8)
+- 19-03 (COMPLETE): i18n per-locale dynamic imports — messages.ts 76KB → 3.6KB (commits 9a40c24, 0600426, 871daec, 2881d8f, a5a41e6, c1c7852)
+- 19-04 (COMPLETE): Phase-final QA + planning-docs drift gate
 
 **v1.4 milestone archived 2026-05-07:** Phase 18 (Weekly Counterfactual Window) complete. PR #31 merged.
 
@@ -78,8 +71,8 @@ Next recommended run: Plan 18-07 (phase-final QA on DEV + planning-docs drift ga
 - **Phase 15:** v2 (Forecast Backtest Overlay) merged via PR #26 on 2026-05-01.
 - **Phase 14:** Shipped via [PR #22](https://github.com/shiniguchi/ramen-bones-analytics/pull/22). 34 commits, 31 files, +2978 lines. UAT 12/12. 5/5 models producing 365-day forecasts on DEV.
 - **Phase 13:** Shipped via [PR #17](https://github.com/shiniguchi/ramen-bones-analytics/pull/17). 41 commits, 52 files, +6892 lines. EXT-01..EXT-09 complete.
-- **Progress:** [█████████░] 88% (108/123 plans done; v1.0+v1.1+v1.2+v1.3 Phase 12-17 shipped; Phase 18 plan 04 of 7 done)
-- **Last activity:** 2026-05-07 (Plan 18-04 complete — awaiting localhost QA checkpoint)
+- **Progress:** [██████████] 91% (115/127 plans done; v1.0+v1.1+v1.2+v1.3 Phase 12-17 shipped; v1.4 Phase 18 shipped; v1.5 Phase 19 shipped)
+- **Last activity:** 2026-05-07 (Phase 19 complete — all 4 sub-plans shipped; v1.5 Cold-Start Trim done)
 - **v1.2 closed:** 11 phases, 60 plans, 100% — Phase 11 SSR fix landed 2026-04-21
 - **v1.0 status:** Shipped to friend (97% plans complete; repo flipped PUBLIC 2026-04-15 with topics + description set; Plan 05-06 Task 2 fork walkthrough deferred out of v1 scope)
 
@@ -343,8 +336,8 @@ Next recommended run: Plan 18-07 (phase-final QA on DEV + planning-docs drift ga
 
 **Resume hint:** Phase 15 depends on Phase 14 schema (landed). Phase 16 depends on Phase 14 BAU forecast stability. Phase 17 has a hard dependency on ≥4 weeks of forecast-vs-actual history.
 
-**Last session:** 2026-05-07T10:41:26.857Z
-**Stopped At:** context exhaustion at 76% (2026-05-07)
+**Last session:** 2026-05-07T12:06:27.084Z
+**Stopped At:** context exhaustion at 75% (2026-05-07)
 
 ---
 *State initialized: 2026-04-13; v1.3 roadmap recorded: 2026-04-27; Phase 12 context: 2026-04-28; Phase 13 shipped: 2026-04-30 (PR #17); Phase 14 shipped: 2026-04-30 (PR #22); v1.3 shipped: 2026-05-06; v1.4 opened: 2026-05-07; Phase 18 P01 complete: 2026-05-07; Phase 18 P02 complete: 2026-05-07*

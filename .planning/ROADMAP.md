@@ -6,7 +6,7 @@
 **Coverage:** 39/39 v1 + 14/14 v1.1 + 13/13 v1.2 + 47/47 v1.3 + 2/2 v1.4 + 3/3 v1.5 requirements mapped
 **v1.3 shipped:** 2026-05-06 (Phases 12–17; PRs #17, #22, #26, #28, #29, #30)
 **v1.4 shipped:** 2026-05-07 (Phase 18 — single-feature milestone; PR #31)
-**v1.5 opened:** 2026-05-07 (Phase 19 — Cold-Start Trim — planned)
+**v1.5 shipped:** 2026-05-07 (Phase 19 — Cold-Start Trim — all 4 sub-plans complete)
 
 ## Core Value
 
@@ -66,9 +66,9 @@ A restaurant owner opens the site on their phone and makes a real business decis
 </details>
 
 <details>
-<summary>v1.5 Cold-Start Trim (Phase 19) — In Progress</summary>
+<summary>✅ v1.5 Cold-Start Trim (Phase 19) — SHIPPED 2026-05-07</summary>
 
-- [ ] **Phase 19: Cold-Start Trim** — extend `LazyMount` with `loader` prop for dynamic-import deferral; convert 5 eager chart cards; add `/api/item-counts` + `/api/benchmark` deferred endpoints (SSR 6→4); split `messages.ts` 76 KB monolith into 5 per-locale dict files with `loadDict()` lazy cache
+- [x] **Phase 19: Cold-Start Trim** — extend `LazyMount` with `loader` prop for dynamic-import deferral; convert 9 eager chart cards; add `/api/item-counts` + `/api/benchmark` deferred endpoints (SSR Promise.all 6→3); split `messages.ts` 76 KB monolith into 5 per-locale dict files with `loadDict()` lazy cache; 30 async chunks emitted
 
 </details>
 
