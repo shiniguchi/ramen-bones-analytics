@@ -330,9 +330,10 @@
       <!-- D-18 Y-axis label (W4 LOCKED: above-Chart <p>, not in-Svg Axis primitive) -->
       <p class="text-[11px] text-zinc-500 mb-1 mt-3">{t(page.data.locale, 'uplift_sparkline_y_label')}</p>
       <div
-        class="chart-touch-safe overflow-hidden"
+        class="chart-touch-safe"
         style:width="280px"
         style:height="100px"
+        style:overflow="hidden"
         data-testid="uplift-week-bar-chart"
       >
         <Chart
