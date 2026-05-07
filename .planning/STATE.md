@@ -1,17 +1,17 @@
 ---
 gsd_state_version: 1.0
 milestone: v1.4
-milestone_name: Weekly Campaign Read
-status: implementing
-stopped_at: null
-last_updated: "2026-05-07T09:30:00.000Z"
-last_activity: 2026-05-07
+milestone_name: Coverage Map
+status: Implementing
+stopped_at: context exhaustion at 75% (2026-05-07)
+last_updated: "2026-05-07T09:32:35.002Z"
+last_activity: 2026-05-07 (Plan 18-04 complete — awaiting localhost QA checkpoint)
 progress:
-  total_phases: 21
-  completed_phases: 20
-  total_plans: 123
-  completed_plans: 109
-  percent: 88
+  total_phases: 10
+  completed_phases: 5
+  total_plans: 63
+  completed_plans: 49
+  percent: 78
 ---
 
 # STATE: Ramen Bones Analytics
@@ -35,6 +35,7 @@ Plan: 05 (COMPLETE — Option C fix shipped, localhost QA PASS, DEV deployed) �
 v1.4 opened 2026-05-07 as single-feature milestone. Scope: replace CampaignUpliftCard's cumulative-since-launch headline with per-ISO-week (Mon–Sun) counterfactual + tap-scrubbable bar-chart history. Friend-owner gets a fresh weekly read instead of a cumulative number that drifts toward "no detectable lift" as the campaign window grows. Touches DB (new window_kind value — landed in Plan 18-01 via migration 0069), Python pipeline (cumulative_uplift.py — bootstrap CI re-fit on 7-day slice, NOT derived from daily cumulative), API (/api/campaign-uplift returns weekly_history), and Svelte component (CampaignUpliftCard rewrite).
 
 Locked design decisions (carried over from 2026-05-07 conversation, no /gsd-discuss-phase needed):
+
 1. Replace headline (not add-alongside) — user phrasing "instead of since April 14th"
 2. ISO Mon–Sun weeks only
 3. Skip in-progress trailing week + skip partial launch leading week (Apr 14 was Tue, so first bar = week of Apr 20–26)
@@ -322,8 +323,8 @@ Next recommended run: Plan 18-06 (i18n uplift_week_label + ModelAvailabilityDisc
 
 **Resume hint:** Phase 15 depends on Phase 14 schema (landed). Phase 16 depends on Phase 14 BAU forecast stability. Phase 17 has a hard dependency on ≥4 weeks of forecast-vs-actual history.
 
-**Last session:** 2026-05-07T10:45:00.000Z
-**Stopped At:** Plan 18-05 Task 1 complete (TDD RED 462dbd7 + GREEN b25249c) — awaiting localhost-first QA checkpoint Task 2 (http://localhost:5173). After QA approved, continue with Task 3 (push to DEV)
+**Last session:** 2026-05-07T09:32:34.987Z
+**Stopped At:** context exhaustion at 75% (2026-05-07)
 
 ---
 *State initialized: 2026-04-13; v1.3 roadmap recorded: 2026-04-27; Phase 12 context: 2026-04-28; Phase 13 shipped: 2026-04-30 (PR #17); Phase 14 shipped: 2026-04-30 (PR #22); v1.3 shipped: 2026-05-06; v1.4 opened: 2026-05-07; Phase 18 P01 complete: 2026-05-07; Phase 18 P02 complete: 2026-05-07*

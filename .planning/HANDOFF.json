@@ -1,0 +1,38 @@
+{
+  "version": "1.0",
+  "timestamp": "2026-05-07T09:36:47Z",
+  "phase": "18",
+  "phase_name": "weekly-counterfactual-window",
+  "phase_dir": ".planning/phases/18-weekly-counterfactual-window",
+  "plan": 6,
+  "task": 2,
+  "total_tasks": 3,
+  "status": "paused",
+  "completed_tasks": [
+    {"id": 1, "name": "Add 3 i18n keys × 5 locales + wire CampaignUpliftCard", "status": "done", "commit": "eba5000"}
+  ],
+  "remaining_tasks": [
+    {"id": 2, "name": "ModelAvailabilityDisclosure_compatibility test in CampaignUpliftCard.test.ts", "status": "not_started"},
+    {"id": 3, "name": "Localhost QA — en + ja locale toggle visual verification", "status": "not_started"}
+  ],
+  "blockers": [
+    {
+      "description": "localhost DB has no weekly_history rows — i18n wires inside {#if headline} / {#if weeklyHistory.length > 0} not rendered without mock data",
+      "type": "external",
+      "workaround": "Use clientFetch cache invalidation + Svelte mount trick (documented in session): invalidateClientCache('/api/campaign-uplift'), then dynamic import + mount(CampaignUpliftCard, {target: div}) with window.fetch mock for /api/campaign-uplift"
+    }
+  ],
+  "human_actions_pending": [],
+  "decisions": [
+    {"decision": "uplift_week_label uses split(' – ') on formatHeadlineWeekRange output to get {start}/{end}", "rationale": "formatHeadlineWeekRange already exists; splitting avoids duplicating the Intl.DateTimeFormat logic", "phase": "18"},
+    {"decision": "uplift_history_x_axis_label replaces uplift_sparkline_x_caption in the x-caption position (same data-testid preserved)", "rationale": "Old key says 'Days since campaign launch' which is wrong for the new weekly chart", "phase": "18"},
+    {"decision": "uplift_bar_chart_caption added as new <p data-testid='uplift-bar-chart-caption'> above the x-caption", "rationale": "Separate testid per plan contract", "phase": "18"}
+  ],
+  "uncommitted_files": [
+    "dashboard-current.jpeg",
+    "uplift-bar-chart-qa.jpeg",
+    "uplift-bar-scrub-qa.jpeg"
+  ],
+  "next_action": "Add ModelAvailabilityDisclosure_compatibility test to tests/unit/CampaignUpliftCard.test.ts (Task 2 of Plan 18-06), then run tests, then do localhost QA via Playwright mock injection with en + ja locale toggle",
+  "context_notes": "Context hit 75% during Plan 18-06 Task 1. All i18n edits committed (eba5000). Tests 16/16 pass. TypeScript: same 7 pre-existing errors. The mock data injection technique for localhost QA (when weekly_history is empty) is well-established: invalidateClientCache + dynamic Svelte mount. See session transcript for the exact eval code."
+}
