@@ -445,7 +445,14 @@ Plans:
   4. Bar chart below hero: one bar per fully-completed ISO week since campaign launch, rendered with LayerChart (matching existing sparkline tech); CI whiskers overlay each bar; bars colored by significance — gray (CI straddles 0), green (CI > 0 fully), red (CI < 0 fully); tap a bar → hero updates to that week's read; dashed y=0 baseline preserved (matches existing `Rule y={0}`); X axis = ISO week labels, Y axis = € uplift
   5. ModelAvailabilityDisclosure / regime-tier copy continue to work — the maturity tier is now derived from `n_days` of the selected week (always 7 for fully-completed weeks → "mature" tier kicks in immediately for any week with full data, but card hides until first ISO week completes per Q3 rule)
   6. Mobile-first: bar chart usable on 375×667 phone canvas; horizontal scroll once weeks exceed ~10 (matches Calendar* card pattern); touch events do not block vertical page scroll (`touchEvents: 'auto'` per existing memory)
-**Plans**: TBD via /gsd-plan-phase
+**Plans**: 7 plans
+  - [ ] 18-01-PLAN.md — migration 0069: campaign_uplift iso_week CHECK + weekly_v wrapper view (UPL-08)
+  - [ ] 18-02-PLAN.md — pipeline writer compute_iso_week_uplift_rows + bootstrap CI re-fit per 7-day slice (UPL-08)
+  - [ ] 18-03-PLAN.md — /api/campaign-uplift weekly_history payload field (UPL-08)
+  - [ ] 18-04-PLAN.md — CampaignUpliftCard hero rewrite (Decision A: weeks-since-launch tier source) (UPL-08, UPL-09)
+  - [ ] 18-05-PLAN.md — bar chart + CI whiskers + tap-to-scrub (Decision B path) (UPL-08, UPL-09)
+  - [ ] 18-06-PLAN.md — i18n keys (uplift_week_label etc.) + ModelAvailabilityDisclosure compatibility check (UPL-09)
+  - [ ] 18-07-PLAN.md — phase-final QA on DEV + planning-docs drift gate (UPL-08, UPL-09 sign-off)
 
 ## Progress
 
@@ -471,7 +478,7 @@ Plans:
 | 16.2. Friend-Persona QA Gap Closure (INSERTED) | v1.3 | 7/7 | Complete | 2026-05-05 |
 | 16.3. Dashboard Cleanup + Events Everywhere (INSERTED) | v1.3 | 3/3 | Complete | 2026-05-06 |
 | 17. Backtest Gate & Quality Monitoring | v1.3 | 10/10 | Complete | 2026-05-06 |
-| 18. Weekly Counterfactual Window | v1.4 | 0/TBD | Planning | — |
+| 18. Weekly Counterfactual Window | v1.4 | 0/7 | Planning | — |
 
 ## Coverage Summary
 

@@ -9,9 +9,9 @@ last_activity: 2026-05-07
 progress:
   total_phases: 21
   completed_phases: 20
-  total_plans: 116
+  total_plans: 123
   completed_plans: 104
-  percent: 90
+  percent: 85
 ---
 
 # STATE: Ramen Bones Analytics
