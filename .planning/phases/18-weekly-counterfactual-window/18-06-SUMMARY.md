@@ -52,6 +52,21 @@ smoke assertion tests the panel content directly.
 None. `FIXTURE_WEEKLY_NORMAL` already had `campaigns[0].rows: [baseHeadlineRow]` with
 `window_kind: 'cumulative_since_launch'` from Plan 04 — no fixture augmentation needed.
 
+## Bug fix: bar chart overflow into hero text
+
+**Root cause:** When all `weekly_history` values are negative, `yScale(0)` (used as bar baseline
+via `Math.max(point_eur, 0)`) maps to a negative SVG `y` coordinate — above the chart canvas.
+Without clipping, the bars bled upward into the hero text.
+
+**Fix (commit `1d80ca3`):**
+- `yDomain={[Math.min(0, ...ci_lower_eur), Math.max(0, ...ci_upper_eur)]}` on `<Chart>` — forces
+  zero-line inside the canvas for any mix of positive/negative values; CI bounds define the full
+  visible range so whiskers also stay in-frame
+- `overflow-hidden` on the chart wrapper div — safety net
+
+Verified via Playwright mock injection with all-negative weekly_history (`point_eur: -120/-130`):
+`overflowingRects = 0`, hero text visible alongside chart. 17/17 tests still pass.
+
 ## Localhost QA
 
 Verified via Playwright mock injection (fetch override + both cache instances cleared):
