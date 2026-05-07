@@ -342,8 +342,8 @@
           y="point_eur"
           xScale={scaleBand().padding(0.1)}
           yDomain={[
-            Math.min(0, ...weeklyHistory.map((w) => w.ci_lower_eur)),
-            Math.max(0, ...weeklyHistory.map((w) => w.ci_upper_eur))
+            Math.min(0, ...weeklyHistory.map((w) => w.point_eur)),
+            Math.max(0, ...weeklyHistory.map((w) => w.point_eur))
           ]}
           yNice={3}
           padding={{ left: 36, right: 4, top: 4, bottom: 20 }}
