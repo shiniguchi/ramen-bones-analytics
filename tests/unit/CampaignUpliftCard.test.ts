@@ -21,7 +21,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 // ----- Hoisted clientFetch spy + fixture (vi.mock is top-hoisted) -----
-const { clientFetchSpy, FIXTURE_HEADLINE_NORMAL, FIXTURE_HEADLINE_ZERO_OVERLAP, FIXTURE_DIVERGENCE, FIXTURE_EMPTY, FIXTURE_WEEKLY_NORMAL, FIXTURE_WEEKLY_EMPTY, FIXTURE_WEEKLY_NEGATIVE_LIFT, FIXTURE_WEEKLY_CI_STRADDLES_ZERO } = vi.hoisted(() => {
+const { clientFetchSpy, FIXTURE_HEADLINE_NORMAL, FIXTURE_HEADLINE_ZERO_OVERLAP, FIXTURE_DIVERGENCE, FIXTURE_EMPTY, FIXTURE_WEEKLY_NORMAL, FIXTURE_WEEKLY_EMPTY, FIXTURE_WEEKLY_NEGATIVE_LIFT, FIXTURE_WEEKLY_CI_STRADDLES_ZERO, FIXTURE_WEEKLY_MIXED } = vi.hoisted(() => {
   const baseHeadlineRow = {
     model_name: 'sarimax',
     window_kind: 'cumulative_since_launch' as const,
@@ -235,6 +235,43 @@ const { clientFetchSpy, FIXTURE_HEADLINE_NORMAL, FIXTURE_HEADLINE_ZERO_OVERLAP, 
     ]
   };
 
+  // Phase 18 Plan 05 — FIXTURE_WEEKLY_MIXED: one bar of each color class.
+  // Week 1: ci_lower_eur > 0 → emerald (positive lift confirmed)
+  // Week 2: ci_upper_eur < 0 → rose (negative impact confirmed)
+  // Week 3: straddles zero → zinc-400 (uncertain)
+  const FIXTURE_WEEKLY_MIXED = {
+    ...FIXTURE_WEEKLY_NORMAL,
+    weekly_history: [
+      {
+        iso_week_start: '2026-04-20',
+        iso_week_end: '2026-04-26',
+        model_name: 'sarimax',
+        point_eur: 450,
+        ci_lower_eur: 100,    // > 0 → emerald
+        ci_upper_eur: 900,
+        n_days: 7
+      },
+      {
+        iso_week_start: '2026-04-27',
+        iso_week_end: '2026-05-03',
+        model_name: 'sarimax',
+        point_eur: -350,
+        ci_lower_eur: -700,   // ci_upper_eur < 0 → rose
+        ci_upper_eur: -50,
+        n_days: 7
+      },
+      {
+        iso_week_start: '2026-05-04',
+        iso_week_end: '2026-05-10',
+        model_name: 'sarimax',
+        point_eur: 80,
+        ci_lower_eur: -200,   // straddles zero → zinc-400
+        ci_upper_eur: 360,
+        n_days: 7
+      }
+    ]
+  };
+
   // Shared mutable holder so individual tests can swap the fixture.
   // The default points to the normal fixture; each test sets activeFixture
   // before calling render().
@@ -249,7 +286,7 @@ const { clientFetchSpy, FIXTURE_HEADLINE_NORMAL, FIXTURE_HEADLINE_ZERO_OVERLAP, 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   (clientFetchSpy as any).__activeFixture = activeFixture;
 
-  return { clientFetchSpy, FIXTURE_HEADLINE_NORMAL, FIXTURE_HEADLINE_ZERO_OVERLAP, FIXTURE_DIVERGENCE, FIXTURE_EMPTY, FIXTURE_WEEKLY_NORMAL, FIXTURE_WEEKLY_EMPTY, FIXTURE_WEEKLY_NEGATIVE_LIFT, FIXTURE_WEEKLY_CI_STRADDLES_ZERO };
+  return { clientFetchSpy, FIXTURE_HEADLINE_NORMAL, FIXTURE_HEADLINE_ZERO_OVERLAP, FIXTURE_DIVERGENCE, FIXTURE_EMPTY, FIXTURE_WEEKLY_NORMAL, FIXTURE_WEEKLY_EMPTY, FIXTURE_WEEKLY_NEGATIVE_LIFT, FIXTURE_WEEKLY_CI_STRADDLES_ZERO, FIXTURE_WEEKLY_MIXED };
 });
 
 vi.mock('$lib/clientFetch', () => ({
@@ -341,22 +378,6 @@ describe('CampaignUpliftCard', () => {
     const trigger = container.querySelector('[data-testid="uplift-details-trigger"]');
     expect(trigger).not.toBeNull();
     expect(trigger?.getAttribute('aria-expanded')).toBe('false');
-  });
-
-  it.skip('layerchart_contract — sparkline uses Spline + Area at fill-opacity 0.06', async () => {
-    // Phase 18 Plan 05: replaced by bar_chart_contract (Bars + CI whiskers replaces Spline + Area).
-    // Skipped here so Plan 04 doesn't fail on the pre-Plan-05 removal; Plan 05 finalizes.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (clientFetchSpy as any).__activeFixture.current = FIXTURE_HEADLINE_NORMAL;
-    const { container } = render(CampaignUpliftCard);
-    await flush();
-    const paths = container.querySelectorAll('svg path');
-    // Expect at least an Area (CI band) + Spline (cumulative line) = 2 paths.
-    expect(paths.length).toBeGreaterThanOrEqual(2);
-    const opacityHit = Array.from(paths).some(
-      (p) => p.getAttribute('fill-opacity') === '0.06' || p.getAttribute('fill-opacity') === '.06'
-    );
-    expect(opacityHit).toBe(true);
   });
 
   it('tooltip_snippet_contract — Tooltip.Root uses {#snippet children(...)} not let:data (Svelte 5 runtime)', () => {
@@ -488,5 +509,64 @@ describe('CampaignUpliftCard', () => {
     // Either is acceptable — the key contract is NO hero number and NO date range.
     expect(text).not.toMatch(/\+€\d+|−€\d+/);
     expect(container.querySelector('[data-testid="uplift-week-headline-range"]')).toBeNull();
+  });
+
+  // ----- Phase 18 Plan 05 — bar chart contract tests -----
+
+  it('bar_chart_contract — renders Bars + per-bar Rule whiskers when weekly_history is non-empty', async () => {
+    // FIXTURE_WEEKLY_NORMAL has 3 weeks of sarimax data.
+    // Expects: uplift-week-bar-chart container + rect elements (bars) + line elements (whiskers).
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (clientFetchSpy as any).__activeFixture.current = FIXTURE_WEEKLY_NORMAL;
+    const { container } = render(CampaignUpliftCard);
+    await flush();
+    const chart = container.querySelector('[data-testid="uplift-week-bar-chart"]');
+    expect(chart).not.toBeNull();
+    // At least 2 rect/line shapes per data row (bars + whiskers).
+    const allShapes = chart!.querySelectorAll('rect, line');
+    expect(allShapes.length).toBeGreaterThanOrEqual(7);
+  });
+
+  it('bar_chart_color_coding — applies fill-emerald-500 / fill-rose-500 / fill-zinc-400 by CI band sign', async () => {
+    // FIXTURE_WEEKLY_MIXED has 1 emerald (ci_lower>0), 1 rose (ci_upper<0), 1 zinc (straddles).
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (clientFetchSpy as any).__activeFixture.current = FIXTURE_WEEKLY_MIXED;
+    const { container } = render(CampaignUpliftCard);
+    await flush();
+    const chart = container.querySelector('[data-testid="uplift-week-bar-chart"]')!;
+    expect(chart).not.toBeNull();
+    expect(chart.querySelector('.fill-emerald-500')).not.toBeNull();
+    expect(chart.querySelector('.fill-rose-500')).not.toBeNull();
+    expect(chart.querySelector('.fill-zinc-400')).not.toBeNull();
+  });
+
+  it('tap_to_scrub — clicking a bar updates selectedWeekIndex; hero re-renders', async () => {
+    // FIXTURE_WEEKLY_NORMAL: 3 weeks ascending — hero defaults to last (W19, point_eur=880).
+    // Clicking the FIRST bar (W17) should change the hero to W17's data (point_eur=450).
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (clientFetchSpy as any).__activeFixture.current = FIXTURE_WEEKLY_NORMAL;
+    const { container, getByTestId } = render(CampaignUpliftCard);
+    await flush();
+    const heroBefore = getByTestId('uplift-week-headline-range').textContent;
+    // Pick the FIRST bar (oldest week — different from default last).
+    const allBars = container.querySelectorAll('[data-testid="uplift-week-bar-chart"] rect');
+    const barRects = [...allBars].filter((r) =>
+      r.classList.contains('fill-emerald-500') ||
+      r.classList.contains('fill-rose-500') ||
+      r.classList.contains('fill-zinc-400')
+    );
+    expect(barRects.length).toBeGreaterThan(0);
+    barRects[0].dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    await flush();
+    const heroAfter = getByTestId('uplift-week-headline-range').textContent;
+    expect(heroAfter).not.toBe(heroBefore);  // hero changed
+  });
+
+  it('empty_weekly_history — uplift-week-bar-chart not in DOM when weekly_history is []', async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (clientFetchSpy as any).__activeFixture.current = FIXTURE_WEEKLY_EMPTY;
+    const { container } = render(CampaignUpliftCard);
+    await flush();
+    expect(container.querySelector('[data-testid="uplift-week-bar-chart"]')).toBeNull();
   });
 });
