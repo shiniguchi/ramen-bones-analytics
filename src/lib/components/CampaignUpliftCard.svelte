@@ -29,8 +29,8 @@
   // NaN x/width on every <rect>. Falling back to Option C: manual <rect> elements rendered
   // via {#each weeklyHistory} inside <Svg>, using chartCtx.xScale / chartCtx.yScale to
   // compute positions. Colors via weekColorClass(). Bar onclick directly sets selectedWeekIndex.
-  import { Chart, Svg, Tooltip, Axis, Rule } from 'layerchart';
-  import { scaleBand } from 'd3-scale';
+  import { Chart, Svg, Tooltip, Axis, Rule, Spline, Area } from 'layerchart';
+  import { scaleTime } from 'd3-scale';
   import { parseISO } from 'date-fns';
   import { clientFetch } from '$lib/clientFetch';
   import { page } from '$app/state';
@@ -54,11 +54,13 @@
     channel: string | null;
     rows: UpliftBlockRow[];
   };
-  type DailyPoint = {
+  // Phase 20: replaces cumulative DailyPoint with per-day actual vs CF yhat.
+  type DailyLinePoint = {
     date: string;
-    cumulative_uplift_eur: number;
-    ci_lower_eur: number;
-    ci_upper_eur: number;
+    actual_eur: number | null;
+    cf_yhat_eur: number;
+    cf_lower_eur: number;
+    cf_upper_eur: number;
   };
   // Phase 18 Plan 04 — WeeklyHistoryPoint shape returned by /api/campaign-uplift.
   type WeeklyHistoryPoint = {
@@ -78,7 +80,7 @@
     ci_lower_eur: number | null;
     ci_upper_eur: number | null;
     naive_dow_uplift_eur: number | null;
-    daily: DailyPoint[];
+    daily_lines: DailyLinePoint[];   // Phase 20: actual vs CF yhat per day
     weekly_history: WeeklyHistoryPoint[];   // Phase 18 Plan 04 — NEW
     campaigns: CampaignBlock[];
   };
@@ -100,6 +102,23 @@
   const weeklyHistory = $derived.by(() => {
     const arr = data?.weekly_history?.filter((w) => w.model_name === 'sarimax') ?? [];
     return [...arr].sort((a, b) => a.iso_week_end.localeCompare(b.iso_week_end));
+  });
+
+  // Phase 20: day-level CF line chart data and y-domain bounds.
+  const dailyLines = $derived(data?.daily_lines ?? []);
+  const yDomainMin = $derived.by(() => {
+    const vals = [
+      ...dailyLines.map((r) => r.cf_lower_eur),
+      ...dailyLines.filter((r) => r.actual_eur != null).map((r) => r.actual_eur!)
+    ];
+    return vals.length ? Math.min(...vals) : 0;
+  });
+  const yDomainMax = $derived.by(() => {
+    const vals = [
+      ...dailyLines.map((r) => r.cf_upper_eur),
+      ...dailyLines.filter((r) => r.actual_eur != null).map((r) => r.actual_eur!)
+    ];
+    return vals.length ? Math.max(...vals) : 100;
   });
 
   // weekColorClass: mirrors verdictColorClass() in ModelAvailabilityDisclosure.svelte:38-57.
@@ -321,141 +340,128 @@
       })}
     </p>
 
-    <!-- Phase 18 Plan 05 — weekly bar chart history with CI whiskers + tap-to-scrub.
-         Replaces the Phase 16.1 Spline+Area cumulative sparkline.
-         Decision B PRIMARY (Option B): three filtered <Bars> blocks per color class.
-         touchEvents:'auto' + chart-touch-safe per feedback_layerchart_mobile_scroll.md.
+    <!-- Phase 20: day-granularity dual-line counterfactual chart.
+         Actual revenue (solid dark) vs SARIMAX CF yhat (dashed) with CI band.
+         Completed ISO weeks overlaid as click-to-scrub color bands.
+         touchEvents:'auto' per feedback_layerchart_mobile_scroll.md.
          Tooltip.Root snippet form per feedback_svelte5_tooltip_snippet.md. -->
-    {#if weeklyHistory.length > 0}
-      <!-- D-18 Y-axis label (W4 LOCKED: above-Chart <p>, not in-Svg Axis primitive) -->
+    {#if dailyLines.length > 0}
       <p class="text-[11px] text-zinc-500 mb-1 mt-3">{t(page.data.locale, 'uplift_sparkline_y_label')}</p>
       <div
         class="chart-touch-safe"
-        style:width="280px"
-        style:height="100px"
+        style:width="100%"
+        style:height="160px"
         style:overflow="hidden"
         data-testid="uplift-week-bar-chart"
       >
         <Chart
           bind:context={chartCtx}
-          data={weeklyHistory}
-          x="iso_week_start"
-          y="point_eur"
-          xScale={scaleBand().padding(0.1)}
-          yDomain={[
-            Math.min(0, ...weeklyHistory.map((w) => w.point_eur)),
-            Math.max(0, ...weeklyHistory.map((w) => w.point_eur))
-          ]}
-          yNice={3}
-          padding={{ left: 36, right: 4, top: 4, bottom: 20 }}
-          tooltipContext={{ mode: 'band', touchEvents: 'auto' }}
+          data={dailyLines}
+          x={(r) => parseISO((r as DailyLinePoint).date)}
+          y={(r) => (r as DailyLinePoint).actual_eur ?? (r as DailyLinePoint).cf_yhat_eur}
+          xScale={scaleTime()}
+          yDomain={[yDomainMin, yDomainMax]}
+          yNice={4}
+          padding={{ left: 44, right: 4, top: 24, bottom: 20 }}
+          tooltipContext={{ mode: 'bisect-x', touchEvents: 'auto' }}
         >
           <Svg>
-            <!-- Y-axis: 3 ticks (€) matching existing sparkline tick density -->
             <Axis
               placement="left"
-              ticks={3}
-              format={(v: number) => (v < 0 ? '−€' : '€') + Math.abs(Math.round(v))}
+              ticks={4}
+              format={(v: number) => v >= 1000 ? '€' + (v / 1000).toFixed(1) + 'k' : '€' + Math.round(v)}
               rule
             />
-
-            <!-- X-axis: ISO week short date labels (e.g. "Apr 20").
-                 Claude's Discretion: short date 'Apr 20' over 'W17' per CONTEXT.md line 80
-                 (mobile readability — week numbers are not self-explanatory for owners). -->
             <Axis
               placement="bottom"
-              format={(v: string) => {
-                const fmt = new Intl.DateTimeFormat(page.data.locale, { month: 'short', day: 'numeric' });
-                return fmt.format(parseISO(v));
-              }}
+              ticks={Math.max(weeklyHistory.length + 1, 2)}
+              format={(v: Date) => new Intl.DateTimeFormat(page.data.locale, { month: 'short', day: 'numeric' }).format(v)}
               rule
             />
 
-            <!-- Dashed y=0 baseline — preserved from previous sparkline (D-15).
-                 kebab-case stroke-dasharray flows through SVGAttributes unchanged. -->
-            <Rule y={0} class="stroke-zinc-500" stroke-dasharray="4 4" />
-
-            <!-- CI whiskers — one Rule per data row inside <Svg>.
-                 Rule y={[lo, hi]} draws a vertical segment between two y-values
-                 at the bar's x-band center (RESEARCH §3 line 213-228).
-                 No built-in error-bar primitive in LayerChart 2.x — composed manually. -->
-            {#each weeklyHistory as wk (wk.iso_week_end)}
-              <Rule
-                x={wk.iso_week_start}
-                y={[wk.ci_lower_eur, wk.ci_upper_eur]}
-                class="stroke-zinc-700"
-                stroke-width={1.5}
-              />
-            {/each}
-
-            <!-- Decision B FALLBACK — Option C: manual <rect> per week via chartCtx.
-                 Option B (three filtered <Bars>) failed: each <Bars data={subset}>
-                 computed its own band-scale domain, producing NaN x/width for all bars.
-                 Option C uses chartCtx.xScale/yScale directly — band domain is from
-                 the full weeklyHistory, so every iso_week_start maps to a valid pixel.
-                 T-18-11 guard: onclick sets selectedWeekIndex = i directly (no findIndex). -->
+            <!-- Completed-week verdict bands (green = positive CI, red = negative, gray = inconclusive).
+                 Clickable to scrub the headline week selector. Uses chartCtx pixel coords. -->
             {#each weeklyHistory as wk, i (wk.iso_week_end)}
-              {@const bx = chartCtx?.xScale?.(wk.iso_week_start) ?? 0}
-              {@const bw = chartCtx?.xScale?.bandwidth?.() ?? 0}
-              {@const by = chartCtx?.yScale?.(Math.max(wk.point_eur, 0)) ?? 0}
-              {@const bh = chartCtx?.yScale
-                ? Math.abs(chartCtx.yScale(0) - chartCtx.yScale(wk.point_eur))
-                : 0}
+              {@const x1 = chartCtx?.xScale?.(parseISO(wk.iso_week_start)) ?? 0}
+              {@const x2 = chartCtx?.xScale?.(parseISO(wk.iso_week_end)) ?? 0}
+              {@const [yTop, yBottom] = chartCtx?.yRange ?? [0, 100]}
+              {@const isSelected = selectedWeekIndex === i}
               <rect
-                x={bx}
-                y={by}
-                width={bw}
-                height={bh}
-                class={weekColorClass(wk)}
-                rx={2}
+                x={x1}
+                y={yTop}
+                width={Math.max(0, x2 - x1)}
+                height={Math.max(0, yBottom - yTop)}
+                class={wk.ci_lower_eur > 0 ? 'fill-emerald-500' : wk.ci_upper_eur < 0 ? 'fill-rose-500' : 'fill-zinc-400'}
+                fill-opacity={isSelected ? 0.13 : 0.07}
+                stroke={isSelected ? '#52525b' : 'none'}
+                stroke-width={1}
                 role="button"
-                tabindex="0"
+                tabindex={i}
                 onclick={() => (selectedWeekIndex = i)}
                 onkeydown={(e) => e.key === 'Enter' && (selectedWeekIndex = i)}
-                data-testid="uplift-week-bar"
+                data-testid="uplift-week-band"
                 data-week-index={i}
               />
+              <!-- Week verdict label (€ delta) at top of band -->
+              <text
+                x={(x1 + x2) / 2}
+                y={yTop + 12}
+                text-anchor="middle"
+                class={wk.ci_lower_eur > 0
+                  ? 'fill-emerald-600 text-[9px] font-medium tabular-nums'
+                  : wk.ci_upper_eur < 0
+                    ? 'fill-rose-600 text-[9px] font-medium tabular-nums'
+                    : 'fill-zinc-500 text-[9px] font-medium tabular-nums'}
+                pointer-events="none"
+              >
+                {wk.point_eur >= 0 ? '+' : ''}€{Math.abs(Math.round(wk.point_eur)).toLocaleString('de-DE')}
+              </text>
             {/each}
 
-            <!-- Selected-bar highlight overlay: 2px outline rect over the selected bar.
-                 Only rendered when a bar has been tapped (selectedWeekIndex !== null)
-                 and chartCtx has been bound. -->
-            {#if selectedWeekIndex !== null && chartCtx?.xScale}
-              {@const selectedWk = weeklyHistory[selectedWeekIndex]}
-              {#if selectedWk}
-                <rect
-                  x={chartCtx.xScale(selectedWk.iso_week_start)}
-                  y={chartCtx.yScale(Math.max(selectedWk.point_eur, 0))}
-                  width={chartCtx.xScale.bandwidth()}
-                  height={Math.abs(chartCtx.yScale(0) - chartCtx.yScale(selectedWk.point_eur))}
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width={2}
-                  class="text-zinc-900"
-                  rx={2}
-                  pointer-events="none"
-                />
-              {/if}
-            {/if}
+            <!-- CF 95% CI band (gray shaded area) -->
+            <Area
+              data={dailyLines}
+              x={(r) => parseISO((r as DailyLinePoint).date)}
+              y0={(r) => (r as DailyLinePoint).cf_lower_eur}
+              y1={(r) => (r as DailyLinePoint).cf_upper_eur}
+              fill="rgb(161,161,170)"
+              fillOpacity={0.1}
+            />
+            <!-- CF yhat line (dashed) -->
+            <Spline
+              data={dailyLines}
+              x={(r) => parseISO((r as DailyLinePoint).date)}
+              y={(r) => (r as DailyLinePoint).cf_yhat_eur}
+              class="stroke-zinc-400"
+              strokeWidth={1.5}
+              stroke-dasharray="4 4"
+            />
+            <!-- Actual revenue line (solid dark) — only days with actuals -->
+            <Spline
+              data={dailyLines.filter((r) => r.actual_eur != null)}
+              x={(r) => parseISO((r as DailyLinePoint).date)}
+              y={(r) => (r as DailyLinePoint).actual_eur!}
+              class="stroke-zinc-800"
+              strokeWidth={2}
+            />
           </Svg>
 
-          <!-- Tooltip.Root: snippet form required per feedback_svelte5_tooltip_snippet.md.
-               The older shorthand binding (Svelte 4 slot syntax) throws
-               invalid_default_snippet at runtime on Svelte 5 — use snippet form only.
-               T-18-13 mitigation: all interpolations use Svelte auto-escaping; no {@html}. -->
           <Tooltip.Root>
             {#snippet children({ data: pt })}
               {#if pt}
+                {@const p = pt as DailyLinePoint}
+                {@const delta = p.actual_eur != null ? p.actual_eur - p.cf_yhat_eur : null}
                 <div class="rounded-md bg-zinc-900 px-2 py-1 text-xs text-white shadow-md">
                   <div class="font-medium">
-                    Week of {formatHeadlineWeekRange(pt as WeeklyHistoryPoint, page.data.locale)}
+                    {new Intl.DateTimeFormat(page.data.locale, { month: 'short', day: 'numeric' }).format(parseISO(p.date))}
                   </div>
-                  <div class="tabular-nums">
-                    {(pt as WeeklyHistoryPoint).point_eur >= 0 ? '+' : ''}{Math.round((pt as WeeklyHistoryPoint).point_eur)} €
-                  </div>
-                  <div class="text-[10px] text-zinc-300 tabular-nums">
-                    95% CI: {Math.round((pt as WeeklyHistoryPoint).ci_lower_eur)}–{Math.round((pt as WeeklyHistoryPoint).ci_upper_eur)} €
-                  </div>
+                  {#if p.actual_eur != null}
+                    <div class="tabular-nums">{t(page.data.locale, 'uplift_actual_label')}: €{Math.round(p.actual_eur)}</div>
+                  {/if}
+                  <div class="tabular-nums text-zinc-300">{t(page.data.locale, 'uplift_baseline_label')}: €{Math.round(p.cf_yhat_eur)}</div>
+                  {#if delta != null}
+                    <div class="tabular-nums text-zinc-400">{delta >= 0 ? '+' : ''}€{Math.round(delta)}/day</div>
+                  {/if}
                 </div>
               {/if}
             {/snippet}
@@ -463,18 +469,16 @@
         </Chart>
       </div>
 
-      <!-- Phase 18 Plan 06 — bar chart caption + X axis label -->
-      <p class="mt-1 text-center text-xs text-zinc-500" data-testid="uplift-bar-chart-caption">
-        {t(page.data.locale, 'uplift_bar_chart_caption')}
-      </p>
-      <p class="text-[11px] text-zinc-400 text-center mt-1" data-testid="uplift-sparkline-x-caption">
-        {t(page.data.locale, 'uplift_history_x_axis_label')}
-      </p>
-
-      <!-- D-18 counterfactual baseline legend chip (preserved) -->
-      <div class="flex items-center gap-1 text-[11px] text-zinc-500 mt-1" data-testid="uplift-baseline-chip">
-        <span aria-hidden="true" class="block w-3 h-px border-t border-dashed border-zinc-400"></span>
-        {t(page.data.locale, 'uplift_baseline_label')}
+      <!-- Dual-line legend -->
+      <div class="flex items-center gap-3 mt-1 text-[10px] text-zinc-500" data-testid="uplift-line-legend">
+        <div class="flex items-center gap-1">
+          <span aria-hidden="true" class="block w-3 h-0.5 bg-zinc-800 rounded"></span>
+          {t(page.data.locale, 'uplift_actual_label')}
+        </div>
+        <div class="flex items-center gap-1">
+          <span aria-hidden="true" class="block w-3 h-px border-t border-dashed border-zinc-400"></span>
+          {t(page.data.locale, 'uplift_baseline_label')}
+        </div>
       </div>
     {/if}
 

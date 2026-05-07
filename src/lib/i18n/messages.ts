@@ -212,16 +212,15 @@ const en = {
   uplift_details_anticipation_plain: 'We compare your actual revenue against what the model predicted from data 7+ days before the campaign launched, so any pre-launch anticipation isn\'t counted as campaign uplift.',
   uplift_details_divergence_plain: 'Two of our checks disagree — we\'d want more weeks of data before drawing conclusions.',
 
-  // --- Campaign uplift card supportive labels (Phase 16.1 D-18) ---
+  // --- Campaign uplift card supportive labels (Phase 16.1 D-18 / Phase 20) ---
   uplift_card_subtitle: 'Comparing your actual revenue since launch against what the model predicted without the campaign.',
-  uplift_sparkline_y_label: 'Cumulative revenue impact (€)',
+  uplift_sparkline_y_label: 'Revenue (€)',
   uplift_sparkline_x_caption: 'Days since campaign launch',
-  uplift_baseline_label: 'Dashed line = no campaign baseline',
+  uplift_baseline_label: 'Without campaign (model)',
+  uplift_actual_label: 'Actual',
 
   // --- Phase 18 weekly counterfactual window labels (UPL-08, UPL-09) ---
   uplift_week_label: 'Week of {start} – {end}',
-  uplift_bar_chart_caption: 'Weekly revenue lift since campaign launch',
-  uplift_history_x_axis_label: 'Week',
 
   // --- Forecast model display labels (Phase 16.1 D-16) ---
   forecast_model_sarimax: 'SARIMAX',
@@ -478,18 +477,17 @@ const de: Record<MessageKey, string> = {
   uplift_details_anticipation_plain: 'We compare your actual revenue against what the model predicted from data 7+ days before the campaign launched, so any pre-launch anticipation isn\'t counted as campaign uplift.',
   uplift_details_divergence_plain: 'Two of our checks disagree — we\'d want more weeks of data before drawing conclusions.',
 
-  // --- Campaign uplift card supportive labels (Phase 16.1 D-18 — DE placeholder = EN; v1.4 backlog) ---
+  // --- Campaign uplift card supportive labels (Phase 16.1 D-18 / Phase 20 — DE placeholder = EN) ---
   uplift_card_subtitle: 'Comparing your actual revenue since launch against what the model predicted without the campaign.',
-  uplift_sparkline_y_label: 'Cumulative revenue impact (€)',
+  uplift_sparkline_y_label: 'Revenue (€)',
   uplift_sparkline_x_caption: 'Days since campaign launch',
-  uplift_baseline_label: 'Dashed line = no campaign baseline',
+  uplift_baseline_label: 'Without campaign (model)',
+  uplift_actual_label: 'Actual',
 
-  // --- Phase 18 weekly counterfactual labels — DE placeholder = EN; v1.4 polish backlog item filed ---
+  // --- Phase 18 weekly counterfactual labels — DE placeholder = EN ---
   uplift_week_label: 'Week of {start} – {end}',
-  uplift_bar_chart_caption: 'Weekly revenue lift since campaign launch',
-  uplift_history_x_axis_label: 'Week',
 
-  // --- Forecast model display labels (Phase 16.1 D-16 — DE placeholder = EN; v1.4 backlog) ---
+  // --- Forecast model display labels (Phase 16.1 D-16 — DE placeholder = EN) ---
   forecast_model_sarimax: 'SARIMAX',
   forecast_model_prophet: 'Prophet',
   forecast_model_ets: 'ETS',
@@ -738,16 +736,15 @@ const ja: Record<MessageKey, string> = {
   uplift_details_anticipation_plain: 'キャンペーン開始の7日以上前のデータでモデルが予測した売上と、実際の売上を比べています。開始前の期待感による売上の動きはキャンペーンの効果には含めません。',
   uplift_details_divergence_plain: '2つのチェック方法で結果が違いました — 結論を出す前にもう少しデータを集めたいところです。',
 
-  // --- Campaign uplift card supportive labels (Phase 16.1 D-18) ---
+  // --- Campaign uplift card supportive labels (Phase 16.1 D-18 / Phase 20) ---
   uplift_card_subtitle: 'キャンペーン開始後の実際の売上と、キャンペーンがなかった場合のモデル予測を比較しています。',
-  uplift_sparkline_y_label: '累計売上影響額（€）',
+  uplift_sparkline_y_label: '売上（€）',
   uplift_sparkline_x_caption: 'キャンペーン開始からの経過日数',
-  uplift_baseline_label: '点線 = キャンペーンなしの基準',
+  uplift_baseline_label: 'キャンペーンなし（モデル）',
+  uplift_actual_label: '実績',
 
   // --- Phase 18 週次反事実ラベル (UPL-08, UPL-09) ---
   uplift_week_label: '{start} – {end} の週',
-  uplift_bar_chart_caption: 'キャンペーン開始後の週次売上リフト',
-  uplift_history_x_axis_label: '週',
 
   // --- Forecast model display labels (Phase 16.1 D-16) ---
   forecast_model_sarimax: 'SARIMAX',
@@ -999,18 +996,17 @@ const es: Record<MessageKey, string> = {
   uplift_details_anticipation_plain: 'We compare your actual revenue against what the model predicted from data 7+ days before the campaign launched, so any pre-launch anticipation isn\'t counted as campaign uplift.',
   uplift_details_divergence_plain: 'Two of our checks disagree — we\'d want more weeks of data before drawing conclusions.',
 
-  // --- Campaign uplift card supportive labels (Phase 16.1 D-18 — ES placeholder = EN; v1.4 backlog) ---
+  // --- Campaign uplift card supportive labels (Phase 16.1 D-18 / Phase 20 — ES placeholder = EN) ---
   uplift_card_subtitle: 'Comparing your actual revenue since launch against what the model predicted without the campaign.',
-  uplift_sparkline_y_label: 'Cumulative revenue impact (€)',
+  uplift_sparkline_y_label: 'Revenue (€)',
   uplift_sparkline_x_caption: 'Days since campaign launch',
-  uplift_baseline_label: 'Dashed line = no campaign baseline',
+  uplift_baseline_label: 'Without campaign (model)',
+  uplift_actual_label: 'Actual',
 
-  // --- Phase 18 weekly counterfactual labels — ES placeholder = EN; v1.4 polish backlog item filed ---
+  // --- Phase 18 weekly counterfactual labels — ES placeholder = EN ---
   uplift_week_label: 'Week of {start} – {end}',
-  uplift_bar_chart_caption: 'Weekly revenue lift since campaign launch',
-  uplift_history_x_axis_label: 'Week',
 
-  // --- Forecast model display labels (Phase 16.1 D-16 — ES placeholder = EN; v1.4 backlog) ---
+  // --- Forecast model display labels (Phase 16.1 D-16 — ES placeholder = EN) ---
   forecast_model_sarimax: 'SARIMAX',
   forecast_model_prophet: 'Prophet',
   forecast_model_ets: 'ETS',
@@ -1260,18 +1256,17 @@ const fr: Record<MessageKey, string> = {
   uplift_details_anticipation_plain: 'We compare your actual revenue against what the model predicted from data 7+ days before the campaign launched, so any pre-launch anticipation isn\'t counted as campaign uplift.',
   uplift_details_divergence_plain: 'Two of our checks disagree — we\'d want more weeks of data before drawing conclusions.',
 
-  // --- Campaign uplift card supportive labels (Phase 16.1 D-18 — FR placeholder = EN; v1.4 backlog) ---
+  // --- Campaign uplift card supportive labels (Phase 16.1 D-18 / Phase 20 — FR placeholder = EN) ---
   uplift_card_subtitle: 'Comparing your actual revenue since launch against what the model predicted without the campaign.',
-  uplift_sparkline_y_label: 'Cumulative revenue impact (€)',
+  uplift_sparkline_y_label: 'Revenue (€)',
   uplift_sparkline_x_caption: 'Days since campaign launch',
-  uplift_baseline_label: 'Dashed line = no campaign baseline',
+  uplift_baseline_label: 'Without campaign (model)',
+  uplift_actual_label: 'Actual',
 
-  // --- Phase 18 weekly counterfactual labels — FR placeholder = EN; v1.4 polish backlog item filed ---
+  // --- Phase 18 weekly counterfactual labels — FR placeholder = EN ---
   uplift_week_label: 'Week of {start} – {end}',
-  uplift_bar_chart_caption: 'Weekly revenue lift since campaign launch',
-  uplift_history_x_axis_label: 'Week',
 
-  // --- Forecast model display labels (Phase 16.1 D-16 — FR placeholder = EN; v1.4 backlog) ---
+  // --- Forecast model display labels (Phase 16.1 D-16 — FR placeholder = EN) ---
   forecast_model_sarimax: 'SARIMAX',
   forecast_model_prophet: 'Prophet',
   forecast_model_ets: 'ETS',
