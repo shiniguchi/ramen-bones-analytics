@@ -274,19 +274,21 @@ export const GET: RequestHandler = async ({ locals, url }) => {
     type BacktestVerdict = 'PASS' | 'FAIL' | 'PENDING' | 'UNCALIBRATED' | null;
     type ModelBacktestRow = { h7?: BacktestVerdict; h35?: BacktestVerdict; h120?: BacktestVerdict; h365?: BacktestVerdict };
 
-    // Revenue RMSE only (disclosure shows "7d RMSE €"). Null-rmse rows (folds
-    // with no eval actuals) are excluded so they don't shadow real data in the
-    // dedupeKey loop below.
+    // Aggregate rows only (fold_index IS NULL, rmse IS NOT NULL) — these are written
+    // by backtest.py after the gate decision and contain the mean RMSE across all folds,
+    // which is exactly the value the gate used. Per-fold rows (fold_index 0..3) and
+    // conformal sentinel rows (fold_index NULL, rmse NULL) are excluded.
     const { data: backtestRows } = await locals.supabase
       .from('forecast_quality')
       .select('model_name,horizon_days,gate_verdict,rmse,evaluated_at')
       .eq('evaluation_window', 'rolling_origin_cv')
       .eq('kpi_name', 'revenue_eur')
+      .is('fold_index', null)
       .not('rmse', 'is', null)
       .order('evaluated_at', { ascending: false })
-      .limit(2000);
+      .limit(500);
 
-    // Latest verdict + RMSE per (model, horizon) — skip duplicates from earlier runs.
+    // Latest aggregate verdict + mean RMSE per (model, horizon) — dedup from earlier runs.
     const HORIZON_KEY: Record<number, keyof ModelBacktestRow> = { 7: 'h7', 35: 'h35', 120: 'h120', 365: 'h365' };
     const seen = new Set<string>();
     const modelBacktestStatus: Record<string, ModelBacktestRow> = {};

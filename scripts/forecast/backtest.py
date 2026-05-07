@@ -386,7 +386,7 @@ def _gate_decision(
     kpi: str,
     horizon: int,
     evaluation_window: str = 'rolling_origin_cv',  # legacy day-grain default
-) -> dict[str, str]:
+) -> tuple[dict[str, str], dict[str, float]]:
     """Compute PASS/FAIL/PENDING/UNCALIBRATED verdict per model for one (kpi, horizon).
 
     Args:
@@ -396,7 +396,8 @@ def _gate_decision(
         evaluation_window: evaluation_window value to filter on (grain-scoped).
 
     Returns:
-        {model_name: verdict_str} — empty dict if no rows.
+        Tuple of ({model_name: verdict_str}, {model_name: mean_rmse}).
+        Both dicts are empty if no rows. mean_rmse is empty for UNCALIBRATED/PENDING.
 
     Gate rule (BCK-03 / D-04):
         baseline = max(naive_dow_mean_rmse, naive_dow_with_holidays_mean_rmse)
@@ -414,7 +415,7 @@ def _gate_decision(
         and r['evaluation_window'] == evaluation_window
     ]
     if not rows_at_h:
-        return {}
+        return {}, {}
 
     # Collect RMSE values per model across folds
     rmses_by_model: dict[str, list[float]] = defaultdict(list)
@@ -423,11 +424,11 @@ def _gate_decision(
             rmses_by_model[r['model_name']].append(float(r['rmse']))
 
     if not rmses_by_model:
-        return {}
+        return {}, {}
 
     # UNCALIBRATED for long horizons regardless of RMSE (BCK-02)
     if horizon in UNCALIBRATED_HORIZONS:
-        return {m: 'UNCALIBRATED' for m in rmses_by_model}
+        return {m: 'UNCALIBRATED' for m in rmses_by_model}, {}
 
     # Compute mean RMSE per model
     mean_rmse = {m: float(np.mean(rs)) for m, rs in rmses_by_model.items()}
@@ -447,21 +448,20 @@ def _gate_decision(
         or not np.isfinite(baseline_dow)
         or not np.isfinite(baseline_dow_h)
     ):
-        return {m: 'PENDING' for m in mean_rmse}
+        return {m: 'PENDING' for m in mean_rmse}, {}
     baseline = max(baseline_dow, baseline_dow_h)
     threshold = baseline * GATE_THRESHOLD
 
     verdicts: dict[str, str] = {}
     for m, rmse in mean_rmse.items():
         if m in BASELINE_MODELS:
-            # Baselines always PASS — they define the floor (R7 guard)
             verdicts[m] = 'PASS'
         elif rmse <= threshold:
             verdicts[m] = 'PASS'
         else:
             verdicts[m] = 'FAIL'
 
-    return verdicts
+    return verdicts, mean_rmse
 
 
 def _apply_gate_to_feature_flags(
@@ -778,14 +778,19 @@ def main(models: list[str], run_date: date) -> int:
                             grain=granularity,
                         )
 
-                        # Track for in-memory gate computation
+                        # Track for in-memory gate computation + aggregate row write
                         quality_rows.append({
                             'kpi_name': kpi,
                             'model_name': model,
                             'horizon_days': horizon,
                             'rmse': metrics['rmse'],
+                            'mape': metrics.get('mape'),
+                            'mean_bias': metrics.get('mean_bias'),
+                            'direction_hit_rate': metrics.get('direction_hit_rate'),
+                            'n_days': metrics.get('n_days', 0),
                             'evaluation_window': eval_window,
                             'fold_index': fold_idx,
+                            'granularity': granularity,
                         })
 
                         # Collect h=35 signed residuals for conformal calibration (BCK-02)
@@ -843,7 +848,7 @@ def main(models: list[str], run_date: date) -> int:
             eval_window = _eval_window_for_grain(granularity)
             for kpi in KPIS:
                 for horizon in HORIZONS_BY_GRAIN[granularity]:
-                    verdicts = _gate_decision(
+                    verdicts, mean_rmse = _gate_decision(
                         quality_rows, kpi=kpi, horizon=horizon,
                         evaluation_window=eval_window,
                     )
@@ -853,7 +858,7 @@ def main(models: list[str], run_date: date) -> int:
                     for model, verdict in verdicts.items():
                         per_model_per_horizon_verdicts[model][horizon] = verdict
 
-                        # Update gate_verdict on the already-written forecast_quality rows
+                        # Update gate_verdict on the already-written fold rows
                         # Scoped to: this run's rows (evaluated_at >= started_at)
                         client.table('forecast_quality').update(
                             {'gate_verdict': verdict}
@@ -866,6 +871,27 @@ def main(models: list[str], run_date: date) -> int:
                         ).gte(
                             'evaluated_at', started_at.isoformat()
                         ).execute()
+
+                    # Write one aggregate row (fold_index=NULL) per model with mean
+                    # RMSE across folds — this is what the UI should display, matching
+                    # exactly the RMSE the gate used. UNCALIBRATED/PENDING slices
+                    # return empty mean_rmse, so no aggregate row is written for those.
+                    for model, rmse in mean_rmse.items():
+                        verdict = verdicts.get(model, 'PENDING')
+                        _write_quality_row(
+                            client,
+                            restaurant_id=restaurant_id,
+                            kpi_name=kpi,
+                            model=model,
+                            horizon=horizon,
+                            fold_idx=None,
+                            train_end=None,
+                            eval_start=None,
+                            metrics={'rmse': rmse, 'n_days': 0, 'mape': 0.0,
+                                     'mean_bias': 0.0, 'direction_hit_rate': 0.0},
+                            gate_verdict=verdict,
+                            grain=granularity,
+                        )
 
         # Aggregate per model: enabled iff PASS at ALL evaluable horizons
         # PENDING and UNCALIBRATED do not flip (gate is silent until evaluable)
