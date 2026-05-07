@@ -60,7 +60,7 @@ A restaurant owner opens the site on their phone and makes a real business decis
 <details open>
 <summary>v1.4 Weekly Campaign Read (Phase 18) — IMPLEMENTING (6/7 plans done, opened 2026-05-07)</summary>
 
-- [ ] **Phase 18: Weekly Counterfactual Window** — replace CampaignUpliftCard cumulative-since-launch headline with per-ISO-week (Mon–Sun) counterfactual + bar-chart history of all completed weeks (CI whiskers, color-coded by significance, tap-to-scrub hero)
+- [x] **Phase 18: Weekly Counterfactual Window** — replace CampaignUpliftCard cumulative-since-launch headline with per-ISO-week (Mon–Sun) counterfactual + bar-chart history of all completed weeks (CI whiskers, color-coded by significance, tap-to-scrub hero)
 
 </details>
 
@@ -452,7 +452,7 @@ Plans:
   - [x] 18-04-PLAN.md — CampaignUpliftCard hero rewrite (Decision A: weeks-since-launch tier source) (UPL-08, UPL-09) — shipped 2026-05-07 (RED 81ea4db → GREEN eca9696; localhost QA checkpoint pending)
   - [x] 18-05-PLAN.md — bar chart + CI whiskers + tap-to-scrub (Option C fallback: manual <rect> via chartCtx) (UPL-08, UPL-09) — shipped 2026-05-07 (RED 462dbd7 → GREEN b25249c → fix 90fba8e; localhost QA PASS)
   - [x] 18-06-PLAN.md — i18n keys (uplift_week_label etc.) + ModelAvailabilityDisclosure compatibility check (UPL-09) — shipped 2026-05-07 (eba5000 / 1241dc3; localhost QA PASS)
-  - [ ] 18-07-PLAN.md — phase-final QA on DEV + planning-docs drift gate (UPL-08, UPL-09 sign-off)
+  - [x] 18-07-PLAN.md — phase-final QA on DEV + planning-docs drift gate + overflow fix (fb97843) (UPL-08, UPL-09 sign-off)
 
 ## Progress
 
@@ -478,7 +478,7 @@ Plans:
 | 16.2. Friend-Persona QA Gap Closure (INSERTED) | v1.3 | 7/7 | Complete | 2026-05-05 |
 | 16.3. Dashboard Cleanup + Events Everywhere (INSERTED) | v1.3 | 3/3 | Complete | 2026-05-06 |
 | 17. Backtest Gate & Quality Monitoring | v1.3 | 10/10 | Complete | 2026-05-06 |
-| 18. Weekly Counterfactual Window | v1.4 | 4/7 | Implementing | — |
+| 18. Weekly Counterfactual Window | v1.4 | 7/7 | Complete | 2026-05-07 |
 
 ## Coverage Summary
 
