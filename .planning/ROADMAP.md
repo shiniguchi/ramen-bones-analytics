@@ -58,7 +58,7 @@ A restaurant owner opens the site on their phone and makes a real business decis
 </details>
 
 <details open>
-<summary>v1.4 Weekly Campaign Read (Phase 18) — IMPLEMENTING (3/7 plans done, opened 2026-05-07)</summary>
+<summary>v1.4 Weekly Campaign Read (Phase 18) — IMPLEMENTING (6/7 plans done, opened 2026-05-07)</summary>
 
 - [ ] **Phase 18: Weekly Counterfactual Window** — replace CampaignUpliftCard cumulative-since-launch headline with per-ISO-week (Mon–Sun) counterfactual + bar-chart history of all completed weeks (CI whiskers, color-coded by significance, tap-to-scrub hero)
 
@@ -451,7 +451,7 @@ Plans:
   - [x] 18-03-PLAN.md — /api/campaign-uplift weekly_history payload field (UPL-08) — shipped via TDD 2026-05-07 (RED 14e9550 → GREEN 250a73a)
   - [x] 18-04-PLAN.md — CampaignUpliftCard hero rewrite (Decision A: weeks-since-launch tier source) (UPL-08, UPL-09) — shipped 2026-05-07 (RED 81ea4db → GREEN eca9696; localhost QA checkpoint pending)
   - [x] 18-05-PLAN.md — bar chart + CI whiskers + tap-to-scrub (Option C fallback: manual <rect> via chartCtx) (UPL-08, UPL-09) — shipped 2026-05-07 (RED 462dbd7 → GREEN b25249c → fix 90fba8e; localhost QA PASS)
-  - [ ] 18-06-PLAN.md — i18n keys (uplift_week_label etc.) + ModelAvailabilityDisclosure compatibility check (UPL-09)
+  - [x] 18-06-PLAN.md — i18n keys (uplift_week_label etc.) + ModelAvailabilityDisclosure compatibility check (UPL-09) — shipped 2026-05-07 (eba5000 / 1241dc3; localhost QA PASS)
   - [ ] 18-07-PLAN.md — phase-final QA on DEV + planning-docs drift gate (UPL-08, UPL-09 sign-off)
 
 ## Progress

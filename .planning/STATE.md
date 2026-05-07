@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: Coverage Map
 status: Implementing
-stopped_at: context exhaustion at 75% (2026-05-07)
-last_updated: "2026-05-07T09:32:35.002Z"
-last_activity: 2026-05-07 (Plan 18-04 complete — awaiting localhost QA checkpoint)
+stopped_at: Plan 18-06 complete — next: Plan 18-07 (phase-final QA on DEV)
+last_updated: "2026-05-07T11:45:00.000Z"
+last_activity: 2026-05-07 (Plan 18-06 complete — i18n 3 keys × 5 locales + compatibility test, localhost QA PASS)
 progress:
   total_phases: 10
   completed_phases: 5
   total_plans: 63
-  completed_plans: 49
-  percent: 78
+  completed_plans: 50
+  percent: 79
 ---
 
 # STATE: Ramen Bones Analytics
@@ -30,7 +30,7 @@ progress:
 
 Milestone: v1.4 (Weekly Campaign Read)
 Phase: 18 (weekly-counterfactual-window) — implementing
-Plan: 05 (COMPLETE — Option C fix shipped, localhost QA PASS, DEV deployed) — next: Plan 06 (i18n uplift_week_label)
+Plan: 06 (COMPLETE — 3 i18n keys × 5 locales, compatibility test 17/17, localhost QA PASS) — next: Plan 07 (phase-final QA on DEV + planning-docs drift gate)
 
 v1.4 opened 2026-05-07 as single-feature milestone. Scope: replace CampaignUpliftCard's cumulative-since-launch headline with per-ISO-week (Mon–Sun) counterfactual + tap-scrubbable bar-chart history. Friend-owner gets a fresh weekly read instead of a cumulative number that drifts toward "no detectable lift" as the campaign window grows. Touches DB (new window_kind value — landed in Plan 18-01 via migration 0069), Python pipeline (cumulative_uplift.py — bootstrap CI re-fit on 7-day slice, NOT derived from daily cumulative), API (/api/campaign-uplift returns weekly_history), and Svelte component (CampaignUpliftCard rewrite).
 
@@ -48,7 +48,9 @@ Locked design decisions (carried over from 2026-05-07 conversation, no /gsd-disc
 
 **Plan 18-05 shipped 2026-05-07:** Weekly bar chart history + CI whiskers + tap-to-scrub added to CampaignUpliftCard. Decision B PRIMARY (Option B — three filtered `<Bars>` blocks) caused NaN x/width on all bars (each `<Bars data={subset}>` computed its own band-scale domain independently). Applied Decision B FALLBACK (Option C): manual `<rect>` loop using `chartCtx.xScale` from the full weeklyHistory domain. 16/16 tests pass. Localhost QA PASS (5 bars, correct colors, tap-to-scrub verified via Playwright MCP mock injection). DEV deployed to `feature-phase-18-weekly-coun.ramen-bones-analytics.pages.dev`. Commits: `462dbd7` (RED) → `b25249c` (GREEN) → `90fba8e` (Option C fix).
 
-Next recommended run: Plan 18-06 (i18n uplift_week_label + ModelAvailabilityDisclosure compatibility check)
+**Plan 18-06 shipped 2026-05-07:** 3 new i18n keys (`uplift_week_label`, `uplift_bar_chart_caption`, `uplift_history_x_axis_label`) added to all 5 locale blocks. `en` + `ja` real translations; `de`/`es`/`fr` placeholder=en with backlog comment. CampaignUpliftCard hero date label, bar chart caption, and x-axis label wired via `t()`. New `ModelAvailabilityDisclosure_compatibility` test gates back-compat. 17/17 CampaignUpliftCard + 6/6 ModelAvailabilityDisclosure pass. Localhost QA PASS (JA Playwright + EN unit tests). Commits: `eba5000` (i18n + wiring) + `1241dc3` (compatibility test).
+
+Next recommended run: Plan 18-07 (phase-final QA on DEV + planning-docs drift gate)
 
 - **Status:** Implementing
 - **Phase 17:** 10/10 plans complete 2026-05-06; all 8 BCK requirements verified (5 PASS + 3 PARTIAL with merge-deferred resolution).
