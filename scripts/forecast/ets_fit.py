@@ -343,7 +343,7 @@ def fit_and_write(
         # always recomputing from last_actual.
         if train_end is None:
             train_end = train_end_for_grain(last_actual, granularity)
-print(
+        print(
             f'[ets_fit] grain={granularity} last_actual={last_actual} '
             f'train_end={train_end} horizon={horizon} seasonal_periods={seasonal_periods}'
         )
