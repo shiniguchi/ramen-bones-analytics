@@ -213,6 +213,43 @@ def pred_dates_for_grain(
     return full
 
 
+def bucket_dates_by_iso_week(target_dates: list[date]) -> dict[tuple[int, int], list[int]]:
+    """Phase 18 UPL-08: bucket a list of date objects by their ISO (year, week).
+
+    Used by `scripts/forecast/cumulative_uplift.compute_iso_week_uplift_rows`
+    to group days into Mon-Sun ISO weeks before fitting per-week bootstrap CIs.
+    Pure function; TZ-naive (callers must pass dates already in the local
+    business TZ — the upstream pipeline reads `forecast_with_actual_v` whose
+    `target_date` column is already TZ-converted to Berlin business date via
+    `(t.occurred_at at time zone r.timezone)::date` in 0010_cohort_mv.sql:12).
+
+    The grouping key is `(iso_year, iso_week)` and NOT `(year, week)` — these
+    can differ for late-Dec / early-Jan dates per ISO 8601 week-numbering year
+    semantics. Using `isocalendar()` keeps the math correct across year edges.
+
+    Args:
+        target_dates: list of `datetime.date` objects, expected sorted ascending.
+
+    Returns:
+        dict keyed on (iso_year, iso_week) with values = sorted list of indices
+        into the input list. Insertion order = ascending within each bucket
+        because `target_dates` is expected sorted.
+
+    Reference:
+        scripts/forecast/naive_dow_fit.py:66-67 — codebase precedent for
+        date.isocalendar() usage (week-grain naive_dow seasonality key).
+    """
+    buckets: dict[tuple[int, int], list[int]] = {}
+    for i, d in enumerate(target_dates):
+        iso = d.isocalendar()
+        # isocalendar() returns a named tuple (year, week, weekday) in 3.9+.
+        # We bucket by (iso_year, iso_week) — Sunday of the week is identified
+        # later by iso.weekday == 7 (callers use the last index of a 7-element
+        # bucket once they've filtered to fully-completed weeks).
+        buckets.setdefault((iso.year, iso.week), []).append(i)
+    return buckets
+
+
 def parse_granularity_env(env_value: str | None, *, default: str = 'day') -> str:
     """Parse and validate a GRANULARITY env-var value.
 
