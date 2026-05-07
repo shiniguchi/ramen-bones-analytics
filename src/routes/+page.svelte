@@ -39,11 +39,47 @@
   type RetentionRow      = { cohort_week: string; period_weeks: number; retention_rate: number; cohort_size_week: number; cohort_age_weeks: number };
   type RetentionMonthlyRow = { cohort_month: string; period_months: number; retention_rate: number; cohort_size_month: number; cohort_age_months: number };
 
+  // Phase 19-02: item-counts + benchmark deferred from SSR to /api/* endpoints.
+  type ItemCountRow = {
+    business_date: string;
+    item_name: string;
+    sales_type: string | null;
+    is_cash: boolean;
+    item_count: number;
+    item_revenue_cents: number;
+  };
+  type BenchmarkAnchorRow = {
+    period_weeks: number;
+    lower_p20: number;
+    mid_p50: number;
+    upper_p80: number;
+    source_count: number;
+  };
+  type BenchmarkSourceRow = {
+    period_weeks: number;
+    id: number;
+    label: string;
+    country: string;
+    segment: string;
+    credibility: 'HIGH' | 'MEDIUM' | 'LOW';
+    cuisine_match: number;
+    metric_type: string;
+    conversion_note: string | null;
+    sample_size: string | null;
+    year: number;
+    url: string | null;
+    raw_value: number;
+    normalized_value: number;
+  };
+
   let dailyKpi        = $state<DailyKpiRow[]>([]);
   let customerLtv     = $state<CustomerLtvRow[]>([]);
   let repeaterTx      = $state<RepeaterTxRow[]>([]);
   let retention         = $state<RetentionRow[]>([]);
   let retentionMonthly  = $state<RetentionMonthlyRow[]>([]);
+  let itemCounts        = $state<ItemCountRow[]>([]);
+  let benchmarkAnchors  = $state<BenchmarkAnchorRow[]>([]);
+  let benchmarkSources  = $state<BenchmarkSourceRow[]>([]);
 
   // D-04 no-regression: monthsOfHistory drives the caveat copy in
   // CohortRetentionCard. Derive from the earliest cohort_week in the
@@ -85,6 +121,26 @@
         monthsOfHistory = Math.max(0, differenceInMonths(new Date(), parseISO(earliest.cohort_week)));
       }
     } catch (e) { console.error('[LazyMount /api/retention]', e); }
+  }
+
+  // Phase 19-02: item-counts deferred from SSR. Passes current store window
+  // so the data matches whatever chip/range the user has selected.
+  async function loadItemCounts() {
+    const w = getWindow();
+    try {
+      itemCounts = await clientFetch<ItemCountRow[]>(
+        `/api/item-counts?from=${w.from}&to=${w.to}`
+      );
+    } catch (e) { console.error('[LazyMount /api/item-counts]', e); }
+  }
+
+  // Phase 19-02: benchmark deferred from SSR. Lifetime data — no date params.
+  async function loadBenchmark() {
+    try {
+      const r = await clientFetch<{ anchors: BenchmarkAnchorRow[]; sources: BenchmarkSourceRow[] }>('/api/benchmark');
+      benchmarkAnchors = r.anchors;
+      benchmarkSources = r.sources;
+    } catch (e) { console.error('[LazyMount /api/benchmark]', e); }
   }
 
   // Initialize store from SSR data on mount and when SSR data changes.
@@ -315,20 +371,21 @@
       loader={() => import('$lib/components/CalendarRevenueCard.svelte')}
     />
 
-    <!-- D-10 card 9: Calendar items (VA-08) — receives window-scoped rows from SSR
-         Phase 19-01: deferred to dynamic import; SSR data passed via props. -->
+    <!-- D-10 card 9: Calendar items (VA-08) — receives window-scoped rows from
+         /api/item-counts (deferred, Phase 19-02). loadItemCounts fires on scroll. -->
     <LazyMount
       minHeight="320px"
+      onvisible={loadItemCounts}
       loader={() => import('$lib/components/CalendarItemsCard.svelte')}
-      props={{ data: data.itemCounts }}
+      props={{ data: itemCounts }}
     />
 
-    <!-- feedback #4: per-item revenue stacked bars — same payload, revenue metric
-         Phase 19-01: deferred to dynamic import; SSR data passed via props. -->
+    <!-- feedback #4: per-item revenue stacked bars — shares loadItemCounts with
+         CalendarItemsCard above (Phase 19-02). -->
     <LazyMount
       minHeight="320px"
       loader={() => import('$lib/components/CalendarItemRevenueCard.svelte')}
-      props={{ data: data.itemCounts }}
+      props={{ data: itemCounts }}
     />
 
     <!-- D-10 card 10: Cohort retention (VA-06)
@@ -339,13 +396,13 @@
          Phase 19-01: converted to loader form — defers CohortRetentionCard module. -->
     <LazyMount
       minHeight="320px"
-      onvisible={loadRetention}
+      onvisible={() => { loadRetention(); loadBenchmark(); }}
       loader={() => import('$lib/components/CohortRetentionCard.svelte')}
       props={{
         dataWeekly: retention,
         dataMonthly: retentionMonthly,
-        benchmarkAnchors: data.benchmarkAnchors,
-        benchmarkSources: data.benchmarkSources,
+        benchmarkAnchors: benchmarkAnchors,
+        benchmarkSources: benchmarkSources,
         monthsOfHistory: monthsOfHistory
       }}
     />
