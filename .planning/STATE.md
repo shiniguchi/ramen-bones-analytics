@@ -4,14 +4,14 @@ milestone: v1.4
 milestone_name: Weekly Campaign Read
 status: implementing
 stopped_at: null
-last_updated: "2026-05-07T07:45:00.000Z"
+last_updated: "2026-05-07T08:25:00.000Z"
 last_activity: 2026-05-07
 progress:
   total_phases: 21
   completed_phases: 20
   total_plans: 123
-  completed_plans: 105
-  percent: 85
+  completed_plans: 106
+  percent: 86
 ---
 
 # STATE: Ramen Bones Analytics
@@ -30,7 +30,7 @@ progress:
 
 Milestone: v1.4 (Weekly Campaign Read)
 Phase: 18 (weekly-counterfactual-window) — implementing
-Plan: 01 (done) — next: 02 ISO-week pipeline writer (compute_iso_week_uplift_rows + bootstrap CI re-fit per 7-day slice)
+Plan: 02 (done) — next: 03 API endpoint (/api/campaign-uplift weekly_history payload field)
 
 v1.4 opened 2026-05-07 as single-feature milestone. Scope: replace CampaignUpliftCard's cumulative-since-launch headline with per-ISO-week (Mon–Sun) counterfactual + tap-scrubbable bar-chart history. Friend-owner gets a fresh weekly read instead of a cumulative number that drifts toward "no detectable lift" as the campaign window grows. Touches DB (new window_kind value — landed in Plan 18-01 via migration 0069), Python pipeline (cumulative_uplift.py — bootstrap CI re-fit on 7-day slice, NOT derived from daily cumulative), API (/api/campaign-uplift returns weekly_history), and Svelte component (CampaignUpliftCard rewrite).
 
@@ -43,7 +43,9 @@ Locked design decisions (carried over from 2026-05-07 conversation, no /gsd-disc
 
 **Plan 18-01 shipped 2026-05-07:** migration 0069 atomically (a) extends `campaign_uplift.window_kind` CHECK to include `'iso_week'` and (b) creates `public.campaign_uplift_weekly_v` (tenant-scoped sister to `campaign_uplift_daily_v`). Applied to LOCAL Supabase via `supabase db push --linked --yes` AND DEV via GHA `migrations.yml` run 25483158267 (success, 11s). Three DEV verification queries confirmed live: CHECK contains `'iso_week'`, view body filters `window_kind = 'iso_week'`, `authenticated` has SELECT. Back-compat preserved (existing `campaign_uplift_v` and `campaign_uplift_daily_v` unaffected). Plans 18-02 and 18-03 unblocked.
 
-Next recommended run: execute plan 18-02 (pipeline writer)
+**Plan 18-02 shipped 2026-05-07:** `compute_iso_week_uplift_rows()` helper added to `scripts/forecast/cumulative_uplift.py` as a sibling to `compute_per_day_uplift_rows`. Buckets the cumulative-window arrays into ISO weeks (Mon-Sun) via `bucket_dates_by_iso_week()` (new helper in `grain_helpers.py`, uses `date.isocalendar()` matching `naive_dow_fit.py:67` precedent), runs a fresh 1000-path bootstrap CI on each fully-completed 7-day slice (NEVER derives CI by subtracting daily cumulative bounds — correlated samples don't subtract additively per CONTEXT.md line 28). Seed scheme `100_000 + k` is disjoint from per-day pass (`42 + i`) per RESEARCH §7 R1. Skip rules: partial launch week (`len(idxs) < 7`) AND in-progress current week (`week_end >= today`). Wired into `_process_campaign_model` after `compute_per_day_uplift_rows`, reusing `cs['actual_values']/['yhat_samples_per_day']/['target_dates']` arrays — no 2nd DB roundtrip per RESEARCH §7 R2. Backfill is automatic on first run because helper iterates ALL completed buckets; upsert idempotent on `(campaign, model, 'iso_week', Sunday)`. 7 named unit tests + 1 smoke + 1 integration test all GREEN. Pre-existing test failure on `test_two_window_kinds_per_campaign_per_model` (missing `.lt()` mock) logged to `deferred-items.md` (predates this plan; out of scope per scope boundary rule). Plan 18-03 (API endpoint) unblocked.
+
+Next recommended run: execute plan 18-03 (API endpoint — /api/campaign-uplift weekly_history payload)
 
 - **Status:** Implementing
 - **Phase 17:** 10/10 plans complete 2026-05-06; all 8 BCK requirements verified (5 PASS + 3 PARTIAL with merge-deferred resolution).
@@ -53,7 +55,7 @@ Next recommended run: execute plan 18-02 (pipeline writer)
 - **Phase 15:** v2 (Forecast Backtest Overlay) merged via PR #26 on 2026-05-01.
 - **Phase 14:** Shipped via [PR #22](https://github.com/shiniguchi/ramen-bones-analytics/pull/22). 34 commits, 31 files, +2978 lines. UAT 12/12. 5/5 models producing 365-day forecasts on DEV.
 - **Phase 13:** Shipped via [PR #17](https://github.com/shiniguchi/ramen-bones-analytics/pull/17). 41 commits, 52 files, +6892 lines. EXT-01..EXT-09 complete.
-- **Progress:** [█████████░] 90% (105/123 plans done; v1.0+v1.1+v1.2+v1.3 Phase 12-17 shipped; Phase 18 plan 01 of 7 done)
+- **Progress:** [█████████░] 90% (106/123 plans done; v1.0+v1.1+v1.2+v1.3 Phase 12-17 shipped; Phase 18 plan 02 of 7 done)
 - **Last activity:** 2026-05-07
 - **v1.2 closed:** 11 phases, 60 plans, 100% — Phase 11 SSR fix landed 2026-04-21
 - **v1.0 status:** Shipped to friend (97% plans complete; repo flipped PUBLIC 2026-04-15 with topics + description set; Plan 05-06 Task 2 fork walkthrough deferred out of v1 scope)
@@ -125,6 +127,7 @@ Next recommended run: execute plan 18-02 (pipeline writer)
 | Phase 17 P09 | ~not tracked | 4 tasks (incl. localhost QA) | 5 files |
 | Phase 17 P10 | ~30min | 3 tasks (incl. phase-final QA + 119ad45 bug fix) | 3 files |
 | Phase 18 P01 | ~15min | 2 tasks (incl. blocking schema push to LOCAL+DEV) | 1 file |
+| Phase 18 P02 | ~25min | 2 tasks (TDD RED + GREEN) | 6 files (3 modified + 3 created) |
 
 ## Accumulated Context
 
@@ -263,6 +266,7 @@ Next recommended run: execute plan 18-02 (pipeline writer)
 - [Phase 17]: 17-09: ModelAvailabilityDisclosure backtest column — 4 horizon pills (h7/h35/h120/h365) per model row, color-coded by verdict; cold-start fallback renders gray pills when backtestStatus=null; en+ja real translations, de/es/fr placeholder per Phase 16.1-02 pattern; localhost-first QA at 375×667 in ja + en passed.
 - [Phase 17]: 17-10: phase-final QA against DEV — 5 PASS + 3 PARTIAL across 8 BCK requirements. PARTIAL items (BCK-05/06/07) all blocked by the same structural cause: new GHA workflow not on main → `gh workflow run` returns 404 from feature branch; resolves automatically post-merge. Genuine bug found and fixed (commit 119ad45 — see 17-03 entry above for details). Planning-docs drift gate green.
 - [Phase 18]: 18-01: migration 0069 — single atomic file extends `campaign_uplift.window_kind` CHECK to include `'iso_week'` (DROP+ADD pattern from 0064:29-32) AND creates `public.campaign_uplift_weekly_v` (tenant-scoped sister to `campaign_uplift_daily_v` — same shape, WHERE clause swapped to `window_kind='iso_week'`, no DISTINCT ON because per-week rows unique by (campaign, model, as_of_date=Sunday) by construction). Applied to LOCAL+DEV via `supabase db push --linked --yes` and `gh workflow run migrations.yml --ref feature/phase-18-...` (run 25483158267 success, 11s). Three DEV verification queries confirmed live. Back-compat preserved (existing `campaign_uplift_v` + `campaign_uplift_daily_v` unaffected). Plans 18-02 + 18-03 unblocked.
+- [Phase 18]: 18-02: pipeline writer compute_iso_week_uplift_rows shipped via TDD (RED 7fcd7ad → GREEN a20fb83). New helper sits sibling to compute_per_day_uplift_rows in cumulative_uplift.py; buckets cumulative-window arrays into ISO weeks via grain_helpers.bucket_dates_by_iso_week (date.isocalendar() — matches naive_dow_fit.py:67 precedent); runs fresh 1000-path bootstrap CI per fully-completed 7-day slice with seed=100_000+k (disjoint from per-day 42+i per RESEARCH §7 R1, documented as forward-compat invariant). Wired into _process_campaign_model with today=run_date (no zoneinfo needed — Berlin/UTC drift ≤1h, never crosses ISO-week boundary outside a 1h Sun→Mon window per RESEARCH §1). Skip rules defense-in-depth: len(idxs)<7 AND week_end>=today. out_rows.extend(iso_week_rows) reuses existing _upsert_campaign_uplift_rows (on_conflict tuple already includes window_kind). 7 named unit tests + 1 bonus smoke test in test_iso_week_uplift.py + 1 integration test in test_cumulative_uplift.py all GREEN. Pre-existing failure of test_two_window_kinds_per_campaign_per_model (missing .lt() mock) logged to deferred-items.md — predates this plan; my new sibling integration test ships with the .lt() fix in its harness providing equivalent coverage. Backfill happens automatically on next nightly run because helper iterates ALL completed buckets; upsert idempotent on (campaign, model, 'iso_week', Sunday).
 
 ### Open Todos
 
@@ -310,8 +314,8 @@ Next recommended run: execute plan 18-02 (pipeline writer)
 
 **Resume hint:** Phase 15 depends on Phase 14 schema (landed). Phase 16 depends on Phase 14 BAU forecast stability. Phase 17 has a hard dependency on ≥4 weeks of forecast-vs-actual history.
 
-**Last session:** 2026-05-07T07:45:00.000Z
-**Stopped At:** Plan 18-01 complete; awaiting Plan 18-02 execution (pipeline writer)
+**Last session:** 2026-05-07T08:25:00.000Z
+**Stopped At:** Plan 18-02 complete; awaiting Plan 18-03 execution (API endpoint — /api/campaign-uplift weekly_history payload)
 
 ---
-*State initialized: 2026-04-13; v1.3 roadmap recorded: 2026-04-27; Phase 12 context: 2026-04-28; Phase 13 shipped: 2026-04-30 (PR #17); Phase 14 shipped: 2026-04-30 (PR #22); v1.3 shipped: 2026-05-06; v1.4 opened: 2026-05-07; Phase 18 P01 complete: 2026-05-07*
+*State initialized: 2026-04-13; v1.3 roadmap recorded: 2026-04-27; Phase 12 context: 2026-04-28; Phase 13 shipped: 2026-04-30 (PR #17); Phase 14 shipped: 2026-04-30 (PR #22); v1.3 shipped: 2026-05-06; v1.4 opened: 2026-05-07; Phase 18 P01 complete: 2026-05-07; Phase 18 P02 complete: 2026-05-07*

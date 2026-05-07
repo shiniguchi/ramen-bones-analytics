@@ -447,7 +447,7 @@ Plans:
   6. Mobile-first: bar chart usable on 375×667 phone canvas; horizontal scroll once weeks exceed ~10 (matches Calendar* card pattern); touch events do not block vertical page scroll (`touchEvents: 'auto'` per existing memory)
 **Plans**: 7 plans
   - [x] 18-01-PLAN.md — migration 0069: campaign_uplift iso_week CHECK + weekly_v wrapper view (UPL-08) — applied to LOCAL+DEV 2026-05-07
-  - [ ] 18-02-PLAN.md — pipeline writer compute_iso_week_uplift_rows + bootstrap CI re-fit per 7-day slice (UPL-08)
+  - [x] 18-02-PLAN.md — pipeline writer compute_iso_week_uplift_rows + bootstrap CI re-fit per 7-day slice (UPL-08) — shipped via TDD 2026-05-07 (RED 7fcd7ad → GREEN a20fb83)
   - [ ] 18-03-PLAN.md — /api/campaign-uplift weekly_history payload field (UPL-08)
   - [ ] 18-04-PLAN.md — CampaignUpliftCard hero rewrite (Decision A: weeks-since-launch tier source) (UPL-08, UPL-09)
   - [ ] 18-05-PLAN.md — bar chart + CI whiskers + tap-to-scrub (Decision B path) (UPL-08, UPL-09)
@@ -478,7 +478,7 @@ Plans:
 | 16.2. Friend-Persona QA Gap Closure (INSERTED) | v1.3 | 7/7 | Complete | 2026-05-05 |
 | 16.3. Dashboard Cleanup + Events Everywhere (INSERTED) | v1.3 | 3/3 | Complete | 2026-05-06 |
 | 17. Backtest Gate & Quality Monitoring | v1.3 | 10/10 | Complete | 2026-05-06 |
-| 18. Weekly Counterfactual Window | v1.4 | 1/7 | Implementing | — |
+| 18. Weekly Counterfactual Window | v1.4 | 2/7 | Implementing | — |
 
 ## Coverage Summary
 
