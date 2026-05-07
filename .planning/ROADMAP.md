@@ -249,7 +249,7 @@ Plans:
 
 </details>
 
-### Phase Details — Current Milestone (v1.3)
+### Phase Details — v1.3
 
 ### Phase 12: Foundation — Decisions & Guards
 **Goal**: Lock the cross-cutting decisions and CI guards that every later v1.3 phase depends on — ITS validity audit committed and runnable, JWT-claim rename guard active, all v1.3 cron schedules anchored in UTC
@@ -462,7 +462,7 @@ Plans:
   - [x] 18-06-PLAN.md — i18n keys (uplift_week_label etc.) + ModelAvailabilityDisclosure compatibility check (UPL-09) — shipped 2026-05-07 (eba5000 / 1241dc3; localhost QA PASS)
   - [x] 18-07-PLAN.md — phase-final QA on DEV + planning-docs drift gate + overflow fix (fb97843) (UPL-08, UPL-09 sign-off)
 
-### Phase Details — Current Milestone (v1.5)
+### Phase Details — v1.5 (archived)
 
 ### Phase 19: Cold-Start Trim
 **Goal**: Eliminate the three primary cold-start bundle blockers so the dashboard paints above-fold KPI tiles without downloading LayerChart (4.9 MB), the full i18n monolith (76 KB), or firing benchmark/item-count queries at SSR.
@@ -475,10 +475,10 @@ Plans:
   4. `messages.ts` on disk is ≤3 KB; 4 async locale chunks visible in build output; locale switch renders correct strings with no flash-of-english
   5. `npm run check` + `npm run test:unit` exit 0 after all three implementation plans complete
 **Plans**: 4 plans
-  - [ ] 19-01-PLAN.md — LazyMount loader prop + 5 eager chart cards deferred
-  - [ ] 19-02-PLAN.md — /api/item-counts + /api/benchmark deferred endpoints; SSR 6→4
-  - [ ] 19-03-PLAN.md — i18n per-locale dynamic imports (5 dict files + loadDict() cache)
-  - [ ] 19-04-PLAN.md — phase-final QA + planning-docs drift gate
+  - [x] 19-01-PLAN.md — LazyMount loader prop + 9 eager chart cards deferred
+  - [x] 19-02-PLAN.md — /api/item-counts + /api/benchmark deferred endpoints; SSR 6→3
+  - [x] 19-03-PLAN.md — i18n per-locale dynamic imports (5 dict files + loadDict() cache)
+  - [x] 19-04-PLAN.md — phase-final QA + planning-docs drift gate
 
 ## Progress
 
@@ -505,7 +505,7 @@ Plans:
 | 16.3. Dashboard Cleanup + Events Everywhere (INSERTED) | v1.3 | 3/3 | Complete | 2026-05-06 |
 | 17. Backtest Gate & Quality Monitoring | v1.3 | 10/10 | Complete | 2026-05-06 |
 | 18. Weekly Counterfactual Window | v1.4 | 7/7 | Complete | 2026-05-07 |
-| 19. Cold-Start Trim | v1.5 | 0/4 | In Progress | — |
+| 19. Cold-Start Trim | v1.5 | 4/4 | Complete | 2026-05-07 |
 
 ## Coverage Summary
 

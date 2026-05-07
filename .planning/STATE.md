@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Cold-Start Trim
-status: Complete
-stopped_at: Phase 19 complete — all 4 sub-plans shipped
-last_updated: "2026-05-07T14:30:00.000Z"
-last_activity: 2026-05-07 (Plan 19-04 complete — phase-final QA + planning-docs drift gate)
+status: Archived
+stopped_at: v1.5 milestone archived — planning next milestone
+last_updated: "2026-05-07T16:00:00.000Z"
+last_activity: 2026-05-07 (v1.5 milestone archived — all 22 phases complete)
 progress:
   total_phases: 22
   completed_phases: 22
   total_plans: 127
-  completed_plans: 115
-  percent: 91
+  completed_plans: 127
+  percent: 100
 ---
 
 # STATE: Ramen Bones Analytics
@@ -20,8 +20,10 @@ progress:
 
 ## Project Reference
 
+See: .planning/PROJECT.md (updated 2026-05-07)
+
 - **Core Value:** A restaurant owner opens the site on their phone and makes a real business decision from the numbers they see.
-- **Current Focus:** v1.4 archived — planning next milestone
+- **Current Focus:** v1.5 archived — planning next milestone
 - **Timeline:** Slow and deliberate — understand data first, ship one layer at a time
 - **Granularity:** standard
 - **Tenants in v1:** 1 (architecture multi-tenant-ready)
