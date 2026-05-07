@@ -270,7 +270,7 @@ def fit_and_write(
         run_date=run_date,
         granularity=granularity,
         horizon=horizon,
-        window_start=window_start_for_grain(last_actual, granularity),
+        window_start=run_date if track.startswith('backtest_') else window_start_for_grain(last_actual, granularity),
         train_end=train_end,
     )
     if not all_pred_dates:

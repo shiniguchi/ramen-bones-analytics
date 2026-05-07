@@ -26,21 +26,21 @@ export type ForecastRow = {
 // Phase 17 BCK-01/BCK-02 — backtest verdict types mirrored from +server.ts.
 export type BacktestVerdict = 'PASS' | 'FAIL' | 'PENDING' | 'UNCALIBRATED' | null;
 export type ModelBacktestRow = { h7?: BacktestVerdict; h35?: BacktestVerdict; h120?: BacktestVerdict; h365?: BacktestVerdict };
+export type BacktestMetric = { rmse: number | null; evaluatedAt: string | null };
+export type ModelBacktestMetrics = { h7?: BacktestMetric; h35?: BacktestMetric; h120?: BacktestMetric; h365?: BacktestMetric };
 
 export type ForecastPayload = {
   rows: ForecastRow[];
   actuals: { date: string; value: number }[];
-  // Phase 16.3 D-04 / Claude's Discretion: tightened from `unknown[]` to
-  // `ForecastEvent[]` so downstream consumers (EventBadgeStrip, hover popups)
-  // get end-to-end TS narrowing. Server already returns `clampEvents()` output
-  // of exactly this shape.
   events: ForecastEvent[];
   last_run: string | null;
   kpi: 'revenue_eur' | 'invoice_count';
   granularity: Granularity;
   // Phase 17 BCK-01/BCK-02 — backtest verdict per (model, horizon).
-  // Empty object on cold-start (before rolling_origin_cv rows exist).
   modelBacktestStatus?: Record<string, ModelBacktestRow>;
+  // Phase 21 — RMSE values + last evaluated timestamp per (model, horizon).
+  modelBacktestMetrics?: Record<string, ModelBacktestMetrics>;
+  backtestLastMeasured?: string | null;
 };
 
 // Default-visible models on first render. chronos/neuralprophet stay off

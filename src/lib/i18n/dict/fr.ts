@@ -216,6 +216,7 @@ export default {
   model_avail_col_model: 'Model',
   model_avail_col_status: 'Status',
   model_avail_col_min: 'Min data',
+  model_avail_col_inputs: 'Entrées',
   model_avail_col_why: 'Why',
   model_avail_col_backtest: 'Backtest',
   model_avail_status_available: 'Available',
@@ -256,5 +257,15 @@ export default {
   model_avail_backtest_short_uncalibrated: '~',
   model_avail_backtest_memo_day:        'Backtest: day grain, 4 rolling-origin folds (h = 7 / 35 / 120 / 365 d)',
   model_avail_backtest_memo_week_month: 'Week/month: no CV yet — rolling-origin folds (h = 4/13/26 w; h = 3/6 mo) added at 104 weekly / 24 monthly buckets',
+  model_avail_ctx_gate_title: 'Logique du critère — signification de PASS / FAIL',
+  model_avail_ctx_gate_body: 'Un modèle doit battre la meilleure baseline (Naive DoW) de ≥ 10 % RMSE sur les 4 plis pour être promu. PASS = actif. FAIL = inactif.',
+  model_avail_ctx_folds_title: 'Fonctionnement des 4 plis',
+  model_avail_ctx_folds_body: 'CV à origine glissante : chaque pli couvre 7 jours en reculant d'une semaine. Pli 0 = semaine la plus récente. Pas de lookahead.',
+  model_avail_ctx_naive_title_revenue: 'Pourquoi Naive DoW domine sur le chiffre d'affaires',
+  model_avail_ctx_naive_body_revenue: 'Le CA suit un fort rythme jour-de-semaine. Une moyenne DoW le capture précisément avec ~1 an de données. Les modèles complexes nécessitent 2+ ans.',
+  model_avail_ctx_naive_title_count: 'Pourquoi Naive DoW domine sur les transactions',
+  model_avail_ctx_naive_body_count: 'La fréquentation suit un schéma jour-de-semaine plus étroit. Les modèles complexes gagneront avec 2+ ans de données.',
+  model_avail_ctx_future_title: 'Quand les challengers rattrapent',
+  model_avail_ctx_future_body: 'À ~730 jours, SARIMAX et Prophet peuvent apprendre un cycle annuel complet en intégrant jours fériés et météo.',
   model_avail_backtest_memo_improves:   'Improves automatically at 730 days of data'
 } as const;

@@ -216,6 +216,7 @@ export default {
   model_avail_col_model: 'Model',
   model_avail_col_status: 'Status',
   model_avail_col_min: 'Min data',
+  model_avail_col_inputs: 'Inputs',
   model_avail_col_why: 'Why',
   model_avail_col_backtest: 'Backtest',
   model_avail_status_available: 'Available',
@@ -256,5 +257,15 @@ export default {
   model_avail_backtest_short_uncalibrated: '~',
   model_avail_backtest_memo_day:        'Backtest: day grain, 4 rolling-origin folds (h = 7 / 35 / 120 / 365 d)',
   model_avail_backtest_memo_week_month: 'Week/month: no CV yet — rolling-origin folds (h = 4/13/26 w; h = 3/6 mo) added at 104 weekly / 24 monthly buckets',
+  model_avail_ctx_gate_title: 'Gate-Logik — was PASS / FAIL bedeutet',
+  model_avail_ctx_gate_body: 'Ein Modell muss die beste Baseline (Naive DoW) um ≥ 10 % RMSE über alle 4 Folds schlagen. PASS = aktiv im Chart. FAIL = inaktiv.',
+  model_avail_ctx_folds_title: 'Wie die 4 Folds funktionieren',
+  model_avail_ctx_folds_body: 'Rolling-Origin-CV: jeder Fold deckt 7 Tage ab. Fold 0 = letzte vollständige Woche. Kein Lookahead.',
+  model_avail_ctx_naive_title_revenue: 'Warum Naive DoW bei Umsatz führt',
+  model_avail_ctx_naive_body_revenue: 'Umsatz folgt einem starken Wochentag-Rhythmus. Ein DoW-Durchschnitt ist bei ~1 Jahr Daten schwer zu schlagen. Komplexe Modelle brauchen 2+ Jahre.',
+  model_avail_ctx_naive_title_count: 'Warum Naive DoW bei Transaktionen führt',
+  model_avail_ctx_naive_body_count: 'Besucherfrequenz folgt einem engen Wochentag-Muster. Komplexe Modelle gewinnen erst ab 2+ Jahren Daten.',
+  model_avail_ctx_future_title: 'Wann Challengers aufholen',
+  model_avail_ctx_future_body: 'Bei ~730 Tagen können SARIMAX und Prophet einen vollen Jahreszyklus zuverlässig lernen.',
   model_avail_backtest_memo_improves:   'Improves automatically at 730 days of data'
 } as const;

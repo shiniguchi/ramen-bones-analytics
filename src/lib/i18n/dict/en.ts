@@ -226,6 +226,7 @@ const en = {
   model_avail_col_status: 'Status',
   model_avail_col_min: 'Min data',
   model_avail_col_why: 'Why',
+  model_avail_col_inputs: 'Inputs',
   model_avail_col_backtest: 'Backtest',
   model_avail_status_available: 'Available',
   model_avail_status_phase17: 'Phase 17 backlog',
@@ -265,6 +266,18 @@ const en = {
   model_avail_backtest_short_fail:         '✗',
   model_avail_backtest_short_pending:      '…',
   model_avail_backtest_short_uncalibrated: '~',
+  // Context sections (shown below the model table)
+  model_avail_ctx_gate_title:          'Gate logic — what PASS / FAIL means',
+  model_avail_ctx_gate_body:           'A model must beat the best baseline (Naive DoW) by ≥ 10% RMSE across all 4 folds to be promoted. PASS = deployed to your chart. FAIL = stays inactive; the baseline keeps running.',
+  model_avail_ctx_folds_title:         'How the 4 folds work',
+  model_avail_ctx_folds_body:          'Rolling-origin CV: each fold covers 7 days, stepping back one week at a time. Fold 0 = the most recent complete week; Fold 3 = 3 weeks earlier. Every model trains only on data before its fold\'s start date — no lookahead.',
+  model_avail_ctx_naive_title_revenue: 'Why Naive DoW leads on revenue',
+  model_avail_ctx_naive_body_revenue:  'Revenue follows a strong day-of-week rhythm (weekends busy, Mondays quiet). A DoW average captures this precisely at ~1 year of data. Complex models need 2+ years to fit trend + annual seasonal parameters without overfitting.',
+  model_avail_ctx_naive_title_count:   'Why Naive DoW leads on transaction count',
+  model_avail_ctx_naive_body_count:    'Footfall follows a tighter day-of-week pattern than revenue. A DoW average is hard to beat with limited data. Complex models will gain an edge once 2+ years of holiday/event patterns are in the training window.',
+  model_avail_ctx_future_title:        'When challengers will catch up',
+  model_avail_ctx_future_body:         'At ~730 days (~2 years), SARIMAX and Prophet — which already see holidays and weather — can learn a full annual cycle reliably. Revenue swings ±€100–400 on public holidays; models that incorporate these signals will compound that advantage as the data catalogue grows.',
+
   // Backtest methodology footnote (shown below the model table)
   model_avail_backtest_memo_day:        'Backtest: day grain, 4 rolling-origin folds (h = 7 / 35 / 120 / 365 d)',
   model_avail_backtest_memo_week_month: 'Week/month: no CV yet — rolling-origin folds (h = 4/13/26 w; h = 3/6 mo) added at 104 weekly / 24 monthly buckets',

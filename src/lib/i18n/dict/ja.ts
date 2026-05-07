@@ -255,5 +255,15 @@ export default {
   model_avail_backtest_short_uncalibrated: '~',
   model_avail_backtest_memo_day:        'バックテスト：日次粒度・4つのローリング起点折（h = 7 / 35 / 120 / 365日）',
   model_avail_backtest_memo_week_month: '週次・月次：CVなし — 104週/24ヶ月到達後にローリング起点折（h = 4/13/26週・h = 3/6ヶ月）追加予定',
+  model_avail_ctx_gate_title: 'ゲートロジック — PASS / FAILの意味',
+  model_avail_ctx_gate_body: 'モデルは全4フォールドでNaive DoWより≥10% RMSE改善でPASS（チャートに表示）。失敗はFAIL（非表示）。',
+  model_avail_ctx_folds_title: '4フォールドの仕組み',
+  model_avail_ctx_folds_body: 'ローリングオリジンCV：各フォールドは7日間、1週ずつ遡る。Fold 0=直近完了週、Fold 3=3週前。各モデルはフォールド開始日以前のデータのみで学習。',
+  model_avail_ctx_naive_title_revenue: 'なぜNaive DoWが売上予測でトップか',
+  model_avail_ctx_naive_body_revenue: '売上は強い曜日パターンに従う。DoW平均は約1年のデータで正確。複合モデルは2年以上必要。',
+  model_avail_ctx_naive_title_count: 'なぜNaive DoWが来客数予測でトップか',
+  model_avail_ctx_naive_body_count: '来客数は売上より厳密な曜日パターンを持つ。2年以上のデータが揃えば複合モデルが有利になる。',
+  model_avail_ctx_future_title: 'いつチャレンジャーが追い越すか',
+  model_avail_ctx_future_body: '約730日で、SARIMAXとProphetは年間サイクルを安定して学習できる。祝日・天候を組み込んだモデルが有利になる。',
   model_avail_backtest_memo_improves:   '730日分のデータで自動的に精度向上'
 } as const;

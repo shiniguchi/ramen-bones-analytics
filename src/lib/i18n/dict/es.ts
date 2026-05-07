@@ -216,6 +216,7 @@ export default {
   model_avail_col_model: 'Model',
   model_avail_col_status: 'Status',
   model_avail_col_min: 'Min data',
+  model_avail_col_inputs: 'Entradas',
   model_avail_col_why: 'Why',
   model_avail_col_backtest: 'Backtest',
   model_avail_status_available: 'Available',
@@ -256,5 +257,15 @@ export default {
   model_avail_backtest_short_uncalibrated: '~',
   model_avail_backtest_memo_day:        'Backtest: day grain, 4 rolling-origin folds (h = 7 / 35 / 120 / 365 d)',
   model_avail_backtest_memo_week_month: 'Week/month: no CV yet — rolling-origin folds (h = 4/13/26 w; h = 3/6 mo) added at 104 weekly / 24 monthly buckets',
+  model_avail_ctx_gate_title: 'Lógica de criterio — qué significa PASS / FAIL',
+  model_avail_ctx_gate_body: 'Un modelo debe superar la mejor línea base (Naive DoW) en ≥ 10% RMSE en los 4 pliegues para ser promovido. PASS = activo en el gráfico. FAIL = inactivo.',
+  model_avail_ctx_folds_title: 'Cómo funcionan los 4 pliegues',
+  model_avail_ctx_folds_body: 'CV de origen rodante: cada pliegue cubre 7 días retrocediendo una semana. Pliegue 0 = semana más reciente. Sin lookahead.',
+  model_avail_ctx_naive_title_revenue: 'Por qué Naive DoW lidera en ingresos',
+  model_avail_ctx_naive_body_revenue: 'Los ingresos siguen un fuerte ritmo día-de-semana. Un promedio DoW captura esto con ~1 año de datos. Los modelos complejos necesitan 2+ años.',
+  model_avail_ctx_naive_title_count: 'Por qué Naive DoW lidera en transacciones',
+  model_avail_ctx_naive_body_count: 'El flujo de clientes sigue un patrón día-de-semana más ajustado. Los modelos complejos mejorarán con 2+ años de datos.',
+  model_avail_ctx_future_title: 'Cuándo los desafiantes alcanzarán',
+  model_avail_ctx_future_body: 'A ~730 días, SARIMAX y Prophet pueden aprender un ciclo anual completo de forma fiable incorporando festivos y clima.',
   model_avail_backtest_memo_improves:   'Improves automatically at 730 days of data'
 } as const;

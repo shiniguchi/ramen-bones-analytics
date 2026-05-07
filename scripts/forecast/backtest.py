@@ -96,6 +96,7 @@ import subprocess
 import sys
 import traceback
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import date, datetime, timedelta, timezone
 from typing import Optional
 
@@ -301,11 +302,13 @@ def _fetch_fold_yhats(
     fold_idx: int,
     eval_start: date,
     eval_end: date,
+    granularity: str,
 ) -> np.ndarray:
     """Read yhat rows written by the fold's subprocess (forecast_track-scoped).
 
-    The spawned fit writes to forecast_daily with FORECAST_TRACK='backtest_fold_{N}'.
-    We read them back here for metric computation, then DELETE them post-eval.
+    Filters by granularity and run_date (= eval_start, as set by _spawn_fit) to
+    avoid picking up week/month grain rows or rows from previous backtest runs that
+    share the same forecast_track but have different granularities or run_dates.
     """
     resp = (
         client.table('forecast_daily')
@@ -314,6 +317,8 @@ def _fetch_fold_yhats(
         .eq('kpi_name', kpi_name)
         .eq('model_name', model)
         .eq('forecast_track', f'backtest_fold_{fold_idx}')
+        .eq('granularity', granularity)
+        .eq('run_date', eval_start.isoformat())
         .gte('target_date', eval_start.isoformat())
         .lte('target_date', eval_end.isoformat())
         .order('target_date')
@@ -381,7 +386,7 @@ def _gate_decision(
     kpi: str,
     horizon: int,
     evaluation_window: str = 'rolling_origin_cv',  # legacy day-grain default
-) -> dict[str, str]:
+) -> tuple[dict[str, str], dict[str, float]]:
     """Compute PASS/FAIL/PENDING/UNCALIBRATED verdict per model for one (kpi, horizon).
 
     Args:
@@ -391,7 +396,8 @@ def _gate_decision(
         evaluation_window: evaluation_window value to filter on (grain-scoped).
 
     Returns:
-        {model_name: verdict_str} — empty dict if no rows.
+        Tuple of ({model_name: verdict_str}, {model_name: mean_rmse}).
+        Both dicts are empty if no rows. mean_rmse is empty for UNCALIBRATED/PENDING.
 
     Gate rule (BCK-03 / D-04):
         baseline = max(naive_dow_mean_rmse, naive_dow_with_holidays_mean_rmse)
@@ -409,7 +415,7 @@ def _gate_decision(
         and r['evaluation_window'] == evaluation_window
     ]
     if not rows_at_h:
-        return {}
+        return {}, {}
 
     # Collect RMSE values per model across folds
     rmses_by_model: dict[str, list[float]] = defaultdict(list)
@@ -418,11 +424,11 @@ def _gate_decision(
             rmses_by_model[r['model_name']].append(float(r['rmse']))
 
     if not rmses_by_model:
-        return {}
+        return {}, {}
 
     # UNCALIBRATED for long horizons regardless of RMSE (BCK-02)
     if horizon in UNCALIBRATED_HORIZONS:
-        return {m: 'UNCALIBRATED' for m in rmses_by_model}
+        return {m: 'UNCALIBRATED' for m in rmses_by_model}, {}
 
     # Compute mean RMSE per model
     mean_rmse = {m: float(np.mean(rs)) for m, rs in rmses_by_model.items()}
@@ -442,21 +448,20 @@ def _gate_decision(
         or not np.isfinite(baseline_dow)
         or not np.isfinite(baseline_dow_h)
     ):
-        return {m: 'PENDING' for m in mean_rmse}
+        return {m: 'PENDING' for m in mean_rmse}, {}
     baseline = max(baseline_dow, baseline_dow_h)
     threshold = baseline * GATE_THRESHOLD
 
     verdicts: dict[str, str] = {}
     for m, rmse in mean_rmse.items():
         if m in BASELINE_MODELS:
-            # Baselines always PASS — they define the floor (R7 guard)
             verdicts[m] = 'PASS'
         elif rmse <= threshold:
             verdicts[m] = 'PASS'
         else:
             verdicts[m] = 'FAIL'
 
-    return verdicts
+    return verdicts, mean_rmse
 
 
 def _apply_gate_to_feature_flags(
@@ -485,16 +490,17 @@ def _apply_gate_to_feature_flags(
             ).execute()
 
 
-def _cleanup_sentinel_rows(client, *, restaurant_id: str) -> None:
-    """DELETE forecast_daily rows written by this backtest run (backtest_fold_* tracks).
+def _cleanup_sentinel_rows(client, *, restaurant_id: str, n_folds: int = 8) -> None:
+    """DELETE forecast_daily rows for all backtest_fold_N tracks (N=0..n_folds-1).
 
-    Keeps forecast_daily clean — backtest fold rows are transient and should not
-    persist into the nightly BAU reads or dashboard queries.
+    Uses individual .eq() calls instead of .like() to avoid PostgREST URL-encoding
+    issues where '%' in the LIKE pattern fails to match correctly.
     """
-    client.table('forecast_daily').delete().eq(
-        'restaurant_id', restaurant_id
-    ).like('forecast_track', 'backtest_fold_%').execute()
-    print('[backtest] Cleaned up backtest_fold_* sentinel rows from forecast_daily.')
+    for fold_idx in range(n_folds):
+        client.table('forecast_daily').delete().eq(
+            'restaurant_id', restaurant_id
+        ).eq('forecast_track', f'backtest_fold_{fold_idx}').execute()
+    print(f'[backtest] Cleaned up backtest_fold_0..{n_folds-1} sentinel rows from forecast_daily.')
 
 
 # --------------------------------------------------------------------------- #
@@ -517,6 +523,27 @@ def main(models: list[str], run_date: date) -> int:
         return 1
     restaurant_id = rows[0]['id']
 
+    # Purge stale rolling_origin_cv rows before writing new ones. The PK includes
+    # evaluated_at=now() so upserts always INSERT; without this purge, multiple runs
+    # accumulate duplicate fold rows with inconsistent RMSE values. The GHA workflow
+    # uses cancel-in-progress: false so no two runs overlap — safe to delete first.
+    print('[backtest] purging stale rolling_origin_cv* rows…')
+    for ew in ('rolling_origin_cv', 'rolling_origin_cv_week', 'rolling_origin_cv_month'):
+        client.table('forecast_quality') \
+            .delete() \
+            .eq('restaurant_id', restaurant_id) \
+            .eq('evaluation_window', ew) \
+            .execute()
+    print('[backtest] purge done')
+
+    # Pre-run cleanup: delete any leftover backtest_fold_* rows from forecast_daily
+    # before spawning new folds. This prevents previous run's stale rows (including
+    # wrong-granularity rows written by week/month fold runs sharing the same
+    # backtest_fold_N track name) from contaminating _fetch_fold_yhats.
+    print('[backtest] pre-run cleanup of stale forecast_daily fold rows…')
+    _cleanup_sentinel_rows(client, restaurant_id=restaurant_id)
+    print('[backtest] pre-run cleanup done')
+
     last_actual = _last_actual_date(client, restaurant_id)
     days_history = _days_of_history(client, restaurant_id)
     print(
@@ -532,6 +559,11 @@ def main(models: list[str], run_date: date) -> int:
     total_attempted = 0
     total_succeeded = 0
 
+    # GHA ubuntu-latest has 4 vCPUs. Each fit subprocess is CPU-bound but runs
+    # in a child process, so ThreadPoolExecutor I/O-waits are fine here — the GIL
+    # is released while waiting for subprocess.run to return.
+    MAX_WORKERS = 4
+
     try:
         # Phase 1: Rolling-origin fold spawning across all grains.
         for granularity in ('day', 'week', 'month'):
@@ -544,6 +576,53 @@ def main(models: list[str], run_date: date) -> int:
 
             for kpi in KPIS:
                 for horizon in horizons_g:
+                    # Skip horizons that will always be UNCALIBRATED until ≥730 days.
+                    # No subprocess needed — write the marker row directly and move on.
+                    if horizon in UNCALIBRATED_HORIZONS and days_history < 730:
+                        print(
+                            f'[backtest] grain={granularity} kpi={kpi} h={horizon}: '
+                            f'UNCALIBRATED (days_history={days_history} < 730); skipping fits'
+                        )
+                        for model in models:
+                            _write_quality_row(
+                                client,
+                                restaurant_id=restaurant_id,
+                                kpi_name=kpi,
+                                model=model,
+                                horizon=horizon,
+                                fold_idx=None,
+                                train_end=None,
+                                eval_start=None,
+                                metrics=None,
+                                gate_verdict='UNCALIBRATED',
+                                grain=granularity,
+                            )
+                        continue
+
+                    # Stricter week-grain cold-start: fit scripts need >= 104 weekly buckets.
+                    # The generic guard below only checks horizon+n_folds (~8-30), far too
+                    # lenient for SARIMAX/ETS/Theta which abort internally at < 104 weeks.
+                    if granularity == 'week' and buckets_history < 104:
+                        print(
+                            f'[backtest] grain=week kpi={kpi} h={horizon}: PENDING '
+                            f'(buckets={buckets_history} < 104 required by fit scripts)'
+                        )
+                        for model in models:
+                            _write_quality_row(
+                                client,
+                                restaurant_id=restaurant_id,
+                                kpi_name=kpi,
+                                model=model,
+                                horizon=horizon,
+                                fold_idx=None,
+                                train_end=None,
+                                eval_start=None,
+                                metrics=None,
+                                gate_verdict='PENDING',
+                                grain=granularity,
+                            )
+                        continue
+
                     # Cold-start guard: insufficient history → write PENDING for all models
                     required = horizon + n_folds_g
                     if buckets_history < required:
@@ -569,94 +648,53 @@ def main(models: list[str], run_date: date) -> int:
 
                     # Rolling-origin folds — fold 0 is the most recent.
                     # Date arithmetic uses bucket_days so fold steps are grain-native.
+                    #
+                    # Build the full work list for this (kpi, horizon, grain) then
+                    # submit all (model, fold) pairs in parallel. Each subprocess is
+                    # independent: different forecast_track + train_end ensures no
+                    # shared forecast_daily rows between concurrent fits.
+                    work_items = []
                     for fold_idx in range(n_folds_g):
                         fold_offset = fold_idx * horizon * bucket_days
                         eval_end = last_actual - timedelta(days=fold_offset)
                         eval_start = eval_end - timedelta(days=horizon * bucket_days - 1)
                         train_end = eval_start - timedelta(days=1)
-
                         for model in models:
-                            total_attempted += 1
+                            work_items.append((model, fold_idx, train_end, eval_start, eval_end))
 
-                            # Spawn the fit subprocess for this fold
-                            ok = _spawn_fit(
+                    # Submit all fits in parallel, collect results keyed by work item.
+                    spawn_results: dict[tuple, bool] = {}
+                    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+                        future_to_item = {
+                            executor.submit(
+                                _spawn_fit,
                                 model=model,
                                 restaurant_id=restaurant_id,
                                 kpi_name=kpi,
-                                train_end=train_end,
-                                eval_start=eval_start,
-                                fold_idx=fold_idx,
+                                train_end=t_end,
+                                eval_start=e_start,
+                                fold_idx=f_idx,
                                 granularity=granularity,
-                            )
-                            if not ok:
-                                _write_quality_row(
-                                    client,
-                                    restaurant_id=restaurant_id,
-                                    kpi_name=kpi,
-                                    model=model,
-                                    horizon=horizon,
-                                    fold_idx=fold_idx,
-                                    train_end=train_end,
-                                    eval_start=eval_start,
-                                    metrics=None,
-                                    gate_verdict='PENDING',
-                                    grain=granularity,
-                                )
-                                continue
-
-                            # Read actuals and yhats for this fold's eval window.
-                            # NOTE: _fetch_actuals returns daily rows; for week/month grain
-                            # the alignment check (n=min) will misalign daily actuals against
-                            # bucket-level yhats — those folds will land as PENDING until a
-                            # bucketed actuals fetch is added (future follow-up).
-                            actuals = _fetch_actuals(
-                                client,
-                                restaurant_id=restaurant_id,
-                                kpi_name=kpi,
-                                eval_start=eval_start,
-                                eval_end=eval_end,
-                            )
-                            yhats = _fetch_fold_yhats(
-                                client,
-                                restaurant_id=restaurant_id,
-                                kpi_name=kpi,
-                                model=model,
-                                fold_idx=fold_idx,
-                                eval_start=eval_start,
-                                eval_end=eval_end,
-                            )
-
-                            # Align lengths defensively (closed days may produce gaps)
-                            n = min(len(actuals), len(yhats))
-                            if n == 0:
+                            ): (model, f_idx, t_end, e_start, e_end)
+                            for (model, f_idx, t_end, e_start, e_end) in work_items
+                        }
+                        for future in as_completed(future_to_item):
+                            item = future_to_item[future]
+                            try:
+                                spawn_results[item] = future.result()
+                            except Exception as exc:
                                 print(
-                                    f'[backtest] grain={granularity} fold {fold_idx} '
-                                    f'{model}/{kpi} h={horizon}: '
-                                    'zero aligned rows; skipping metrics',
+                                    f'[backtest] spawn raised exception for {item}: {exc}',
                                     file=sys.stderr,
                                 )
-                                _write_quality_row(
-                                    client,
-                                    restaurant_id=restaurant_id,
-                                    kpi_name=kpi,
-                                    model=model,
-                                    horizon=horizon,
-                                    fold_idx=fold_idx,
-                                    train_end=train_end,
-                                    eval_start=eval_start,
-                                    metrics=None,
-                                    gate_verdict='PENDING',
-                                    grain=granularity,
-                                )
-                                continue
+                                spawn_results[item] = False
 
-                            actuals = actuals[:n]
-                            yhats = yhats[:n]
+                    # Process results sequentially (DB reads/writes, not CPU-bound).
+                    for (model, fold_idx, train_end, eval_start, eval_end) in work_items:
+                        total_attempted += 1
+                        ok = spawn_results.get((model, fold_idx, train_end, eval_start, eval_end), False)
 
-                            metrics = compute_metrics(actuals, yhats)
-                            metrics['n_days'] = n
-
-                            # Write fold row with PENDING verdict (updated in second pass)
+                        if not ok:
                             _write_quality_row(
                                 client,
                                 restaurant_id=restaurant_id,
@@ -666,28 +704,102 @@ def main(models: list[str], run_date: date) -> int:
                                 fold_idx=fold_idx,
                                 train_end=train_end,
                                 eval_start=eval_start,
-                                metrics=metrics,
-                                gate_verdict='PENDING',  # filled in second pass after gate
+                                metrics=None,
+                                gate_verdict='PENDING',
                                 grain=granularity,
                             )
+                            continue
 
-                            # Track for in-memory gate computation
-                            quality_rows.append({
-                                'kpi_name': kpi,
-                                'model_name': model,
-                                'horizon_days': horizon,
-                                'rmse': metrics['rmse'],
-                                'evaluation_window': eval_window,
-                                'fold_index': fold_idx,
-                            })
+                        # Read actuals and yhats for this fold's eval window.
+                        # NOTE: _fetch_actuals returns daily rows; for week/month grain
+                        # the alignment check (n=min) will misalign daily actuals against
+                        # bucket-level yhats — those folds will land as PENDING until a
+                        # bucketed actuals fetch is added (future follow-up).
+                        actuals = _fetch_actuals(
+                            client,
+                            restaurant_id=restaurant_id,
+                            kpi_name=kpi,
+                            eval_start=eval_start,
+                            eval_end=eval_end,
+                        )
+                        yhats = _fetch_fold_yhats(
+                            client,
+                            restaurant_id=restaurant_id,
+                            kpi_name=kpi,
+                            model=model,
+                            fold_idx=fold_idx,
+                            eval_start=eval_start,
+                            eval_end=eval_end,
+                            granularity=granularity,
+                        )
 
-                            # Collect h=35 signed residuals for conformal calibration (BCK-02)
-                            # Day grain only: week/month have no h=35.
-                            if granularity == 'day' and horizon == 35:
-                                residuals = actuals - yhats  # signed: actual - yhat
-                                fold_residuals_h35[(kpi, model)][fold_idx] = residuals
+                        # Align lengths defensively (closed days may produce gaps)
+                        n = min(len(actuals), len(yhats))
+                        if n == 0:
+                            print(
+                                f'[backtest] grain={granularity} fold {fold_idx} '
+                                f'{model}/{kpi} h={horizon}: '
+                                'zero aligned rows; skipping metrics',
+                                file=sys.stderr,
+                            )
+                            _write_quality_row(
+                                client,
+                                restaurant_id=restaurant_id,
+                                kpi_name=kpi,
+                                model=model,
+                                horizon=horizon,
+                                fold_idx=fold_idx,
+                                train_end=train_end,
+                                eval_start=eval_start,
+                                metrics=None,
+                                gate_verdict='PENDING',
+                                grain=granularity,
+                            )
+                            continue
 
-                            total_succeeded += 1
+                        actuals = actuals[:n]
+                        yhats = yhats[:n]
+
+                        metrics = compute_metrics(actuals, yhats)
+                        metrics['n_days'] = n
+
+                        # Write fold row with PENDING verdict (updated in second pass)
+                        _write_quality_row(
+                            client,
+                            restaurant_id=restaurant_id,
+                            kpi_name=kpi,
+                            model=model,
+                            horizon=horizon,
+                            fold_idx=fold_idx,
+                            train_end=train_end,
+                            eval_start=eval_start,
+                            metrics=metrics,
+                            gate_verdict='PENDING',  # filled in second pass after gate
+                            grain=granularity,
+                        )
+
+                        # Track for in-memory gate computation + aggregate row write
+                        quality_rows.append({
+                            'kpi_name': kpi,
+                            'model_name': model,
+                            'horizon_days': horizon,
+                            'rmse': metrics['rmse'],
+                            'mape': metrics.get('mape'),
+                            'mean_bias': metrics.get('mean_bias'),
+                            'direction_hit_rate': metrics.get('direction_hit_rate'),
+                            'n_days': metrics.get('n_days', 0),
+                            'evaluation_window': eval_window,
+                            'fold_index': fold_idx,
+                            'granularity': granularity,
+                        })
+
+                        # Collect h=35 signed residuals for conformal calibration (BCK-02)
+                        # Day grain only: week/month have no h=35.
+                        if granularity == 'day' and horizon == 35:
+                            residuals = actuals - yhats  # signed: actual - yhat
+                            fold_residuals_h35[(kpi, model)][fold_idx] = residuals
+
+                        total_succeeded += 1
 
         # ------------------------------------------------------------------- #
         # Phase 2: Conformal calibration at h=35 (BCK-02) — day grain only    #
@@ -736,7 +848,7 @@ def main(models: list[str], run_date: date) -> int:
             eval_window = _eval_window_for_grain(granularity)
             for kpi in KPIS:
                 for horizon in HORIZONS_BY_GRAIN[granularity]:
-                    verdicts = _gate_decision(
+                    verdicts, mean_rmse = _gate_decision(
                         quality_rows, kpi=kpi, horizon=horizon,
                         evaluation_window=eval_window,
                     )
@@ -746,7 +858,7 @@ def main(models: list[str], run_date: date) -> int:
                     for model, verdict in verdicts.items():
                         per_model_per_horizon_verdicts[model][horizon] = verdict
 
-                        # Update gate_verdict on the already-written forecast_quality rows
+                        # Update gate_verdict on the already-written fold rows
                         # Scoped to: this run's rows (evaluated_at >= started_at)
                         client.table('forecast_quality').update(
                             {'gate_verdict': verdict}
@@ -759,6 +871,27 @@ def main(models: list[str], run_date: date) -> int:
                         ).gte(
                             'evaluated_at', started_at.isoformat()
                         ).execute()
+
+                    # Write one aggregate row (fold_index=NULL) per model with mean
+                    # RMSE across folds — this is what the UI should display, matching
+                    # exactly the RMSE the gate used. UNCALIBRATED/PENDING slices
+                    # return empty mean_rmse, so no aggregate row is written for those.
+                    for model, rmse in mean_rmse.items():
+                        verdict = verdicts.get(model, 'PENDING')
+                        _write_quality_row(
+                            client,
+                            restaurant_id=restaurant_id,
+                            kpi_name=kpi,
+                            model=model,
+                            horizon=horizon,
+                            fold_idx=None,
+                            train_end=None,
+                            eval_start=None,
+                            metrics={'rmse': rmse, 'n_days': 0, 'mape': 0.0,
+                                     'mean_bias': 0.0, 'direction_hit_rate': 0.0},
+                            gate_verdict=verdict,
+                            grain=granularity,
+                        )
 
         # Aggregate per model: enabled iff PASS at ALL evaluable horizons
         # PENDING and UNCALIBRATED do not flip (gate is silent until evaluable)

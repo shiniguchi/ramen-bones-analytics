@@ -1,18 +1,17 @@
 // src/routes/api/campaign-uplift/+server.ts
 // Phase 16 D-11 / C-08 / T-16-04.
 // Reads pre-computed nightly aggregates from campaign_uplift_v (per-window
-// headline rows) and campaign_uplift_daily_v (per-day trajectory powering
-// the dashboard sparkline). The endpoint URL stays stable across Phase 15
-// → 16 — Phase 15's `campaign_start` and `cumulative_deviation_eur` fields
-// are preserved at the top level for any historical-tooltip consumer (C-08).
+// headline rows), campaign_uplift_weekly_v (per-ISO-week bars), and
+// forecast_with_actual_v (CF track — actual vs SARIMAX yhat dual-line).
+// Phase 20: replaced campaign_uplift_daily_v with forecast_with_actual_v
+// CF track query, enabling the day-granularity dual-line counterfactual chart.
 //
 // Threat T-16-04 (sample-path leak): the endpoint reads ONLY aggregate
 // columns from the wrapper views — never raw `yhat_samples` or path arrays.
 // The Vitest suite asserts no `paths`/`samples`/`yhat_samples` keys nor any
 // 200-element numeric array appears in the response body.
 //
-// Auth: locals.safeGetSession(). RLS: campaign_uplift_v + campaign_uplift_daily_v
-// apply auth.jwt()->>'restaurant_id' inline (Plan 07 migration 0064).
+// Auth: locals.safeGetSession(). RLS: views apply auth.jwt()->>'restaurant_id'.
 // Cache-Control: private, no-store.
 import type { RequestHandler } from './$types';
 import { json } from '@sveltejs/kit';
@@ -35,13 +34,14 @@ type UpliftRow = {
   as_of_date: string;
 };
 
-type DailyRow = {
-  campaign_id: string;
-  model_name: string;
-  cumulative_uplift_eur: number;
-  ci_lower_eur: number;
-  ci_upper_eur: number;
-  as_of_date: string;
+// Phase 20: replaces DailyRow (campaign_uplift_daily_v cumulative trajectory).
+// forecast_with_actual_v CF track gives actual revenue vs SARIMAX yhat per day.
+type CfDailyLineRow = {
+  target_date: string;
+  yhat: number;
+  yhat_lower: number;
+  yhat_upper: number;
+  actual_value: number | null;
 };
 
 // Phase 18 UPL-08: per-ISO-week aggregate row (campaign_uplift_weekly_v).
@@ -80,11 +80,18 @@ export const GET: RequestHandler = async ({ locals }) => {
   if (!claims) return json({ error: 'unauthorized' }, { status: 401, headers: NO_STORE });
 
   try {
-    // Three queries against the SAME backing table via three wrapper views.
-    // campaign_uplift_v        = headline rows (per-window aggregates).
-    // campaign_uplift_daily_v  = per-day trajectory rows for the sparkline (D-11).
-    // campaign_uplift_weekly_v = per-ISO-week trajectory (Phase 18 UPL-08).
-    const [rows, dailyRows, weeklyRows] = await Promise.all([
+    // today computed before Promise.all so the kpi query can filter server-side.
+    const today = format(new Date(), 'yyyy-MM-dd');
+
+    // Four queries:
+    // campaign_uplift_v          = headline rows (per-window aggregates).
+    // campaign_uplift_weekly_v   = per-ISO-week trajectory (Phase 18 UPL-08).
+    // forecast_with_actual_v     = CF track: SARIMAX yhat/CI per day (Phase 20).
+    // kpi_daily_with_comparable_v = total revenue_eur per day — used as the
+    //   actual line in the chart. revenue_comparable_eur (from the CF view) only
+    //   covers baseline menu items; total revenue_eur matches what the owner sees
+    //   in the KPI tiles and heatmap.
+    const [rows, weeklyRows, cfDailyLineRows, kpiDailyRows] = await Promise.all([
       fetchAll<UpliftRow>(() =>
         locals.supabase
           .from('campaign_uplift_v')
@@ -94,21 +101,31 @@ export const GET: RequestHandler = async ({ locals }) => {
           .order('campaign_start', { ascending: false })
           .order('model_name', { ascending: true })
       ),
-      fetchAll<DailyRow>(() =>
-        locals.supabase
-          .from('campaign_uplift_daily_v')
-          .select('campaign_id,model_name,cumulative_uplift_eur,ci_lower_eur,ci_upper_eur,as_of_date')
-          .eq('model_name', 'sarimax') // headline model only — D-11 sparkline shows sarimax trajectory
-          .order('as_of_date', { ascending: true })
-      ),
       fetchAll<WeeklyRow>(() =>
         locals.supabase
           .from('campaign_uplift_weekly_v')
           .select(
             'campaign_id,model_name,cumulative_uplift_eur,ci_lower_eur,ci_upper_eur,n_days,as_of_date'
           )
-          .eq('model_name', 'sarimax') // headline-pick convention (CONTEXT.md line 47)
+          .eq('model_name', 'sarimax')
           .order('as_of_date', { ascending: true })
+      ),
+      fetchAll<CfDailyLineRow>(() =>
+        locals.supabase
+          .from('forecast_with_actual_v')
+          .select('target_date,yhat,yhat_lower,yhat_upper,actual_value')
+          .eq('forecast_track', 'cf')
+          .eq('model_name', 'sarimax')
+          .eq('kpi_name', 'revenue_comparable_eur')
+          .eq('granularity', 'day')
+          .order('target_date', { ascending: true })
+      ),
+      fetchAll<{ business_date: string; revenue_eur: number }>(() =>
+        locals.supabase
+          .from('kpi_daily_with_comparable_v')
+          .select('business_date,revenue_eur')
+          .lte('business_date', today)
+          .order('business_date', { ascending: true })
       )
     ]);
 
@@ -145,18 +162,24 @@ export const GET: RequestHandler = async ({ locals }) => {
       (r) => r.model_name === 'sarimax' && r.window_kind === 'cumulative_since_launch'
     );
 
-    // Per-day trajectory for the headline campaign × sarimax (D-11 sparkline).
+    // Phase 20: per-day actual vs CF yhat for the headline campaign (dual-line chart).
+    // actual_eur = total revenue_eur from kpi_daily_with_comparable_v (matches KPI tiles).
+    // cf_yhat_eur = SARIMAX CF baseline (trained on revenue_comparable_eur — comparable items only).
+    // Using total revenue for the actual line so numbers align with the heatmap / KPI tiles.
     const headlineCampaignId = campaigns[0]?.campaign_id;
-    const daily = headlineCampaignId
-      ? dailyRows
-          .filter((d) => d.campaign_id === headlineCampaignId)
-          .map((d) => ({
-            date: d.as_of_date,
-            cumulative_uplift_eur: d.cumulative_uplift_eur,
-            ci_lower_eur: d.ci_lower_eur,
-            ci_upper_eur: d.ci_upper_eur
-          }))
-      : [];
+    const kpiByDate = new Map(kpiDailyRows.map((r) => [r.business_date, r.revenue_eur]));
+    const daily_lines =
+      headlineCampaignId && campaigns[0]?.start_date
+        ? cfDailyLineRows
+            .filter((r) => r.target_date >= campaigns[0]!.start_date && r.target_date <= today)
+            .map((r) => ({
+              date: r.target_date,
+              actual_eur: kpiByDate.get(r.target_date) ?? null,
+              cf_yhat_eur: r.yhat,
+              cf_lower_eur: r.yhat_lower,
+              cf_upper_eur: r.yhat_upper
+            }))
+        : [];
 
     // Phase 18 UPL-08: per-ISO-week trajectory powering CampaignUpliftCard's
     // bar-chart history (Plans 04 + 05). `as_of_date` IS the Sunday end of the
@@ -193,8 +216,8 @@ export const GET: RequestHandler = async ({ locals }) => {
         ci_lower_eur: headline?.ci_lower_eur ?? null,
         ci_upper_eur: headline?.ci_upper_eur ?? null,
         naive_dow_uplift_eur: headline?.naive_dow_uplift_eur ?? null,
-        daily,
-        // Phase 18 extension (sister to `daily`):
+        daily_lines,
+        // Phase 18 extension (sister to `daily_lines`):
         weekly_history,
         campaigns
       },

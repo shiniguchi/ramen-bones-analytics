@@ -208,6 +208,34 @@
     }));
   });
 
+  // Extend chartData with synthetic zero-value rows for pure-forecast future
+  // dates so LayerChart band-mode creates hover zones over the forecast lines.
+  const extendedChartData = $derived.by(() => {
+    if (!overlay.forecastData) return chartData;
+    const grain = getFilters().grain as Granularity;
+    const today = format(new Date(), 'yyyy-MM-dd');
+    const existing = new Set(chartData.map((r) => format(r.bucket_d, 'yyyy-MM-dd')));
+    const futureDates = Array.from(
+      new Set((overlay.forecastData.rows ?? []).map((r) => r.target_date))
+    ).filter((d) => d > today && !existing.has(d)).sort();
+    const syntheticRows = futureDates.map((isoDate) => ({
+      ...Object.fromEntries(SERIES_KEYS.map((k) => [k, 0])),
+      bucket: formatBucketLabel(isoDate, grain),
+      bucket_d: parseISO(isoDate)
+    }));
+    return [...chartData, ...syntheticRows];
+  });
+
+  // Local hoveredBucketIso covers both historical bars and future forecast dates.
+  const hoveredBucketIso = $derived.by<string | null>(() => {
+    const data = chartCtx?.tooltip?.data;
+    if (!data) return null;
+    const idx = extendedChartData.findIndex((r) => r.bucket === data.bucket);
+    if (idx < 0) return null;
+    const d = extendedChartData[idx]?.bucket_d;
+    return d instanceof Date ? format(d, 'yyyy-MM-dd') : null;
+  });
+
   // Auto-scroll to "today" so the forecast tail is visible on first render.
   // Without this, the chart canvas can be 19k+ px wide (year of bars + 365d
   // forecast) and the forecast lines render off-screen — users had to scroll
@@ -256,7 +284,7 @@
       {#if cardW > 0}
       <Chart
         bind:context={chartCtx}
-        data={chartData}
+        data={extendedChartData}
         x="bucket_d"
         xScale={scaleTime()}
         {xInterval}
@@ -295,7 +323,7 @@
           <ForecastOverlay
             seriesByModel={overlay.seriesByModel}
             bucketCenter={overlay.bucketCenter}
-            hoveredBucketIso={overlay.hoveredBucketIso}
+            {hoveredBucketIso}
             {chartCtx}
           />
 
@@ -375,7 +403,10 @@
       <ModelAvailabilityDisclosure
         availableModels={overlay.availableModels}
         grain={getFilters().grain}
+        kpi="revenue_eur"
         backtestStatus={overlay.forecastData?.modelBacktestStatus ?? null}
+        backtestMetrics={overlay.forecastData?.modelBacktestMetrics ?? null}
+        backtestLastMeasured={overlay.forecastData?.backtestLastMeasured ?? null}
       />
     {/if}
   {/if}
