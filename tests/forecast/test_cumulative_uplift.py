@@ -536,3 +536,120 @@ def test_per_day_ci_truncates_at_day_i():
         f"{captured_lengths}, expected [1, 2, 3, 4, 5]"
     )
     assert len(rows) == n_days
+
+
+# ---------------------------------------------------------------------------
+# Phase 18 (UPL-08): _process_campaign_model emits iso_week rows alongside
+# the existing per-window + per-day rows. Unit-level coverage of
+# compute_iso_week_uplift_rows() lives in tests/forecast/test_iso_week_uplift.py;
+# this test asserts the wiring inside _process_campaign_model so a future
+# refactor that drops the call (regression) fails loudly.
+# ---------------------------------------------------------------------------
+
+def test_process_campaign_model_emits_iso_week_rows():
+    """When the cumulative window spans 14 days starting on a Monday with run_date
+    rolled past the second Sunday, _process_campaign_model should emit exactly
+    2 iso_week rows alongside the existing campaign_window / cumulative_since_launch /
+    per_day rows. Mirrors the _table_router mock pattern from
+    test_two_window_kinds_per_campaign_per_model.
+    """
+    from scripts.forecast import cumulative_uplift as mod
+
+    upserted_rows: list = []
+
+    def _resp(*, data=None):
+        return types.SimpleNamespace(data=(data if data is not None else []), error=None)
+
+    # 14 days Mon-Sun spanning W17 (Apr 20-26) + W18 (Apr 27-May 3) so two
+    # ISO weeks are fully completed when run_date = May 4 (Mon, W19 day 1).
+    days = [date(2026, 4, 20) + timedelta(days=i) for i in range(14)]
+    forecast_with_actual_data = [
+        {"target_date": d.isoformat(), "actual_value": 600.0, "yhat": 500.0}
+        for d in days
+    ]
+    base_paths = [500.0] * 200
+    forecast_daily_data = [
+        {"target_date": d.isoformat(), "yhat_samples": base_paths}
+        for d in days
+    ]
+
+    def _table_router(name):
+        m = MagicMock(name=f"chain[{name}]")
+        m.select.return_value = m
+        m.eq.return_value = m
+        m.gte.return_value = m
+        m.lte.return_value = m
+        m.lt.return_value = m  # _successful_cf_models uses .lt() for the timestamptz upper bound
+        m.order.return_value = m
+        m.limit.return_value = m
+        m.insert.return_value = m
+
+        def _upsert(payload, **_kwargs):
+            if name == "campaign_uplift":
+                if isinstance(payload, list):
+                    upserted_rows.extend(payload)
+                else:
+                    upserted_rows.append(payload)
+            return m
+
+        m.upsert.side_effect = _upsert
+
+        if name == "restaurants":
+            m.execute.return_value = _resp(data=[{"id": "rest-1"}])
+        elif name == "campaign_calendar":
+            m.execute.return_value = _resp(data=[{
+                "campaign_id": "friend-owner-2026-04-20",
+                "restaurant_id": "rest-1",
+                "start_date": "2026-04-20",
+                "end_date": "2026-04-20",  # short campaign_window; cumulative window extends to run_date
+                "name": "Phase 18 test campaign",
+                "channel": "instagram",
+            }])
+        elif name == "pipeline_runs":
+            m.execute.return_value = _resp(data=[{"status": "success"}])
+        elif name == "forecast_with_actual_v":
+            m.execute.return_value = _resp(data=forecast_with_actual_data)
+        elif name == "forecast_daily":
+            m.execute.return_value = _resp(data=forecast_daily_data)
+        elif name == "feature_flags":
+            m.execute.return_value = _resp(data=[])
+        elif name == "campaign_uplift":
+            m.execute.return_value = _resp(data=[])
+        else:
+            m.execute.return_value = _resp(data=[])
+        return m
+
+    client = MagicMock(name="supabase_client")
+    client.table.side_effect = _table_router
+    rpc_chain = MagicMock()
+    rpc_chain.execute.return_value = MagicMock(data=[])
+    client.rpc.return_value = rpc_chain
+
+    # run_date = May 4 (Mon W19 day 1) → both W17 + W18 are completed.
+    mod.main_uplift(client, run_date=date(2026, 5, 4))
+
+    # Group by model_name; each successful model should produce exactly 2 iso_week rows
+    # (W17 + W18 Sundays = 2026-04-26 and 2026-05-03).
+    iso_week_by_model: dict[str, list[str]] = {}
+    for row in upserted_rows:
+        if row.get("window_kind") != "iso_week":
+            continue
+        iso_week_by_model.setdefault(row["model_name"], []).append(row["as_of_date"])
+
+    assert len(iso_week_by_model) >= 1, (
+        f"Expected at least 1 model to emit iso_week rows. Got: {iso_week_by_model}. "
+        f"All upserts: {[(r.get('model_name'), r.get('window_kind'), r.get('as_of_date')) for r in upserted_rows]!r}"
+    )
+    for model_name, sundays in iso_week_by_model.items():
+        assert sorted(sundays) == ["2026-04-26", "2026-05-03"], (
+            f"Model {model_name!r}: expected iso_week as_of_dates "
+            f"['2026-04-26', '2026-05-03'], got {sorted(sundays)}"
+        )
+
+    # Spot-check the iso_week row shape on any one row.
+    sample = next(r for r in upserted_rows if r.get("window_kind") == "iso_week")
+    assert sample["n_days"] == 7
+    assert sample["naive_dow_uplift_eur"] is None
+    assert "ci_lower_eur" in sample
+    assert "ci_upper_eur" in sample
+    assert "cumulative_uplift_eur" in sample

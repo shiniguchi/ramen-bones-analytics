@@ -130,6 +130,111 @@ def bootstrap_uplift_ci(
 # Per-day rolling cumulative for D-11 sparkline (Task 4).
 # ---------------------------------------------------------------------------
 
+def compute_iso_week_uplift_rows(
+    *,
+    restaurant_id: str,
+    campaign_id: str,
+    model_name: str,
+    actual_values: np.ndarray,
+    yhat_samples_per_day: list,
+    target_dates: list,
+    today: date,
+) -> list:
+    """Phase 18 UPL-08: bucket the cumulative window into ISO weeks (Mon-Sun) and
+    run a fresh bootstrap CI for each FULLY-COMPLETED past week.
+
+    Skip rules:
+      * Partial launch week (`len(idxs) < 7`) — campaign launches mid-week so
+        the first ISO bucket has < 7 days. Per CONTEXT.md leading-edge rule.
+      * In-progress current week (`week_end >= today`) — the most recent ISO
+        week is excluded until its Sunday is strictly < today. Per CONTEXT.md
+        trailing-edge rule.
+
+    Each emitted row has:
+      * `window_kind = 'iso_week'`
+      * `n_days = 7`
+      * `as_of_date = target_dates[idxs[-1]].isoformat()` — the Sunday of the
+        ISO week. Stable across nightly runs; the upsert PK
+        `(restaurant_id, campaign_id, model_name, window_kind, as_of_date)` is
+        therefore idempotent on the per-week shape (re-running writes the same
+        row). Backfill on first nightly run after migration writes ALL completed
+        weeks since campaign launch.
+      * `naive_dow_uplift_eur = None` — the cross-check column is per-window
+        only (matches per-day rows at line 183).
+
+    Bootstrap seed scheme (RESEARCH §7 R1):
+      `seed = 100_000 + k` where k is the chronological index of the ISO bucket.
+      Disjoint from `compute_per_day_uplift_rows` which uses `42 + i` for
+      `i in [0, n_days)`. A future change altering either seed scheme MUST
+      preserve this disjointness invariant — overlapping seeds would produce
+      correlated CI bounds across the per-day and per-week passes.
+
+    No 2nd DB roundtrip (RESEARCH §7 R2): callers reuse the cumulative window's
+    already-loaded `cs["actual_values"]`, `cs["yhat_samples_per_day"]`,
+    `cs["target_dates"]` arrays. Bucketing is pure-Python date math.
+
+    Bootstrap CI is RE-FIT per week — never derived by subtracting daily
+    cumulative bounds (CONTEXT.md line 28; correlated bootstrap samples don't
+    subtract additively). N=7 windows produce wider CIs than 30-day windows
+    by design — that wider CI is the truthful read at one week of evidence
+    (RESEARCH §1 N=7 edge case).
+
+    Args:
+        restaurant_id, campaign_id, model_name: identifiers for the row.
+        actual_values: shape (N,) — REUSED from the cumulative-window load.
+        yhat_samples_per_day: shape (N, 200) — REUSED.
+        target_dates: shape (N,) of date — REUSED, expected sorted ascending.
+        today: cutoff for the in-progress-week skip rule. Pass the pipeline's
+            "now" date in local business TZ (Berlin for v1).
+
+    Returns:
+        List of dicts ready for `_upsert_campaign_uplift_rows`. Empty list if
+        no fully-completed weeks (e.g., campaign launched < 1 ISO week ago).
+    """
+    # Local import to keep the module's top-level import surface small and to
+    # avoid a circular import risk if grain_helpers ever imports from this module.
+    from scripts.forecast.grain_helpers import bucket_dates_by_iso_week
+
+    paths = np.asarray(yhat_samples_per_day, dtype=float)
+    buckets = bucket_dates_by_iso_week(target_dates)
+
+    rows: list = []
+    # Iterate buckets in chronological order so k=0 is the first ISO week —
+    # critical for the seed-namespace contract (test_seed_namespace_disjoint_from_per_day).
+    for k, ((_y, _w), idxs) in enumerate(sorted(buckets.items())):
+        if len(idxs) < 7:
+            # Leading-edge skip: partial week (campaign launches mid-week or
+            # the cumulative window doesn't extend to a full Mon-Sun span).
+            continue
+        week_end = target_dates[idxs[-1]]  # Sunday because len(idxs) == 7.
+        if week_end >= today:
+            # Trailing-edge skip: in-progress current week. Defensive — usually
+            # the cumulative window's last date is yesterday, so this branch
+            # only triggers on same-day re-runs.
+            continue
+        week_actuals = actual_values[idxs]
+        week_paths = paths[idxs]                 # shape (7, 200)
+        ci = bootstrap_uplift_ci(
+            actual_values=week_actuals,
+            yhat_samples_per_day=week_paths.tolist(),
+            n_resamples=1000,
+            seed=100_000 + k,                    # disjoint from per-day 42+i
+        )
+        rows.append({
+            "restaurant_id": restaurant_id,
+            "campaign_id": campaign_id,
+            "model_name": model_name,
+            "window_kind": "iso_week",
+            "cumulative_uplift_eur": ci["cumulative_uplift_eur"],
+            "ci_lower_eur": ci["ci_lower_eur"],
+            "ci_upper_eur": ci["ci_upper_eur"],
+            "naive_dow_uplift_eur": None,        # cross-check is per-window only
+            "n_days": 7,
+            "as_of_date": week_end.isoformat(),  # Sunday — upsert dedup key
+        })
+    return rows
+
+
 def compute_per_day_uplift_rows(
     *,
     restaurant_id: str,
@@ -648,6 +753,21 @@ def _process_campaign_model(
             target_dates=cs["target_dates"],
         )
         out_rows.extend(per_day_rows)
+
+        # Phase 18 (UPL-08): per-ISO-week rows reusing the cumulative window's
+        # arrays — no 2nd DB roundtrip per RESEARCH §7 R2. Backfill happens
+        # automatically on first run because the helper iterates ALL completed
+        # buckets in the window (idempotent upsert keyed on the Sunday).
+        iso_week_rows = compute_iso_week_uplift_rows(
+            restaurant_id=restaurant_id,
+            campaign_id=campaign_id,
+            model_name=model_name,
+            actual_values=cs["actual_values"],
+            yhat_samples_per_day=cs["yhat_samples_per_day"],
+            target_dates=cs["target_dates"],
+            today=run_date,
+        )
+        out_rows.extend(iso_week_rows)
 
     return out_rows
 
