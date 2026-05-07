@@ -4,8 +4,8 @@ milestone: v1.4
 milestone_name: Coverage Map
 status: Complete
 stopped_at: Phase 18 complete (2026-05-07)
-last_updated: "2026-05-07T13:00:00.000Z"
-last_activity: 2026-05-07 (Phase 18 shipped — PR #31 open)
+last_updated: "2026-05-07T14:00:00.000Z"
+last_activity: 2026-05-07 (v1.4 milestone archived — tag v1.4 created)
 progress:
   total_phases: 21
   completed_phases: 21
@@ -21,7 +21,7 @@ progress:
 ## Project Reference
 
 - **Core Value:** A restaurant owner opens the site on their phone and makes a real business decision from the numbers they see.
-- **Current Focus:** v1.4 Weekly Campaign Read — single-feature milestone (Phase 18: replace CampaignUpliftCard cumulative-since-launch headline with per-ISO-week counterfactual + bar-chart history)
+- **Current Focus:** v1.4 archived — planning next milestone
 - **Timeline:** Slow and deliberate — understand data first, ship one layer at a time
 - **Granularity:** standard
 - **Tenants in v1:** 1 (architecture multi-tenant-ready)

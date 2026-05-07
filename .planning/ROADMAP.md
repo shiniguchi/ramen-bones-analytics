@@ -5,7 +5,7 @@
 **Parallelization:** enabled
 **Coverage:** 39/39 v1 + 14/14 v1.1 + 13/13 v1.2 + 47/47 v1.3 + 2/2 v1.4 requirements mapped
 **v1.3 shipped:** 2026-05-06 (Phases 12–17; PRs #17, #22, #26, #28, #29, #30)
-**v1.4 opened:** 2026-05-07 (Phase 18 — single-feature milestone)
+**v1.4 shipped:** 2026-05-07 (Phase 18 — single-feature milestone; PR #31)
 
 ## Core Value
 
@@ -57,8 +57,8 @@ A restaurant owner opens the site on their phone and makes a real business decis
 
 </details>
 
-<details open>
-<summary>v1.4 Weekly Campaign Read (Phase 18) — IMPLEMENTING (6/7 plans done, opened 2026-05-07)</summary>
+<details>
+<summary>✅ v1.4 Weekly Campaign Read (Phase 18) — SHIPPED 2026-05-07</summary>
 
 - [x] **Phase 18: Weekly Counterfactual Window** — replace CampaignUpliftCard cumulative-since-launch headline with per-ISO-week (Mon–Sun) counterfactual + bar-chart history of all completed weeks (CI whiskers, color-coded by significance, tap-to-scrub hero)
 

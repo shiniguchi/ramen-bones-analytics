@@ -27,6 +27,8 @@ A restaurant owner opens the site on their phone and makes a real business decis
 - ✓ ITS campaign uplift attribution with Track-B counterfactual and honest "CI overlaps zero" labeling — v1.3
 - ✓ Backtest gate: rolling-origin CV at 4 horizons, ≥10% RMSE vs regressor-aware naive required for model promotion — v1.3
 - ✓ Event overlay (campaigns/holidays/events) wired into every date-axis chart via EventBadgeStrip — v1.3
+- ✓ Per-ISO-week counterfactual uplift with independent bootstrap CI (re-fit per 7-day slice, not subtracted daily bounds) — v1.4
+- ✓ Weekly campaign bar chart (CI whiskers, color-coded by significance, tap-to-scrub hero) replacing cumulative-since-launch — v1.4
 
 ### Active
 
@@ -34,6 +36,8 @@ A restaurant owner opens the site on their phone and makes a real business decis
 - [ ] Date-range filter performance — residual single-cascade latency after 71% improvement in v1.3 Phase 16.2; owner notices the lag on April day-grain queries
 - [ ] SARIMAX/ETS/Theta at week/month grain via sample-path aggregation (currently only Prophet + Naive_DoW available at non-day grain until ~mid-2027 when 104-week threshold met)
 - [ ] At-risk customer identification — regulars gone quiet (follow-up to existing cohort analytics)
+- [ ] `de`/`es`/`fr` real translations for `uplift_week_label`, `uplift_bar_chart_caption`, `uplift_history_x_axis_label` (v1.4 polish backlog)
+- [ ] Cumulative-since-launch row cleanup in DB + pipeline (backwards-compat shim still writing; deferred from v1.4)
 
 ### Out of Scope
 
@@ -89,36 +93,42 @@ A restaurant owner opens the site on their phone and makes a real business decis
 | Hybrid RLS (shared location tables vs tenant-scoped) | Weather/holidays are public data; pipeline_runs/shop_calendar/campaign_calendar are tenant data | ✓ Good — no accidental PII in shared tables; audit confirmed |
 | revenue_comparable_eur for ITS attribution | Coincident menu launches (Onsen EGG, Tantan, Hell beer) contaminate raw revenue | ✓ Good — ITS validity audit confirmed contamination; comparable revenue is the correct baseline |
 | Honest "CI overlaps zero" labeling | No detectable lift doesn't mean the campaign failed — just underpowered at current sample size | ✓ Good — friend accepted the honest framing; sensitivity log PASS in [0.8, 1.25] |
+| Weekly ISO-week CI: independent bootstrap re-fit per 7-day slice | Daily CIs are correlated — subtracting them to get weekly CI is an anti-pattern. Each week's CI is independently bootstrapped from its 7-day residuals | ✓ Good — spot-check: sarimax −€149.04 vs spec −€149 ± €10; delta €0.04 |
+| Maturity tier from weeks-since-launch, not n_days (Decision A) | Per-week rows always have n_days=7, which would always resolve to "early" under the old n_days-based derivation — meaningless for a bar chart | ✓ Good — tier now reflects elapsed campaign duration, not data completeness |
+| Option C (manual rect via chartCtx) for bar chart coloring | LayerChart 2.x has no per-bar render snippet API in stable; Decision B Primary (three filtered Bars blocks) computed independent domains → NaN bars | ✓ Good — chartCtx.xScale approach works; watch for LayerChart API changes |
+| `style:overflow="hidden"` inline over Tailwind class | Tailwind `overflow-hidden` silently lost to LayerChart's component-scoped `overflow: visible` on lc-layout-svg — CI whiskers bled 1600px above card | ✓ Good — inline style wins specificity; pattern documented for future chart containers |
 
-## Current Milestone: v1.4 Weekly Campaign Read
+## Current State: v1.4 SHIPPED 2026-05-07
 
-**Goal:** Replace the CampaignUpliftCard's "since launch" cumulative headline with a per-ISO-week (Mon–Sun) counterfactual answer, plus a tap-scrubbable bar-chart history of all completed weeks since campaign launch — so the friend-owner gets a fresh weekly read on whether the campaign is working, not a single decaying cumulative number that drifts toward "no detectable lift" the longer it runs.
+v1.4 complete. Phase 18 (7/7 plans) shipped via PR #31.
 
-**Target features:**
-- Per-ISO-week counterfactual uplift with proper bootstrap CI (re-fit on the 7-day slice — daily CIs do not subtract additively because bootstrap samples are correlated)
-- Persisted weekly history (one row per fully-completed Mon–Sun week since campaign launch; partial launch week excluded)
-- Dashboard hero shows last completed week ("Week of Apr 27 – May 3") replacing cumulative-since-launch
-- Bar chart below hero: one bar per week, CI whiskers, color-coded by significance (gray = CI straddles zero, green = CI > 0, red = CI < 0), tap-to-scrub hero updates
-- Reuses existing campaign_uplift table + CampaignUpliftCard component (single-phase, single-feature milestone)
+**Shipped this milestone:**
+- DB: migration 0069 — `campaign_uplift.window_kind` CHECK extended to `'iso_week'`; `campaign_uplift_weekly_v` tenant-scoped wrapper view created
+- Pipeline: `compute_iso_week_uplift_rows()` in `cumulative_uplift.py` — independent bootstrap CI per 7-day slice (1000 paths, seed 100_000+k)
+- API: `/api/campaign-uplift` now returns `weekly_history[]` alongside `daily[]` and `campaigns[]`
+- UI: `CampaignUpliftCard` hero shows "Week of Apr 27 – May 3: −€149" (replacing "Since April 14th"); bar chart with CI whiskers, color-coding, tap-to-scrub below
+- i18n: 3 new keys × 5 locales (`en`/`ja` real, `de`/`es`/`fr` placeholder)
 
-**Requirements added:** UPL-08 (pipeline weekly window + bootstrap CI), UPL-09 (dashboard hero + bar chart UI, replaces UPL-05/06 cumulative-since-launch surface)
+**Empirical:** sarimax week of Apr 27–May 3 = −€149 (95% CI −€2,159…+€2,399). Statistically indistinguishable from null (CI straddles 0 → gray bar). Two completed ISO weeks shown at time of v1.4 launch.
 
-## Current State: v1.3 SHIPPED 2026-05-06
+**Budget:** $0/month preserved. No new paid tiers added.
+
+## Previous Milestone
+
+<details>
+<summary>v1.3 External Data & Forecasting Foundation — SHIPPED 2026-05-06</summary>
 
 v1.3 complete. All 9 phases (12–17 + 16.1/16.2/16.3) shipped across 6 PRs (#17, #22, #26, #28, #29, #30).
 
-**Shipped this milestone:**
+**Shipped:**
 - External data ingestion — 5 sources (weather/holidays/school/transit/events), nightly GHA, backfill from 2025-06-11
 - Multi-horizon forecasting engine — SARIMAX/Prophet/ETS/Theta/Naive, 365d forward, 1000-path sample CI
 - ITS campaign attribution — Track-B on pre-campaign era, revenue_comparable_eur, CampaignUpliftCard with honest CI labeling
 - EventBadgeStrip — event overlay on every date-axis chart (replaced deleted forecast cards per owner feedback)
 - Backtest gate — rolling-origin CV at 4 horizons, conformal 95% CI, ≥10% RMSE promotion gate, weekly ACCURACY-LOG
 
-**Empirical headline:** 2026-04-14 friend campaign — cumulative deviation −€565 over 14 days, 95% CI [−€3,745, +€2,298]. Statistically indistinguishable from null. Sensitivity sarimax 1.139 + prophet 0.890, both PASS in [0.8, 1.25].
+</details>
 
-**Budget:** $0/month preserved. All external data sources free. No new paid tiers added in v1.3.
-
-**Next:** v1.4 Weekly Campaign Read — see Current Milestone section above. Phase 18 to plan.
 
 ## Forecast Model Availability Matrix
 
@@ -164,4 +174,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-07 — opened milestone v1.4 "Weekly Campaign Read" (single-phase, single-feature scope). Adds UPL-08 + UPL-09 for per-ISO-week counterfactual + bar-chart history on CampaignUpliftCard.*
+*Last updated: 2026-05-07 after v1.4 milestone — Phase 18 (Weekly Counterfactual Window) shipped via PR #31. UPL-08 + UPL-09 validated. Two completed ISO weeks visible in production.*
