@@ -184,6 +184,67 @@
       width: slotWidth
     }));
   });
+
+  // Extend chartData with synthetic zero-value rows for pure-forecast future
+  // dates so LayerChart band-mode creates hover zones over the forecast lines.
+  // Without this, hovering past the last historical bar gives no tooltip.
+  const extendedChartData = $derived.by(() => {
+    if (!overlay.forecastData) return chartData;
+    const grain = getFilters().grain as Granularity;
+    const today = format(new Date(), 'yyyy-MM-dd');
+    const existing = new Set(chartData.map((r) => format(r.bucket_d, 'yyyy-MM-dd')));
+    const futureDates = Array.from(
+      new Set((overlay.forecastData.rows ?? []).map((r) => r.target_date))
+    ).filter((d) => d > today && !existing.has(d)).sort();
+    const syntheticRows = futureDates.map((isoDate) => ({
+      ...Object.fromEntries([...VISIT_KEYS, 'cash'].map((k) => [k, 0])),
+      bucket: formatBucketLabel(isoDate, grain),
+      bucket_d: parseISO(isoDate)
+    }));
+    return [...chartData, ...syntheticRows];
+  });
+
+  // Local hoveredBucketIso covers both historical bars and future forecast dates.
+  // overlay.hoveredBucketIso only searches chartData (historical), missing future rows.
+  const hoveredBucketIso = $derived.by<string | null>(() => {
+    const data = chartCtx?.tooltip?.data;
+    if (!data) return null;
+    const idx = extendedChartData.findIndex((r) => r.bucket === data.bucket);
+    if (idx < 0) return null;
+    const d = extendedChartData[idx]?.bucket_d;
+    return d instanceof Date ? format(d, 'yyyy-MM-dd') : null;
+  });
+
+  // Auto-scroll to "today" so the forecast tail is visible on first render.
+  // Without this, the chart canvas can be 19k+ px wide and the forecast lines
+  // render off-screen. We position today at ~60% of the visible viewport.
+  let scrollerRef = $state<HTMLDivElement>();
+  let lastSetScrollLeft = 0;
+  $effect(() => {
+    const w = chartW;
+    if (!overlay.forecastData || !scrollerRef || w === 0) return;
+    if (scrollerRef.scrollLeft !== lastSetScrollLeft) return;
+    const el = scrollerRef;
+    const histBuckets = chartData.length;
+    const fcBuckets = new Set((overlay.forecastData.rows ?? []).map((r) => r.target_date)).size;
+    const total = histBuckets + pastForecastBuckets + fcBuckets;
+    if (total === 0) return;
+    const todayPct = (histBuckets + pastForecastBuckets) / total;
+    let attempts = 0;
+    const tryPosition = () => {
+      if (el.scrollLeft !== lastSetScrollLeft) return;
+      if (el.scrollWidth < w * 0.9 && attempts < 30) {
+        attempts++;
+        requestAnimationFrame(tryPosition);
+        return;
+      }
+      const todayX = el.scrollWidth * todayPct;
+      const target = Math.max(0, todayX - el.clientWidth * 0.6);
+      el.scrollLeft = target;
+      lastSetScrollLeft = target;
+    };
+    requestAnimationFrame(tryPosition);
+  });
 </script>
 
 <div data-testid="calendar-counts-card" class="rounded-xl border border-zinc-200 bg-white p-4">
@@ -194,11 +255,11 @@
   {#if getFiltered().length === 0}
     <EmptyState card="calendar-counts" />
   {:else}
-    <div bind:clientWidth={cardW} class="mt-4 h-64 overflow-x-auto overscroll-x-contain chart-touch-safe">
+    <div bind:this={scrollerRef} bind:clientWidth={cardW} class="mt-4 h-64 overflow-x-auto overscroll-x-contain chart-touch-safe">
       {#if cardW > 0}
       <Chart
         bind:context={chartCtx}
-        data={chartData}
+        data={extendedChartData}
         x="bucket_d"
         xScale={scaleTime()}
         {xInterval}
@@ -237,7 +298,7 @@
           <ForecastOverlay
             seriesByModel={overlay.seriesByModel}
             bucketCenter={overlay.bucketCenter}
-            hoveredBucketIso={overlay.hoveredBucketIso}
+            {hoveredBucketIso}
             {chartCtx}
           />
 
@@ -316,7 +377,10 @@
       <ModelAvailabilityDisclosure
         availableModels={overlay.availableModels}
         grain={getFilters().grain}
+        kpi="invoice_count"
         backtestStatus={overlay.forecastData?.modelBacktestStatus ?? null}
+        backtestMetrics={overlay.forecastData?.modelBacktestMetrics ?? null}
+        backtestLastMeasured={overlay.forecastData?.backtestLastMeasured ?? null}
       />
     {/if}
   {/if}

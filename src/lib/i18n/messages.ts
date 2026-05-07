@@ -207,16 +207,17 @@ const en = {
   uplift_hero_mature_no_lift: 'No measurable lift after {weeks} weeks',
   uplift_hero_mature_added: 'Yes, your campaign appears to have added revenue',
   uplift_hero_mature_reduced: 'Yes, your campaign appears to have reduced revenue',
-  uplift_secondary_plain: 'Best estimate: ~{point} compared to expected. Range: {lo} to {hi} — that\'s normal day-to-day noise.',
+  uplift_secondary_plain: 'This week: ~{point}. 95% CI: {lo} to {hi} per week.',
   uplift_details_trigger: 'How is this calculated?',
-  uplift_details_anticipation_plain: 'We compare your actual revenue against what the model predicted from data 7+ days before the campaign launched, so any pre-launch anticipation isn\'t counted as campaign uplift.',
+  uplift_details_anticipation_plain: 'Model: SARIMAX — a time-series model trained on data from 7+ days before launch to predict counterfactual revenue (what you would have earned without the campaign). Google\'s CausalImpact (Bayesian) is another widely-used method for this type of causal test.',
   uplift_details_divergence_plain: 'Two of our checks disagree — we\'d want more weeks of data before drawing conclusions.',
 
   // --- Campaign uplift card supportive labels (Phase 16.1 D-18 / Phase 20) ---
   uplift_card_subtitle: 'Comparing your actual revenue since launch against what the model predicted without the campaign.',
   uplift_sparkline_y_label: 'Revenue (€)',
   uplift_sparkline_x_caption: 'Days since campaign launch',
-  uplift_baseline_label: 'Without campaign (model)',
+  uplift_chart_title: 'Counterfactual Revenue Analysis · Revenue (€)',
+  uplift_baseline_label: 'SARIMAX forecast (no campaign)',
   uplift_actual_label: 'Actual',
 
   // --- Phase 18 weekly counterfactual window labels (UPL-08, UPL-09) ---
@@ -275,10 +276,29 @@ const en = {
   model_avail_backtest_short_fail:         '✗',
   model_avail_backtest_short_pending:      '…',
   model_avail_backtest_short_uncalibrated: '~',
+  // Inputs column header
+  model_avail_col_inputs: 'Inputs',
+
   // Backtest methodology footnote (shown below the model table)
   model_avail_backtest_memo_day:        'Backtest: day grain, 4 rolling-origin folds (h = 7 / 35 / 120 / 365 d)',
   model_avail_backtest_memo_week_month: 'Week/month: no CV yet — rolling-origin folds (h = 4/13/26 w; h = 3/6 mo) added at 104 weekly / 24 monthly buckets',
-  model_avail_backtest_memo_improves:   'Improves automatically at 730 days of data'
+  model_avail_backtest_memo_improves:   'Improves automatically at 730 days of data',
+
+  // Contextual explainer sections inside the disclosure panel
+  model_avail_ctx_gate_title:   'Gate logic — what PASS / FAIL means',
+  model_avail_ctx_gate_body:    'A model must beat the best baseline (Naive DoW) by ≥ 10% RMSE across all 4 folds to be promoted. PASS = deployed to your chart. FAIL = stays inactive; the baseline keeps running.',
+
+  model_avail_ctx_folds_title:  'How the 4 folds work',
+  model_avail_ctx_folds_body:   'Rolling-origin CV: each fold covers 7 days, stepping back one week at a time. Fold 0 = the most recent complete week; Fold 3 = 3 weeks earlier. Every model trains only on data before its fold\'s start date — no lookahead.',
+
+  model_avail_ctx_naive_title_revenue:  'Why Naive DoW leads on revenue',
+  model_avail_ctx_naive_body_revenue:   'Revenue follows a strong day-of-week rhythm (weekends busy, Mondays quiet). A DoW average captures this precisely at ~1 year of data. Complex models (ETS, SARIMAX, Theta, Prophet) need 2+ years to fit trend + annual seasonal parameters without overfitting — adding variance without reducing bias at this scale.',
+
+  model_avail_ctx_naive_title_count:    'Why Naive DoW leads on transaction count',
+  model_avail_ctx_naive_body_count:     'Footfall follows a tighter day-of-week pattern than revenue (spend per visit varies more than headcount). A DoW average is hard to beat with limited data. Complex models will gain an edge once 2+ years of holiday/event patterns are in the training window.',
+
+  model_avail_ctx_future_title: 'When challengers will catch up',
+  model_avail_ctx_future_body:  'At ~730 days (~2 years), SARIMAX and Prophet — which already see holidays and weather — can learn a full annual cycle reliably. Revenue swings ±€100–400 on public holidays and events; models that incorporate these signals will compound that advantage as the data catalogue grows.'
 } as const;
 
 export type MessageKey = keyof typeof en;
@@ -472,16 +492,17 @@ const de: Record<MessageKey, string> = {
   uplift_hero_mature_no_lift: 'No measurable lift after {weeks} weeks',
   uplift_hero_mature_added: 'Yes, your campaign appears to have added revenue',
   uplift_hero_mature_reduced: 'Yes, your campaign appears to have reduced revenue',
-  uplift_secondary_plain: 'Best estimate: ~{point} compared to expected. Range: {lo} to {hi} — that\'s normal day-to-day noise.',
+  uplift_secondary_plain: 'This week: ~{point}. 95% CI: {lo} to {hi} per week.',
   uplift_details_trigger: 'How is this calculated?',
-  uplift_details_anticipation_plain: 'We compare your actual revenue against what the model predicted from data 7+ days before the campaign launched, so any pre-launch anticipation isn\'t counted as campaign uplift.',
+  uplift_details_anticipation_plain: 'Model: SARIMAX — a time-series model trained on data from 7+ days before launch to predict counterfactual revenue (what you would have earned without the campaign). Google\'s CausalImpact (Bayesian) is another widely-used method for this type of causal test.',
   uplift_details_divergence_plain: 'Two of our checks disagree — we\'d want more weeks of data before drawing conclusions.',
 
   // --- Campaign uplift card supportive labels (Phase 16.1 D-18 / Phase 20 — DE placeholder = EN) ---
   uplift_card_subtitle: 'Comparing your actual revenue since launch against what the model predicted without the campaign.',
   uplift_sparkline_y_label: 'Revenue (€)',
   uplift_sparkline_x_caption: 'Days since campaign launch',
-  uplift_baseline_label: 'Without campaign (model)',
+  uplift_chart_title: 'Counterfactual Revenue Analysis · Revenue (€)',
+  uplift_baseline_label: 'SARIMAX forecast (no campaign)',
   uplift_actual_label: 'Actual',
 
   // --- Phase 18 weekly counterfactual labels — DE placeholder = EN ---
@@ -540,7 +561,18 @@ const de: Record<MessageKey, string> = {
   model_avail_backtest_short_uncalibrated: '~',
   model_avail_backtest_memo_day:        'Backtest: day grain, 4 rolling-origin folds (h = 7 / 35 / 120 / 365 d)',
   model_avail_backtest_memo_week_month: 'Week/month: no CV yet — rolling-origin folds (h = 4/13/26 w; h = 3/6 mo) added at 104 weekly / 24 monthly buckets',
-  model_avail_backtest_memo_improves:   'Improves automatically at 730 days of data'
+  model_avail_backtest_memo_improves:   'Improves automatically at 730 days of data',
+  model_avail_col_inputs:              'Inputs',
+  model_avail_ctx_gate_title:          'Gate logic — what PASS / FAIL means',
+  model_avail_ctx_gate_body:           'A model must beat the best baseline (Naive DoW) by ≥ 10% RMSE across all 4 folds to be promoted. PASS = deployed to your chart. FAIL = stays inactive; the baseline keeps running.',
+  model_avail_ctx_folds_title:         'How the 4 folds work',
+  model_avail_ctx_folds_body:          'Rolling-origin CV: each fold covers 7 days, stepping back one week at a time. Fold 0 = the most recent complete week; Fold 3 = 3 weeks earlier. Every model trains only on data before its fold\'s start date — no lookahead.',
+  model_avail_ctx_naive_title_revenue: 'Why Naive DoW leads on revenue',
+  model_avail_ctx_naive_body_revenue:  'Revenue follows a strong day-of-week rhythm (weekends busy, Mondays quiet). A DoW average captures this precisely at ~1 year of data. Complex models need 2+ years to fit trend + annual seasonal parameters without overfitting.',
+  model_avail_ctx_naive_title_count:   'Why Naive DoW leads on transaction count',
+  model_avail_ctx_naive_body_count:    'Footfall follows a tighter day-of-week pattern than revenue. A DoW average is hard to beat with limited data. Complex models will gain an edge once 2+ years of holiday/event patterns are in the training window.',
+  model_avail_ctx_future_title:        'When challengers will catch up',
+  model_avail_ctx_future_body:         'At ~730 days (~2 years), SARIMAX and Prophet — which already see holidays and weather — can learn a full annual cycle reliably. Revenue swings ±€100–400 on public holidays; models that incorporate these signals will compound that advantage as the data catalogue grows.'
 };
 
 // --- JA (日本語) ----------------------------------------------------------
@@ -731,16 +763,17 @@ const ja: Record<MessageKey, string> = {
   uplift_hero_mature_no_lift: '{weeks}週間経っても、はっきりとした効果は出ていません',
   uplift_hero_mature_added: 'はい、キャンペーンで売上が伸びたようです',
   uplift_hero_mature_reduced: 'はい、キャンペーンで売上が下がったようです',
-  uplift_secondary_plain: '目安: 予想と比べて{point}ぐらい。範囲: {lo} 〜 {hi} — これくらいの差は普段の変動の範囲内です。',
+  uplift_secondary_plain: '今週: {point}/週（SARIMAXベースライン比）。95%信頼区間: {lo} 〜 {hi}/週',
   uplift_details_trigger: 'どうやって計算しているの？',
-  uplift_details_anticipation_plain: 'キャンペーン開始の7日以上前のデータでモデルが予測した売上と、実際の売上を比べています。開始前の期待感による売上の動きはキャンペーンの効果には含めません。',
+  uplift_details_anticipation_plain: '使用モデル: SARIMAX（季節性ARIMA、外生変数あり）。キャンペーン開始7日以上前のデータで学習し、キャンペーンがなかった場合の売上を予測します。因果推論には GoogleのCausalImpact（ベイズ法）も広く使われています。',
   uplift_details_divergence_plain: '2つのチェック方法で結果が違いました — 結論を出す前にもう少しデータを集めたいところです。',
 
   // --- Campaign uplift card supportive labels (Phase 16.1 D-18 / Phase 20) ---
   uplift_card_subtitle: 'キャンペーン開始後の実際の売上と、キャンペーンがなかった場合のモデル予測を比較しています。',
   uplift_sparkline_y_label: '売上（€）',
   uplift_sparkline_x_caption: 'キャンペーン開始からの経過日数',
-  uplift_baseline_label: 'キャンペーンなし（モデル）',
+  uplift_chart_title: 'カウンターファクチュアル収益分析 · 売上（€）',
+  uplift_baseline_label: 'SARIMAXベースライン（キャンペーンなし）',
   uplift_actual_label: '実績',
 
   // --- Phase 18 週次反事実ラベル (UPL-08, UPL-09) ---
@@ -799,7 +832,18 @@ const ja: Record<MessageKey, string> = {
   model_avail_backtest_short_uncalibrated: '~',
   model_avail_backtest_memo_day:        'バックテスト：日次粒度・4つのローリング起点折（h = 7 / 35 / 120 / 365日）',
   model_avail_backtest_memo_week_month: '週次・月次：CVなし — 104週/24ヶ月到達後にローリング起点折（h = 4/13/26週・h = 3/6ヶ月）追加予定',
-  model_avail_backtest_memo_improves:   '730日分のデータで自動的に精度向上'
+  model_avail_backtest_memo_improves:   '730日分のデータで自動的に精度向上',
+  model_avail_col_inputs:              '入力変数',
+  model_avail_ctx_gate_title:          'ゲートロジック — PASS / FAILの意味',
+  model_avail_ctx_gate_body:           'モデルが本番採用されるには、最良ベースライン（Naive DoW）を全4フォールドでRMSE 10%以上上回る必要があります。PASS = チャートに反映、FAIL = 非表示のままベースラインが継続。',
+  model_avail_ctx_folds_title:         '4フォールドの仕組み',
+  model_avail_ctx_folds_body:          'ローリング起点CV：各フォールドは7日間、1週ずつ過去にさかのぼります。フォールド0 = 直近の完全な週、フォールド3 = その3週前。各モデルはフォールド開始日より前のデータのみで学習します。',
+  model_avail_ctx_naive_title_revenue: 'なぜNaive DoWが売上予測でトップか',
+  model_avail_ctx_naive_body_revenue:  '売上は曜日の影響を強く受けます（週末は混雑、月曜は閑散）。1年分のデータでDoW平均は高精度。複雑なモデルはトレンドと年間季節性を過学習なく学ぶのに2年以上必要です。',
+  model_avail_ctx_naive_title_count:   'なぜNaive DoWが来客数予測でトップか',
+  model_avail_ctx_naive_body_count:    '来客数は売上より曜日パターンが安定しています。限られたデータではDoW平均が最強。祝日・イベントのデータが2年分蓄積されると複合モデルが追い上げます。',
+  model_avail_ctx_future_title:        'いつチャレンジャーが追い越すか',
+  model_avail_ctx_future_body:         '約730日（2年）でSARIMAXとProphetは年間サイクルを信頼性高く学習できます。祝日・天候データを既に取り込んでいるこれらのモデルは、データが蓄積されるほど優位性を発揮します。'
 };
 
 // --- ES (Español) ---------------------------------------------------------
@@ -991,16 +1035,17 @@ const es: Record<MessageKey, string> = {
   uplift_hero_mature_no_lift: 'No measurable lift after {weeks} weeks',
   uplift_hero_mature_added: 'Yes, your campaign appears to have added revenue',
   uplift_hero_mature_reduced: 'Yes, your campaign appears to have reduced revenue',
-  uplift_secondary_plain: 'Best estimate: ~{point} compared to expected. Range: {lo} to {hi} — that\'s normal day-to-day noise.',
+  uplift_secondary_plain: 'This week: ~{point}. 95% CI: {lo} to {hi} per week.',
   uplift_details_trigger: 'How is this calculated?',
-  uplift_details_anticipation_plain: 'We compare your actual revenue against what the model predicted from data 7+ days before the campaign launched, so any pre-launch anticipation isn\'t counted as campaign uplift.',
+  uplift_details_anticipation_plain: 'Model: SARIMAX — a time-series model trained on data from 7+ days before launch to predict counterfactual revenue (what you would have earned without the campaign). Google\'s CausalImpact (Bayesian) is another widely-used method for this type of causal test.',
   uplift_details_divergence_plain: 'Two of our checks disagree — we\'d want more weeks of data before drawing conclusions.',
 
   // --- Campaign uplift card supportive labels (Phase 16.1 D-18 / Phase 20 — ES placeholder = EN) ---
   uplift_card_subtitle: 'Comparing your actual revenue since launch against what the model predicted without the campaign.',
   uplift_sparkline_y_label: 'Revenue (€)',
   uplift_sparkline_x_caption: 'Days since campaign launch',
-  uplift_baseline_label: 'Without campaign (model)',
+  uplift_chart_title: 'Counterfactual Revenue Analysis · Revenue (€)',
+  uplift_baseline_label: 'SARIMAX forecast (no campaign)',
   uplift_actual_label: 'Actual',
 
   // --- Phase 18 weekly counterfactual labels — ES placeholder = EN ---
@@ -1059,7 +1104,18 @@ const es: Record<MessageKey, string> = {
   model_avail_backtest_short_uncalibrated: '~',
   model_avail_backtest_memo_day:        'Backtest: day grain, 4 rolling-origin folds (h = 7 / 35 / 120 / 365 d)',
   model_avail_backtest_memo_week_month: 'Week/month: no CV yet — rolling-origin folds (h = 4/13/26 w; h = 3/6 mo) added at 104 weekly / 24 monthly buckets',
-  model_avail_backtest_memo_improves:   'Improves automatically at 730 days of data'
+  model_avail_backtest_memo_improves:   'Improves automatically at 730 days of data',
+  model_avail_col_inputs:              'Entradas',
+  model_avail_ctx_gate_title:          'Lógica de selección — qué significa PASS / FAIL',
+  model_avail_ctx_gate_body:           'Un modelo debe superar al mejor baseline (Naive DoW) en ≥ 10% de RMSE en los 4 pliegues para ser promovido. PASS = activo en el gráfico. FAIL = inactivo; el baseline sigue funcionando.',
+  model_avail_ctx_folds_title:         'Cómo funcionan los 4 pliegues',
+  model_avail_ctx_folds_body:          'CV de origen rodante: cada pliegue cubre 7 días, retrocediendo una semana. Pliegue 0 = semana más reciente; Pliegue 3 = 3 semanas antes.',
+  model_avail_ctx_naive_title_revenue: 'Por qué Naive DoW lidera en ingresos',
+  model_avail_ctx_naive_body_revenue:  'Los ingresos siguen un patrón fuerte de día de la semana. Con ~1 año de datos, el promedio DoW es muy preciso.',
+  model_avail_ctx_naive_title_count:   'Por qué Naive DoW lidera en transacciones',
+  model_avail_ctx_naive_body_count:    'El número de clientes sigue un patrón semanal más estable que los ingresos.',
+  model_avail_ctx_future_title:        'Cuándo los desafiantes alcanzarán',
+  model_avail_ctx_future_body:         'Con ~730 días (~2 años), SARIMAX y Prophet podrán aprender un ciclo anual completo.'
 };
 
 // --- FR (Français) --------------------------------------------------------
@@ -1251,16 +1307,17 @@ const fr: Record<MessageKey, string> = {
   uplift_hero_mature_no_lift: 'No measurable lift after {weeks} weeks',
   uplift_hero_mature_added: 'Yes, your campaign appears to have added revenue',
   uplift_hero_mature_reduced: 'Yes, your campaign appears to have reduced revenue',
-  uplift_secondary_plain: 'Best estimate: ~{point} compared to expected. Range: {lo} to {hi} — that\'s normal day-to-day noise.',
+  uplift_secondary_plain: 'This week: ~{point}. 95% CI: {lo} to {hi} per week.',
   uplift_details_trigger: 'How is this calculated?',
-  uplift_details_anticipation_plain: 'We compare your actual revenue against what the model predicted from data 7+ days before the campaign launched, so any pre-launch anticipation isn\'t counted as campaign uplift.',
+  uplift_details_anticipation_plain: 'Model: SARIMAX — a time-series model trained on data from 7+ days before launch to predict counterfactual revenue (what you would have earned without the campaign). Google\'s CausalImpact (Bayesian) is another widely-used method for this type of causal test.',
   uplift_details_divergence_plain: 'Two of our checks disagree — we\'d want more weeks of data before drawing conclusions.',
 
   // --- Campaign uplift card supportive labels (Phase 16.1 D-18 / Phase 20 — FR placeholder = EN) ---
   uplift_card_subtitle: 'Comparing your actual revenue since launch against what the model predicted without the campaign.',
   uplift_sparkline_y_label: 'Revenue (€)',
   uplift_sparkline_x_caption: 'Days since campaign launch',
-  uplift_baseline_label: 'Without campaign (model)',
+  uplift_chart_title: 'Counterfactual Revenue Analysis · Revenue (€)',
+  uplift_baseline_label: 'SARIMAX forecast (no campaign)',
   uplift_actual_label: 'Actual',
 
   // --- Phase 18 weekly counterfactual labels — FR placeholder = EN ---
@@ -1319,7 +1376,18 @@ const fr: Record<MessageKey, string> = {
   model_avail_backtest_short_uncalibrated: '~',
   model_avail_backtest_memo_day:        'Backtest: day grain, 4 rolling-origin folds (h = 7 / 35 / 120 / 365 d)',
   model_avail_backtest_memo_week_month: 'Week/month: no CV yet — rolling-origin folds (h = 4/13/26 w; h = 3/6 mo) added at 104 weekly / 24 monthly buckets',
-  model_avail_backtest_memo_improves:   'Improves automatically at 730 days of data'
+  model_avail_backtest_memo_improves:   'Improves automatically at 730 days of data',
+  model_avail_col_inputs:              'Entrées',
+  model_avail_ctx_gate_title:          'Logique de sélection — PASS / FAIL',
+  model_avail_ctx_gate_body:           "Un modèle doit surpasser le meilleur baseline d'au moins 10% de RMSE sur 4 plis. PASS = actif dans le graphique. FAIL = inactif.",
+  model_avail_ctx_folds_title:         'Comment fonctionnent les 4 plis',
+  model_avail_ctx_folds_body:          "CV à origine glissante : chaque pli couvre 7 jours. Pli 0 = semaine la plus récente ; Pli 3 = 3 semaines plus tôt.",
+  model_avail_ctx_naive_title_revenue: 'Pourquoi Naive DoW mène sur les revenus',
+  model_avail_ctx_naive_body_revenue:  'Les revenus suivent un rythme hebdomadaire marqué. La moyenne DoW est très précise avec ~1 an de données.',
+  model_avail_ctx_naive_title_count:   'Pourquoi Naive DoW mène sur les transactions',
+  model_avail_ctx_naive_body_count:    'La fréquentation suit un pattern hebdomadaire plus stable que les revenus.',
+  model_avail_ctx_future_title:        'Quand les challengers rattraperont',
+  model_avail_ctx_future_body:         'À ~730 jours (~2 ans), SARIMAX et Prophet pourront apprendre un cycle annuel complet.'
 };
 
 export const messages: Record<Locale, Record<MessageKey, string>> = { en, de, ja, es, fr };
