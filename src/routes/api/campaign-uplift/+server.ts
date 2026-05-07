@@ -17,7 +17,7 @@
 import type { RequestHandler } from './$types';
 import { json } from '@sveltejs/kit';
 import { fetchAll } from '$lib/supabasePagination';
-import { format } from 'date-fns';
+import { format, parseISO, subDays } from 'date-fns';
 
 type UpliftRow = {
   campaign_id: string;
@@ -44,6 +44,21 @@ type DailyRow = {
   as_of_date: string;
 };
 
+// Phase 18 UPL-08: per-ISO-week aggregate row (campaign_uplift_weekly_v).
+// Sister type to DailyRow — same view shape; different window_kind in the
+// underlying campaign_uplift backing table (`'iso_week'`, written by
+// scripts/forecast/cumulative_uplift.compute_iso_week_uplift_rows).
+// `as_of_date` is the Sunday of the ISO week; iso_week_start = Sun − 6d.
+type WeeklyRow = {
+  campaign_id: string;
+  model_name: string;
+  cumulative_uplift_eur: number;
+  ci_lower_eur: number;
+  ci_upper_eur: number;
+  n_days: number;
+  as_of_date: string;
+};
+
 type CampaignBlockRow = Omit<
   UpliftRow,
   'campaign_id' | 'campaign_start' | 'campaign_end' | 'campaign_name' | 'campaign_channel'
@@ -65,10 +80,11 @@ export const GET: RequestHandler = async ({ locals }) => {
   if (!claims) return json({ error: 'unauthorized' }, { status: 401, headers: NO_STORE });
 
   try {
-    // Two queries against the SAME backing table via two wrapper views.
+    // Three queries against the SAME backing table via three wrapper views.
     // campaign_uplift_v        = headline rows (per-window aggregates).
     // campaign_uplift_daily_v  = per-day trajectory rows for the sparkline (D-11).
-    const [rows, dailyRows] = await Promise.all([
+    // campaign_uplift_weekly_v = per-ISO-week trajectory (Phase 18 UPL-08).
+    const [rows, dailyRows, weeklyRows] = await Promise.all([
       fetchAll<UpliftRow>(() =>
         locals.supabase
           .from('campaign_uplift_v')
@@ -83,6 +99,15 @@ export const GET: RequestHandler = async ({ locals }) => {
           .from('campaign_uplift_daily_v')
           .select('campaign_id,model_name,cumulative_uplift_eur,ci_lower_eur,ci_upper_eur,as_of_date')
           .eq('model_name', 'sarimax') // headline model only — D-11 sparkline shows sarimax trajectory
+          .order('as_of_date', { ascending: true })
+      ),
+      fetchAll<WeeklyRow>(() =>
+        locals.supabase
+          .from('campaign_uplift_weekly_v')
+          .select(
+            'campaign_id,model_name,cumulative_uplift_eur,ci_lower_eur,ci_upper_eur,n_days,as_of_date'
+          )
+          .eq('model_name', 'sarimax') // headline-pick convention (CONTEXT.md line 47)
           .order('as_of_date', { ascending: true })
       )
     ]);
@@ -133,6 +158,30 @@ export const GET: RequestHandler = async ({ locals }) => {
           }))
       : [];
 
+    // Phase 18 UPL-08: per-ISO-week trajectory powering CampaignUpliftCard's
+    // bar-chart history (Plans 04 + 05). `as_of_date` IS the Sunday end of the
+    // ISO week (per the pipeline's write contract, Plan 18-02). The Monday is
+    // `Sun − 6d` deterministically — no zoneinfo needed.
+    // Empty when no headline campaign or zero iso_week rows for it (e.g.,
+    // campaign launched < 1 ISO week ago).
+    const weekly_history = headlineCampaignId
+      ? weeklyRows
+          .filter((w) => w.campaign_id === headlineCampaignId)
+          .map((w) => {
+            const sun = parseISO(w.as_of_date);
+            const mon = subDays(sun, 6);
+            return {
+              iso_week_start: format(mon, 'yyyy-MM-dd'),
+              iso_week_end: w.as_of_date,
+              model_name: w.model_name,
+              point_eur: w.cumulative_uplift_eur,
+              ci_lower_eur: w.ci_lower_eur,
+              ci_upper_eur: w.ci_upper_eur,
+              n_days: w.n_days
+            };
+          })
+      : [];
+
     return json(
       {
         // Back-compat fields (Phase 15 D-08 / C-08):
@@ -145,6 +194,8 @@ export const GET: RequestHandler = async ({ locals }) => {
         ci_upper_eur: headline?.ci_upper_eur ?? null,
         naive_dow_uplift_eur: headline?.naive_dow_uplift_eur ?? null,
         daily,
+        // Phase 18 extension (sister to `daily`):
+        weekly_history,
         campaigns
       },
       { headers: NO_STORE }

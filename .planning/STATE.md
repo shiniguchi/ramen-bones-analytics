@@ -1,42 +1,58 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.3
+milestone: v1.4
 milestone_name: Coverage Map
-status: Ready to ship
-stopped_at: context exhaustion at 75% (2026-05-06)
-last_updated: "2026-05-06T22:30:06.621Z"
-last_activity: 2026-05-06
+status: Complete
+stopped_at: Phase 18 complete (2026-05-07)
+last_updated: "2026-05-07T13:00:00.000Z"
+last_activity: 2026-05-07 (Phase 18 shipped — PR #31 open)
 progress:
-  total_phases: 9
-  completed_phases: 5
-  total_plans: 56
-  completed_plans: 44
-  percent: 79
+  total_phases: 21
+  completed_phases: 21
+  total_plans: 123
+  completed_plans: 111
+  percent: 90
 ---
 
 # STATE: Ramen Bones Analytics
 
-**Last updated:** 2026-05-06
+**Last updated:** 2026-05-07
 
 ## Project Reference
 
 - **Core Value:** A restaurant owner opens the site on their phone and makes a real business decision from the numbers they see.
-- **Current Focus:** v1.3 archived (milestone closed 2026-05-06; tagged v1.3; run /gsd-new-milestone for v1.4)
+- **Current Focus:** v1.4 Weekly Campaign Read — single-feature milestone (Phase 18: replace CampaignUpliftCard cumulative-since-launch headline with per-ISO-week counterfactual + bar-chart history)
 - **Timeline:** Slow and deliberate — understand data first, ship one layer at a time
 - **Granularity:** standard
 - **Tenants in v1:** 1 (architecture multi-tenant-ready)
 
 ## Current Position
 
-Milestone: v1.3 (External Data & Forecasting Foundation)
-Phase: 17 (backtest-gate-quality-monitoring) — CLOSED 2026-05-06
-Plan: 10/10 complete
+Milestone: v1.4 (Weekly Campaign Read)
+Phase: 18 (weekly-counterfactual-window) — implementing
+Plan: 06 (COMPLETE — 3 i18n keys × 5 locales, compatibility test 17/17, localhost QA PASS) — next: Plan 07 (phase-final QA on DEV + planning-docs drift gate)
 
-Phase 17 closes the v1.3 milestone. All 8 BCK requirements verified end-to-end against DEV via 6-round phase-final QA on 2026-05-06: 5 PASS + 3 PARTIAL. The 3 PARTIAL items (BCK-05, BCK-06, BCK-07) share the same structural root cause — newly-introduced GHA workflows return 404 on `gh workflow run` from a feature branch because the workflow file is not yet on `main`; resolved automatically post-merge. One genuine defect surfaced and was fixed in commit `119ad45`: `naive_dow_with_holidays.py` was missing the `_fit` suffix and ignored `FORECAST_TRACK` env var, so backtest folds wrote to `forecast_track='bau'` instead of `'backtest_fold_N'` — gate read back zero aligned rows. Tests + live re-run after fix confirmed the model now participates in the gate.
+v1.4 opened 2026-05-07 as single-feature milestone. Scope: replace CampaignUpliftCard's cumulative-since-launch headline with per-ISO-week (Mon–Sun) counterfactual + tap-scrubbable bar-chart history. Friend-owner gets a fresh weekly read instead of a cumulative number that drifts toward "no detectable lift" as the campaign window grows. Touches DB (new window_kind value — landed in Plan 18-01 via migration 0069), Python pipeline (cumulative_uplift.py — bootstrap CI re-fit on 7-day slice, NOT derived from daily cumulative), API (/api/campaign-uplift returns weekly_history), and Svelte component (CampaignUpliftCard rewrite).
 
-Next recommended run: /gsd-ship (v1.3 milestone close)
+Locked design decisions (carried over from 2026-05-07 conversation, no /gsd-discuss-phase needed):
 
-- **Status:** Ready to ship
+1. Replace headline (not add-alongside) — user phrasing "instead of since April 14th"
+2. ISO Mon–Sun weeks only
+3. Skip in-progress trailing week + skip partial launch leading week (Apr 14 was Tue, so first bar = week of Apr 20–26)
+4. Bar chart with CI whiskers, color-coded by significance, tap-to-scrub hero
+5. CI re-fit per week via bootstrap (NOT subtract daily cumulative bounds — correlated samples)
+
+**Plan 18-01 shipped 2026-05-07:** migration 0069 atomically (a) extends `campaign_uplift.window_kind` CHECK to include `'iso_week'` and (b) creates `public.campaign_uplift_weekly_v` (tenant-scoped sister to `campaign_uplift_daily_v`). Applied to LOCAL Supabase via `supabase db push --linked --yes` AND DEV via GHA `migrations.yml` run 25483158267 (success, 11s). Three DEV verification queries confirmed live: CHECK contains `'iso_week'`, view body filters `window_kind = 'iso_week'`, `authenticated` has SELECT. Back-compat preserved (existing `campaign_uplift_v` and `campaign_uplift_daily_v` unaffected). Plans 18-02 and 18-03 unblocked.
+
+**Plan 18-02 shipped 2026-05-07:** `compute_iso_week_uplift_rows()` helper added to `scripts/forecast/cumulative_uplift.py` as a sibling to `compute_per_day_uplift_rows`. Buckets the cumulative-window arrays into ISO weeks (Mon-Sun) via `bucket_dates_by_iso_week()` (new helper in `grain_helpers.py`, uses `date.isocalendar()` matching `naive_dow_fit.py:67` precedent), runs a fresh 1000-path bootstrap CI on each fully-completed 7-day slice (NEVER derives CI by subtracting daily cumulative bounds — correlated samples don't subtract additively per CONTEXT.md line 28). Seed scheme `100_000 + k` is disjoint from per-day pass (`42 + i`) per RESEARCH §7 R1. Skip rules: partial launch week (`len(idxs) < 7`) AND in-progress current week (`week_end >= today`). Wired into `_process_campaign_model` after `compute_per_day_uplift_rows`, reusing `cs['actual_values']/['yhat_samples_per_day']/['target_dates']` arrays — no 2nd DB roundtrip per RESEARCH §7 R2. Backfill is automatic on first run because helper iterates ALL completed buckets; upsert idempotent on `(campaign, model, 'iso_week', Sunday)`. 7 named unit tests + 1 smoke + 1 integration test all GREEN. Pre-existing test failure on `test_two_window_kinds_per_campaign_per_model` (missing `.lt()` mock) logged to `deferred-items.md` (predates this plan; out of scope per scope boundary rule). Plan 18-03 (API endpoint) unblocked.
+
+**Plan 18-05 shipped 2026-05-07:** Weekly bar chart history + CI whiskers + tap-to-scrub added to CampaignUpliftCard. Decision B PRIMARY (Option B — three filtered `<Bars>` blocks) caused NaN x/width on all bars (each `<Bars data={subset}>` computed its own band-scale domain independently). Applied Decision B FALLBACK (Option C): manual `<rect>` loop using `chartCtx.xScale` from the full weeklyHistory domain. 16/16 tests pass. Localhost QA PASS (5 bars, correct colors, tap-to-scrub verified via Playwright MCP mock injection). DEV deployed to `feature-phase-18-weekly-coun.ramen-bones-analytics.pages.dev`. Commits: `462dbd7` (RED) → `b25249c` (GREEN) → `90fba8e` (Option C fix).
+
+**Plan 18-06 shipped 2026-05-07:** 3 new i18n keys (`uplift_week_label`, `uplift_bar_chart_caption`, `uplift_history_x_axis_label`) added to all 5 locale blocks. `en` + `ja` real translations; `de`/`es`/`fr` placeholder=en with backlog comment. CampaignUpliftCard hero date label, bar chart caption, and x-axis label wired via `t()`. New `ModelAvailabilityDisclosure_compatibility` test gates back-compat. 17/17 CampaignUpliftCard + 6/6 ModelAvailabilityDisclosure pass. Localhost QA PASS (JA Playwright + EN unit tests). Commits: `eba5000` (i18n + wiring) + `1241dc3` (compatibility test).
+
+Next recommended run: Plan 18-07 (phase-final QA on DEV + planning-docs drift gate)
+
+- **Status:** Implementing
 - **Phase 17:** 10/10 plans complete 2026-05-06; all 8 BCK requirements verified (5 PASS + 3 PARTIAL with merge-deferred resolution).
 - **Phase 16.3:** Dashboard Cleanup + EventBadgeStrip shipped 2026-05-06.
 - **Phase 16.2:** Friend-persona QA gap closure — 7/7 items shipped 2026-05-05.
@@ -44,8 +60,8 @@ Next recommended run: /gsd-ship (v1.3 milestone close)
 - **Phase 15:** v2 (Forecast Backtest Overlay) merged via PR #26 on 2026-05-01.
 - **Phase 14:** Shipped via [PR #22](https://github.com/shiniguchi/ramen-bones-analytics/pull/22). 34 commits, 31 files, +2978 lines. UAT 12/12. 5/5 models producing 365-day forecasts on DEV.
 - **Phase 13:** Shipped via [PR #17](https://github.com/shiniguchi/ramen-bones-analytics/pull/17). 41 commits, 52 files, +6892 lines. EXT-01..EXT-09 complete.
-- **Progress:** [█████████░] 90% (104/116 plans done; v1.0+v1.1+v1.2+v1.3 Phase 12-17 all implementation done; v1.3 ready to ship)
-- **Last activity:** 2026-05-06
+- **Progress:** [█████████░] 88% (108/123 plans done; v1.0+v1.1+v1.2+v1.3 Phase 12-17 shipped; Phase 18 plan 04 of 7 done)
+- **Last activity:** 2026-05-07 (Plan 18-04 complete — awaiting localhost QA checkpoint)
 - **v1.2 closed:** 11 phases, 60 plans, 100% — Phase 11 SSR fix landed 2026-04-21
 - **v1.0 status:** Shipped to friend (97% plans complete; repo flipped PUBLIC 2026-04-15 with topics + description set; Plan 05-06 Task 2 fork walkthrough deferred out of v1 scope)
 
@@ -115,6 +131,11 @@ Next recommended run: /gsd-ship (v1.3 milestone close)
 | Phase 17 P08 | ~not tracked | 2 tasks | 3 files |
 | Phase 17 P09 | ~not tracked | 4 tasks (incl. localhost QA) | 5 files |
 | Phase 17 P10 | ~30min | 3 tasks (incl. phase-final QA + 119ad45 bug fix) | 3 files |
+| Phase 18 P01 | ~15min | 2 tasks (incl. blocking schema push to LOCAL+DEV) | 1 file |
+| Phase 18 P02 | ~25min | 2 tasks (TDD RED + GREEN) | 6 files (3 modified + 3 created) |
+| Phase 18 P03 | ~5min | 2 tasks (TDD RED + GREEN) | 2 files |
+| Phase 18 P04 | ~20min | 2 tasks (TDD RED + GREEN) + localhost QA checkpoint | 2 files |
+| Phase 18 P05 | ~30min | 1 task (TDD RED + GREEN) + localhost QA checkpoint pending | 2 files |
 
 ## Accumulated Context
 
@@ -252,6 +273,11 @@ Next recommended run: /gsd-ship (v1.3 milestone close)
 - [Phase 17]: 17-08: forecast-quality-gate.yml — read-only PR gate; minimal install (supabase + python-dotenv only) keeps under 5min; cancel-in-progress=true on superseded PR commits.
 - [Phase 17]: 17-09: ModelAvailabilityDisclosure backtest column — 4 horizon pills (h7/h35/h120/h365) per model row, color-coded by verdict; cold-start fallback renders gray pills when backtestStatus=null; en+ja real translations, de/es/fr placeholder per Phase 16.1-02 pattern; localhost-first QA at 375×667 in ja + en passed.
 - [Phase 17]: 17-10: phase-final QA against DEV — 5 PASS + 3 PARTIAL across 8 BCK requirements. PARTIAL items (BCK-05/06/07) all blocked by the same structural cause: new GHA workflow not on main → `gh workflow run` returns 404 from feature branch; resolves automatically post-merge. Genuine bug found and fixed (commit 119ad45 — see 17-03 entry above for details). Planning-docs drift gate green.
+- [Phase 18]: 18-01: migration 0069 — single atomic file extends `campaign_uplift.window_kind` CHECK to include `'iso_week'` (DROP+ADD pattern from 0064:29-32) AND creates `public.campaign_uplift_weekly_v` (tenant-scoped sister to `campaign_uplift_daily_v` — same shape, WHERE clause swapped to `window_kind='iso_week'`, no DISTINCT ON because per-week rows unique by (campaign, model, as_of_date=Sunday) by construction). Applied to LOCAL+DEV via `supabase db push --linked --yes` and `gh workflow run migrations.yml --ref feature/phase-18-...` (run 25483158267 success, 11s). Three DEV verification queries confirmed live. Back-compat preserved (existing `campaign_uplift_v` + `campaign_uplift_daily_v` unaffected). Plans 18-02 + 18-03 unblocked.
+- [Phase 18]: 18-05: Bar chart history (Decision B PRIMARY: three filtered <Bars> blocks). onBarClick (camelCase) is actual LayerChart 2.x prop. LayerChart renders <path> (not <rect>) for bars by default (radius=0 → <rect>). CI whiskers via <Rule x y={[lo, hi]}> — no built-in error-bar primitive. sparklineData removed; weekly bar chart replaces Spline+Area sparkline.
+- [Phase 18]: 18-04: CampaignUpliftCard hero rewrite — reads weekly_history. Decision A (LOCKED): maturityTier from Math.floor((today-start_date)/7) not n_days (always 7 per-week). selectedWeekIndex $state for Plan 05 tap-to-scrub. formatHeadlineWeekRange() → 'Week of Apr 27 – May 3'. data-testid='uplift-week-headline-range'. divergenceWarning disabled (naive_dow=null per-week). 12/13 tests pass. TDD RED 81ea4db → GREEN eca9696.
+- [Phase 18]: 18-02: pipeline writer compute_iso_week_uplift_rows shipped via TDD (RED 7fcd7ad → GREEN a20fb83).
+- [Phase 18]: 18-03: /api/campaign-uplift extended with 3rd Promise.all branch reading campaign_uplift_weekly_v + weekly_history[] top-level field (sister to daily[]). WeeklyRow type mirrors DailyRow; iso_week_start = subDays(parseISO(as_of_date), 6) — Mon deterministically from ISO-week Sunday. Filter to headline campaign_id (belt-and-suspenders over RLS). All existing top-level fields preserved (back-compat per CONTEXT.md line 47-48). 6 new test cases GREEN. Empty-case returns weekly_history:[] when no rows or no headline campaign. TDD RED 14e9550 → GREEN 250a73a. New helper sits sibling to compute_per_day_uplift_rows in cumulative_uplift.py; buckets cumulative-window arrays into ISO weeks via grain_helpers.bucket_dates_by_iso_week (date.isocalendar() — matches naive_dow_fit.py:67 precedent); runs fresh 1000-path bootstrap CI per fully-completed 7-day slice with seed=100_000+k (disjoint from per-day 42+i per RESEARCH §7 R1, documented as forward-compat invariant). Wired into _process_campaign_model with today=run_date (no zoneinfo needed — Berlin/UTC drift ≤1h, never crosses ISO-week boundary outside a 1h Sun→Mon window per RESEARCH §1). Skip rules defense-in-depth: len(idxs)<7 AND week_end>=today. out_rows.extend(iso_week_rows) reuses existing _upsert_campaign_uplift_rows (on_conflict tuple already includes window_kind). 7 named unit tests + 1 bonus smoke test in test_iso_week_uplift.py + 1 integration test in test_cumulative_uplift.py all GREEN. Pre-existing failure of test_two_window_kinds_per_campaign_per_model (missing .lt() mock) logged to deferred-items.md — predates this plan; my new sibling integration test ships with the .lt() fix in its harness providing equivalent coverage. Backfill happens automatically on next nightly run because helper iterates ALL completed buckets; upsert idempotent on (campaign, model, 'iso_week', Sunday).
 
 ### Open Todos
 
@@ -299,8 +325,8 @@ Next recommended run: /gsd-ship (v1.3 milestone close)
 
 **Resume hint:** Phase 15 depends on Phase 14 schema (landed). Phase 16 depends on Phase 14 BAU forecast stability. Phase 17 has a hard dependency on ≥4 weeks of forecast-vs-actual history.
 
-**Last session:** 2026-05-06T22:30:06.588Z
-**Stopped At:** context exhaustion at 75% (2026-05-06)
+**Last session:** 2026-05-07T10:41:26.857Z
+**Stopped At:** context exhaustion at 76% (2026-05-07)
 
 ---
-*State initialized: 2026-04-13; v1.3 roadmap recorded: 2026-04-27; Phase 12 context: 2026-04-28; Phase 13 shipped: 2026-04-30 (PR #17); Phase 14 shipped: 2026-04-30 (PR #22); STATE.md updated: 2026-04-30*
+*State initialized: 2026-04-13; v1.3 roadmap recorded: 2026-04-27; Phase 12 context: 2026-04-28; Phase 13 shipped: 2026-04-30 (PR #17); Phase 14 shipped: 2026-04-30 (PR #22); v1.3 shipped: 2026-05-06; v1.4 opened: 2026-05-07; Phase 18 P01 complete: 2026-05-07; Phase 18 P02 complete: 2026-05-07*

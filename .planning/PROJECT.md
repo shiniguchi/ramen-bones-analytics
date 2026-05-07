@@ -90,6 +90,19 @@ A restaurant owner opens the site on their phone and makes a real business decis
 | revenue_comparable_eur for ITS attribution | Coincident menu launches (Onsen EGG, Tantan, Hell beer) contaminate raw revenue | ✓ Good — ITS validity audit confirmed contamination; comparable revenue is the correct baseline |
 | Honest "CI overlaps zero" labeling | No detectable lift doesn't mean the campaign failed — just underpowered at current sample size | ✓ Good — friend accepted the honest framing; sensitivity log PASS in [0.8, 1.25] |
 
+## Current Milestone: v1.4 Weekly Campaign Read
+
+**Goal:** Replace the CampaignUpliftCard's "since launch" cumulative headline with a per-ISO-week (Mon–Sun) counterfactual answer, plus a tap-scrubbable bar-chart history of all completed weeks since campaign launch — so the friend-owner gets a fresh weekly read on whether the campaign is working, not a single decaying cumulative number that drifts toward "no detectable lift" the longer it runs.
+
+**Target features:**
+- Per-ISO-week counterfactual uplift with proper bootstrap CI (re-fit on the 7-day slice — daily CIs do not subtract additively because bootstrap samples are correlated)
+- Persisted weekly history (one row per fully-completed Mon–Sun week since campaign launch; partial launch week excluded)
+- Dashboard hero shows last completed week ("Week of Apr 27 – May 3") replacing cumulative-since-launch
+- Bar chart below hero: one bar per week, CI whiskers, color-coded by significance (gray = CI straddles zero, green = CI > 0, red = CI < 0), tap-to-scrub hero updates
+- Reuses existing campaign_uplift table + CampaignUpliftCard component (single-phase, single-feature milestone)
+
+**Requirements added:** UPL-08 (pipeline weekly window + bootstrap CI), UPL-09 (dashboard hero + bar chart UI, replaces UPL-05/06 cumulative-since-launch surface)
+
 ## Current State: v1.3 SHIPPED 2026-05-06
 
 v1.3 complete. All 9 phases (12–17 + 16.1/16.2/16.3) shipped across 6 PRs (#17, #22, #26, #28, #29, #30).
@@ -105,7 +118,7 @@ v1.3 complete. All 9 phases (12–17 + 16.1/16.2/16.3) shipped across 6 PRs (#17
 
 **Budget:** $0/month preserved. All external data sources free. No new paid tiers added in v1.3.
 
-**Next:** `/gsd-new-milestone` to plan v1.4
+**Next:** v1.4 Weekly Campaign Read — see Current Milestone section above. Phase 18 to plan.
 
 ## Forecast Model Availability Matrix
 
@@ -151,4 +164,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-06 after v1.3 milestone close. All 47 v1.3 requirements validated. All Active requirements moved to Validated. Key Decisions updated with outcomes. Next milestone: /gsd-new-milestone.*
+*Last updated: 2026-05-07 — opened milestone v1.4 "Weekly Campaign Read" (single-phase, single-feature scope). Adds UPL-08 + UPL-09 for per-ISO-week counterfactual + bar-chart history on CampaignUpliftCard.*
