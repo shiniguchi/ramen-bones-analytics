@@ -298,11 +298,12 @@
       {t(page.data.locale, 'uplift_card_subtitle')}
     </p>
 
-    <!-- Phase 18 Plan 04 — Week date label.
-         "Week of {Mon} – {Sun}" via Intl.DateTimeFormat (i18n key wiring in Plan 06).
-         data-testid="uplift-week-headline-range" per UPL-09 contract. -->
+    <!-- Phase 18 Plan 06 — Week date label via uplift_week_label i18n key. -->
     <span class="text-sm text-zinc-600 block mb-1" data-testid="uplift-week-headline-range">
-      Week of {formatHeadlineWeekRange(headline.week, page.data.locale)}
+      {t(page.data.locale, 'uplift_week_label', {
+        start: formatHeadlineWeekRange(headline.week, page.data.locale).split(' – ')[0],
+        end:   formatHeadlineWeekRange(headline.week, page.data.locale).split(' – ')[1]
+      })}
     </span>
 
     <p
@@ -457,9 +458,12 @@
         </Chart>
       </div>
 
-      <!-- D-18 X-axis caption (preserved from old sparkline section) -->
+      <!-- Phase 18 Plan 06 — bar chart caption + X axis label -->
+      <p class="mt-1 text-center text-xs text-zinc-500" data-testid="uplift-bar-chart-caption">
+        {t(page.data.locale, 'uplift_bar_chart_caption')}
+      </p>
       <p class="text-[11px] text-zinc-400 text-center mt-1" data-testid="uplift-sparkline-x-caption">
-        {t(page.data.locale, 'uplift_sparkline_x_caption')}
+        {t(page.data.locale, 'uplift_history_x_axis_label')}
       </p>
 
       <!-- D-18 counterfactual baseline legend chip (preserved) -->

@@ -218,6 +218,11 @@ const en = {
   uplift_sparkline_x_caption: 'Days since campaign launch',
   uplift_baseline_label: 'Dashed line = no campaign baseline',
 
+  // --- Phase 18 weekly counterfactual window labels (UPL-08, UPL-09) ---
+  uplift_week_label: 'Week of {start} – {end}',
+  uplift_bar_chart_caption: 'Weekly revenue lift since campaign launch',
+  uplift_history_x_axis_label: 'Week',
+
   // --- Forecast model display labels (Phase 16.1 D-16) ---
   forecast_model_sarimax: 'SARIMAX',
   forecast_model_prophet: 'Prophet',
@@ -479,6 +484,11 @@ const de: Record<MessageKey, string> = {
   uplift_sparkline_x_caption: 'Days since campaign launch',
   uplift_baseline_label: 'Dashed line = no campaign baseline',
 
+  // --- Phase 18 weekly counterfactual labels — DE placeholder = EN; v1.4 polish backlog item filed ---
+  uplift_week_label: 'Week of {start} – {end}',
+  uplift_bar_chart_caption: 'Weekly revenue lift since campaign launch',
+  uplift_history_x_axis_label: 'Week',
+
   // --- Forecast model display labels (Phase 16.1 D-16 — DE placeholder = EN; v1.4 backlog) ---
   forecast_model_sarimax: 'SARIMAX',
   forecast_model_prophet: 'Prophet',
@@ -733,6 +743,11 @@ const ja: Record<MessageKey, string> = {
   uplift_sparkline_y_label: '累計売上影響額（€）',
   uplift_sparkline_x_caption: 'キャンペーン開始からの経過日数',
   uplift_baseline_label: '点線 = キャンペーンなしの基準',
+
+  // --- Phase 18 週次反事実ラベル (UPL-08, UPL-09) ---
+  uplift_week_label: '{start} – {end} の週',
+  uplift_bar_chart_caption: 'キャンペーン開始後の週次売上リフト',
+  uplift_history_x_axis_label: '週',
 
   // --- Forecast model display labels (Phase 16.1 D-16) ---
   forecast_model_sarimax: 'SARIMAX',
@@ -990,6 +1005,11 @@ const es: Record<MessageKey, string> = {
   uplift_sparkline_x_caption: 'Days since campaign launch',
   uplift_baseline_label: 'Dashed line = no campaign baseline',
 
+  // --- Phase 18 weekly counterfactual labels — ES placeholder = EN; v1.4 polish backlog item filed ---
+  uplift_week_label: 'Week of {start} – {end}',
+  uplift_bar_chart_caption: 'Weekly revenue lift since campaign launch',
+  uplift_history_x_axis_label: 'Week',
+
   // --- Forecast model display labels (Phase 16.1 D-16 — ES placeholder = EN; v1.4 backlog) ---
   forecast_model_sarimax: 'SARIMAX',
   forecast_model_prophet: 'Prophet',
@@ -1245,6 +1265,11 @@ const fr: Record<MessageKey, string> = {
   uplift_sparkline_y_label: 'Cumulative revenue impact (€)',
   uplift_sparkline_x_caption: 'Days since campaign launch',
   uplift_baseline_label: 'Dashed line = no campaign baseline',
+
+  // --- Phase 18 weekly counterfactual labels — FR placeholder = EN; v1.4 polish backlog item filed ---
+  uplift_week_label: 'Week of {start} – {end}',
+  uplift_bar_chart_caption: 'Weekly revenue lift since campaign launch',
+  uplift_history_x_axis_label: 'Week',
 
   // --- Forecast model display labels (Phase 16.1 D-16 — FR placeholder = EN; v1.4 backlog) ---
   forecast_model_sarimax: 'SARIMAX',
