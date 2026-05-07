@@ -517,6 +517,18 @@ def main(models: list[str], run_date: date) -> int:
         return 1
     restaurant_id = rows[0]['id']
 
+    # Purge stale rolling_origin_cv rows before writing new ones. The PK includes
+    # evaluated_at=now() so upserts always INSERT; without this purge, multiple runs
+    # accumulate duplicate fold rows with inconsistent RMSE values. The GHA workflow
+    # uses cancel-in-progress: false so no two runs overlap — safe to delete first.
+    print('[backtest] purging stale rolling_origin_cv rows…')
+    client.table('forecast_quality') \
+        .delete() \
+        .eq('restaurant_id', restaurant_id) \
+        .eq('evaluation_window', 'rolling_origin_cv') \
+        .execute()
+    print('[backtest] purge done')
+
     last_actual = _last_actual_date(client, restaurant_id)
     days_history = _days_of_history(client, restaurant_id)
     print(
