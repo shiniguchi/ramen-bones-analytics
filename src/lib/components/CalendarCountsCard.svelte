@@ -267,7 +267,7 @@
         {series}
         seriesLayout="stack"
         valueAxis="y"
-        width={chartW}
+        width={chartW ?? cardW}
         padding={{ left: 64, right: 8, top: 24, bottom: 24 }}
         tooltipContext={{ mode: 'band', touchEvents: 'auto' }}
       >

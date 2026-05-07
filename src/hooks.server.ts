@@ -6,6 +6,7 @@ import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_PUBLISHABLE_KEY } from '$env/stati
 import { createServerClient } from '@supabase/ssr';
 import type { Handle } from '@sveltejs/kit';
 import { DEFAULT_LOCALE, LOCALE_COOKIE, isLocale } from '$lib/i18n/locales';
+import { loadDict } from '$lib/i18n/messages';
 
 export const handle: Handle = async ({ event, resolve }) => {
   // i18n: resolve active locale from the rb_locale cookie. Accept-Language
@@ -13,6 +14,7 @@ export const handle: Handle = async ({ event, resolve }) => {
   // source of truth and keeps SSR output deterministic for cache behavior.
   const cookieLocale = event.cookies.get(LOCALE_COOKIE);
   event.locals.locale = isLocale(cookieLocale) ? cookieLocale : DEFAULT_LOCALE;
+  await loadDict(event.locals.locale); // warm dict cache before SSR renders any component
 
   event.locals.supabase = createServerClient(
     PUBLIC_SUPABASE_URL,

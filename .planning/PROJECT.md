@@ -29,6 +29,7 @@ A restaurant owner opens the site on their phone and makes a real business decis
 - ✓ Event overlay (campaigns/holidays/events) wired into every date-axis chart via EventBadgeStrip — v1.3
 - ✓ Per-ISO-week counterfactual uplift with independent bootstrap CI (re-fit per 7-day slice, not subtracted daily bounds) — v1.4
 - ✓ Weekly campaign bar chart (CI whiskers, color-coded by significance, tap-to-scrub hero) replacing cumulative-since-launch — v1.4
+- ✓ Cold-start bundle trim: 9 chart cards deferred via `LazyMount loader`; SSR Promise.all 6→3; i18n 76 KB → 3.6 KB cold — v1.5
 
 ### Active
 
@@ -98,22 +99,33 @@ A restaurant owner opens the site on their phone and makes a real business decis
 | Option C (manual rect via chartCtx) for bar chart coloring | LayerChart 2.x has no per-bar render snippet API in stable; Decision B Primary (three filtered Bars blocks) computed independent domains → NaN bars | ✓ Good — chartCtx.xScale approach works; watch for LayerChart API changes |
 | `style:overflow="hidden"` inline over Tailwind class | Tailwind `overflow-hidden` silently lost to LayerChart's component-scoped `overflow: visible` on lc-layout-svg — CI whiskers bled 1600px above card | ✓ Good — inline style wins specificity; pattern documented for future chart containers |
 
-## Current State: v1.4 SHIPPED 2026-05-07
+## Current State: v1.5 SHIPPED 2026-05-07
 
-v1.4 complete. Phase 18 (7/7 plans) shipped via PR #31.
+v1.5 complete. Phase 19 (4/4 plans) shipped on branch `feature/phase-19-cold-start-trim`. 30 async chunks in CF Pages build output.
 
 **Shipped this milestone:**
-- DB: migration 0069 — `campaign_uplift.window_kind` CHECK extended to `'iso_week'`; `campaign_uplift_weekly_v` tenant-scoped wrapper view created
-- Pipeline: `compute_iso_week_uplift_rows()` in `cumulative_uplift.py` — independent bootstrap CI per 7-day slice (1000 paths, seed 100_000+k)
-- API: `/api/campaign-uplift` now returns `weekly_history[]` alongside `daily[]` and `campaigns[]`
-- UI: `CampaignUpliftCard` hero shows "Week of Apr 27 – May 3: −€149" (replacing "Since April 14th"); bar chart with CI whiskers, color-coding, tap-to-scrub below
-- i18n: 3 new keys × 5 locales (`en`/`ja` real, `de`/`es`/`fr` placeholder)
-
-**Empirical:** sarimax week of Apr 27–May 3 = −€149 (95% CI −€2,159…+€2,399). Statistically indistinguishable from null (CI straddles 0 → gray bar). Two completed ISO weeks shown at time of v1.4 launch.
+- `LazyMount loader` prop: 9 chart cards deferred to dynamic imports; LayerChart/d3 off cold-start critical path
+- `/api/item-counts` + `/api/benchmark` deferred endpoints: SSR `Promise.all` reduced 6→3
+- `messages.ts` 76 KB monolith → 3.6 KB cold; 4 per-locale async chunks (`de`/`ja`/`es`/`fr`) via `loadDict()` lazy cache
+- NaN tooltip band rect fix in CalendarCounts/RevenueCard (caught during phase-final QA)
 
 **Budget:** $0/month preserved. No new paid tiers added.
 
-## Previous Milestone
+## Previous Milestones
+
+<details>
+<summary>v1.4 Weekly Campaign Read — SHIPPED 2026-05-07</summary>
+
+v1.4 complete. Phase 18 (7/7 plans) shipped via PR #31.
+
+**Shipped:**
+- DB: migration 0069 — `campaign_uplift.window_kind` CHECK extended to `'iso_week'`; `campaign_uplift_weekly_v` tenant-scoped wrapper view created
+- Pipeline: `compute_iso_week_uplift_rows()` in `cumulative_uplift.py` — independent bootstrap CI per 7-day slice (1000 paths, seed 100_000+k)
+- API: `/api/campaign-uplift` returns `weekly_history[]` alongside `daily[]` and `campaigns[]`
+- UI: `CampaignUpliftCard` hero shows "Week of Apr 27 – May 3: −€149" (replacing "Since April 14th"); bar chart with CI whiskers, color-coding, tap-to-scrub below
+- i18n: 3 new keys × 5 locales (`en`/`ja` real, `de`/`es`/`fr` placeholder)
+
+</details>
 
 <details>
 <summary>v1.3 External Data & Forecasting Foundation — SHIPPED 2026-05-06</summary>
@@ -174,4 +186,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-07 after v1.4 milestone — Phase 18 (Weekly Counterfactual Window) shipped via PR #31. UPL-08 + UPL-09 validated. Two completed ISO weeks visible in production.*
+*Last updated: 2026-05-07 after v1.5 milestone — Phase 19 (Cold-Start Trim) shipped. PERF-01 + PERF-02 + PERF-03 validated. 30 async chunks in CF build; SSR Promise.all 6→3; i18n cold payload 3.6 KB.*

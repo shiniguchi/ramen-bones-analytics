@@ -56,14 +56,58 @@
 
 ---
 
+## Milestone: v1.5 — Cold-Start Trim
+
+**Shipped:** 2026-05-07
+**Phases:** 1 (Phase 19) | **Plans:** 4 | **Sessions:** 1 (~1.5 hours)
+
+### What Was Built
+
+- `LazyMount.svelte` `loader` prop — 9 chart cards deferred via dynamic import; LayerChart/d3 off critical path
+- `/api/item-counts` + `/api/benchmark` — SSR `Promise.all` 6→3 (exceeded target of 4)
+- `messages.ts` 76 KB → 3.6 KB — 5 per-locale dict files with `loadDict()` switch-case for Vite static analysis
+- NaN tooltip band rect fix in CalendarCounts/RevenueCard (caught in phase-final QA, not production)
+
+### What Worked
+
+- **Narrowly scoped milestone:** Three independent perf axes meant each plan was ~10–15 min, no cross-plan blocking, and no design uncertainty. The `loader` prop design was obvious from the existing `LazyMount` API surface.
+- **Vite static analysis constraint discovered proactively:** Switch-case pattern in `loadDict()` (not template literal) was identified in plan research before any code was written — skipped a debug cycle.
+- **`$effect` for `seedDict` in `+layout.svelte`:** Svelte 5's initial-capture warning on reactive side-effects was handled on first attempt with the correct primitive.
+- **Phase-final QA surfaced a real bug:** NaN tooltip band rects were a pre-existing latent issue in CalendarCounts/RevenueCard — caught by QA in this phase rather than discovered in production.
+
+### What Was Inefficient
+
+- **19-02 changes lost in worktree merge overwrite** — the 19-02 deferred-fetch implementation was silently overwritten when the 19-03 executor worktree was merged; required a restoration commit (`5e648c8`). Cost: one extra commit + a re-verification round.
+- **SC target said "6→4" but implementation delivered 6→3:** The spec was slightly off (both `item-counts` and `benchmark` were deferrable alongside an existing deferred endpoint). Not a problem, but shows the SC number wasn't traced to the actual query count.
+
+### Patterns Established
+
+- **`LazyMount loader` as the canonical deferral pattern:** For any Svelte component whose module tree includes LayerChart or large d3 transitive deps, `<LazyMount loader={() => import('./Card.svelte')}>` is now the standard — no more snippet-form `<LazyMount>` for chart cards.
+- **`loadDict()` switch-case, not template literal:** Vite requires static string analysis to emit per-locale chunks. Template literals (`import(\`./dict/${locale}.ts\`)`) produce a single catch-all chunk, not 5 separate ones.
+- **SSR hydration handshake:** `loadDict()` (server) → `getDict()` (serialize into page data) → `seedDict()` (client rehydrate) is the three-step pattern for any lazy-loaded shared state that needs server pre-seeding.
+
+### Key Lessons
+
+1. **Worktree merges need explicit verification of previously-deferred-plan outputs** — when merging a later-plan worktree onto a base branch, the earlier-plan changes must be explicitly checked, not assumed present.
+2. **SC "Promise.all N→M" targets should be derived from an actual query-count audit** — don't guess the final number; count the queries in `+page.server.ts` before writing the SC.
+3. **`messages.en` compatibility shim is now blocking cleanup:** 3 test files import `messages.en` directly. Each milestone that adds more test files using the old import pattern makes cleanup harder. Should be resolved in v1.6 early.
+
+### Cost Observations
+
+- Model mix: primarily Sonnet 4.6
+- Sessions: 1 (~1.5 hours for 4 plans, branch, and milestone archive)
+- Notable: pure-perf milestone with no UX changes — no Chrome MCP verification round needed; build-output inspection + unit tests were the verification path
+
+---
+
 ## Cross-Milestone Trends
 
-| Metric | v1.0 | v1.1 | v1.2 | v1.3 | v1.4 |
-|--------|------|------|------|------|------|
-| Phases | 5 | 2 | 4 | 9 | 1 |
-| Plans | 29 | 9 | 17 | 47 | 7 |
-| Days | ~2 | ~1 | ~3 | ~9 | 1 |
-| PRs | 1 | 1 | 1 | 6 | 1 |
-| TDD adoption | partial | partial | growing | consistent | full |
+| Metric | v1.0 | v1.1 | v1.2 | v1.3 | v1.4 | v1.5 |
+|--------|------|------|------|------|------|------|
+| Phases | 5 | 2 | 4 | 9 | 1 | 1 |
+| Plans | 29 | 9 | 17 | 47 | 7 | 4 |
+| Days | ~2 | ~1 | ~3 | ~9 | 1 | <1 |
+| PRs | 1 | 1 | 1 | 6 | 1 | TBD |
+| TDD adoption | partial | partial | growing | consistent | full | full |
 
-**Trend:** TDD discipline is now consistent across all plan types (DB, pipeline, API, frontend). Single-day sprint for a well-scoped single-feature milestone is achievable with memory-system + pre-locked design decisions eliminating the discuss phase.
+**Trend:** Performance-only milestones with no UX changes are the fastest to execute — no Chrome MCP verification round, no friend-persona acceptance cycle. Pure perf work verifiable by build output + unit tests alone. Worktree merge discipline needs a checklist: always verify earlier-plan outputs after merging a later worktree.
