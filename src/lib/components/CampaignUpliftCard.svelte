@@ -104,19 +104,43 @@
     return [...arr].sort((a, b) => a.iso_week_end.localeCompare(b.iso_week_end));
   });
 
-  // Phase 20: day-level CF line chart data and y-domain bounds.
+  // Phase 20: day-level CF line chart data.
   const dailyLines = $derived(data?.daily_lines ?? []);
+
+  // Clip to the intersection of [campaign_start, today] ∩ [page.data.window.from, page.data.window.to].
+  // Keeps the x-axis aligned with the global date-range filter as the user changes it.
+  const PX_PER_DAY = 38;
+  const windowFrom = $derived.by(() => {
+    const campaignStart = headline?.campaign?.start_date ?? '';
+    const winFrom = page.data.window?.from ?? '';
+    return winFrom > campaignStart ? winFrom : campaignStart;
+  });
+  const windowTo = $derived(page.data.window?.to ?? '');
+  const visibleDailyLines = $derived(
+    windowFrom && windowTo
+      ? dailyLines.filter((r) => r.date >= windowFrom && r.date <= windowTo)
+      : dailyLines
+  );
+  const visibleWeeklyHistory = $derived(
+    windowFrom && windowTo
+      ? weeklyHistory.filter((w) => w.iso_week_end >= windowFrom && w.iso_week_start <= windowTo)
+      : weeklyHistory
+  );
+  // chart pixel width: one column per day so day-level detail stays legible as weeks accumulate.
+  const chartWidth = $derived(Math.max(visibleDailyLines.length * PX_PER_DAY, 300));
+
+  // y-domain computed over the visible window only.
   const yDomainMin = $derived.by(() => {
     const vals = [
-      ...dailyLines.map((r) => r.cf_lower_eur),
-      ...dailyLines.filter((r) => r.actual_eur != null).map((r) => r.actual_eur!)
+      ...visibleDailyLines.map((r) => r.cf_lower_eur),
+      ...visibleDailyLines.filter((r) => r.actual_eur != null).map((r) => r.actual_eur!)
     ];
     return vals.length ? Math.min(...vals) : 0;
   });
   const yDomainMax = $derived.by(() => {
     const vals = [
-      ...dailyLines.map((r) => r.cf_upper_eur),
-      ...dailyLines.filter((r) => r.actual_eur != null).map((r) => r.actual_eur!)
+      ...visibleDailyLines.map((r) => r.cf_upper_eur),
+      ...visibleDailyLines.filter((r) => r.actual_eur != null).map((r) => r.actual_eur!)
     ];
     return vals.length ? Math.max(...vals) : 100;
   });
@@ -345,21 +369,25 @@
          Completed ISO weeks overlaid as click-to-scrub color bands.
          touchEvents:'auto' per feedback_layerchart_mobile_scroll.md.
          Tooltip.Root snippet form per feedback_svelte5_tooltip_snippet.md. -->
-    {#if dailyLines.length > 0}
+    {#if visibleDailyLines.length > 0}
       <p class="text-[11px] text-zinc-500 mb-1 mt-3">{t(page.data.locale, 'uplift_sparkline_y_label')}</p>
+      <!-- outer div: overflow-x allows horizontal scroll as weeks accumulate -->
+      <div class="overflow-x-auto -mx-4 px-4" style:width="calc(100% + 2rem)">
       <div
         class="chart-touch-safe"
-        style:width="100%"
+        style:width="{chartWidth}px"
+        style:min-width="100%"
         style:height="160px"
         style:overflow="hidden"
         data-testid="uplift-week-bar-chart"
       >
         <Chart
           bind:context={chartCtx}
-          data={dailyLines}
+          data={visibleDailyLines}
           x={(r) => parseISO((r as DailyLinePoint).date)}
           y={(r) => (r as DailyLinePoint).actual_eur ?? (r as DailyLinePoint).cf_yhat_eur}
           xScale={scaleTime()}
+          xDomain={windowFrom && windowTo ? [parseISO(windowFrom), parseISO(windowTo)] : undefined}
           yDomain={[yDomainMin, yDomainMax]}
           yNice={4}
           padding={{ left: 44, right: 4, top: 24, bottom: 20 }}
@@ -374,14 +402,14 @@
             />
             <Axis
               placement="bottom"
-              ticks={Math.max(weeklyHistory.length + 1, 2)}
+              ticks={Math.max(Math.ceil(visibleDailyLines.length / 7), 2)}
               format={(v: Date) => new Intl.DateTimeFormat(page.data.locale, { month: 'short', day: 'numeric' }).format(v)}
               rule
             />
 
             <!-- Completed-week verdict bands (green = positive CI, red = negative, gray = inconclusive).
                  Clickable to scrub the headline week selector. Uses chartCtx pixel coords. -->
-            {#each weeklyHistory as wk, i (wk.iso_week_end)}
+            {#each visibleWeeklyHistory as wk, i (wk.iso_week_end)}
               {@const x1 = chartCtx?.xScale?.(parseISO(wk.iso_week_start)) ?? 0}
               {@const x2 = chartCtx?.xScale?.(parseISO(wk.iso_week_end)) ?? 0}
               {@const [yTop, yBottom] = chartCtx?.yRange ?? [0, 100]}
@@ -420,7 +448,7 @@
 
             <!-- CF 95% CI band (gray shaded area) -->
             <Area
-              data={dailyLines}
+              data={visibleDailyLines}
               x={(r) => parseISO((r as DailyLinePoint).date)}
               y0={(r) => (r as DailyLinePoint).cf_lower_eur}
               y1={(r) => (r as DailyLinePoint).cf_upper_eur}
@@ -429,7 +457,7 @@
             />
             <!-- CF yhat line (dashed) -->
             <Spline
-              data={dailyLines}
+              data={visibleDailyLines}
               x={(r) => parseISO((r as DailyLinePoint).date)}
               y={(r) => (r as DailyLinePoint).cf_yhat_eur}
               class="stroke-zinc-400"
@@ -438,7 +466,7 @@
             />
             <!-- Actual revenue line (solid dark) — only days with actuals -->
             <Spline
-              data={dailyLines.filter((r) => r.actual_eur != null)}
+              data={visibleDailyLines.filter((r) => r.actual_eur != null)}
               x={(r) => parseISO((r as DailyLinePoint).date)}
               y={(r) => (r as DailyLinePoint).actual_eur!}
               class="stroke-zinc-800"
@@ -467,6 +495,7 @@
             {/snippet}
           </Tooltip.Root>
         </Chart>
+      </div>
       </div>
 
       <!-- Dual-line legend -->
