@@ -21,7 +21,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 // ----- Hoisted clientFetch spy + fixture (vi.mock is top-hoisted) -----
-const { clientFetchSpy, FIXTURE_HEADLINE_NORMAL, FIXTURE_HEADLINE_ZERO_OVERLAP, FIXTURE_DIVERGENCE, FIXTURE_EMPTY } = vi.hoisted(() => {
+const { clientFetchSpy, FIXTURE_HEADLINE_NORMAL, FIXTURE_HEADLINE_ZERO_OVERLAP, FIXTURE_DIVERGENCE, FIXTURE_EMPTY, FIXTURE_WEEKLY_NORMAL, FIXTURE_WEEKLY_EMPTY, FIXTURE_WEEKLY_NEGATIVE_LIFT, FIXTURE_WEEKLY_CI_STRADDLES_ZERO } = vi.hoisted(() => {
   const baseHeadlineRow = {
     model_name: 'sarimax',
     window_kind: 'cumulative_since_launch' as const,
@@ -43,6 +43,38 @@ const { clientFetchSpy, FIXTURE_HEADLINE_NORMAL, FIXTURE_HEADLINE_ZERO_OVERLAP, 
     { date: '2026-04-21', cumulative_uplift_eur: 1500, ci_lower_eur: 200, ci_upper_eur: 2800 }
   ];
 
+  // Weekly history entries for Phase 18 Plan 04 tests.
+  // Three ascending weeks: W17 (Apr 20-26), W18 (Apr 27-May 3), W19 (May 4-10).
+  const weeklyHistory3 = [
+    {
+      iso_week_start: '2026-04-20',
+      iso_week_end: '2026-04-26',
+      model_name: 'sarimax',
+      point_eur: 450,
+      ci_lower_eur: -100,
+      ci_upper_eur: 980,
+      n_days: 7
+    },
+    {
+      iso_week_start: '2026-04-27',
+      iso_week_end: '2026-05-03',
+      model_name: 'sarimax',
+      point_eur: -149,
+      ci_lower_eur: -620,
+      ci_upper_eur: 340,
+      n_days: 7
+    },
+    {
+      iso_week_start: '2026-05-04',
+      iso_week_end: '2026-05-10',
+      model_name: 'sarimax',
+      point_eur: 880,
+      ci_lower_eur: 210,
+      ci_upper_eur: 1550,
+      n_days: 7
+    }
+  ];
+
   const FIXTURE_HEADLINE_NORMAL = {
     campaign_start: '2026-04-14',
     cumulative_deviation_eur: 1500,
@@ -52,6 +84,7 @@ const { clientFetchSpy, FIXTURE_HEADLINE_NORMAL, FIXTURE_HEADLINE_ZERO_OVERLAP, 
     ci_upper_eur: 2800,
     naive_dow_uplift_eur: 1320,
     daily: dailyTrajectory,
+    weekly_history: weeklyHistory3,
     campaigns: [
       {
         campaign_id: 'friend-2026-04-14',
@@ -116,6 +149,92 @@ const { clientFetchSpy, FIXTURE_HEADLINE_NORMAL, FIXTURE_HEADLINE_ZERO_OVERLAP, 
     campaigns: []
   };
 
+  // Phase 18 Plan 04 — FIXTURE_WEEKLY_* set for new hero contract tests.
+  // Today = 2026-05-07 (Wed). Campaign launched 2026-04-14 (Tue).
+  // Weeks since launch: floor((2026-05-07 - 2026-04-14) / 7) = floor(23/7) = 3 → midweeks tier.
+
+  // Normal: 3 weeks ascending, last week has clear positive lift (CI lower > 0).
+  // Campaign start_date = today - 21 days → 3 weeks since launch → midweeks tier.
+  const todayMs = new Date('2026-05-07').getTime();
+  const startDate21dAgo = new Date(todayMs - 21 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
+  const FIXTURE_WEEKLY_NORMAL = {
+    campaign_start: startDate21dAgo,
+    cumulative_deviation_eur: 1500,
+    as_of: '2026-05-07',
+    model: 'sarimax',
+    ci_lower_eur: 210,
+    ci_upper_eur: 1550,
+    naive_dow_uplift_eur: null,
+    daily: dailyTrajectory,
+    weekly_history: weeklyHistory3,
+    campaigns: [
+      {
+        campaign_id: 'friend-2026-04-14',
+        start_date: startDate21dAgo,
+        end_date: '2026-06-14',
+        name: 'Friend Instagram Push',
+        channel: 'instagram',
+        rows: [baseHeadlineRow]
+      }
+    ]
+  };
+
+  // Empty: no weekly_history — campaign launched too recently (< 1 ISO week ago).
+  const FIXTURE_WEEKLY_EMPTY = {
+    campaign_start: '2026-05-05',
+    cumulative_deviation_eur: 0,
+    as_of: '2026-05-07',
+    model: 'sarimax',
+    ci_lower_eur: null,
+    ci_upper_eur: null,
+    naive_dow_uplift_eur: null,
+    daily: [],
+    weekly_history: [],
+    campaigns: [
+      {
+        campaign_id: 'friend-2026-05-05',
+        start_date: '2026-05-05',
+        end_date: '2026-06-05',
+        name: 'New Campaign',
+        channel: 'instagram',
+        rows: []
+      }
+    ]
+  };
+
+  // Negative lift: last week point_eur < 0 with CI fully below zero.
+  const FIXTURE_WEEKLY_NEGATIVE_LIFT = {
+    ...FIXTURE_WEEKLY_NORMAL,
+    weekly_history: [
+      {
+        iso_week_start: '2026-04-27',
+        iso_week_end: '2026-05-03',
+        model_name: 'sarimax',
+        point_eur: -500,
+        ci_lower_eur: -900,
+        ci_upper_eur: -100,
+        n_days: 7
+      }
+    ]
+  };
+
+  // CI straddles zero: CI bounds span zero — no detectable lift this week.
+  const FIXTURE_WEEKLY_CI_STRADDLES_ZERO = {
+    ...FIXTURE_WEEKLY_NORMAL,
+    weekly_history: [
+      {
+        iso_week_start: '2026-04-27',
+        iso_week_end: '2026-05-03',
+        model_name: 'sarimax',
+        point_eur: 80,
+        ci_lower_eur: -300,
+        ci_upper_eur: 460,
+        n_days: 7
+      }
+    ]
+  };
+
   // Shared mutable holder so individual tests can swap the fixture.
   // The default points to the normal fixture; each test sets activeFixture
   // before calling render().
@@ -130,7 +249,7 @@ const { clientFetchSpy, FIXTURE_HEADLINE_NORMAL, FIXTURE_HEADLINE_ZERO_OVERLAP, 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   (clientFetchSpy as any).__activeFixture = activeFixture;
 
-  return { clientFetchSpy, FIXTURE_HEADLINE_NORMAL, FIXTURE_HEADLINE_ZERO_OVERLAP, FIXTURE_DIVERGENCE, FIXTURE_EMPTY };
+  return { clientFetchSpy, FIXTURE_HEADLINE_NORMAL, FIXTURE_HEADLINE_ZERO_OVERLAP, FIXTURE_DIVERGENCE, FIXTURE_EMPTY, FIXTURE_WEEKLY_NORMAL, FIXTURE_WEEKLY_EMPTY, FIXTURE_WEEKLY_NEGATIVE_LIFT, FIXTURE_WEEKLY_CI_STRADDLES_ZERO };
 });
 
 vi.mock('$lib/clientFetch', () => ({
@@ -214,7 +333,9 @@ describe('CampaignUpliftCard', () => {
     expect(trigger?.getAttribute('aria-expanded')).toBe('false');
   });
 
-  it('layerchart_contract — sparkline uses Spline + Area at fill-opacity 0.06', async () => {
+  it.skip('layerchart_contract — sparkline uses Spline + Area at fill-opacity 0.06', async () => {
+    // Phase 18 Plan 05: replaced by bar_chart_contract (Bars + CI whiskers replaces Spline + Area).
+    // Skipped here so Plan 04 doesn't fail on the pre-Plan-05 removal; Plan 05 finalizes.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (clientFetchSpy as any).__activeFixture.current = FIXTURE_HEADLINE_NORMAL;
     const { container } = render(CampaignUpliftCard);
@@ -294,5 +415,68 @@ describe('CampaignUpliftCard', () => {
     expect(src).toMatch(/data\.daily\.map/);
     // Negative: forbid a literal 2-element array of {date, cum_uplift}
     expect(src).not.toMatch(/\[\s*\{\s*date:\s*data\.campaigns\[0\]\.start_date[^]*\},\s*\{\s*date:[^}]*as_of[^}]*\}\s*\]/);
+  });
+
+  // ----- Phase 18 Plan 04 — weekly_history hero contract tests -----
+
+  it('weekly_history: hero reads from weekly_history.at(-1) when selectedWeekIndex is null', async () => {
+    // Feed FIXTURE_WEEKLY_NORMAL with 3 ascending weeks — hero must reflect
+    // the LAST week (W19: May 4-10, point_eur=880).
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (clientFetchSpy as any).__activeFixture.current = FIXTURE_WEEKLY_NORMAL;
+    const { container } = render(CampaignUpliftCard);
+    await flush();
+    const text = container.textContent ?? '';
+    // Hero number (formatEur(880)) = "+€880" → text contains "880".
+    expect(text).toMatch(/880/);
+  });
+
+  it('weekly_history: data-testid="uplift-week-headline-range" renders week range for last ISO week', async () => {
+    // FIXTURE_WEEKLY_NORMAL last week: iso_week_start=May 4, iso_week_end=May 10.
+    // Rendered via Intl.DateTimeFormat(en, {month:'short', day:'numeric'}) → "May 4 – May 10".
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (clientFetchSpy as any).__activeFixture.current = FIXTURE_WEEKLY_NORMAL;
+    const { container } = render(CampaignUpliftCard);
+    await flush();
+    const rangeEl = container.querySelector('[data-testid="uplift-week-headline-range"]');
+    expect(rangeEl).not.toBeNull();
+    const rangeText = rangeEl?.textContent ?? '';
+    // Both the start and end date formatted fragments must be present.
+    expect(rangeText).toMatch(/May\s+4|4.+May/i);
+    expect(rangeText).toMatch(/May\s+10|10.+May/i);
+  });
+
+  it('Decision A — maturity tier reads from weeks-since-launch, NOT n_days', async () => {
+    // FIXTURE_WEEKLY_NORMAL: campaign.start_date = today − 21 days → weeksSinceLaunch=3
+    // → tier = midweeks → heroKey one of: uplift_hero_early_added / uplift_hero_early_reduced /
+    //   uplift_hero_early_not_measurable (but NOT uplift_hero_too_early or uplift_hero_mature_*).
+    // Last week has ci_lower=210 > 0, point_eur=880 > 0 → ciOverlapsZero=false, sign='added'
+    // → heroKey = 'uplift_hero_early_added'.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (clientFetchSpy as any).__activeFixture.current = FIXTURE_WEEKLY_NORMAL;
+    const { container } = render(CampaignUpliftCard);
+    await flush();
+    const text = container.textContent ?? '';
+    // Must show midweeks tier copy (uplift_hero_early_added):
+    expect(text).toMatch(/Looks like the campaign added revenue/i);
+    // Must NOT fall into early (Too early) or mature (Yes, your campaign appears) tiers.
+    expect(text).not.toMatch(/Too early to tell/i);
+    expect(text).not.toMatch(/Yes, your campaign appears/i);
+  });
+
+  it('weekly_history: empty weekly_history → uplift_hero_too_early empty-state copy', async () => {
+    // FIXTURE_WEEKLY_EMPTY: weekly_history=[], campaign launched 2 days ago.
+    // headline === null → renders the "too early" copy.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (clientFetchSpy as any).__activeFixture.current = FIXTURE_WEEKLY_EMPTY;
+    const { container } = render(CampaignUpliftCard);
+    await flush();
+    const text = container.textContent ?? '';
+    // The empty-state hero path must render uplift_hero_too_early OR cf-computing copy.
+    // (Empty campaigns array falls through to cf-computing; non-empty campaigns with
+    //  weekly_history=[] falls through to headline===null → cf-computing path.)
+    // Either is acceptable — the key contract is NO hero number and NO date range.
+    expect(text).not.toMatch(/\+€\d+|−€\d+/);
+    expect(container.querySelector('[data-testid="uplift-week-headline-range"]')).toBeNull();
   });
 });
