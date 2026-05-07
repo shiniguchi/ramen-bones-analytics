@@ -590,4 +590,23 @@ describe('CampaignUpliftCard', () => {
     await flush();
     expect(container.querySelector('[data-testid="uplift-week-bar-chart"]')).toBeNull();
   });
+
+  it('ModelAvailabilityDisclosure_compatibility — disclosure panel renders when both weekly_history AND cumulative_since_launch rows present', async () => {
+    // FIXTURE_WEEKLY_NORMAL includes campaigns[0].rows=[baseHeadlineRow] (window_kind='cumulative_since_launch').
+    // CampaignUpliftCard does not embed ModelAvailabilityDisclosure directly — its own disclosure panel
+    // must still open and render its content when the payload has both weekly_history and campaigns[0].rows.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (clientFetchSpy as any).__activeFixture.current = FIXTURE_WEEKLY_NORMAL;
+    const { container } = render(CampaignUpliftCard);
+    await flush();
+    const trigger = container.querySelector<HTMLButtonElement>('[data-testid="uplift-details-trigger"]');
+    expect(trigger).not.toBeNull();
+    trigger!.click();
+    await flush();
+    const panel = container.querySelector('[data-testid="uplift-details-panel"]');
+    expect(panel).not.toBeNull();
+    // Panel content: point estimate + anticipation note must render.
+    expect(panel!.querySelector('[data-testid="dim-point-estimate"]')).not.toBeNull();
+    expect(panel!.querySelector('[data-testid="anticipation-buffer-note"]')).not.toBeNull();
+  });
 });
